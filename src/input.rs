@@ -5,10 +5,40 @@ use glfw::MouseButton;
 
 use crate::{camera::{self, Camera}, entity_manager::EntityManager, enums_types::{AnimationType, Faction}};
 
-pub fn handle_keyboard_input(key: glfw::Key, action: glfw::Action, pressed_keys: &mut HashSet<glfw::Key>) {
+pub struct InputState {
+    pub keys_current: HashSet<glfw::Key>, // Held this frame
+    pub keys_previous: HashSet<glfw::Key>, // held last frame
+}
+
+impl InputState {
+    pub fn new() -> Self {
+        Self {
+            keys_current: HashSet::new(),
+            keys_previous: HashSet::new(),
+        }
+    }
+
+    pub fn just_pressed(&self, key: glfw::Key) -> bool {
+        self.keys_current.contains(&key) && !self.keys_previous.contains(&key)
+    }
+
+    pub fn just_released(&self, key: glfw::Key) -> bool {
+        !self.keys_current.contains(&key) && self.keys_previous.contains(&key)
+    }
+    
+    pub fn is_down(&self, key: glfw::Key) -> bool {
+        self.keys_current.contains(&key)
+    }
+
+    pub fn update(&mut self) {
+        self.keys_previous = self.keys_current.clone();
+    }
+}
+
+pub fn handle_keyboard_input(key: glfw::Key, action: glfw::Action, input_state: &mut InputState) {
     match action {
-        glfw::Action::Press => { pressed_keys.insert(key); }
-        glfw::Action::Release => { pressed_keys.remove(&key); }
+        glfw::Action::Press => { input_state.keys_current.insert(key); }
+        glfw::Action::Release => { input_state.keys_current.remove(&key); }
         _=> ()
     }
 }
@@ -16,7 +46,8 @@ pub fn handle_keyboard_input(key: glfw::Key, action: glfw::Action, pressed_keys:
 pub fn handle_mouse_motion() {
 }
 
-pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, cursor_pos: Vec2, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, pressed_keys: &HashSet<glfw::Key>) {
+pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, cursor_pos: Vec2, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &InputState) {
+    let pressed_keys = &input_state.keys_current;
     match action {
         glfw::Action::Press => { 
             if button == glfw::MouseButtonLeft {
@@ -129,14 +160,3 @@ fn ray_hits_cylinder(
 
     None
 }
-
-
-
-
-
-
-
-
-
-
-

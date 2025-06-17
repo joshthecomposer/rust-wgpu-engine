@@ -250,6 +250,7 @@ pub struct Animator {
     pub animations: HashMap<AnimationType, Animation>,
     pub blend_factor: f32,
     pub blend_time: f32,
+    pub restarted: bool, // TODO: A hack for determining if we should restart attack animations
 }
 
 impl Animator {
@@ -260,6 +261,7 @@ impl Animator {
             animations: HashMap::new(),
             blend_factor: 0.0,
             blend_time: 0.2,
+            restarted: false,
         }
     }
 
@@ -683,7 +685,9 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
                     // Save the previous animation before creating a new one
                     animation.model_animation_join = model_animation_join.clone();
                     animation.ticks_per_second = ticks_per_second;
-                    if current_anim_str == "Death" {
+
+                    if current_anim_str == "Death" || current_anim_str == "Slash" {
+                        println!("Found {}, setting looping to false", &current_anim_str);
                         animation.looping = false;
                     }
 
@@ -691,7 +695,7 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
                 }
 
                 animation = Animation::default();
-                current_anim_str = parts[1];
+                current_anim_str = parts[1].trim();
 
                 dbg!(&current_anim_str);
 
@@ -751,6 +755,20 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
     animator.set_current_animation(AnimationType::from_str(current_anim_str).unwrap());
     animator.set_next_animation(AnimationType::from_str(current_anim_str).unwrap());
     animator.animations.insert(AnimationType::from_str(current_anim_str).unwrap(), animation.clone());
+
+    if !current_anim_str.is_empty() {
+        animation.model_animation_join = model_animation_join.clone();
+        animation.ticks_per_second = ticks_per_second;
+        if current_anim_str == "Death" || current_anim_str == "Slash" {
+            println!("Found {}, setting looping to false", &current_anim_str);
+            animation.looping = false;
+        }
+
+    animator.animations.insert(
+        AnimationType::from_str(current_anim_str).unwrap(),
+        animation.clone(),
+    );
+}
 
     for (_, animation) in animator.animations.iter_mut() {
         for (_, track) in animation.bone_transforms.iter_mut() {

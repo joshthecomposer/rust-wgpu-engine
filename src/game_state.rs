@@ -7,7 +7,7 @@ use glfw::{Context, Glfw, GlfwReceiver, Key, PWindow, WindowEvent};
 use image::GrayImage;
 use rusttype::{point, Font, Scale};
 
-use crate::{animation::animation_system, camera::Camera, collision_system, config::{entity_config::{self, EntityConfig}, game_config::GameConfig, world_data::WorldData}, debug::{gizmos::Cylinder, write::write_data}, entity_manager::{self, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, ShaderType, SimState, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input}, items, lights::{DirLight, Lights}, movement_system, particles::{Emitter, ParticleSystem}, renderer::Renderer, sound::{fmod::FMOD_Studio_System_Update, sound_manager::SoundManager}, state_machines, terrain::Terrain, ui::{font::{self, FontManager}, game_ui::{self, GameUiContext}, imgui::ImguiManager, message_queue::{MessageQueue, UiMessage}}};
+use crate::{animation::animation_system, camera::Camera, collision_system, config::{entity_config::{self, EntityConfig}, game_config::GameConfig, world_data::WorldData}, debug::{gizmos::Cylinder, write::write_data}, entity_manager::{self, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, ShaderType, SimState, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input, InputState}, items, lights::{DirLight, Lights}, movement_system, particles::{Emitter, ParticleSystem}, renderer::Renderer, sound::{fmod::FMOD_Studio_System_Update, sound_manager::SoundManager}, state_machines, terrain::Terrain, ui::{font::{self, FontManager}, game_ui::{self, GameUiContext}, imgui::ImguiManager, message_queue::{MessageQueue, UiMessage}}};
 // use rand::prelude::*;
 // use rand_chacha::ChaCha8Rng;
 
@@ -37,7 +37,7 @@ pub struct GameState {
     pub grid: Grid,
     pub renderer: Renderer,
 
-    pub pressed_keys: HashSet<glfw::Key>,
+    pub input_state: InputState,
 
     pub sound_manager: SoundManager,
 
@@ -191,7 +191,7 @@ impl GameState {
             grid,
             renderer,
 
-            pressed_keys: HashSet::new(),
+            input_state: InputState::new(),
             sound_manager,
 
             terrain,
@@ -260,10 +260,10 @@ impl GameState {
                         },
                         _ => {}
                     }
-                    handle_keyboard_input(key, action, &mut self.pressed_keys);
+                    handle_keyboard_input(key, action, &mut self.input_state);
                 },
                 glfw::WindowEvent::MouseButton(btn, action, _) => {
-                    handle_mouse_input(btn, action, self.cursor_pos, Vec2::new(self.fb_width as f32, self.fb_height as f32), &self.camera, &mut self.entity_manager, &self.pressed_keys);
+                    handle_mouse_input(btn, action, self.cursor_pos, Vec2::new(self.fb_width as f32, self.fb_height as f32), &self.camera, &mut self.entity_manager, &self.input_state);
                     if btn  == glfw::MouseButtonLeft && action == glfw::Action::Press {
                         self.message_queue.send(UiMessage::LeftMouseClicked);
                     }
@@ -297,16 +297,16 @@ impl GameState {
             let player_key = player_entry.key();
             let animator = self.entity_manager.animators.get_mut(player_key).unwrap();
 
-            if self.pressed_keys.contains(&glfw::Key::P) {
+            if self.input_state.keys_current.contains(&glfw::Key::P) {
                 animator.set_next_animation(AnimationType::Death);
             }
 
-            if self.pressed_keys.contains(&glfw::Key::O) {
+            if self.input_state.keys_current.contains(&glfw::Key::O) {
                 animator.set_next_animation(AnimationType::Idle);
             }
         }
 
-        if self.pressed_keys.contains(&glfw::Key::Delete) {
+        if self.input_state.keys_current.contains(&glfw::Key::Delete) {
             for id in self.entity_manager.selected.iter() {
                 self.entity_manager.sim_states.insert(*id, SimState::Dying);
                 if let Some(parent) = self.entity_manager.parents.iter().find(|p| p.value().parent_id == *id) {
@@ -345,13 +345,16 @@ impl GameState {
 
         // UPDATE SYSTEMS
         movement_system::update(
-            &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.pressed_keys
+            &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.input_state
         );
         animation_system::update(&mut self.entity_manager, self.delta_time);
         state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles);
         collision_system::update(&mut self.entity_manager);
         items::update(&mut self.entity_manager);
         self.entity_manager.update(&mut self.sound_manager);
+
+        self.input_state.update();// likely this shoudl always be last because it just checks if we
+        // are holding a key
     }
 
     pub fn render(&mut self) {
@@ -359,7 +362,7 @@ impl GameState {
         // Handle windowed/FullScreen
         // ======================================
         // TODO: should we abstract this out somewhere?
-        if self.pressed_keys.contains(&glfw::Key::H) {
+        if self.input_state.keys_current.contains(&glfw::Key::H) {
             self.glfw.with_primary_monitor(|_glfw, maybe_monitor| {
                 if let Some(monitor) = maybe_monitor {
                     if let Some(video_mode) = monitor.get_video_mode() {
@@ -377,7 +380,7 @@ impl GameState {
                     }
                 }
             });
-        } else if self.pressed_keys.contains(&glfw::Key::J) {
+        } else if self.input_state.keys_current.contains(&glfw::Key::J) {
             self.window.set_monitor(
                 glfw::WindowMode::Windowed,
                 100,
@@ -434,7 +437,7 @@ impl GameState {
             self.paused,
             self.window.get_cursor_mode(),
             &self.camera.move_state,
-            &self.pressed_keys,
+            &self.input_state.keys_current,
             &mut self.game_ui_context,
         );
 

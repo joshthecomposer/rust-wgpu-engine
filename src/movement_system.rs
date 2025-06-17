@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use glam::{vec3, Quat, Vec3};
 
-use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, CameraState, EntityType, Faction, Transform}, terrain::Terrain};
+use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, CameraState, EntityType, Faction, Transform}, input::InputState, terrain::Terrain};
 
-pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camera, pressed_keys: &HashSet<glfw::Key>) {
+pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camera, input_state: &InputState) {
     
     let player_keys = em.get_ids_for_faction(Faction::Player);
     let enemy_keys = em.get_ids_for_faction(Faction::Enemy);
@@ -13,7 +13,7 @@ pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camer
 
     if camera.move_state != CameraState::Free {
         if player_keys.len() > 0 {
-            handle_player_movement(pressed_keys, em, player_keys, dt, camera, terrain);
+            handle_player_movement(input_state, em, player_keys, dt, camera, terrain);
         }
     }
     handle_enemy_movement(enemy_keys, em, terrain, dt,);
@@ -21,8 +21,7 @@ pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camer
     handle_gizmo_movement(gizmo_keys, em, dt);
 }
 
-fn handle_player_movement(pressed_keys: &HashSet<glfw::Key>, em: &mut EntityManager, player_keys: Vec<usize>, delta: f32, camera: &Camera, terrain: &Terrain) {
-    // We don't want multiple players yet, and we want at least one. Both these things can/will change later
+fn handle_player_movement(input_state: &InputState, em: &mut EntityManager, player_keys: Vec<usize>, delta: f32, camera: &Camera, terrain: &Terrain) {
     let player_key = *player_keys.first().unwrap();
     let animator = em.animators.get_mut(player_key).unwrap();
 
@@ -30,26 +29,31 @@ fn handle_player_movement(pressed_keys: &HashSet<glfw::Key>, em: &mut EntityMana
         return;
     }
 
-    if pressed_keys.contains(&glfw::Key::T) {
+    if input_state.keys_current.contains(&glfw::Key::T) {
         animator.set_next_animation(AnimationType::Slash);
+        
+        let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
+        if !input_state.keys_previous.contains(&glfw::Key::T) {
+            anim.current_time = 0.0;
+        }
     } else {
-
+        animator.restarted = false;
         let speed = 5.0 * delta;
         let mut move_dir = vec3(0.0, 0.0, 0.0);
 
         let forward_flat = vec3(camera.forward.x, 0.0, camera.forward.z).normalize();
         let right_flat = vec3(camera.right.x, 0.0, camera.right.z).normalize();
 
-        if pressed_keys.contains(&glfw::Key::W) {
+        if input_state.keys_current.contains(&glfw::Key::W) {
             move_dir += forward_flat;
         }
-        if pressed_keys.contains(&glfw::Key::S) {
+        if input_state.keys_current.contains(&glfw::Key::S) {
             move_dir -= forward_flat;
         }
-        if pressed_keys.contains(&glfw::Key::D) {
+        if input_state.keys_current.contains(&glfw::Key::D) {
             move_dir += right_flat;
         }
-        if pressed_keys.contains(&glfw::Key::A) {
+        if input_state.keys_current.contains(&glfw::Key::A) {
             move_dir -= right_flat;
         }
 
