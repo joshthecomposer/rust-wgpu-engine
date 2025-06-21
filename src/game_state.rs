@@ -349,7 +349,7 @@ impl GameState {
         );
         animation_system::update(&mut self.entity_manager, self.delta_time);
         state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles);
-        collision_system::update(&mut self.entity_manager);
+        // collision_system::update(&mut self.entity_manager);
         items::update(&mut self.entity_manager);
         self.entity_manager.update(&mut self.sound_manager);
 

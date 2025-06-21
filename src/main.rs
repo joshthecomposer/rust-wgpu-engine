@@ -24,6 +24,7 @@ mod collision_system;
 mod state_machines;
 mod particles;
 mod items;
+mod physics;
 
 use std::{fs::{self, OpenOptions}, path::Path};
 

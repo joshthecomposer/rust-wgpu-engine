@@ -2,6 +2,7 @@
 use std::{fmt::{self, Display, Formatter}, str::FromStr};
 
 use glam::{Mat4, Quat, Vec3};
+use rapier3d::prelude::{ColliderHandle, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -227,4 +228,9 @@ pub struct ActiveItem {
 
 pub struct Inventory {
     pub items: Vec<usize>,
+}
+
+pub struct PhysicsHandle {
+    pub rigid_body: RigidBodyHandle,
+    pub collider: ColliderHandle,
 }
