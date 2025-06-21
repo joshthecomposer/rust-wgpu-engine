@@ -5,9 +5,10 @@ use gl::{AttachShader, PixelStoref};
 use glam::{vec2, vec3, Quat, Vec2, Vec3};
 use glfw::{Context, Glfw, GlfwReceiver, Key, PWindow, WindowEvent};
 use image::GrayImage;
+use rapier3d::{math::Isometry, prelude::{ColliderBuilder, RigidBodyBuilder}};
 use rusttype::{point, Font, Scale};
 
-use crate::{animation::animation_system, camera::Camera, collision_system, config::{entity_config::{self, EntityConfig}, game_config::GameConfig, world_data::WorldData}, debug::{gizmos::Cylinder, write::write_data}, entity_manager::{self, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, ShaderType, SimState, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input, InputState}, items, lights::{DirLight, Lights}, movement_system, particles::{Emitter, ParticleSystem}, renderer::Renderer, sound::{fmod::FMOD_Studio_System_Update, sound_manager::SoundManager}, state_machines, terrain::Terrain, ui::{font::{self, FontManager}, game_ui::{self, GameUiContext}, imgui::ImguiManager, message_queue::{MessageQueue, UiMessage}}};
+use crate::{animation::animation_system, camera::Camera, collision_system, config::{entity_config::{self, EntityConfig}, game_config::GameConfig, world_data::WorldData}, debug::{gizmos::Cylinder, write::write_data}, entity_manager::{self, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PhysicsHandle, ShaderType, SimState, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input, InputState}, items, lights::{DirLight, Lights}, movement_system, particles::{Emitter, ParticleSystem}, physics::PhysicsState, renderer::Renderer, sound::{fmod::FMOD_Studio_System_Update, sound_manager::SoundManager}, state_machines, terrain::Terrain, ui::{font::{self, FontManager}, game_ui::{self, GameUiContext}, imgui::ImguiManager, message_queue::{MessageQueue, UiMessage}}};
 // use rand::prelude::*;
 // use rand_chacha::ChaCha8Rng;
 
@@ -50,6 +51,7 @@ pub struct GameState {
 
     pub message_queue: MessageQueue,
     pub game_ui_context: GameUiContext,
+    pub physics_state: PhysicsState,
 }
 
 impl GameState {
@@ -130,42 +132,97 @@ impl GameState {
 
         let mut entity_config = EntityConfig::load_from_file("config/entity_config.json");
         let mut world_data = WorldData::load_from_file("config/world_data.toml");
+        let mut physics_state = PhysicsState::new();
         let mut entity_manager = EntityManager::new(10_000);
-        entity_manager.populate_initial_entity_data(&mut entity_config, &mut world_data);
+        entity_manager.populate_initial_entity_data(&mut entity_config, &mut world_data, &mut physics_state);
 
         let mut grid = Grid::new(game_config.grid_width, game_config.grid_height, game_config.cell_size);
         grid.generate();
 
         let imgui_manager = ImguiManager::new(&mut window);
 
-        //TEMP
-
+        //TERRAIN
         let mut terrain = Terrain::from_height_map("resources/textures/grid_height.png");
+
         let model = terrain.into_opengl_model();
 
-        entity_manager.transforms.insert(entity_manager.next_entity_id, Transform {
+        let terrain_trans = Transform {
             position: Vec3::splat(0.0),
             rotation: Quat::IDENTITY,
             scale: Vec3::splat(1.0),
             original_rotation: Quat::IDENTITY,
-        });
+        };
+
+        entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone(), );
+
         entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
         entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
+
+        // Terrain collider
+
+        // let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
+        // let body = RigidBodyBuilder::fixed().position(iso).build();
+        // let terrain_collider = terrain.create_collider();
+
+        // dbg!(&terrain_collider);
+
+        // let body_handle = physics_state.rigid_body_set.insert(body);
+        // let collider_handle = physics_state.collider_set.insert_with_parent(
+        //     terrain_collider,
+        //     body_handle,
+        //     &mut physics_state.rigid_body_set,
+        // );
+
+        // entity_manager.physics_handles.insert(entity_manager.next_entity_id, PhysicsHandle {
+        //     rigid_body: body_handle,
+        //     collider: collider_handle,
+        // });
+        let terrain_trans = Transform {
+            position: Vec3::new(0.0, -1.0, 0.0), // Sink it slightly so top is at y=0
+            rotation: Quat::IDENTITY,
+            scale: Vec3::splat(1.0),
+            original_rotation: Quat::IDENTITY,
+        };
+
+        entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
+        entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
+        entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
+
+        // Make a big static cube collider
+        let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
+        let body = RigidBodyBuilder::fixed().position(iso).build();
+        let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build(); // Big square floor
+
+        let body_handle = physics_state.rigid_body_set.insert(body);
+        let collider_handle = physics_state.collider_set.insert_with_parent(
+            terrain_collider,
+            body_handle,
+            &mut physics_state.rigid_body_set,
+        );
+
+        entity_manager.physics_handles.insert(entity_manager.next_entity_id, PhysicsHandle {
+            rigid_body: body_handle,
+            collider: collider_handle,
+        });
+
         // entity_manager.models.insert(entity_manager.next_entity_id, model);
 
         entity_manager.next_entity_id += 1;
 
         // sound_manager.play_sound_3d("moose3D".to_string(), &vec3(0.0, 0.0, 4.0));
 
+        // FONT MANAGER
+
         let mut font_manager = FontManager::new();
         font_manager.load_chars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:,.!?()[]{}<> ");
         font_manager.setup_buffers();
 
-        let mut particles = ParticleSystem::new();
+        let particles = ParticleSystem::new();
         // particles.spawn_continuous_emitter(100, vec3(10.0, 20.0, 10.0), "Smoke", Some("resources/textures/smoke.png"));
          // particles.spawn_continuous_emitter(50, Vec3::splat(0.0), "Smoke", None);
 
         let ui_ctx = GameUiContext::new();
+
 
         Self {
             delta_time: 0.0,
@@ -202,6 +259,7 @@ impl GameState {
             particles,
             message_queue: MessageQueue::new(), 
             game_ui_context: ui_ctx,
+            physics_state,
         }
     }
 
@@ -345,13 +403,14 @@ impl GameState {
 
         // UPDATE SYSTEMS
         movement_system::update(
-            &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.input_state
+            &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.input_state, &mut self.physics_state
         );
         animation_system::update(&mut self.entity_manager, self.delta_time);
         state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles);
         // collision_system::update(&mut self.entity_manager);
+        self.physics_state.update();
         items::update(&mut self.entity_manager);
-        self.entity_manager.update(&mut self.sound_manager);
+        self.entity_manager.update(&mut self.sound_manager, &self.physics_state);
 
         self.input_state.update();// likely this shoudl always be last because it just checks if we
         // are holding a key

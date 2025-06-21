@@ -259,7 +259,7 @@ impl Renderer {
         // =============================================================
         // Gizmo pass
         let gizmo_ids = em.get_ids_for_faction(Faction::Gizmo);
-        // self.gizmo_pass(camera, em, gizmo_ids);
+        self.gizmo_pass(camera, em, gizmo_ids);
 
         // Non-animated models
         let foliage_ids = em.get_ids_for_type(EntityType::TreeFoliage);

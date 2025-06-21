@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use glam::{vec3, Quat, Vec3};
 
-use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, CameraState, EntityType, Faction, Transform}, input::InputState, terrain::Terrain};
+use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, Transform}, input::InputState, physics::PhysicsState, terrain::Terrain};
 
-pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camera, input_state: &InputState) {
+pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camera, input_state: &InputState, ps: &mut PhysicsState) {
     
     let player_keys = em.get_ids_for_faction(Faction::Player);
     let enemy_keys = em.get_ids_for_faction(Faction::Enemy);
@@ -13,12 +13,89 @@ pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camer
 
     if camera.move_state != CameraState::Free {
         if player_keys.len() > 0 {
-            handle_player_movement(input_state, em, player_keys, dt, camera, terrain);
+            handle_player_movement_rapier(input_state, em, player_keys, dt, camera, terrain, ps);
         }
     }
     handle_enemy_movement(enemy_keys, em, terrain, dt,);
     handle_static_movement(static_keys, em, terrain);
     handle_gizmo_movement(gizmo_keys, em, dt);
+}
+
+fn handle_player_movement_rapier(
+    input_state: &InputState,
+    em: &mut EntityManager,
+    player_keys: Vec<usize>,
+    delta: f32,
+    camera: &Camera,
+    terrain: &Terrain,
+    ps: &mut PhysicsState,
+) {
+    let player_key = *player_keys.first().unwrap();
+    let animator = em.animators.get_mut(player_key).unwrap();
+
+    if animator.next_animation == AnimationType::Death {
+        return;
+    }
+
+    if input_state.keys_current.contains(&glfw::Key::T) {
+        animator.set_next_animation(AnimationType::Slash);
+        let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
+        if !input_state.keys_previous.contains(&glfw::Key::T) {
+            anim.current_time = 0.0;
+        }
+        return;
+    }
+
+    let speed = 5.0;
+    let mut move_dir = vec3(0.0, 0.0, 0.0);
+
+    let forward_flat = vec3(camera.forward.x, 0.0, camera.forward.z).normalize_or_zero();
+    let right_flat = vec3(camera.right.x, 0.0, camera.right.z).normalize_or_zero();
+
+    if input_state.keys_current.contains(&glfw::Key::W) { move_dir += forward_flat; }
+    if input_state.keys_current.contains(&glfw::Key::S) { move_dir -= forward_flat; }
+    if input_state.keys_current.contains(&glfw::Key::D) { move_dir += right_flat; }
+    if input_state.keys_current.contains(&glfw::Key::A) { move_dir -= right_flat; }
+
+    let transform = em.transforms.get(player_key).unwrap();
+    let rotator = em.rotators.get_mut(player_key).unwrap();
+    let physics_handle = em.physics_handles.get(player_key).unwrap();
+    let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
+
+    let mut linvel = *rb.linvel();
+
+    let new_state = if move_dir.length_squared() > 0.0 {
+        let move_dir = move_dir.normalize();
+        linvel.x = move_dir.x * speed;
+        linvel.z = move_dir.z * speed;
+
+        let yaw = f32::atan2(-move_dir.x, -move_dir.z);
+        let desired_rot = Quat::from_rotation_y(yaw) * transform.original_rotation;
+
+        if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {
+            rotator.next_rot = desired_rot;
+        }
+
+        AnimationType::Run
+    } else {
+        linvel.x = 0.0;
+        linvel.z = 0.0;
+        AnimationType::Idle
+    };
+
+    animator.next_animation = new_state;
+
+    if rotator.next_rot != rotator.cur_rot {
+        rotator.blend_factor += delta / rotator.blend_time;
+        if rotator.blend_factor >= 1.0 {
+            rotator.blend_factor = 0.0;
+            rotator.cur_rot = rotator.next_rot;
+        }
+    }
+
+    let smoothed = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
+    rb.set_rotation(glam_to_nalgebra_quat(smoothed), true);
+    rb.set_linvel(linvel, true);
 }
 
 fn handle_player_movement(input_state: &InputState, em: &mut EntityManager, player_keys: Vec<usize>, delta: f32, camera: &Camera, terrain: &Terrain) {

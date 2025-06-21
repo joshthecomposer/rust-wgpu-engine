@@ -2,6 +2,8 @@ use gl::ActiveTexture;
 use glam::{vec2, vec3, Vec3};
 use image::GenericImageView;
 use imgui::sys::igSetWindowPosVec2;
+use nalgebra::Point3;
+use rapier3d::prelude::{Collider, ColliderBuilder};
 
 use crate::{animation::animation::{texture_from_file, Model, Vertex}, enums_types::TextureType, some_data::MAX_BONE_INFLUENCE};
 
@@ -149,5 +151,23 @@ impl Terrain {
 
         height - (self.max_height / 2.0)
 
+    }
+
+    pub fn create_collider(&self) -> Collider {
+        // Convert terrain vertex positions to Point3
+        let vertices: Vec<Point3<f32>> = self.vertices
+            .iter()
+            .map(|v| Point3::new(v[0], v[1], v[2]))
+            .collect();
+
+        // Convert triangle indices (assumed u32 or usize)
+        let indices: Vec<[u32; 3]> = self.indices
+            .chunks(3)
+            .map(|tri| [tri[0] as u32, tri[1] as u32, tri[2] as u32])
+            .collect();
+
+        ColliderBuilder::trimesh(vertices, indices)
+            .expect("Some shit went wrong")
+            .build()
     }
 }

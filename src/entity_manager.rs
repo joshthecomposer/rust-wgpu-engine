@@ -4,10 +4,13 @@ use std::collections::HashSet;
 use gl::PolygonMode;
 use glam::{vec3, Mat4, Quat, Vec3};
 use libc::EILSEQ;
+use nalgebra::{UnitQuaternion, Vector3};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use crate::{animation::{animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, animation_system}, camera::Camera, collision_system, config::{entity_config::{AnimationPropHelper, EntityConfig}, world_data::WorldData}, debug::gizmos::{Cuboid, Cylinder}, enums_types::{ActiveItem, CellType, EntityType, Faction, Inventory, Parent, Rotator, SimState, Transform, VisualEffect}, grid::Grid, movement_system, some_data::{GRASSES, TREES}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet, state_machines, terrain::Terrain};
+use rapier3d::prelude::*;
+
+use crate::{animation::{animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, animation_system}, camera::Camera, collision_system, config::{entity_config::{AnimationPropHelper, EntityConfig}, world_data::WorldData}, debug::gizmos::{Cuboid, Cylinder}, enums_types::{ActiveItem, CellType, EntityType, Faction, Inventory, Parent, PhysicsHandle, Rotator, SimState, Transform, VisualEffect}, grid::Grid, movement_system, physics::PhysicsState, some_data::{GRASSES, TREES}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet, state_machines, terrain::Terrain};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -36,6 +39,9 @@ pub struct EntityManager {
     pub selected: Vec<usize>,
     pub v_effects: SparseSet<VisualEffect>,
     pub entity_trashcan: Vec<usize>,
+
+    // Physics stuff
+    pub physics_handles: SparseSet<PhysicsHandle>,
 }
 
 impl EntityManager {
@@ -65,10 +71,11 @@ impl EntityManager {
             selected: Vec::new(),
             v_effects: SparseSet::with_capacity(max_entities),
             entity_trashcan: Vec::new(),
+            physics_handles: SparseSet::with_capacity(max_entities),
         }
     }
 
-    pub fn populate_initial_entity_data(&mut self, ec: &mut EntityConfig, wd: &mut WorldData) {
+    pub fn populate_initial_entity_data(&mut self, ec: &mut EntityConfig, wd: &mut WorldData, ps: &mut PhysicsState) {
         for instance in wd.entities.iter() {
             let archetype = ec.entity_types.get(&instance.entity_type).unwrap();
             let position = instance.position;
@@ -92,6 +99,7 @@ impl EntityManager {
                         &archetype.animation_properties,
                         instance.entity_type.clone(),
                         archetype.hit_cyl.clone(),
+                        ps,
                     );
                 },
                 Faction::World | Faction::Static | Faction::Gizmo | Faction::Item => {
@@ -104,6 +112,7 @@ impl EntityManager {
                         Quat::from_xyzw(rotation[0], rotation[1], rotation[2], rotation[3]),
                         &archetype.mesh_path, 
                         archetype.hit_cyl.clone(),
+                        ps,
                     );
                 },
             }
@@ -125,8 +134,9 @@ impl EntityManager {
                 "resources/models/static/weapons/swords/001_double_axe.txt", 
                 Cylinder {
                     r: 0.1,
-                    h: 0.1
-                }
+                    h: 0.1,
+                },
+                ps,
             );
 
             self.active_items.insert(
@@ -153,7 +163,8 @@ impl EntityManager {
                 Cylinder {
                     r: 0.1,
                     h: 0.1
-                }
+                },
+                ps,
             );
 
             self.inventories.insert(
@@ -165,7 +176,7 @@ impl EntityManager {
         }
     }
 
-    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Cylinder) {
+    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Cylinder, ps: &mut PhysicsState) {
         self.factions.insert(self.next_entity_id, faction);
         self.entity_types.insert(self.next_entity_id, entity_type);
 
@@ -200,7 +211,7 @@ impl EntityManager {
         let cyl = cylinder;
 
         let cyl_mod = cyl.create_model(12);
-        self.cylinders.insert(self.next_entity_id, cyl);
+        self.cylinders.insert(self.next_entity_id, cyl.clone());
         
         self.models.insert(self.next_entity_id, cyl_mod);
         self.factions.insert(self.next_entity_id, Faction::Gizmo);
@@ -216,112 +227,290 @@ impl EntityManager {
             parent_id: self.next_entity_id - 1,
         });
 
+        // PHYSICS PASS
+        let iso: Isometry<f32> = (position, rotation).into();
+
+        let body = RigidBodyBuilder::fixed()
+            .position(iso)
+            .build();
+
+        let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
+            .active_collision_types(ActiveCollisionTypes::all())
+            .build();
+
+        let body_handle = ps.rigid_body_set.insert(body);
+        let collider_handle = ps.collider_set.insert_with_parent(
+            collider,
+            body_handle,
+            &mut ps.rigid_body_set,
+        );
+
+        self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+            rigid_body: body_handle,
+            collider: collider_handle,
+        });
+
         self.next_entity_id += 1;
     }
 
-    pub fn create_animated_entity(&mut self, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat, rotation: Quat, model_path: &str, animation_path: &str, animation_props: &[AnimationPropHelper], entity_type: EntityType, cylinder: Cylinder) {
+    pub fn create_animated_entity(
+        &mut self,
+        faction: Faction,
+        position: Vec3,
+        scale: Vec3,
+        rot_correction: Quat,
+        rotation: Quat,
+        model_path: &str,
+        animation_path: &str,
+        animation_props: &[AnimationPropHelper],
+        entity_type: EntityType,
+        cylinder: Cylinder,
+        ps: &mut PhysicsState,
+    ) {
+        // Reserve an ID for the main entity
+        let entity_id = self.next_entity_id;
+        self.next_entity_id += 1;
+
+        // === TRANSFORM ===
         let transform = Transform {
             position,
             rotation: rotation * rot_correction,
             scale,
-            
             original_rotation: rot_correction,
         };
 
+        // === ANIMATION DATA ===
         let (skellington, mut animator, animation) = import_bone_data(animation_path);
 
-        for prop in animation_props.iter() {
-            let anim = animator.animations.get_mut(&prop.name).unwrap();
-            for (k, v) in prop.one_shots.iter() {
-                for frame in v.iter() {
-                    anim.one_shots.push(OneShot {
-                        sound_type: k.clone(),
-                        segment: *frame,
-                        triggered: false.into(),
+        for prop in animation_props {
+            if let Some(anim) = animator.animations.get_mut(&prop.name) {
+                for (k, v) in &prop.one_shots {
+                    for frame in v {
+                        anim.one_shots.push(OneShot {
+                            sound_type: k.clone(),
+                            segment: *frame,
+                            triggered: false.into(),
+                        });
+                    }
+                }
+
+                for cs in &prop.continuous_sounds {
+                    anim.continuous_sounds.push(ContinuousSound {
+                        sound_type: cs.clone(),
+                        playing: false.into(),
                     });
                 }
             }
-
-            for cs in prop.continuous_sounds.iter() {
-                anim.continuous_sounds.push(ContinuousSound {
-                    sound_type: cs.clone(),
-                    playing: false.into(),
-                });
-            }
         }
 
-        let mut model = Model::new();
-        let mut found = false;
-        for m in self.ani_models.iter_mut() {
-            if m.value().full_path == *model_path.to_string() {
-                println!("FOUND DUPLICATE MODEL, CLONING");
-                model = m.value().clone();
-                found = true;
-            }
-        }
+        // === MODEL ===
+        let model = self.ani_models.iter()
+            .find(|m| m.value().full_path == model_path)
+            .map(|m| m.value().clone())
+            .unwrap_or_else(|| import_model_data(model_path, &animation));
 
-        if !found {
-            model = import_model_data(model_path, &animation);
-        }         
-
+        // === ROTATOR ===
         let starting_rot = rotation * rot_correction;
-
         let rotator = Rotator {
             cur_rot: starting_rot,
             next_rot: starting_rot,
-            blend_factor: 0.0, 
+            blend_factor: 0.0,
             blend_time: 0.11,
         };
-        self.rotators.insert(self.next_entity_id, rotator);
+
+        // === COMPONENT INSERTION ===
+        self.transforms.insert(entity_id, transform);
+        self.factions.insert(entity_id, faction.clone());
+        self.entity_types.insert(entity_id, entity_type.clone());
+        self.animators.insert(entity_id, animator);
+        self.skellingtons.insert(entity_id, skellington);
+        self.ani_models.insert(entity_id, model);
+        self.rotators.insert(entity_id, rotator);
+        self.sim_states.insert(entity_id, match entity_type {
+            EntityType::MooseMan => SimState::Dancing,
+            _ => SimState::Waiting,
+        });
 
         if faction != Faction::Player {
-            self.destinations.insert(self.next_entity_id, position);
+            self.destinations.insert(entity_id, position);
         }
-        
 
-        self.animators.insert(self.next_entity_id, animator);
-        self.skellingtons.insert(self.next_entity_id, skellington.clone());
-        self.transforms.insert(self.next_entity_id, transform);
-        self.factions.insert(self.next_entity_id, faction.clone());
-        self.ani_models.insert(self.next_entity_id, model);
-        self.entity_types.insert(self.next_entity_id, entity_type.clone());
+        // === PHYSICS ===
+        let iso: Isometry<f32> = (position, rotation).into();
+        let body = RigidBodyBuilder::dynamic().position(iso).build();
+        let collider = ColliderBuilder::cylinder(cylinder.h * 0.5, cylinder.r)
+            .active_collision_types(ActiveCollisionTypes::all())
+            .build();
 
-        let starting_state = match entity_type {
-            EntityType::MooseMan => {
-                SimState::Dancing
-            },
-            _ => {
-                SimState::Waiting
-            },
-        };
-        self.sim_states.insert(self.next_entity_id, starting_state);
+        let body_handle = ps.rigid_body_set.insert(body);
+        let collider_handle = ps.collider_set.insert_with_parent(
+            collider,
+            body_handle,
+            &mut ps.rigid_body_set,
+        );
 
+        self.physics_handles.insert(entity_id, PhysicsHandle {
+            rigid_body: body_handle,
+            collider: collider_handle,
+        });
+
+        // === CYLINDER GIZMO (child entity) ===
+        let cylinder_id = self.next_entity_id;
         self.next_entity_id += 1;
 
-        let cyl = cylinder;
-
-        let cyl_mod = cyl.create_model(12);
-        self.cylinders.insert(self.next_entity_id, cyl);
-        
-        self.models.insert(self.next_entity_id, cyl_mod);
-        self.factions.insert(self.next_entity_id, Faction::Gizmo);
-        self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
-        self.transforms.insert(self.next_entity_id, Transform {
+        let cyl_model = cylinder.create_model(12);
+        self.transforms.insert(cylinder_id, Transform {
             position,
             rotation: Quat::IDENTITY,
             scale: Vec3::splat(1.0),
             original_rotation: Quat::IDENTITY,
         });
-
-        self.parents.insert(self.next_entity_id, Parent{
-            parent_id: self.next_entity_id - 1,
-        });
-
-        self.next_entity_id += 1;
+        self.models.insert(cylinder_id, cyl_model);
+        self.entity_types.insert(cylinder_id, EntityType::Cylinder);
+        self.factions.insert(cylinder_id, Faction::Gizmo);
+        self.cylinders.insert(cylinder_id, cylinder);
+        self.parents.insert(cylinder_id, Parent { parent_id: entity_id });
     }
 
-    pub fn update(&mut self, sm: &mut SoundManager) {
+    // pub fn create_animated_entity(&mut self, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat, rotation: Quat, model_path: &str, animation_path: &str, animation_props: &[AnimationPropHelper], entity_type: EntityType, cylinder: Cylinder, ps: &mut PhysicsState) {
+    //     let transform = Transform {
+    //         position,
+    //         rotation: rotation * rot_correction,
+    //         scale,
+    //         
+    //         original_rotation: rot_correction,
+    //     };
+
+    //     let (skellington, mut animator, animation) = import_bone_data(animation_path);
+
+    //     for prop in animation_props.iter() {
+    //         let anim = animator.animations.get_mut(&prop.name).unwrap();
+    //         for (k, v) in prop.one_shots.iter() {
+    //             for frame in v.iter() {
+    //                 anim.one_shots.push(OneShot {
+    //                     sound_type: k.clone(),
+    //                     segment: *frame,
+    //                     triggered: false.into(),
+    //                 });
+    //             }
+    //         }
+
+    //         for cs in prop.continuous_sounds.iter() {
+    //             anim.continuous_sounds.push(ContinuousSound {
+    //                 sound_type: cs.clone(),
+    //                 playing: false.into(),
+    //             });
+    //         }
+    //     }
+
+    //     let mut model = Model::new();
+    //     let mut found = false;
+    //     for m in self.ani_models.iter_mut() {
+    //         if m.value().full_path == *model_path.to_string() {
+    //             println!("FOUND DUPLICATE MODEL, CLONING");
+    //             model = m.value().clone();
+    //             found = true;
+    //         }
+    //     }
+
+    //     if !found {
+    //         model = import_model_data(model_path, &animation);
+    //     }         
+
+    //     let starting_rot = rotation * rot_correction;
+
+    //     let rotator = Rotator {
+    //         cur_rot: starting_rot,
+    //         next_rot: starting_rot,
+    //         blend_factor: 0.0, 
+    //         blend_time: 0.11,
+    //     };
+    //     self.rotators.insert(self.next_entity_id, rotator);
+
+    //     if faction != Faction::Player {
+    //         self.destinations.insert(self.next_entity_id, position);
+    //     }
+    //     
+
+    //     self.animators.insert(self.next_entity_id, animator);
+    //     self.skellingtons.insert(self.next_entity_id, skellington.clone());
+    //     self.transforms.insert(self.next_entity_id, transform);
+    //     self.factions.insert(self.next_entity_id, faction.clone());
+    //     self.ani_models.insert(self.next_entity_id, model);
+    //     self.entity_types.insert(self.next_entity_id, entity_type.clone());
+
+    //     let starting_state = match entity_type {
+    //         EntityType::MooseMan => {
+    //             SimState::Dancing
+    //         },
+    //         _ => {
+    //             SimState::Waiting
+    //         },
+    //     };
+    //     self.sim_states.insert(self.next_entity_id, starting_state);
+
+    //     self.next_entity_id += 1;
+
+    //     let cyl = cylinder;
+
+    //     let cyl_mod = cyl.create_model(12);
+    //     self.cylinders.insert(self.next_entity_id, cyl.clone());
+    //     
+    //     self.models.insert(self.next_entity_id, cyl_mod);
+    //     self.factions.insert(self.next_entity_id, Faction::Gizmo);
+    //     self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
+    //     self.transforms.insert(self.next_entity_id, Transform {
+    //         position,
+    //         rotation: Quat::IDENTITY,
+    //         scale: Vec3::splat(1.0),
+    //         original_rotation: Quat::IDENTITY,
+    //     });
+
+    //     self.parents.insert(self.next_entity_id, Parent{
+    //         parent_id: self.next_entity_id - 1,
+    //     });
+
+    //     // PHYSICS PASS
+    //     let iso: Isometry<f32> = (position, rotation).into();
+
+    //     let body = RigidBodyBuilder::dynamic()
+    //         .position(iso)
+    //         .build();
+
+    //     let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r).build();
+
+    //     let body_handle = ps.rigid_body_set.insert(body);
+    //     let collider_handle = ps.collider_set.insert_with_parent(
+    //         collider,
+    //         body_handle,
+    //         &mut ps.rigid_body_set,
+    //     );
+
+    //     self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+    //         rigid_body: body_handle,
+    //         collider: collider_handle,
+    //     });
+
+    //     self.next_entity_id += 1;
+    // }
+
+    pub fn update(&mut self, sm: &mut SoundManager, ps: &PhysicsState) {
         self.delete_entities(sm);
+
+        for handle in self.physics_handles.iter() {
+            if let Some(rb) = ps.rigid_body_set.get(handle.value().rigid_body) {
+                if let Some(transform) = self.transforms.get_mut(handle.key()) {
+                    let iso = rb.position();
+                    transform.position = Vec3::new(iso.translation.x, iso.translation.y, iso.translation.z);
+                    transform.rotation = Quat::from_xyzw(
+                        iso.rotation.i,
+                        iso.rotation.j,
+                        iso.rotation.k,
+                        iso.rotation.w,
+                    );
+                }
+            }
+        }
     }
 
     pub fn delete_entities(&mut self, sm: &mut SoundManager) {
@@ -386,4 +575,8 @@ impl EntityManager {
             })
             .collect()
     }
+}
+
+pub fn glam_to_nalgebra_quat(q: Quat) -> UnitQuaternion<f32> {
+    UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(q.w, q.x, q.y, q.z))
 }
