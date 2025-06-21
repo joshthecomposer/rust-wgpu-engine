@@ -16,7 +16,7 @@ pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camer
             handle_player_movement_rapier(input_state, em, player_keys, dt, camera, terrain, ps);
         }
     }
-    handle_enemy_movement(enemy_keys, em, terrain, dt,);
+    handle_enemy_movement_rapier(enemy_keys, em, terrain, dt, ps,);
     handle_static_movement(static_keys, em, terrain);
     handle_gizmo_movement(gizmo_keys, em, dt);
 }
@@ -225,6 +225,81 @@ fn handle_enemy_movement(ids: Vec<usize>, em: &mut EntityManager, terrain: &Terr
                 trans.rotation = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
             }
 
+        }
+    }
+}
+
+fn handle_enemy_movement_rapier(
+    ids: Vec<usize>,
+    em: &mut EntityManager,
+    terrain: &Terrain,
+    dt: f32,
+    ps: &mut PhysicsState,
+) {
+    for id in ids {
+        let Some(dest) = em.destinations.get(id) else { continue };
+
+        let (
+            Some(rotator),
+            Some(physics_handle),
+            Some(animator),
+        ) = (
+            em.rotators.get_mut(id),
+            em.physics_handles.get(id),
+            em.animators.get_mut(id),
+        ) else { continue };
+
+        let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
+        let position = Vec3::from_slice(rb.translation().as_slice());
+        let direction = *dest - position;
+        let distance = direction.length();
+
+        if distance > 0.01 {
+            let speed = 3.2;
+            let move_dir = direction.normalize();
+            let velocity = move_dir * speed;
+
+            // Set velocity
+            let mut linvel = *rb.linvel();
+            linvel.x = velocity.x;
+            linvel.z = velocity.z;
+            rb.set_linvel(linvel, true);
+
+            // Set rotation
+            let angle = f32::atan2(-move_dir.x, -move_dir.z);
+            let desired_rot = Quat::from_rotation_y(angle) * em.transforms.get(id).unwrap().original_rotation;
+
+            if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {
+                rotator.next_rot = desired_rot;
+            }
+
+            if rotator.next_rot != rotator.cur_rot {
+                rotator.blend_factor += dt / rotator.blend_time;
+                if rotator.blend_factor >= 1.0 {
+                    rotator.blend_factor = 0.0;
+                    rotator.cur_rot = rotator.next_rot;
+                }
+            }
+
+            let blended = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
+            rb.set_rotation(glam_to_nalgebra_quat(blended), true);
+
+            animator.next_animation = AnimationType::Run;
+        } else {
+            // Stop
+            let mut linvel = *rb.linvel();
+            linvel.x = 0.0;
+            linvel.z = 0.0;
+            rb.set_linvel(linvel, true);
+
+            animator.next_animation = AnimationType::Idle;
+        }
+
+        // Sync Transform for rendering
+        if let Some(transform) = em.transforms.get_mut(id) {
+            let iso = rb.position();
+            transform.position = Vec3::from_slice(iso.translation.vector.as_slice());
+            transform.rotation = Quat::from_array(iso.rotation.coords.as_slice().try_into().unwrap());
         }
     }
 }
