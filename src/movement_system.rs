@@ -4,8 +4,14 @@ use glam::{vec3, Quat, Vec3};
 
 use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, Transform}, input::InputState, physics::PhysicsState, terrain::Terrain};
 
-pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camera, input_state: &InputState, ps: &mut PhysicsState) {
-    
+pub fn update(
+    em: &mut EntityManager, 
+    terrain: &Terrain, 
+    dt: f32, 
+    camera: &Camera, 
+    input_state: &InputState, 
+    ps: &mut PhysicsState
+) {
     let player_keys = em.get_ids_for_faction(Faction::Player);
     let enemy_keys = em.get_ids_for_faction(Faction::Enemy);
     let static_keys = em.get_ids_for_faction(Faction::Static);
@@ -16,6 +22,7 @@ pub fn update(em: &mut EntityManager, terrain: &Terrain, dt: f32, camera: &Camer
             handle_player_movement_rapier(input_state, em, player_keys, dt, camera, terrain, ps);
         }
     }
+
     handle_enemy_movement_rapier(enemy_keys, em, terrain, dt, ps,);
     handle_static_movement(static_keys, em, terrain);
     handle_gizmo_movement(gizmo_keys, em, dt);
@@ -46,7 +53,7 @@ fn handle_player_movement_rapier(
         return;
     }
 
-    let speed = 5.0;
+    let speed = 2.0;
     let mut move_dir = vec3(0.0, 0.0, 0.0);
 
     let forward_flat = vec3(camera.forward.x, 0.0, camera.forward.z).normalize_or_zero();
@@ -255,7 +262,7 @@ fn handle_enemy_movement_rapier(
         let distance = direction.length();
 
         if distance > 0.01 {
-            let speed = 3.2;
+            let speed = 1.0;
             let move_dir = direction.normalize();
             let velocity = move_dir * speed;
 
@@ -266,8 +273,8 @@ fn handle_enemy_movement_rapier(
             rb.set_linvel(linvel, true);
 
             // Set rotation
-            let angle = f32::atan2(-move_dir.x, -move_dir.z);
-            let desired_rot = Quat::from_rotation_y(angle) * em.transforms.get(id).unwrap().original_rotation;
+            let angle = f32::atan2(move_dir.x, move_dir.z);
+            let desired_rot = Quat::from_rotation_y(angle);
 
             if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {
                 rotator.next_rot = desired_rot;

@@ -722,8 +722,15 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
                         .entry(bone_name.clone())
                         .or_insert_with(BoneTransformTrack::default);
 
-                    let position = parse_vec3(lines.next().unwrap());
-                    let rotation = parse_quat(lines.next().unwrap());
+                    let mut position = parse_vec3(lines.next().unwrap());
+                    let mut rotation = parse_quat(lines.next().unwrap());
+
+                    if i == 0 {
+                        let correction = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2) *
+                            Quat::from_rotation_z(-std::f32::consts::PI);
+                        position = correction * position;
+                        rotation = correction * rotation;
+                    }
                     let scale = parse_vec3(lines.next().unwrap());
 
                     lines.next();

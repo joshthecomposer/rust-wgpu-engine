@@ -133,7 +133,7 @@ impl GameState {
         let mut entity_config = EntityConfig::load_from_file("config/entity_config.json");
         let mut world_data = WorldData::load_from_file("config/world_data.toml");
         let mut physics_state = PhysicsState::new();
-        physics_state.integration_parameters.dt = 1.0 / 120.0;
+        // physics_state.integration_parameters.dt = 1.0 / 120.0;
         let mut entity_manager = EntityManager::new(10_000);
         entity_manager.populate_initial_entity_data(&mut entity_config, &mut world_data, &mut physics_state);
 

@@ -274,9 +274,9 @@ impl EntityManager {
         // === TRANSFORM ===
         let transform = Transform {
             position,
-            rotation: rotation * rot_correction,
+            rotation,
             scale,
-            original_rotation: rot_correction,
+            original_rotation: rotation,
         };
 
         // === ANIMATION DATA ===
