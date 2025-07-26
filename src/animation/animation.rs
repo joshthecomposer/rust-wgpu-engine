@@ -414,6 +414,7 @@ impl Animation {
 
         for child in skeleton.children.iter_mut() {
             self.calculate_pose_blended(child, global_transform, global_inverse_transform, other_animation, blend_factor);
+
         }
     }
 
@@ -464,14 +465,15 @@ impl Animation {
         skeleton: &Bone,
         parent_transform: Mat4,
     ) -> Option<Mat4> {
+        let delta = self.current_time % self.duration;
         if skeleton.name == bone_name {
-            let (pos, rot, scale) = self.get_bone_local_transform(skeleton, self.current_time);
+            let (pos, rot, scale) = self.get_bone_local_transform(skeleton, delta);
             let local = Mat4::from_scale_rotation_translation(scale, rot, pos);
             return Some(parent_transform * local);
         }
 
         for child in &skeleton.children {
-            let (pos, rot, scale) = self.get_bone_local_transform(skeleton, self.current_time);
+            let (pos, rot, scale) = self.get_bone_local_transform(skeleton, delta);
             let local = Mat4::from_scale_rotation_translation(scale, rot, pos);
             let next_parent = parent_transform * local;
 
@@ -491,10 +493,10 @@ impl Animation {
         other_animation: &mut Animation,
         blend_factor: f32,
     ) -> Option<Mat4> {
-        if skeleton.name == bone_name {
-            let delta1 = self.current_time % self.duration;
-            let delta2 = other_animation.current_time % other_animation.duration;
+        let delta1 = self.current_time % self.duration;
+        let delta2 = other_animation.current_time % other_animation.duration;
 
+        if skeleton.name == bone_name {
             let (pos1, rot1, scale1) = self.get_bone_local_transform(skeleton, delta1);
             let (pos2, rot2, scale2) = other_animation.get_bone_local_transform(skeleton, delta2);
 
@@ -507,9 +509,6 @@ impl Animation {
         }
 
         for child in &skeleton.children {
-            let delta1 = self.current_time % self.duration;
-            let delta2 = other_animation.current_time % other_animation.duration;
-
             let (pos1, rot1, scale1) = self.get_bone_local_transform(skeleton, delta1);
             let (pos2, rot2, scale2) = other_animation.get_bone_local_transform(skeleton, delta2);
 

@@ -64,7 +64,7 @@ fn handle_player_movement_rapier(
     if input_state.keys_current.contains(&glfw::Key::D) { move_dir += right_flat; }
     if input_state.keys_current.contains(&glfw::Key::A) { move_dir -= right_flat; }
 
-    let transform = em.transforms.get(player_key).unwrap();
+    let transform = em.transforms.get_mut(player_key).unwrap();
     let rotator = em.rotators.get_mut(player_key).unwrap();
     let physics_handle = em.physics_handles.get(player_key).unwrap();
     let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
@@ -178,9 +178,6 @@ fn handle_player_movement(input_state: &InputState, em: &mut EntityManager, play
 
         // TODO: This should likely be different and calculated in the collision system
         transform.position.y = terrain.get_height_at(transform.position.x, transform.position.z);
-
-        transform.position += velocity;
-
     }
 
 }
@@ -261,7 +258,7 @@ fn handle_enemy_movement_rapier(
         let direction = *dest - position;
         let distance = direction.length();
 
-        if distance > 0.01 {
+        if distance > 0.05 {
             let speed = 1.0;
             let move_dir = direction.normalize();
             let velocity = move_dir * speed;
@@ -291,7 +288,7 @@ fn handle_enemy_movement_rapier(
             let blended = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
             rb.set_rotation(glam_to_nalgebra_quat(blended), true);
 
-            animator.next_animation = AnimationType::Run;
+            animator.set_next_animation(AnimationType::Run);
         } else {
             // Stop
             let mut linvel = *rb.linvel();
@@ -299,7 +296,7 @@ fn handle_enemy_movement_rapier(
             linvel.z = 0.0;
             rb.set_linvel(linvel, true);
 
-            animator.next_animation = AnimationType::Idle;
+            animator.set_next_animation(AnimationType::Idle);
         }
 
         // Sync Transform for rendering

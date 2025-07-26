@@ -160,26 +160,8 @@ impl GameState {
         entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
 
         // Terrain collider
-
-        // let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
-        // let body = RigidBodyBuilder::fixed().position(iso).build();
-        // let terrain_collider = terrain.create_collider();
-
-        // dbg!(&terrain_collider);
-
-        // let body_handle = physics_state.rigid_body_set.insert(body);
-        // let collider_handle = physics_state.collider_set.insert_with_parent(
-        //     terrain_collider,
-        //     body_handle,
-        //     &mut physics_state.rigid_body_set,
-        // );
-
-        // entity_manager.physics_handles.insert(entity_manager.next_entity_id, PhysicsHandle {
-        //     rigid_body: body_handle,
-        //     collider: collider_handle,
-        // });
         let terrain_trans = Transform {
-            position: Vec3::new(0.0, -1.0, 0.0), // Sink it slightly so top is at y=0
+            position: Vec3::new(0.0, -0.5, 0.0),
             rotation: Quat::IDENTITY,
             scale: Vec3::splat(1.0),
             original_rotation: Quat::IDENTITY,
@@ -189,10 +171,11 @@ impl GameState {
         entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
         entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
 
+
         // Make a big static cube collider
         let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
         let body = RigidBodyBuilder::fixed().position(iso).build();
-        let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build(); // Big square floor
+        let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build();
 
         let body_handle = physics_state.rigid_body_set.insert(body);
         let collider_handle = physics_state.collider_set.insert_with_parent(
@@ -206,7 +189,7 @@ impl GameState {
             collider: collider_handle,
         });
 
-        // entity_manager.models.insert(entity_manager.next_entity_id, model);
+        entity_manager.models.insert(entity_manager.next_entity_id, model);
 
         entity_manager.next_entity_id += 1;
 
@@ -219,7 +202,7 @@ impl GameState {
         font_manager.setup_buffers();
 
         let particles = ParticleSystem::new();
-        // particles.spawn_continuous_emitter(100, vec3(10.0, 20.0, 10.0), "Smoke", Some("resources/textures/smoke.png"));
+        // particles.spawn_continuous_emitter(100, vec3(10.0, 20.0, 10.0), "Smoke", Some("resources/textures/smoke.png"))
          // particles.spawn_continuous_emitter(50, Vec3::splat(0.0), "Smoke", None);
 
         let ui_ctx = GameUiContext::new();
@@ -354,6 +337,7 @@ impl GameState {
 
         if let Some(player_entry) = self.entity_manager.factions.iter().find(|f| f.value() == &Faction::Player) {
             let player_key = player_entry.key();
+
             let animator = self.entity_manager.animators.get_mut(player_key).unwrap();
 
             if self.input_state.keys_current.contains(&glfw::Key::P) {
@@ -410,11 +394,16 @@ impl GameState {
         state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles);
         // collision_system::update(&mut self.entity_manager);
         self.physics_state.update();
-        items::update(&mut self.entity_manager);
         self.entity_manager.update(&mut self.sound_manager, &self.physics_state);
+        items::update(&mut self.entity_manager);
 
         self.input_state.update();// likely this shoudl always be last because it just checks if we
         // are holding a key
+        if let Some(player_entry) = self.entity_manager.factions.iter().find(|f| f.value() == &Faction::Player) {
+            let player_key = player_entry.key();
+            let trans = self.entity_manager.transforms.get_mut(player_key).unwrap();
+            // dbg!(trans.position);
+        }
     }
 
     pub fn render(&mut self) {

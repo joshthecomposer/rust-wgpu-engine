@@ -1,8 +1,8 @@
-use glam::{Quat, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use glfw::{Action, MouseButton, PWindow, WindowEvent};
 use imgui::Drag;
 
-use crate::{animation::animation::Animator, camera::Camera, config::world_data::{EntityInstance, WorldData}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction}, gl_call, lights::Lights, renderer::Renderer, sound::sound_manager::SoundManager};
+use crate::{animation::animation::Animator, camera::Camera, config::world_data::{EntityInstance, WorldData}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction}, gl_call, items::HashMapGetPairMut, lights::Lights, renderer::Renderer, sound::sound_manager::SoundManager};
 
 pub struct ImguiManager {
     pub imgui: imgui::Context,
@@ -231,6 +231,42 @@ impl ImguiManager {
 
                 let string = format!("x: {:.3}, y: {:.3}, z: {:.3}", camera.forward.x, camera.forward.y, camera.forward.z);
                 ui.label_text("Camera Forward", string);
+
+                if let Some(player_entry) = em.factions.iter().find(|f| f.value() == &Faction::Player) {
+                    let player_key = player_entry.key();
+                    let animator = em.animators.get_mut(player_key).unwrap();
+
+                    let player_trans = em.transforms.get(player_key).unwrap();
+
+                    let player_mat = Mat4::from_scale_rotation_translation(player_trans.scale, player_trans.rotation, player_trans.position);
+
+                    let current_key = &animator.current_animation;
+                    let next_key = &animator.next_animation;
+                    let skellington = em.skellingtons.get(player_key).unwrap();
+
+                    if let Some((current_anim, next_anim)) = animator.animations.get_pair_mut(current_key, next_key) {
+                        let bone_trans = current_anim.get_raw_global_bone_transform_by_name_blended("mixamorig:Hips", skellington, player_mat, next_anim, animator.blend_factor).unwrap();
+
+                        let bone_pos = bone_trans.w_axis.truncate();
+
+                        let string = format!("x: {:.3}, y: {:.3}, z: {:.3}", bone_pos.x, bone_pos.y, bone_pos.z);
+                        ui.label_text("Player mixamorig:Hips Position", string);
+                    } else if let Some(current_anim) = animator.animations.get_mut(current_key) {
+                        let bone_trans = current_anim.get_raw_global_bone_transform_by_name("mixamorig:Hips", skellington, player_mat).unwrap();
+
+                        let bone_pos = bone_trans.w_axis.truncate();
+
+                        let string = format!("x: {:.3}, y: {:.3}, z: {:.3}", bone_pos.x, bone_pos.y, bone_pos.z);
+                        ui.label_text("Player mixamorig:Hips Position", string);
+                    };
+
+                    let string = format!("x: {:.3}, y: {:.3}, z: {:.3}", player_trans.position.x, player_trans.position.y, player_trans.position.z);
+                    ui.label_text("Player World Position", string);
+
+                };
+
+
+
             });
 
         self.renderer.render(&mut self.imgui);

@@ -1,7 +1,7 @@
 [[entities]]
 entity_type = "YRobot"
 faction = "Player"
-position = [30.652, 0.0, -13.4873]
+position = [30.652, 100.0, -13.4873]
 rotation = [0.0, -0.9987, 0.0, 0.0518]
 
 [[entities]]

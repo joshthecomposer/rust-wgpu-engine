@@ -338,9 +338,11 @@ impl EntityManager {
         // === PHYSICS ===
         let iso: Isometry<f32> = (position, rotation).into();
         let body = RigidBodyBuilder::dynamic()
+            .ccd_enabled(true)
             .position(iso)
             .enabled_rotations(false, true, false) // only enable rotations along the X axis
             .build();
+
         let collider = ColliderBuilder::cylinder(cylinder.h * 0.5, cylinder.r)
             .active_collision_types(ActiveCollisionTypes::all())
             .build();
