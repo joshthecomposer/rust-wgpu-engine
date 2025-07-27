@@ -103,7 +103,12 @@ impl Camera {
                 }
                 
                 // Interpolate camera
-                let smoothing = 40.0 * dt; // tweak this, higher value is faster lerp
+                // TODO: Because the player is falling at a constant speed, I think the camera
+                // will always drift behind when the player falls very large distances. 
+                // Maybe there should be some check to determine that the player is in freefall
+                // and we turn off the smoothing or something... hmm. Or maybe depending on the 
+                // game idea, we just freeze the camera and watch the character fall away
+                let smoothing = 50.0 * dt; // higher value is faster lerp
                 self.position = self.position.lerp(self.desired_position, smoothing);
                 self.target = self.target.lerp(self.desired_target, smoothing);
                 self.forward = (self.target - self.position).normalize();

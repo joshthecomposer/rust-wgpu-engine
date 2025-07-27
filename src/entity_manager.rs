@@ -335,16 +335,20 @@ impl EntityManager {
             self.destinations.insert(entity_id, position);
         }
 
+
         // === PHYSICS ===
         let iso: Isometry<f32> = (position, rotation).into();
         let body = RigidBodyBuilder::dynamic()
             .ccd_enabled(true)
             .position(iso)
-            .enabled_rotations(false, true, false) // only enable rotations along the X axis
+            .enabled_rotations(false, true, false)
             .build();
 
         let collider = ColliderBuilder::cylinder(cylinder.h * 0.5, cylinder.r)
             .active_collision_types(ActiveCollisionTypes::all())
+            // TODO: This is a hacky way to fix the fact that colliders are centered at half height
+            // by default. Likely there is a better way to fix this?
+            .translation(vector![0.0, cylinder.h * 0.5, 0.0]) 
             .build();
 
         let body_handle = ps.rigid_body_set.insert(body);
