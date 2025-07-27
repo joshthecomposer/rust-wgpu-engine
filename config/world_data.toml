@@ -10,11 +10,11 @@ faction = "Enemy"
 position = [4.9224, 0.0, -13.6717]
 rotation = [0.0, -0.7145, 0.0, 0.6996]
 
-# [[entities]]
-# entity_type = "MooseMan"
-# faction = "Enemy"
-# position = [11.312, 0.0, 8.1137]
-# rotation = [0.0, 0.0, 0.0, 1.0]
+[[entities]]
+entity_type = "MooseMan"
+faction = "Enemy"
+position = [11.312, 0.0, 8.1137]
+rotation = [0.0, 0.0, 0.0, 1.0]
 
 [[entities]]
 entity_type = "TreeFoliage"

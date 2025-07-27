@@ -20,7 +20,6 @@ mod sound;
 mod config;
 mod terrain;
 // mod deprecated;
-mod collision_system;
 mod state_machines;
 mod particles;
 mod items;

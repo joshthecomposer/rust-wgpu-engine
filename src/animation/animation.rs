@@ -539,6 +539,7 @@ impl Animation {
             if self.looping {
                 self.current_time = 0.0;
             } else {
+                // self.current_time = self.duration;
                 self.current_time = self.duration - 0.001;
             }
         }

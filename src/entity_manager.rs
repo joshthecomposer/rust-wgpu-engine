@@ -10,7 +10,7 @@ use rand_chacha::ChaCha8Rng;
 
 use rapier3d::prelude::*;
 
-use crate::{animation::{animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, animation_system}, camera::Camera, collision_system, config::{entity_config::{AnimationPropHelper, EntityConfig}, world_data::WorldData}, debug::gizmos::{Cuboid, Cylinder}, enums_types::{ActiveItem, CellType, EntityType, Faction, Inventory, Parent, PhysicsHandle, Rotator, SimState, Transform, VisualEffect}, grid::Grid, movement_system, physics::PhysicsState, some_data::{GRASSES, TREES}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet, state_machines, terrain::Terrain};
+use crate::{animation::{animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, animation_system}, camera::Camera, config::{entity_config::{AnimationPropHelper, EntityConfig}, world_data::WorldData}, debug::gizmos::{Cuboid, Cylinder}, enums_types::{ActiveItem, CellType, EntityType, Faction, Inventory, Parent, PhysicsHandle, Rotator, SimState, Transform, VisualEffect}, grid::Grid, movement_system, physics::PhysicsState, some_data::{GRASSES, TREES}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet, state_machines, terrain::Terrain};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -133,8 +133,8 @@ impl EntityManager {
                 Quat::IDENTITY, 
                 "resources/models/static/weapons/swords/001_double_axe.txt", 
                 Cylinder {
-                    r: 0.1,
-                    h: 0.1,
+                    r: 0.06,
+                    h: 1.0,
                 },
                 ps,
             );
@@ -161,8 +161,8 @@ impl EntityManager {
                 Quat::IDENTITY, 
                 "resources/models/static/weapons/swords/001_orc_sword.txt", 
                 Cylinder {
-                    r: 0.1,
-                    h: 0.1
+                    r: 0.06,
+                    h: 1.0
                 },
                 ps,
             );
@@ -535,8 +535,8 @@ impl EntityManager {
             self.rotators.remove(*id);
             self.sim_states.remove(*id);
             self.destinations.remove(*id);
-            self.cylinders.remove(*id);
             self.parents.remove(*id);
+            self.cylinders.remove(*id);
             self.v_effects.remove(*id);
         }
 

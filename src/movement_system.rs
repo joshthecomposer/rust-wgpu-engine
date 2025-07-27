@@ -247,11 +247,19 @@ fn handle_enemy_movement_rapier(
             Some(rotator),
             Some(physics_handle),
             Some(animator),
+            Some(ent_type)
         ) = (
             em.rotators.get_mut(id),
             em.physics_handles.get(id),
             em.animators.get_mut(id),
+            em.entity_types.get(id),
         ) else { continue };
+
+
+        // TODO: Why god
+        if *ent_type == EntityType::MooseMan { continue };
+
+        if animator.next_animation == AnimationType::Death { continue };
 
         let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
         let position = Vec3::from_slice(rb.translation().as_slice());
@@ -309,7 +317,8 @@ fn handle_enemy_movement_rapier(
 }
 
 fn handle_static_movement(ids: Vec<usize>, em: &mut EntityManager, terrain: &Terrain) {
-    // TODO: This terrain adjustment should be in the collision system file.
+    // TODO: This places things like trees at the proper height at their terrain position.
+    // this should not be done every frame, we should do this once upon entity creation.
     for id in ids {
         if let Some(ent_type) = em.entity_types.get(id) {
             if ent_type != &EntityType::Terrain {
