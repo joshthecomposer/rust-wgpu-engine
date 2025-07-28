@@ -252,7 +252,7 @@ impl Renderer {
         // =============================================================
         // shadow pass must come first or you're gonna have a bad time
         self.skybox_pass(camera, fb_width, fb_height);
-        self.grid_pass(grid, camera, light_manager);
+        // self.grid_pass(grid, camera, light_manager);
         
         // =============================================================
         // Render ECS things
@@ -266,11 +266,13 @@ impl Renderer {
         let trunk_ids = em.get_ids_for_type(EntityType::TreeTrunk);
         let stump_ids = em.get_ids_for_type(EntityType::Stump);
         let active_weapon_ids = em.get_active_weapon_ids();
+        let terrain_ids = em.get_ids_for_type(EntityType::Terrain);
 
         self.static_model_pass(camera, em, light_manager, foliage_ids);
         self.static_model_pass(camera, em, light_manager, trunk_ids);
         self.static_model_pass(camera, em, light_manager, stump_ids);
         self.static_model_pass(camera, em, light_manager, active_weapon_ids);
+        self.static_model_pass(camera, em, light_manager, terrain_ids);
 
         // Animated models
         let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);

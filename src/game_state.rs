@@ -5,6 +5,7 @@ use gl::{AttachShader, PixelStoref};
 use glam::{vec2, vec3, Quat, Vec2, Vec3};
 use glfw::{Context, Glfw, GlfwReceiver, Key, PWindow, WindowEvent};
 use image::GrayImage;
+use nalgebra::{Point, Point3};
 use rapier3d::{math::Isometry, prelude::{ColliderBuilder, RigidBodyBuilder}};
 use rusttype::{point, Font, Scale};
 
@@ -143,7 +144,8 @@ impl GameState {
         let imgui_manager = ImguiManager::new(&mut window);
 
         //TERRAIN
-        let mut terrain = Terrain::from_height_map("resources/textures/grid_height.png");
+        // let mut terrain = Terrain::from_height_map("resources/textures/grid_height.png");
+        let mut terrain = Terrain::from_height_map("resources/textures/perlin.png");
 
         let model = terrain.into_opengl_model();
 
@@ -175,7 +177,20 @@ impl GameState {
         // Make a big static cube collider
         let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
         let body = RigidBodyBuilder::fixed().position(iso).build();
-        let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build();
+
+        // Process vertices into arrays
+        let vertices: Vec<Point3<f32>> = model.vertices
+            .iter()
+            .map(|v| v.position.into())
+            .collect();
+        
+        let indices: Vec<[u32; 3]> = model.indices
+            .chunks(3)
+            .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+            .collect();
+
+        let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
+        // let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build();
 
         let body_handle = physics_state.rigid_body_set.insert(body);
         let collider_handle = physics_state.collider_set.insert_with_parent(
