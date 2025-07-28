@@ -55,7 +55,7 @@
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/trees/001_tree_foliage_model.txt", 
 			"bone_path":"",
-			"hit_cyl": { "r": 0.1, "h": 2.0 },
+			"hit_cyl": null,
 			"animation_properties" : []
 		},
 		"TreeTrunk": {

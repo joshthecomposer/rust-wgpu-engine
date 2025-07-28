@@ -132,10 +132,7 @@ impl EntityManager {
                 Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2) * Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2), 
                 Quat::IDENTITY, 
                 "resources/models/static/weapons/swords/001_double_axe.txt", 
-                Cylinder {
-                    r: 0.06,
-                    h: 1.0,
-                },
+                None,
                 ps,
             );
 
@@ -160,10 +157,7 @@ impl EntityManager {
                 Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2) * Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2), 
                 Quat::IDENTITY, 
                 "resources/models/static/weapons/swords/001_orc_sword.txt", 
-                Cylinder {
-                    r: 0.06,
-                    h: 1.0
-                },
+                None,
                 ps,
             );
 
@@ -176,7 +170,7 @@ impl EntityManager {
         }
     }
 
-    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Cylinder, ps: &mut PhysicsState) {
+    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<Cylinder>, ps: &mut PhysicsState) {
         self.factions.insert(self.next_entity_id, faction);
         self.entity_types.insert(self.next_entity_id, entity_type);
 
@@ -205,52 +199,50 @@ impl EntityManager {
         
         self.next_entity_id += 1;
 
-        // TODO: Should foliage be a child of the tree trunk?? Then when doing things we iterate up the parent tree?
+        if let Some(cyl) = cylinder {
+            // CYLINDER PASS
+            let cyl_mod = cyl.create_model(12);
+            self.cylinders.insert(self.next_entity_id, cyl.clone());
 
-        // CYLINDER PASS
-        let cyl = cylinder;
+            self.models.insert(self.next_entity_id, cyl_mod);
+            self.factions.insert(self.next_entity_id, Faction::Gizmo);
+            self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
+            self.transforms.insert(self.next_entity_id, Transform {
+                position,
+                rotation: Quat::IDENTITY,
+                scale: Vec3::splat(1.0),
+                original_rotation: Quat::IDENTITY,
+            });
 
-        let cyl_mod = cyl.create_model(12);
-        self.cylinders.insert(self.next_entity_id, cyl.clone());
-        
-        self.models.insert(self.next_entity_id, cyl_mod);
-        self.factions.insert(self.next_entity_id, Faction::Gizmo);
-        self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
-        self.transforms.insert(self.next_entity_id, Transform {
-            position,
-            rotation: Quat::IDENTITY,
-            scale: Vec3::splat(1.0),
-            original_rotation: Quat::IDENTITY,
-        });
+            self.parents.insert(self.next_entity_id, Parent{
+                parent_id: self.next_entity_id - 1,
+            });
 
-        self.parents.insert(self.next_entity_id, Parent{
-            parent_id: self.next_entity_id - 1,
-        });
+            // PHYSICS PASS
+            let iso: Isometry<f32> = (position, rotation).into();
 
-        // PHYSICS PASS
-        let iso: Isometry<f32> = (position, rotation).into();
+            let body = RigidBodyBuilder::fixed()
+                .position(iso)
+                .build();
 
-        let body = RigidBodyBuilder::fixed()
-            .position(iso)
-            .build();
+            let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
+                .active_collision_types(ActiveCollisionTypes::all())
+                .build();
 
-        let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
-            .active_collision_types(ActiveCollisionTypes::all())
-            .build();
+            let body_handle = ps.rigid_body_set.insert(body);
+            let collider_handle = ps.collider_set.insert_with_parent(
+                collider,
+                body_handle,
+                &mut ps.rigid_body_set,
+            );
 
-        let body_handle = ps.rigid_body_set.insert(body);
-        let collider_handle = ps.collider_set.insert_with_parent(
-            collider,
-            body_handle,
-            &mut ps.rigid_body_set,
-        );
+            self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+                rigid_body: body_handle,
+                collider: collider_handle,
+            });
 
-        self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
-            rigid_body: body_handle,
-            collider: collider_handle,
-        });
-
-        self.next_entity_id += 1;
+            self.next_entity_id += 1;
+        }
     }
 
     pub fn create_animated_entity(
@@ -264,7 +256,7 @@ impl EntityManager {
         animation_path: &str,
         animation_props: &[AnimationPropHelper],
         entity_type: EntityType,
-        cylinder: Cylinder,
+        cylinder: Option<Cylinder>,
         ps: &mut PhysicsState,
     ) {
         // Reserve an ID for the main entity
@@ -335,50 +327,54 @@ impl EntityManager {
             self.destinations.insert(entity_id, position);
         }
 
+        // CYLINDER
+        if let Some(cyl) = cylinder {
 
-        // === PHYSICS ===
-        let iso: Isometry<f32> = (position, rotation).into();
-        let body = RigidBodyBuilder::dynamic()
-            .ccd_enabled(true)
-            .position(iso)
-            .enabled_rotations(false, true, false)
-            .build();
+            let cyl_pos = position;
+            // === PHYSICS ===
+            let iso: Isometry<f32> = (cyl_pos, rotation).into();
+            let body = RigidBodyBuilder::dynamic()
+                .ccd_enabled(true)
+                .position(iso)
+                .enabled_rotations(false, false, false)
+                .build();
 
-        let collider = ColliderBuilder::cylinder(cylinder.h * 0.5, cylinder.r)
-            .active_collision_types(ActiveCollisionTypes::all())
-            // TODO: This is a hacky way to fix the fact that colliders are centered at half height
-            // by default. Likely there is a better way to fix this?
-            .translation(vector![0.0, cylinder.h * 0.5, 0.0]) 
-            .build();
+            let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
+                .active_collision_types(ActiveCollisionTypes::all())
+                // TODO: This is a hacky way to fix the fact that colliders are centered at half height
+                // by default. Likely there is a better way to fix this?
+                .translation(vector![0.0, cyl.h * 0.5, 0.0]) 
+                .build();
 
-        let body_handle = ps.rigid_body_set.insert(body);
-        let collider_handle = ps.collider_set.insert_with_parent(
-            collider,
-            body_handle,
-            &mut ps.rigid_body_set,
-        );
+            let body_handle = ps.rigid_body_set.insert(body);
+            let collider_handle = ps.collider_set.insert_with_parent(
+                collider,
+                body_handle,
+                &mut ps.rigid_body_set,
+            );
 
-        self.physics_handles.insert(entity_id, PhysicsHandle {
-            rigid_body: body_handle,
-            collider: collider_handle,
-        });
+            self.physics_handles.insert(entity_id, PhysicsHandle {
+                rigid_body: body_handle,
+                collider: collider_handle,
+            });
 
-        // === CYLINDER GIZMO (child entity) ===
-        let cylinder_id = self.next_entity_id;
-        self.next_entity_id += 1;
+            // === CYLINDER GIZMO (child entity) ===
+            let cylinder_id = self.next_entity_id;
+            self.next_entity_id += 1;
 
-        let cyl_model = cylinder.create_model(12);
-        self.transforms.insert(cylinder_id, Transform {
-            position,
-            rotation: Quat::IDENTITY,
-            scale: Vec3::splat(1.0),
-            original_rotation: Quat::IDENTITY,
-        });
-        self.models.insert(cylinder_id, cyl_model);
-        self.entity_types.insert(cylinder_id, EntityType::Cylinder);
-        self.factions.insert(cylinder_id, Faction::Gizmo);
-        self.cylinders.insert(cylinder_id, cylinder);
-        self.parents.insert(cylinder_id, Parent { parent_id: entity_id });
+            let cyl_model = cyl.create_model(12);
+            self.transforms.insert(cylinder_id, Transform {
+                position: cyl_pos,
+                rotation: Quat::IDENTITY,
+                scale: Vec3::splat(1.0),
+                original_rotation: Quat::IDENTITY,
+            });
+            self.models.insert(cylinder_id, cyl_model);
+            self.entity_types.insert(cylinder_id, EntityType::Cylinder);
+            self.factions.insert(cylinder_id, Faction::Gizmo);
+            self.cylinders.insert(cylinder_id, cyl);
+            self.parents.insert(cylinder_id, Parent { parent_id: entity_id });
+        }
     }
 
     // pub fn create_animated_entity(&mut self, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat, rotation: Quat, model_path: &str, animation_path: &str, animation_props: &[AnimationPropHelper], entity_type: EntityType, cylinder: Cylinder, ps: &mut PhysicsState) {

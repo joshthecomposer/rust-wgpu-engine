@@ -36,6 +36,6 @@ pub struct EntityTypeHelper {
     pub scale_correction: [f32; 3],
     pub mesh_path: String,
     pub bone_path: String,
-    pub hit_cyl: Cylinder,
+    pub hit_cyl: Option<Cylinder>,
     pub animation_properties: Vec<AnimationPropHelper>,
 }
