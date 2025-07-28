@@ -145,7 +145,7 @@ impl GameState {
 
         //TERRAIN
         // let mut terrain = Terrain::from_height_map("resources/textures/grid_height.png");
-        let mut terrain = Terrain::from_height_map("resources/textures/perlin.png");
+        let mut terrain = Terrain::from_height_map("resources/textures/perlin_small.png");
 
         let model = terrain.into_opengl_model();
 

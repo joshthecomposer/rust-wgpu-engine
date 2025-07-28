@@ -339,7 +339,8 @@ impl EntityManager {
                 .enabled_rotations(false, false, false)
                 .build();
 
-            let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
+            let collider = ColliderBuilder::capsule_y((cyl.h * 0.5) - (cyl.r + 0.035), cyl.r)
+            // let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
                 .active_collision_types(ActiveCollisionTypes::all())
                 // TODO: This is a hacky way to fix the fact that colliders are centered at half height
                 // by default. Likely there is a better way to fix this?
@@ -376,128 +377,6 @@ impl EntityManager {
             self.parents.insert(cylinder_id, Parent { parent_id: entity_id });
         }
     }
-
-    // pub fn create_animated_entity(&mut self, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat, rotation: Quat, model_path: &str, animation_path: &str, animation_props: &[AnimationPropHelper], entity_type: EntityType, cylinder: Cylinder, ps: &mut PhysicsState) {
-    //     let transform = Transform {
-    //         position,
-    //         rotation: rotation * rot_correction,
-    //         scale,
-    //         
-    //         original_rotation: rot_correction,
-    //     };
-
-    //     let (skellington, mut animator, animation) = import_bone_data(animation_path);
-
-    //     for prop in animation_props.iter() {
-    //         let anim = animator.animations.get_mut(&prop.name).unwrap();
-    //         for (k, v) in prop.one_shots.iter() {
-    //             for frame in v.iter() {
-    //                 anim.one_shots.push(OneShot {
-    //                     sound_type: k.clone(),
-    //                     segment: *frame,
-    //                     triggered: false.into(),
-    //                 });
-    //             }
-    //         }
-
-    //         for cs in prop.continuous_sounds.iter() {
-    //             anim.continuous_sounds.push(ContinuousSound {
-    //                 sound_type: cs.clone(),
-    //                 playing: false.into(),
-    //             });
-    //         }
-    //     }
-
-    //     let mut model = Model::new();
-    //     let mut found = false;
-    //     for m in self.ani_models.iter_mut() {
-    //         if m.value().full_path == *model_path.to_string() {
-    //             println!("FOUND DUPLICATE MODEL, CLONING");
-    //             model = m.value().clone();
-    //             found = true;
-    //         }
-    //     }
-
-    //     if !found {
-    //         model = import_model_data(model_path, &animation);
-    //     }         
-
-    //     let starting_rot = rotation * rot_correction;
-
-    //     let rotator = Rotator {
-    //         cur_rot: starting_rot,
-    //         next_rot: starting_rot,
-    //         blend_factor: 0.0, 
-    //         blend_time: 0.11,
-    //     };
-    //     self.rotators.insert(self.next_entity_id, rotator);
-
-    //     if faction != Faction::Player {
-    //         self.destinations.insert(self.next_entity_id, position);
-    //     }
-    //     
-
-    //     self.animators.insert(self.next_entity_id, animator);
-    //     self.skellingtons.insert(self.next_entity_id, skellington.clone());
-    //     self.transforms.insert(self.next_entity_id, transform);
-    //     self.factions.insert(self.next_entity_id, faction.clone());
-    //     self.ani_models.insert(self.next_entity_id, model);
-    //     self.entity_types.insert(self.next_entity_id, entity_type.clone());
-
-    //     let starting_state = match entity_type {
-    //         EntityType::MooseMan => {
-    //             SimState::Dancing
-    //         },
-    //         _ => {
-    //             SimState::Waiting
-    //         },
-    //     };
-    //     self.sim_states.insert(self.next_entity_id, starting_state);
-
-    //     self.next_entity_id += 1;
-
-    //     let cyl = cylinder;
-
-    //     let cyl_mod = cyl.create_model(12);
-    //     self.cylinders.insert(self.next_entity_id, cyl.clone());
-    //     
-    //     self.models.insert(self.next_entity_id, cyl_mod);
-    //     self.factions.insert(self.next_entity_id, Faction::Gizmo);
-    //     self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
-    //     self.transforms.insert(self.next_entity_id, Transform {
-    //         position,
-    //         rotation: Quat::IDENTITY,
-    //         scale: Vec3::splat(1.0),
-    //         original_rotation: Quat::IDENTITY,
-    //     });
-
-    //     self.parents.insert(self.next_entity_id, Parent{
-    //         parent_id: self.next_entity_id - 1,
-    //     });
-
-    //     // PHYSICS PASS
-    //     let iso: Isometry<f32> = (position, rotation).into();
-
-    //     let body = RigidBodyBuilder::dynamic()
-    //         .position(iso)
-    //         .build();
-
-    //     let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r).build();
-
-    //     let body_handle = ps.rigid_body_set.insert(body);
-    //     let collider_handle = ps.collider_set.insert_with_parent(
-    //         collider,
-    //         body_handle,
-    //         &mut ps.rigid_body_set,
-    //     );
-
-    //     self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
-    //         rigid_body: body_handle,
-    //         collider: collider_handle,
-    //     });
-
-    //     self.next_entity_id += 1;
-    // }
 
     pub fn update(&mut self, sm: &mut SoundManager, ps: &PhysicsState) {
         self.delete_entities(sm);
