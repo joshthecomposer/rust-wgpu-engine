@@ -320,7 +320,7 @@ impl GameState {
                     handle_keyboard_input(key, action, &mut self.input_state);
                 },
                 glfw::WindowEvent::MouseButton(btn, action, _) => {
-                    handle_mouse_input(btn, action, self.cursor_pos, Vec2::new(self.fb_width as f32, self.fb_height as f32), &self.camera, &mut self.entity_manager, &self.input_state);
+                    handle_mouse_input(btn, action, self.cursor_pos, Vec2::new(self.fb_width as f32, self.fb_height as f32), &self.camera, &mut self.entity_manager, &self.input_state, &self.physics_state);
                     if btn  == glfw::MouseButtonLeft && action == glfw::Action::Press {
                         self.message_queue.send(UiMessage::LeftMouseClicked);
                     }
@@ -370,7 +370,7 @@ impl GameState {
                 if let Some(parent) = self.entity_manager.parents.iter().find(|p| p.value().parent_id == *id) {
                     let cyl_id = parent.key();
 
-                    if let Some(_cyl) = self.entity_manager.cylinders.get(cyl_id) {
+                    if let Some(_cyl) = self.entity_manager.colliders.get(cyl_id) {
                         self.entity_manager.entity_trashcan.push(cyl_id);
                     }
                 }

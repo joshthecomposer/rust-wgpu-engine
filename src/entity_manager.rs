@@ -8,9 +8,9 @@ use nalgebra::{UnitQuaternion, Vector3};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use rapier3d::prelude::*;
+use rapier3d::{parry::{shape::{Capsule, Cylinder}, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::{animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, animation_system}, camera::Camera, config::{entity_config::{AnimationPropHelper, EntityConfig}, world_data::WorldData}, debug::gizmos::{Cuboid, Cylinder}, enums_types::{ActiveItem, CellType, EntityType, Faction, Inventory, Parent, PhysicsHandle, Rotator, SimState, Transform, VisualEffect}, grid::Grid, movement_system, physics::PhysicsState, some_data::{GRASSES, TREES}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet, state_machines, terrain::Terrain};
+use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig}, world_data::WorldData}, debug::gizmos::Pill, enums_types::{ActiveItem, EntityType, Faction, Inventory, Parent, PhysicsHandle, Rotator, SimState, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -31,7 +31,8 @@ pub struct EntityManager {
 
     // Simulation gizmos
     // pub cuboids: SparseSet<Cuboid>,
-    pub cylinders: SparseSet<Cylinder>,
+    pub colliders: SparseSet<ColliderShape>,
+    // pub cylinders: SparseSet<Cylinder>,
 
     pub parents: SparseSet<Parent>,
     pub rng: ChaCha8Rng,
@@ -41,7 +42,10 @@ pub struct EntityManager {
     pub entity_trashcan: Vec<usize>,
 
     // Physics stuff
+    // Find colliders from entities
     pub physics_handles: SparseSet<PhysicsHandle>,
+    // Find entities from rapier
+    pub collider_to_entity: HashMap<ColliderHandle, usize>,
 }
 
 impl EntityManager {
@@ -63,7 +67,10 @@ impl EntityManager {
             destinations: SparseSet::with_capacity(max_entities),
 
             // cuboids: SparseSet::with_capacity(max_entities),
-            cylinders: SparseSet::with_capacity(max_entities),
+            // this is just for visuals/debug. The *actual* collider is in 
+            // the rapier physics system,tracked by a physics handle.
+            colliders: SparseSet::with_capacity(max_entities),
+            // cylinders: SparseSet::with_capacity(max_entities),
 
             parents: SparseSet::with_capacity(max_entities),
             rng: ChaCha8Rng::seed_from_u64(1),
@@ -72,6 +79,7 @@ impl EntityManager {
             v_effects: SparseSet::with_capacity(max_entities),
             entity_trashcan: Vec::new(),
             physics_handles: SparseSet::with_capacity(max_entities),
+            collider_to_entity: HashMap::new(),
         }
     }
 
@@ -170,7 +178,7 @@ impl EntityManager {
         }
     }
 
-    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<Cylinder>, ps: &mut PhysicsState) {
+    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) {
         self.factions.insert(self.next_entity_id, faction);
         self.entity_types.insert(self.next_entity_id, entity_type);
 
@@ -202,7 +210,12 @@ impl EntityManager {
         if let Some(cyl) = cylinder {
             // CYLINDER PASS
             let cyl_mod = cyl.create_model(12);
-            self.cylinders.insert(self.next_entity_id, cyl.clone());
+
+            let collider_vert_dim = (cyl.h * 0.5) - 0.025;
+
+            let collider_shape = ColliderShape::cylinder(collider_vert_dim, cyl.r);
+
+            self.colliders.insert(self.next_entity_id, collider_shape);
 
             self.models.insert(self.next_entity_id, cyl_mod);
             self.factions.insert(self.next_entity_id, Faction::Gizmo);
@@ -241,6 +254,8 @@ impl EntityManager {
                 collider: collider_handle,
             });
 
+            self.collider_to_entity.insert(collider_handle, self.next_entity_id);
+
             self.next_entity_id += 1;
         }
     }
@@ -256,7 +271,7 @@ impl EntityManager {
         animation_path: &str,
         animation_props: &[AnimationPropHelper],
         entity_type: EntityType,
-        cylinder: Option<Cylinder>,
+        cylinder: Option<crate::debug::gizmos::Cylinder>,
         ps: &mut PhysicsState,
     ) {
         // Reserve an ID for the main entity
@@ -327,7 +342,7 @@ impl EntityManager {
             self.destinations.insert(entity_id, position);
         }
 
-        // CYLINDER
+        // PILL
         if let Some(cyl) = cylinder {
 
             let cyl_pos = position;
@@ -338,43 +353,66 @@ impl EntityManager {
                 .position(iso)
                 .enabled_rotations(false, false, false)
                 .build();
+            
+            let capsule_total_height = cyl.h;
+            let capsule_half_height = (capsule_total_height - 2.0 * cyl.r) / 2.0;
 
-            let collider = ColliderBuilder::capsule_y((cyl.h * 0.5) - (cyl.r + 0.035), cyl.r)
+            let offset = 0.039;
+
+            let collider = ColliderBuilder::capsule_y(capsule_half_height, cyl.r)
             // let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
                 .active_collision_types(ActiveCollisionTypes::all())
                 // TODO: This is a hacky way to fix the fact that colliders are centered at half height
                 // by default. Likely there is a better way to fix this?
-                .translation(vector![0.0, cyl.h * 0.5, 0.0]) 
+                .translation(vector![0.0, (capsule_total_height * 0.5) + offset, 0.0]) 
                 .build();
 
+            let collider_shape = ColliderShape::capsule_y(capsule_half_height, cyl.r);
+
             let body_handle = ps.rigid_body_set.insert(body);
+
             let collider_handle = ps.collider_set.insert_with_parent(
                 collider,
                 body_handle,
                 &mut ps.rigid_body_set,
             );
 
-            self.physics_handles.insert(entity_id, PhysicsHandle {
+            let physics_handle = PhysicsHandle {
                 rigid_body: body_handle,
                 collider: collider_handle,
-            });
+            };
+
+            self.physics_handles.insert(entity_id, physics_handle);
+            self.collider_to_entity.insert(collider_handle, entity_id);
 
             // === CYLINDER GIZMO (child entity) ===
-            let cylinder_id = self.next_entity_id;
-            self.next_entity_id += 1;
+            let collider_id = self.next_entity_id;
 
-            let cyl_model = cyl.create_model(12);
-            self.transforms.insert(cylinder_id, Transform {
+            let collider_model = if collider_shape.is::<Capsule>() {
+                Pill {
+                    r: cyl.r,
+                    h: capsule_total_height,
+                }.create_model(12, 5, offset)
+            } else if collider_shape.is::<rapier3d::prelude::Cylinder>() {
+                cyl.create_model(12)
+            } else {
+                println!("Defaulting to cylinder!!!!");
+                cyl.create_model(12)
+            };
+
+            self.transforms.insert(collider_id, Transform {
                 position: cyl_pos,
                 rotation: Quat::IDENTITY,
                 scale: Vec3::splat(1.0),
                 original_rotation: Quat::IDENTITY,
             });
-            self.models.insert(cylinder_id, cyl_model);
-            self.entity_types.insert(cylinder_id, EntityType::Cylinder);
-            self.factions.insert(cylinder_id, Faction::Gizmo);
-            self.cylinders.insert(cylinder_id, cyl);
-            self.parents.insert(cylinder_id, Parent { parent_id: entity_id });
+            self.models.insert(collider_id, collider_model);
+            self.entity_types.insert(collider_id, EntityType::Cylinder);
+            self.factions.insert(collider_id, Faction::Gizmo);
+            self.colliders.insert(collider_id, collider_shape);
+            self.parents.insert(collider_id, Parent { parent_id: entity_id });
+
+            self.next_entity_id += 1;
         }
     }
 
@@ -398,6 +436,7 @@ impl EntityManager {
     }
 
     pub fn delete_entities(&mut self, sm: &mut SoundManager) {
+        // TODO: Also clean up colliders from here.
         for id in self.entity_trashcan.iter() {
             sm.cleanup_entity_sounds(*id);
             self.transforms.remove(*id);
@@ -411,7 +450,7 @@ impl EntityManager {
             self.sim_states.remove(*id);
             self.destinations.remove(*id);
             self.parents.remove(*id);
-            self.cylinders.remove(*id);
+            self.colliders.remove(*id);
             self.v_effects.remove(*id);
         }
 

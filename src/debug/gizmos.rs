@@ -183,3 +183,108 @@ impl Cylinder {
         model
     }
 }
+
+pub struct Pill {
+    pub r: f32,
+    // Total height including hemispheres
+    pub h: f32,
+}
+
+impl Pill {
+    pub fn create_model(&self, segments: u32, rings: u32, offset: f32) -> Model {
+        let mut model = Model::new();
+        let mut vertices = vec![];
+        let mut indices = vec![];
+
+        let cylinder_bottom = self.r;
+        let cylinder_top = self.h - self.r;
+
+        // === Cylinder Section ===
+        let angle_step = std::f32::consts::TAU / segments as f32;
+        for i in 0..segments {
+            let theta = i as f32 * angle_step;
+            let next_theta = ((i + 1) % segments) as f32 * angle_step;
+
+            let x0 = self.r * theta.cos();
+            let z0 = self.r * theta.sin();
+            let x1 = self.r * next_theta.cos();
+            let z1 = self.r * next_theta.sin();
+
+            let normal0 = Vec3::new(x0, 0.0, z0).normalize();
+            let normal1 = Vec3::new(x1, 0.0, z1).normalize();
+
+            let base = vertices.len() as u32;
+
+            vertices.push(Vertex::new(Vec3::new(x0, cylinder_bottom + offset, z0), normal0));
+            vertices.push(Vertex::new(Vec3::new(x0, cylinder_top + offset, z0), normal0));
+            vertices.push(Vertex::new(Vec3::new(x1, cylinder_top + offset, z1), normal1));
+            vertices.push(Vertex::new(Vec3::new(x1, cylinder_bottom + offset, z1), normal1));
+
+            indices.extend_from_slice(&[
+                base, base + 1, base + 2,
+                base, base + 2, base + 3,
+            ]);
+        }
+
+        // === Hemispheres (top and bottom) ===
+        let ring_step = std::f32::consts::FRAC_PI_2 / rings as f32;
+
+        for &hemisphere_sign in &[-1.0, 1.0] {
+            let y_offset = if hemisphere_sign < 0.0 {
+                cylinder_bottom
+            } else {
+                cylinder_top
+            };
+
+            let ring_base = vertices.len() as u32;
+
+            for ring in 0..=rings {
+                let phi = ring as f32 * ring_step;
+                let y = phi.sin() * self.r;
+                let r = phi.cos() * self.r;
+
+                for seg in 0..=segments {
+                    let theta = seg as f32 * angle_step;
+                    let x = r * theta.cos();
+                    let z = r * theta.sin();
+                    let normal = Vec3::new(x, hemisphere_sign * y, z).normalize();
+
+                    vertices.push(Vertex::new(
+                        Vec3::new(x, y_offset + hemisphere_sign * y + offset, z),
+                        normal,
+                    ));
+                }
+            }
+
+            for ring in 0..rings {
+                for seg in 0..segments {
+                    let i0 = ring * (segments + 1) + seg;
+                    let i1 = i0 + 1;
+                    let i2 = i0 + segments + 1;
+                    let i3 = i2 + 1;
+
+                    let base = ring_base;
+
+                    if hemisphere_sign < 0.0 {
+                        // bottom hemisphere
+                        indices.extend_from_slice(&[
+                            base + i0, base + i2, base + i1,
+                            base + i1, base + i2, base + i3,
+                        ]);
+                    } else {
+                        // top hemisphere
+                        indices.extend_from_slice(&[
+                            base + i0, base + i1, base + i2,
+                            base + i1, base + i3, base + i2,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        model.vertices = vertices;
+        model.indices = indices;
+        model.setup_opengl();
+        model
+    }
+}

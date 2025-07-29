@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec3Swizzles, Vec4Swizzles};
 use glfw::MouseButton;
 
-use crate::{camera::{self, Camera}, entity_manager::EntityManager, enums_types::{AnimationType, Faction}};
+use rapier3d::{data::Index, prelude::*};
+
+use crate::{camera::{self, Camera}, entity_manager::EntityManager, enums_types::{AnimationType, Faction}, physics::PhysicsState};
 
 pub struct InputState {
     pub keys_current: HashSet<glfw::Key>, // Held this frame
@@ -46,7 +48,7 @@ pub fn handle_keyboard_input(key: glfw::Key, action: glfw::Action, input_state: 
 pub fn handle_mouse_motion() {
 }
 
-pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, cursor_pos: Vec2, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &InputState) {
+pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, cursor_pos: Vec2, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &InputState, physics: &PhysicsState) {
     let pressed_keys = &input_state.keys_current;
     match action {
         glfw::Action::Press => { 
@@ -64,30 +66,28 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, cursor_pos:
 
                 let (ray_origin, ray_dir) = mouse_ray_from_screen(cursor_pos, screen_size, camera);
 
-                let mut closest = None;
-                let mut min_t = f32::MAX;
+                let ray = Ray::new(point![ray_origin.x, ray_origin.y, ray_origin.z], vector![ray_dir.x, ray_dir.y, ray_dir.z]);
+                let query_pipeline = &physics.query_pipeline.as_ref().unwrap();
+                let colliders = &physics.collider_set;
+                let bodies = &physics.rigid_body_set;
 
-                for cyl in em.cylinders.iter() {
-                    let trans = em.transforms.get(cyl.key()).unwrap();
-                    let cyl_base = trans.position;
+                let max_toi = 100.0;
+                let solid = true;
 
-                    let height = cyl.value.h;
-                    let radius = cyl.value.r;
-
-                    if let Some(t) = ray_hits_cylinder(ray_origin, ray_dir, cyl_base, height, radius) {
-                        if t < min_t {
-                            min_t = t;
-                            closest = Some(cyl.key());
-                        }
+                if let Some((handle, _)) = query_pipeline.cast_ray(
+                    bodies,
+                    colliders,
+                    &ray,
+                    max_toi,
+                    solid,
+                    InteractionGroups::all().into(),
+                ) {
+                    if let Some(&entity_id) = em.collider_to_entity.get(&handle) {
+                        em.selected.push(entity_id);
                     }
                 }
 
-                if let Some(id) = closest {
-                    let parent_id = em.parents.get(id).unwrap().parent_id;
-
-                    em.selected.push(parent_id);
-                    em.selected.push(id);
-                }
+                
             }
         },
         glfw::Action::Release => (),
