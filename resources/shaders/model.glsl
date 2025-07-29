@@ -136,11 +136,21 @@ float ShadowCalculation(float dot_light_normal) {
 
 vec4 calculate_directional_light() {
     vec3 lightColor = dir_light.diffuse;
-	vec3 tex_color = texture(material.Diffuse, TexCoords).rgb;
+	// Calculate view distance
+	float view_dist = length(view_position - FragPos);
+	// Calculate LOD based on distance
+	float lod = clamp((view_dist - 4.5) / 3.0, 0.0, 10.0); // tweak range as needed
+	// Sample the diffuse texture using explicit LOD
+	vec4 tex_sample = textureLod(material.Diffuse, TexCoords, lod);
+
+	// Replace black with white in fully transparent pixels
+	vec3 safe_color = mix(vec3(1.0), tex_sample.rgb, tex_sample.a);
+	vec3 tex_color = safe_color;
+	float alpha = tex_sample.a;
 	vec3 spec_color = texture(material.Specular, TexCoords).rgb;
 	vec3 emiss_color = texture(material.Emissive, TexCoords).rgb;
 	
-	float alpha = texture(material.Diffuse, TexCoords).a;
+	// float alpha = textureLod(material.Diffuse, TexCoords, lod).a;
 
 	if (alpha_test_pass && alpha < 0.1)
 		discard;

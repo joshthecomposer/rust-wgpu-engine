@@ -587,7 +587,7 @@ impl Renderer {
         for model in em.models.iter() {
             let check = em.factions.get(model.key()).unwrap();
 
-            if !active_weapon_ids.contains(&model.key()) {
+            if !active_weapon_ids.contains(&model.key()) && check == &Faction::Item {
                 continue;
             }
             // TODO:: Get rid of this. see above...

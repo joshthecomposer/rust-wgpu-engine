@@ -105,10 +105,18 @@ impl Terrain {
 
         for (i, v) in self.vertices.iter().enumerate() {
             let n = self.normals[i];
+
+            let tile_scale = 200.0;
+
+            let uv = vec2(
+                ((v[0] + self.width as f32 / 2.0) / self.width as f32) * tile_scale,
+                ((v[2] + self.height as f32 / 2.0) / self.height as f32) * tile_scale,
+            );
+
             model.vertices.push(Vertex {
                 position: vec3(v[0], v[1], v[2]),
                 normal: vec3(n[0], n[1], n[2]),
-                uv: vec2(0.0, 0.0),
+                uv,
 
                 bone_ids: [-1; MAX_BONE_INFLUENCE],
                 bone_weights: [0.0; MAX_BONE_INFLUENCE],
@@ -116,7 +124,7 @@ impl Terrain {
         };
 
         model.directory = "resources/models/static/terrain".to_string();
-        texture_from_file(&mut model, "not_found.png".to_string(), TextureType::Diffuse);
+        texture_from_file(&mut model, "dirt.jpg".to_string(), TextureType::Diffuse);
 
         model.indices = self.indices.clone();
         model.setup_opengl();
