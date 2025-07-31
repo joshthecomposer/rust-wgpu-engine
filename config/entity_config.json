@@ -6,6 +6,7 @@
 			"scale_correction": [0.01, 0.01, 0.01],
 			"mesh_path": "resources/models/animated/002_y_robot/y_robot_with_slash_mesh.txt", 
 			"bone_path":"resources/models/animated/002_y_robot/y_robot_with_slash_bones.txt",
+			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
 			"hit_cyl": { "r": 0.188, "h": 1.6 },
 			"animation_properties" : [
 				{
