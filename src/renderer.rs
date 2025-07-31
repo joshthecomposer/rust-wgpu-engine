@@ -5,7 +5,7 @@ use gl::CULL_FACE;
 use glam::{vec3, vec4, Mat4, Vec3, Vec4};
 use image::GenericImageView;
 
-use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{EntityType, Faction, FboType, ShaderType, VaoType}, gl_call, grid::Grid, lights::Lights, shaders::Shader, some_data::{FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES}, sound::sound_manager::SoundManager};
+use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{EntityType, Faction, FboType, ShaderType, VaoType}, gl_call, grid::Grid, lights::Lights, shaders::Shader, some_data::{FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES}, sound::{fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR}, sound_manager::SoundManager}};
 
 pub struct Renderer {
     pub shaders: HashMap<ShaderType, Shader>,
@@ -339,11 +339,32 @@ impl Renderer {
                     os.triggered.set(false);
                 }
             }
-
+            
+            // TODO: Why are we updating sounds in the renderer? I get that it's probably because 
+            // we are already accessing the animation, but likely the cost tradeoff is fine as
+            // fetching the animation is constant time I believe. one thing is that if we render
+            // and update sound at the same time the sound is probably less likely to have latency.
             for cs in animation.continuous_sounds.iter() {
                 if !cs.playing.get() {
                     sound_manager.play_sound_3d(cs.sound_type.clone(), &trans.position, id);
                     cs.playing.set(true);
+                } else if let Some(insts) = sound_manager.active_3d_sounds.get_mut(&id) {
+                    for inst in insts.iter_mut() {
+                        let attributes = FMOD_3D_ATTRIBUTES {
+                            position: SoundManager::opengl_to_fmod(trans.position),
+                            velocity: FMOD_VECTOR { x: 0.0, y: 0.0, z: 0.0 },
+                            forward: FMOD_VECTOR { x: 0.0, y: 0.0, z: 1.0 },
+                            up: FMOD_VECTOR { x: 0.0, y: 1.0, z: 0.0 }
+                        };
+
+                        unsafe {
+                            let result = FMOD_Studio_EventInstance_Set3DAttributes(*inst, &attributes);
+
+                            if result != 0 {
+                                eprintln!("Failed to update 3D sound position: {}", result);
+                            }
+                        }
+                    }
                 }
             }
 

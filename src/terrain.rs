@@ -106,7 +106,7 @@ impl Terrain {
         for (i, v) in self.vertices.iter().enumerate() {
             let n = self.normals[i];
 
-            let tile_scale = 200.0;
+            let tile_scale = 25.0;
 
             let uv = vec2(
                 ((v[0] + self.width as f32 / 2.0) / self.width as f32) * tile_scale,
@@ -124,7 +124,7 @@ impl Terrain {
         };
 
         model.directory = "resources/models/static/terrain".to_string();
-        texture_from_file(&mut model, "dirt.jpg".to_string(), TextureType::Diffuse);
+        texture_from_file(&mut model, "ai_slop/dirt4.png".to_string(), TextureType::Diffuse);
 
         model.indices = self.indices.clone();
         model.setup_opengl();
