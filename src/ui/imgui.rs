@@ -2,7 +2,7 @@ use glam::{Mat4, Quat, Vec3};
 use glfw::{Action, MouseButton, PWindow, WindowEvent};
 use imgui::Drag;
 
-use crate::{animation::animation::Animator, camera::Camera, config::world_data::{EntityInstance, WorldData}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction}, gl_call, items::HashMapGetPairMut, lights::Lights, renderer::Renderer, sound::sound_manager::SoundManager};
+use crate::{animation::animation::Animator, camera::Camera, config::world_data::{EntityInstance, WorldData}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, lights::Lights, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub struct ImguiManager {
     pub imgui: imgui::Context,
@@ -125,15 +125,15 @@ impl ImguiManager {
                     ui.separator();
 
                     if ui.button("Pause") {
-                        sm.stop_sound("music");
+                        sm.stop_sound(&SoundType::Music);
                     }
 
                     if ui.button("Play") {
-                        sm.play_sound_2d("music".to_string());
+                        sm.play_sound_2d(SoundType::Music);
                     }
 
                     if ui.slider("Volume", 0.0, 1.0, &mut sm.master_volume) {
-                        sm.set_master_volume("music");
+                        sm.set_master_volume(&SoundType::Music);
                     }
 
                 });

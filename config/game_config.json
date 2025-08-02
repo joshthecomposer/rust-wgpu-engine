@@ -9,8 +9,8 @@
 	"debug_mode": true,
 	"fps_counter": true,
 	"sounds": {
-		"moose3D":"event:/moose3D",
-		"footstep":"event:/footstep",
-		"music":"event:/music"
+		"MooseHuff":"event:/moose3D",
+		"Footstep":"event:/footstep",
+		"Music":"event:/music"
 	}
 }

@@ -234,3 +234,31 @@ pub struct PhysicsHandle {
     pub rigid_body: RigidBodyHandle,
     pub collider: ColliderHandle,
 }
+
+#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]
+pub enum SoundType {
+    Footstep,
+    MooseHuff,
+    Music,
+}
+
+impl Display for SoundType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            SoundType::Footstep => write!(f, "Footstep"),
+            SoundType::MooseHuff => write!(f, "MooseHuff"),
+            SoundType::Music => write!(f, "Music"),
+        }
+    }
+}
+
+impl SoundType {
+    pub fn from_str(input: &str) -> Option<Self> {
+        match input {
+            "Footstep" => Some(SoundType::Footstep),
+            "MooseHuff" => Some(SoundType::MooseHuff),
+            "Music" => Some(SoundType::Music),
+            _ => panic!("Invalid SoundType passed in."),
+        }
+    }
+}

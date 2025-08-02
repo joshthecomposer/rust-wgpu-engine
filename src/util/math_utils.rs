@@ -11,3 +11,4 @@ pub fn normalize_to_white(v: Vec3) -> Vec3 {
         v
     }
 }
+

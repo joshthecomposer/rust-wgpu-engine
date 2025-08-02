@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs::read_to_string};
 
 use serde::Deserialize;
 
-use crate::{debug::gizmos::Cylinder, enums_types::{AnimationType, EntityType, Faction}};
+use crate::{debug::gizmos::Cylinder, enums_types::{AnimationType, EntityType, Faction, SoundType}};
 
 #[derive(Deserialize, Debug)]
 pub struct EntityConfig {
@@ -26,8 +26,8 @@ impl EntityConfig {
 #[derive(Deserialize, Debug)]
 pub struct AnimationPropHelper {
     pub name: AnimationType,
-    pub one_shots: HashMap<String, Vec<u32>>,
-    pub continuous_sounds: Vec<String>,
+    pub one_shots: HashMap<SoundType, Vec<u32>>,
+    pub continuous_sounds: Vec<SoundType>,
 }
 
 #[derive(Deserialize, Debug)]

@@ -2,6 +2,8 @@ use std::{fs::read_to_string, collections::HashMap};
 
 use serde::Deserialize;
 
+use crate::enums_types::SoundType;
+
 #[derive(Deserialize, Debug)]
 pub struct GameConfig {
     pub game_title: String,
@@ -13,7 +15,7 @@ pub struct GameConfig {
     pub vsync: bool,
     pub debug_mode: bool,
     pub fps_counter: bool,
-    pub sounds: HashMap<String, String>,
+    pub sounds: HashMap<SoundType, String>,
 }
 
 impl GameConfig {

@@ -12,7 +12,7 @@
 				{
 					"name": "Run",
 					"one_shots": {
-						"footstep": [7, 18]
+						"Footstep": [7, 18]
 					},
 					"continuous_sounds": []
 				},
@@ -45,7 +45,7 @@
 					"name": "Dance",
 					"one_shots": { },
 					"continuous_sounds": [
-						"moose3D"
+						"MooseHuff"
 					]
 				}
 			]

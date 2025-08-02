@@ -1,7 +1,5 @@
 use glam::Mat4;
-
-use crate::{entity_manager::EntityManager, enums_types::Faction};
-use std::{collections::HashMap, hash::Hash};
+use crate::{entity_manager::EntityManager, util::data_structure::HashMapGetPairMut};
 
 pub fn update(em: &mut EntityManager) {
     for a in em.active_items.iter_mut() {
@@ -56,30 +54,6 @@ pub fn update(em: &mut EntityManager) {
             let weapon_trans = em.transforms.get_mut(rh_weapon_id).unwrap();
             weapon_trans.position = pos;
             weapon_trans.rotation = rot * weapon_trans.original_rotation;
-        }
-    }
-}
-
-
-pub trait HashMapGetPairMut<K: Eq + std::hash::Hash, V> {
-    fn get_pair_mut(&mut self, k1: &K, k2: &K) -> Option<(&mut V, &mut V)>;
-}
-
-impl<K: Eq + Hash, V> HashMapGetPairMut<K, V> for HashMap<K, V> {
-    fn get_pair_mut(&mut self, k1: &K, k2: &K) -> Option<(&mut V, &mut V)> {
-        if k1 == k2 {
-            return None;
-        }
-
-        let (v1_ptr, v2_ptr) = {
-            let v1 = self.get_mut(k1)? as *mut V;
-            let v2 = self.get_mut(k2)? as *mut V;
-            (v1, v2)
-        };
-
-        // SAFETY: We ensure v1 and v2 are different by checking k1 != k2
-        unsafe {
-            Some((&mut *v1_ptr, &mut *v2_ptr))
         }
     }
 }

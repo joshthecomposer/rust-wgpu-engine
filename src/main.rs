@@ -8,7 +8,6 @@ mod sparse_set;
 mod uniforms;
 mod entity_manager;
 mod lights;
-mod math_utils;
 mod grid;
 mod renderer;
 mod animation;
@@ -24,6 +23,7 @@ mod state_machines;
 mod particles;
 mod items;
 mod physics;
+mod util;
 
 use std::{fs::{self, OpenOptions}, path::Path};
 

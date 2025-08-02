@@ -4,7 +4,7 @@ use std::{cell::Cell, collections::HashMap, ffi::CString};
 
 use glam::Vec3;
 
-use crate::{camera::Camera, config::game_config::GameConfig, sound::fmod::{FMOD_Studio_EventDescription_LoadSampleData, FMOD_INIT_3D_RIGHTHANDED}};
+use crate::{camera::Camera, config::game_config::GameConfig, enums_types::SoundType, sound::fmod::{FMOD_Studio_EventDescription_LoadSampleData, FMOD_INIT_3D_RIGHTHANDED}};
 
 use super::fmod::{FMOD_Studio_EventDescription_CreateInstance, FMOD_Studio_EventInstance_Release, FMOD_Studio_EventInstance_Set3DAttributes, FMOD_Studio_EventInstance_SetParameterByName, FMOD_Studio_EventInstance_Start, FMOD_Studio_EventInstance_Stop, FMOD_Studio_System_Create, FMOD_Studio_System_GetEvent, FMOD_Studio_System_Initialize, FMOD_Studio_System_LoadBankFile, FMOD_Studio_System_SetListenerAttributes, FMOD_Studio_System_Update, FMOD_3D_ATTRIBUTES, FMOD_INIT_NORMAL, FMOD_STUDIO_BANK, FMOD_STUDIO_EVENTDESCRIPTION, FMOD_STUDIO_EVENTINSTANCE, FMOD_STUDIO_INIT_NORMAL, FMOD_STUDIO_SYSTEM, FMOD_VECTOR, FMOD_VERSION};
 
@@ -15,27 +15,27 @@ pub struct SoundData {
 
 #[derive(Clone, Debug)]
 pub struct SoundTrigger {
-    pub sound_type: String, // TODO: JW - This sound_type should probably be an enum of SoundType?? Maybe?
+    pub sound_type: SoundType,
     pub frame: usize,
 }
 
 #[derive(Clone, Debug)]
 pub struct OneShot {
-    pub sound_type: String, 
+    pub sound_type: SoundType, 
     pub segment: u32,
     pub triggered: Cell<bool>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ContinuousSound {
-    pub sound_type: String,
+    pub sound_type: SoundType,
     pub playing: Cell<bool>,
 }
 
 pub struct SoundManager {
     pub fmod_system: FMOD_STUDIO_SYSTEM,
-    pub sounds: HashMap<String, SoundData>, //The key (String) is the sound_name in the game_config.json
-    pub active_sounds: HashMap<String, FMOD_STUDIO_EVENTINSTANCE>,
+    pub sounds: HashMap<SoundType, SoundData>, //The key (String) is the sound_name in the game_config.json
+    pub active_sounds: HashMap<SoundType, FMOD_STUDIO_EVENTINSTANCE>,
     pub active_3d_sounds: HashMap<usize, Vec<FMOD_STUDIO_EVENTINSTANCE>>,
     pub playing_bg: bool,
     pub master_volume: f32,
@@ -111,7 +111,7 @@ impl SoundManager {
                 }
 
                 FMOD_Studio_EventDescription_LoadSampleData(description);
-                sounds.insert(sound_name.to_string(), SoundData {
+                sounds.insert(sound_name.clone(), SoundData {
                     description, 
                 });
             }
@@ -160,7 +160,7 @@ impl SoundManager {
     }
 
 
-    pub fn play_sound_3d(&mut self, sound_type: String, position: &Vec3, entity_id: usize) {
+    pub fn play_sound_3d(&mut self, sound_type: SoundType, position: &Vec3, entity_id: usize) {
         let sound_data = match self.sounds.get(&sound_type) {
             Some(data) => data,
             None => {
@@ -207,7 +207,7 @@ impl SoundManager {
         }
     }
 
-    pub fn play_sound_2d(&mut self, sound_type: String) {
+    pub fn play_sound_2d(&mut self, sound_type: SoundType) {
         let sound_data = match self.sounds.get(&sound_type) {
             Some(data) => data,
             None => {
@@ -235,7 +235,7 @@ impl SoundManager {
         }
     }
 
-    pub fn stop_sound(&mut self, sound_type: &str){
+    pub fn stop_sound(&mut self, sound_type: &SoundType){
         if let Some(instance) = self.active_sounds.get(sound_type) {
             unsafe {
                 FMOD_Studio_EventInstance_Stop(*instance, super::fmod::FMOD_STUDIO_STOP_MODE::FMOD_STUDIO_STOP_IMMEDIATE);
@@ -255,7 +255,7 @@ impl SoundManager {
         }
     }
 
-    pub fn set_master_volume(&mut self, sound_type: &str) {
+    pub fn set_master_volume(&mut self, sound_type: &SoundType) {
         if let Some(instance) = self.active_sounds.get(sound_type) {
             let vol = CString::new("main_volume").unwrap();
             unsafe {
