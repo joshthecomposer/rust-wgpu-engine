@@ -1,14 +1,10 @@
 #![allow(clippy::too_many_arguments)]
-use std::collections::HashSet;
 
-use gl::PolygonMode;
-use glam::{vec3, Mat4, Quat, Vec3};
-use libc::EILSEQ;
-use nalgebra::{UnitQuaternion, Vector3};
-use rand::{Rng, SeedableRng};
+use glam::{Quat, Vec3};
+use nalgebra::UnitQuaternion;
+use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-
-use rapier3d::{parry::{shape::{Capsule, Cylinder}, utils::hashmap::HashMap}, prelude::*};
+use rapier3d::{parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
 use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig}, world_data::WorldData}, debug::gizmos::Pill, enums_types::{ActiveItem, EntityType, Faction, Inventory, Parent, PhysicsHandle, Rotator, SimState, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
 
