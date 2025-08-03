@@ -21,6 +21,8 @@ pub struct EntityManager {
     pub sim_states: SparseSet<SimState>,
     pub inventories: SparseSet<Inventory>,
     pub active_items: SparseSet<ActiveItem>,
+    pub impulse_applied: SparseSet<bool>,
+    pub tom_pettyin: SparseSet<f32>,
 
     // Simulation/Behavior Components
     pub destinations: SparseSet<Vec3>,
@@ -59,6 +61,8 @@ impl EntityManager {
             sim_states: SparseSet::with_capacity(max_entities),
             inventories: SparseSet::with_capacity(max_entities),
             active_items: SparseSet::with_capacity(max_entities),
+            impulse_applied: SparseSet::with_capacity(max_entities),
+            tom_pettyin: SparseSet::with_capacity(max_entities),
 
             destinations: SparseSet::with_capacity(max_entities),
 
@@ -448,6 +452,7 @@ impl EntityManager {
             self.parents.remove(*id);
             self.colliders.remove(*id);
             self.v_effects.remove(*id);
+            self.impulse_applied.remove(*id);
         }
 
         self.entity_trashcan.clear();

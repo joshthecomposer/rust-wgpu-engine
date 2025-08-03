@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec3};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, Faction, SimState, VisualEffect}, particles::ParticleSystem};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, Faction, SimState, VisualEffect, ANIMATION_EPSILON}, particles::ParticleSystem};
 
 pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem) {
     entity_sim_state_machine(em, dt, particles);
@@ -59,8 +59,7 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                     *destination = entity_pos;
                     
                     if let Some(anim) = animator.animations.get(&AnimationType::Death) {
-                        // TODO: Be careful about this 0.001 calculation, if we change it elsewhere it might break
-                        if anim.current_time >= anim.duration - 0.001 {
+                        if anim.current_time >= anim.duration - ANIMATION_EPSILON {
                             return SimState::Dead { time: 0.0, target_time: 5.0 }
                         } 
                     } else {

@@ -361,6 +361,12 @@ impl GameState {
             if self.input_state.keys_current.contains(&glfw::Key::O) {
                 animator.set_next_animation(AnimationType::Idle);
             }
+
+            if self.input_state.just_pressed(glfw::Key::Space) {
+                if animator.next_animation != AnimationType::Death {
+                    animator.set_next_animation(AnimationType::Jump);
+                }
+            }
         }
 
         if self.input_state.keys_current.contains(&glfw::Key::Delete) {

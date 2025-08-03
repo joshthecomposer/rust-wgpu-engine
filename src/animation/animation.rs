@@ -4,7 +4,7 @@ use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
 use core::f32;
 use std::{collections::HashMap, ffi::c_void, mem::{self, offset_of}, path::Path, ptr, str::Lines};
 
-use crate::{enums_types::{AnimationType, TextureType}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}};
+use crate::{enums_types::{AnimationType, TextureType, ANIMATION_EPSILON}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}};
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -540,7 +540,7 @@ impl Animation {
                 self.current_time = 0.0;
             } else {
                 // self.current_time = self.duration;
-                self.current_time = self.duration - 0.001;
+                self.current_time = self.duration - ANIMATION_EPSILON;
             }
         }
 
@@ -686,7 +686,7 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
                     animation.model_animation_join = model_animation_join.clone();
                     animation.ticks_per_second = ticks_per_second;
 
-                    if current_anim_str == "Death" || current_anim_str == "Slash" {
+                    if current_anim_str == "Death" || current_anim_str == "Slash" || current_anim_str == "Jump" {
                         println!("Found {}, setting looping to false", &current_anim_str);
                         animation.looping = false;
                     }

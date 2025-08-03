@@ -188,6 +188,8 @@ pub enum AnimationType {
     Death,
     Dance,
     Slash,
+    Jump,
+    Freefall,
 }
 
 impl Display for AnimationType {
@@ -198,6 +200,8 @@ impl Display for AnimationType {
             AnimationType::Death => write!(f, "Death"),
             AnimationType::Dance => write!(f, "Dance"),
             AnimationType::Slash => write!(f, "Slash"),
+            AnimationType::Jump => write!(f, "Jump"),
+            AnimationType::Freefall => write!(f, "Freefall"),
         }
     }
 }
@@ -210,10 +214,11 @@ impl AnimationType {
             "Death" => Some(AnimationType::Death),
             "Dance" => Some(AnimationType::Dance),
             "Slash" => Some(AnimationType::Slash),
+            "Jump" => Some(AnimationType::Jump),
+            "Freefall" => Some(AnimationType::Freefall),
             _ => panic!("Invalid AnimationType passed in."),
         }
     }
-
 }
 
 pub enum VisualEffect {
@@ -262,3 +267,5 @@ impl SoundType {
         }
     }
 }
+
+pub const ANIMATION_EPSILON: f32 = 0.001;

@@ -202,3 +202,7 @@ pub const TREES:[&str; 6] = [
 
 pub const MAX_BONE_INFLUENCE: usize = 4;
 pub const MAX_BONES: u32 = 200;
+
+pub const GRAVITY: f32 = 9.81;
+
+pub const FREEFALL_DELAY: f32 = 0.35;
