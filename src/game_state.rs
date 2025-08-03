@@ -319,7 +319,7 @@ impl GameState {
                     handle_keyboard_input(key, action, &mut self.input_state);
                 },
                 glfw::WindowEvent::MouseButton(btn, action, _) => {
-                    handle_mouse_input(btn, action, self.cursor_pos, Vec2::new(self.fb_width as f32, self.fb_height as f32), &self.camera, &mut self.entity_manager, &self.input_state, &self.physics_state);
+                    handle_mouse_input(btn, action, self.cursor_pos, Vec2::new(self.fb_width as f32, self.fb_height as f32), &self.camera, &mut self.entity_manager, &mut self.input_state, &self.physics_state);
                     if btn  == glfw::MouseButtonLeft && action == glfw::Action::Press {
                         self.message_queue.send(UiMessage::LeftMouseClicked);
                     }
@@ -411,7 +411,7 @@ impl GameState {
             &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.input_state, &mut self.physics_state
         );
         animation_system::update(&mut self.entity_manager, self.delta_time);
-        state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles);
+        state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state);
         self.physics_state.update();
         self.entity_manager.update(&mut self.sound_manager, &self.physics_state);
         items::update(&mut self.entity_manager);

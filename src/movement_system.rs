@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use glam::{vec3, Quat, Vec3};
 
-use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, Transform, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
+use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PlayerState, Transform, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
 
 pub fn update(
     em: &mut EntityManager, 
@@ -39,59 +39,17 @@ fn handle_player_movement_rapier(
 ) {
     let player_key = *player_keys.first().unwrap();
     let animator = em.animators.get_mut(player_key).unwrap();
-    let handle = em.physics_handles.get_mut(player_key).unwrap();
-    let rb = ps.rigid_body_set.get_mut(handle.rigid_body).unwrap();
-    let vy = rb.linvel().y;
+    let player_state = em.player_controllers.get(player_key).unwrap();
 
     if animator.next_animation == AnimationType::Death {
         return;
     }
 
-    if vy < -9.0 {
-        if em.tom_pettyin.get(player_key).is_none() {
-            em.tom_pettyin.insert(player_key, 0.0);
-        } else {
-            let time_fallin = em.tom_pettyin.get_mut(player_key).unwrap();
-
-            *time_fallin += delta;
-
-            if *time_fallin >= FREEFALL_DELAY { 
-                animator.set_next_animation(AnimationType::Freefall);
-                return;
-            }
-
-        }
-    } else {
-        em.tom_pettyin.remove(player_key);
-    }
-
-    if animator.next_animation == AnimationType::Jump {
-        if !em.impulse_applied.get(player_key).is_some() {
-            let anim = animator.animations.get_mut(&AnimationType::Jump).unwrap();
-            anim.current_time = 0.0;
-
-            rb.set_gravity_scale(0.5, true);
-            rb.apply_impulse(Vec3::new(0.0, 0.65, 0.0).into(), true);
-
-            em.impulse_applied.insert(player_key, true);
-        }
-
-
-        if vy < ANIMATION_EPSILON && vy > -ANIMATION_EPSILON {
-            animator.set_next_animation(AnimationType::Idle);
-            em.impulse_applied.remove(player_key);
-            rb.set_gravity_scale(1.0, true);
-        }
-
+    if player_state.state == PlayerState::Attacking {
         return;
     }
 
-    if input_state.keys_current.contains(&glfw::Key::T) {
-        animator.set_next_animation(AnimationType::Slash);
-        let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
-        if !input_state.keys_previous.contains(&glfw::Key::T) {
-            anim.current_time = 0.0;
-        }
+    if player_state.state == PlayerState::Jumping || player_state.state == PlayerState::Freefalling {
         return;
     }
 

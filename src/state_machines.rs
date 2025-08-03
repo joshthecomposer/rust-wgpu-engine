@@ -1,8 +1,10 @@
 use glam::{Mat4, Vec3};
+use glfw::{Key, MouseButton};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, Faction, SimState, VisualEffect, ANIMATION_EPSILON}, particles::ParticleSystem};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, Faction, PlayerState, SimState, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}};
 
-pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem) {
+pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, input: &InputState, ps: &mut PhysicsState) {
+    player_state_machine(em, dt, input, ps);
     entity_sim_state_machine(em, dt, particles);
 }
 
@@ -131,4 +133,112 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
             *state = next_state;
         }
     }
+}
+
+fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps: &mut PhysicsState) {
+    let player_key = em.factions.iter().find(|e| *e.value() == Faction::Player).unwrap().key();
+    let controller = em.player_controllers.get_mut(player_key).unwrap();
+    let ph = em.physics_handles.get_mut(player_key).unwrap();
+    let rb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
+    let animator = em.animators.get_mut(player_key).unwrap();
+
+    let next_state = (|| match controller.state {
+        PlayerState::Idle => {
+            controller.time_in_state += dt;
+            if input.just_pressed(Key::Space) {
+                rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
+                rb.apply_impulse((Vec3::Y * 0.65).into(), true);
+
+                animator.animations.get_mut(&AnimationType::Jump).unwrap().current_time = 0.0;
+                animator.set_next_animation(AnimationType::Jump);
+
+                controller.time_in_state = 0.0;
+                return PlayerState::Jumping
+            }
+
+            if input.mouse_just_pressed(MouseButton::Left) {
+                animator.animations.get_mut(&AnimationType::Slash).unwrap().current_time = 0.0;
+                animator.set_next_animation(AnimationType::Slash);
+
+                controller.time_in_state = 0.0;
+                return PlayerState::Attacking
+            }
+
+            return PlayerState::Idle
+        },
+        PlayerState::Jumping => {
+            controller.time_in_state += dt;
+            if rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
+
+                controller.time_in_state = 0.0;
+                return PlayerState::Freefalling
+            }
+
+            return PlayerState::Jumping
+        },
+        PlayerState::Freefalling => {
+            controller.time_in_state += dt;
+            if rb.linvel().y <= ANIMATION_EPSILON && rb.linvel().y >= -ANIMATION_EPSILON {
+                controller.time_in_state = 0.0;
+                return PlayerState::Running;
+            }
+
+            if rb.linvel().y <= (-(GRAVITY * DECREASED_GRAVITY_SCALAR) + ANIMATION_EPSILON) && controller.time_in_state >= 0.5 {
+                animator.set_next_animation(AnimationType::Freefall);
+            }
+
+            return PlayerState::Freefalling
+        },
+        PlayerState::Running => {
+            controller.time_in_state += dt;
+
+            if input.just_pressed(Key::Space) {
+                rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
+                rb.apply_impulse((Vec3::Y * 0.65).into(), true);
+
+                animator.animations.get_mut(&AnimationType::Jump).unwrap().current_time = 0.0;
+                animator.set_next_animation(AnimationType::Jump);
+
+                controller.time_in_state = 0.0;
+                return PlayerState::Jumping
+            }
+
+            if !input.wasd_is_down() {
+                controller.time_in_state = 0.0;
+                return PlayerState::Idle
+            }
+
+            if input.mouse_just_pressed(MouseButton::Left) {
+                animator.animations.get_mut(&AnimationType::Slash).unwrap().current_time = 0.0;
+                animator.set_next_animation(AnimationType::Slash);
+
+                controller.time_in_state = 0.0;
+                return PlayerState::Attacking
+            }
+
+            return PlayerState::Running
+        },
+        PlayerState::Attacking => {
+            controller.time_in_state += dt;
+        
+            let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
+
+            if anim.current_time >= anim.duration - ANIMATION_EPSILON {
+                animator.set_next_animation(AnimationType::Idle);
+
+                controller.time_in_state = 0.0;
+                return PlayerState::Idle
+            }
+
+            return PlayerState::Attacking
+        },
+        PlayerState::Dying => {
+            return PlayerState::Dying
+        },
+        PlayerState::Dead {time, target_time} => {
+            return PlayerState::Dead {time, target_time}
+        },
+    })();
+
+    controller.state = next_state;
 }

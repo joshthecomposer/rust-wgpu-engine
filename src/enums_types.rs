@@ -181,6 +181,22 @@ pub enum SimState {
     Dead { time: f32, target_time: f32 },
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum PlayerState {
+    Idle,
+    Running, 
+    Jumping,
+    Freefalling,
+    Attacking,
+    Dying,
+    Dead { time: f32, target_time: f32 },
+}
+
+pub struct PlayerController {
+    pub state: PlayerState,
+    pub time_in_state: f32,
+}
+
 #[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]
 pub enum AnimationType {
     Run,
