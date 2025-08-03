@@ -164,6 +164,11 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
                 return PlayerState::Attacking
             }
 
+            if rb.linvel().y <= (-(GRAVITY * DECREASED_GRAVITY_SCALAR) + ANIMATION_EPSILON) && controller.time_in_state >= 0.5 {
+                animator.set_next_animation(AnimationType::Freefall);
+                return PlayerState::Freefalling
+            }
+
             return PlayerState::Idle
         },
         PlayerState::Jumping => {
@@ -214,6 +219,11 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
                 controller.time_in_state = 0.0;
                 return PlayerState::Attacking
+            }
+
+            if rb.linvel().y <= (-(GRAVITY * DECREASED_GRAVITY_SCALAR) + ANIMATION_EPSILON) && controller.time_in_state >= 0.5 {
+                animator.set_next_animation(AnimationType::Freefall);
+                return PlayerState::Freefalling
             }
 
             return PlayerState::Running
