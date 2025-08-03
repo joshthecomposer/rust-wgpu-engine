@@ -70,16 +70,14 @@ fn handle_player_movement_rapier(
             let anim = animator.animations.get_mut(&AnimationType::Jump).unwrap();
             anim.current_time = 0.0;
 
+            rb.set_gravity_scale(0.5, true);
             rb.apply_impulse(Vec3::new(0.0, 0.65, 0.0).into(), true);
 
             em.impulse_applied.insert(player_key, true);
-            rb.set_gravity_scale(0.5, true);
         }
 
 
-        if vy < 0.0 { 
-            rb.set_gravity_scale(0.8, true); 
-        } else if vy < ANIMATION_EPSILON && vy > -ANIMATION_EPSILON {
+        if vy < ANIMATION_EPSILON && vy > -ANIMATION_EPSILON {
             animator.set_next_animation(AnimationType::Idle);
             em.impulse_applied.remove(player_key);
             rb.set_gravity_scale(1.0, true);
