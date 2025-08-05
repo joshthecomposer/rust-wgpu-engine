@@ -50,6 +50,12 @@ fn handle_player_movement_rapier(
     }
 
     if player_state.state == PlayerState::Jumping || player_state.state == PlayerState::Freefalling {
+        let transform = em.transforms.get_mut(player_key).unwrap();
+        let physics_handle = em.physics_handles.get(player_key).unwrap();
+        let rb = ps.rigid_body_set.get(physics_handle.rigid_body).unwrap();
+        let iso = rb.position();
+        transform.position = Vec3::from_slice(iso.translation.vector.as_slice());
+        transform.rotation = Quat::from_array(iso.rotation.coords.as_slice().try_into().unwrap());
         return;
     }
 

@@ -2,7 +2,7 @@
 use glam::{vec3, Mat4, Vec3};
 use glfw::{Action, Key, PWindow, WindowEvent};
 
-use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction}};
+use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction, PlayerState}};
 
 pub struct Camera {
     pub yaw: f64,
@@ -89,6 +89,7 @@ impl Camera {
             CameraState::Third => {
                 if let Some(player_key) = _em.factions.iter().find(|e| e.value() == &Faction::Player) {
                     let player_transform = _em.transforms.get(player_key.key()).unwrap();
+                    let player_controller = _em.player_controllers.get(player_key.key()).unwrap();
 
                     self.desired_target = player_transform.position + vec3(0.0, 1.1, 0.0);
 
@@ -100,7 +101,21 @@ impl Camera {
                     let z = self.distance_from_target * yaw_rad.sin() * pitch_rad.cos();
 
                     self.desired_position = self.desired_target + vec3(x, y, z);
+                    
+                    if player_controller.state == PlayerState::Freefalling && 
+                        player_controller.time_in_state >= 0.5 {
+                        self.position = self.desired_position;
+                        self.target = self.desired_target;
+                    } else {
+                        let smoothing = 50.0 * dt; // higher value is faster lerp
+                        self.position = self.position.lerp(self.desired_position, smoothing);
+                        self.target = self.target.lerp(self.desired_target, smoothing);
+                    }
+
+                    self.forward = (self.target - self.position).normalize();
                 }
+
+
                 
                 // Interpolate camera
                 // TODO: Because the player is falling at a constant speed, I think the camera
@@ -108,10 +123,9 @@ impl Camera {
                 // Maybe there should be some check to determine that the player is in freefall
                 // and we turn off the smoothing or something... hmm. Or maybe depending on the 
                 // game idea, we just freeze the camera and watch the character fall away
-                let smoothing = 50.0 * dt; // higher value is faster lerp
-                self.position = self.position.lerp(self.desired_position, smoothing);
-                self.target = self.target.lerp(self.desired_target, smoothing);
-                self.forward = (self.target - self.position).normalize();
+    
+                // uncomment this to not interpolate camera.
+
             }
             CameraState::Locked => {
                 self.target = self.locked_target;
