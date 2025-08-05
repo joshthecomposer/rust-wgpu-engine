@@ -179,11 +179,17 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
                 return PlayerState::Freefalling
             }
 
+            if rb.linvel().y <= ANIMATION_EPSILON && rb.linvel().y >= -ANIMATION_EPSILON {
+
+                controller.time_in_state = 0.0;
+                return PlayerState::Running;
+            }
+
             return PlayerState::Jumping
         },
         PlayerState::Freefalling => {
             controller.time_in_state += dt;
-            if rb.linvel().y <= ANIMATION_EPSILON && rb.linvel().y >= -ANIMATION_EPSILON {
+            if rb.linvel().y.abs() < ANIMATION_EPSILON {
                 controller.time_in_state = 0.0;
                 return PlayerState::Running;
             }
