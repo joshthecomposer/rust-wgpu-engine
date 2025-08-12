@@ -3,3 +3,18 @@ Create a renderer for the Rapier colliders/hitboxes. (this is mostly done)
 The LOD fade on the tree leaves is ugly and the alpha turns to black. I hard-coded it to default to white to make the distant trees look a smidge better.
 Likely what we should do is just have an LOD model for trees to make this look better, and also fog can make this look better.
 Another idea is to have a separate shader for the trees / plants and we can do something better with it like match the color etc.
+
+===================================================================================================================
+
+ Looking at resources/models/static/weapons/swords/001_orc_sword_bc.txt:
+ We have the output of each material color, and we couldd probably refer to those in the COLOR: fields below similar
+ to bones. Look into this. Otherwise what we're actually reading on the COLOR: field is the color that I directly painted
+ onto the face of the vertex (different than the material colors above, but I think we could connect them somehow)
+
+===================================================================================================================
+
+OPTIMIZATION: look into root motion, this is going to be especially important for attack animations.
+
+===================================================================================================================
+
+===================================================================================================================
