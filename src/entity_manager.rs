@@ -164,7 +164,7 @@ impl EntityManager {
                 Vec3::splat(1.0), 
                 Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2) * Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2), 
                 Quat::IDENTITY, 
-                "resources/models/static/weapons/swords/001_orc_sword.txt", 
+                "resources/models/static/weapons/swords/001_orc_sword_bc.txt", 
                 None,
                 ps,
             );
