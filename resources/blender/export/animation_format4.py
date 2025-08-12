@@ -1,4 +1,3 @@
-
 import bpy
 import os
 import mathutils

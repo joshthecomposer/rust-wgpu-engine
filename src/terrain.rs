@@ -1,5 +1,5 @@
 use gl::ActiveTexture;
-use glam::{vec2, vec3, Vec3};
+use glam::{vec2, vec3, vec4, Vec3, Vec4};
 use image::GenericImageView;
 use imgui::sys::igSetWindowPosVec2;
 use nalgebra::Point3;
@@ -117,6 +117,7 @@ impl Terrain {
                 position: vec3(v[0], v[1], v[2]),
                 normal: vec3(n[0], n[1], n[2]),
                 uv,
+                base_color: Vec4::splat(1.0),
 
                 bone_ids: [-1; MAX_BONE_INFLUENCE],
                 bone_weights: [0.0; MAX_BONE_INFLUENCE],

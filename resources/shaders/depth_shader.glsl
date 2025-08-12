@@ -1,8 +1,8 @@
 // VERTEX_SHADER
 #version 460 core
 layout (location = 0) in vec3 a_pos;
-layout (location = 3) in ivec4 bone_ids;
-layout (location = 4) in vec4 bone_weights;
+layout (location = 4) in ivec4 bone_ids;
+layout (location = 5) in vec4 bone_weights;
 
 uniform mat4 light_space_mat;
 uniform mat4 model;

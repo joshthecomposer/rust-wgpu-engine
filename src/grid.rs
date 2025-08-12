@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use std::fs::read_to_string;
 
-use glam::{vec2, Vec3};
+use glam::{vec2, Vec3, Vec4};
 use glam::vec3;
 use image::{ImageBuffer, Rgba};
 
@@ -124,10 +124,10 @@ impl Grid {
 
 
                 // Add vertices for the cell
-                vertices.push(Vertex { position: vec3(x, 0.0, z), normal: vec3(0.0, 1.0, 0.0), uv: bl, bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE] });
-                vertices.push(Vertex { position: vec3(x + self.cell_size, 0.0, z), normal: vec3(0.0, 1.0, 0.0), uv: br,bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE] });
-                vertices.push(Vertex { position: vec3(x + self.cell_size, 0.0, z + self.cell_size), normal: vec3(0.0, 1.0, 0.0), uv: tr, bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE] });
-                vertices.push(Vertex { position: vec3(x, 0.0, z + self.cell_size), normal: vec3(0.0, 1.0, 0.0), uv: tl, bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE] });
+                vertices.push(Vertex { position: vec3(x, 0.0, z), normal: vec3(0.0, 1.0, 0.0), uv: bl, bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE], base_color: Vec4::splat(1.0) });
+                vertices.push(Vertex { position: vec3(x + self.cell_size, 0.0, z), normal: vec3(0.0, 1.0, 0.0), uv: br,bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE], base_color: Vec4::splat(1.0) });
+                vertices.push(Vertex { position: vec3(x + self.cell_size, 0.0, z + self.cell_size), normal: vec3(0.0, 1.0, 0.0), uv: tr, bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE], base_color: Vec4::splat(1.0) });
+                vertices.push(Vertex { position: vec3(x, 0.0, z + self.cell_size), normal: vec3(0.0, 1.0, 0.0), uv: tl, bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE], base_color: Vec4::splat(1.0) });
 
                 // Add indices for two triangles
                 // flipped winding

@@ -35,7 +35,7 @@ impl Renderer {
         unsafe {
             gl::Uniform1i(loc, 1); 
         }
-        let model_shader = Shader::new("resources/shaders/model.glsl");
+        let model_shader = Shader::new("resources/shaders/color_for_texture.glsl");
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
         let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");

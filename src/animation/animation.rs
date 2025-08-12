@@ -12,6 +12,7 @@ pub struct Vertex {
     pub position: Vec3,
     pub normal: Vec3,
     pub uv: Vec2,
+    pub base_color: Vec4,
 
     pub bone_ids: [i32; MAX_BONE_INFLUENCE],
     pub bone_weights: [f32; MAX_BONE_INFLUENCE],
@@ -23,6 +24,7 @@ impl Vertex {
             position,
             normal,
             uv: Vec2::new(0.0, 0.0),
+            base_color: Vec4::new(1.0, 0.0, 0.0, 1.0),
 
             bone_ids: [-1; MAX_BONE_INFLUENCE],
             bone_weights: [0.0; MAX_BONE_INFLUENCE],
@@ -50,6 +52,8 @@ pub struct Model {
 
     pub directory: String,
     pub full_path: String,
+
+    pub color_for_texture: bool,
 }
 
 impl Model {
@@ -65,6 +69,8 @@ impl Model {
 
             directory: String::new(),
             full_path: String::new(),
+
+            color_for_texture: false,
         }
     }
 
@@ -122,18 +128,29 @@ impl Model {
                 offset_of!(Vertex, uv) as *const _
             ));
 
+
             gl_call!(gl::EnableVertexAttribArray(3));
+            gl_call!(gl::VertexAttribPointer(
+                3, 
+                4, 
+                gl::FLOAT, 
+                gl::FALSE, 
+                mem::size_of::<Vertex>() as i32, 
+                offset_of!(Vertex, base_color) as *const _
+            ));
+
+            gl_call!(gl::EnableVertexAttribArray(4));
             gl_call!(gl::VertexAttribIPointer( 
-                3,
+                4,
                 4,
                 gl::INT,
                 mem::size_of::<Vertex>() as i32,
                 offset_of!(Vertex, bone_ids) as *const _
             ));
 
-            gl_call!(gl::EnableVertexAttribArray(4));
+            gl_call!(gl::EnableVertexAttribArray(5));
             gl_call!(gl::VertexAttribPointer(
-                4,
+                5,
                 4,
                 gl::FLOAT,
                 gl::FALSE,
@@ -147,22 +164,26 @@ impl Model {
 
     pub fn draw(&self, shader: &mut Shader) {
         shader.activate();
-        if self.textures[8].is_some() {
-            shader.set_bool("has_opacity_texture", true);
-        }
-        for (i, texture) in self.textures.iter().enumerate() {
-            if let Some(texture) = texture {
+        if self.color_for_texture {
+            shader.set_bool("use_base_color", true);
+        } else {
+            if self.textures[8].is_some() {
+                shader.set_bool("has_opacity_texture", true);
+            }
+            for (i, texture) in self.textures.iter().enumerate() {
+                if let Some(texture) = texture {
 
-                let gl_tex_key = i;
+                    let gl_tex_key = i;
 
-                unsafe { 
-                    gl_call!(gl::ActiveTexture(gl::TEXTURE0 + gl_tex_key as u32));
-                }
+                    unsafe { 
+                        gl_call!(gl::ActiveTexture(gl::TEXTURE0 + gl_tex_key as u32));
+                    }
 
-                let final_str = format!("material.{}", texture._type);
-                shader.set_int(final_str.as_str(), gl_tex_key as u32);
-                unsafe {
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture.id));
+                    let final_str = format!("material.{}", texture._type);
+                    shader.set_int(final_str.as_str(), gl_tex_key as u32);
+                    unsafe {
+                        gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture.id));
+                    }
                 }
             }
         }
@@ -177,6 +198,7 @@ impl Model {
             ));
 
             shader.set_bool("has_opacity_texture", false);
+            shader.set_bool("use_base_color", false);
             gl_call!(gl::BindVertexArray(0));
 
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
@@ -793,7 +815,7 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
 
 pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
     let data = std::fs::read_to_string(file_path).unwrap();
-    let mut lines = data.lines();
+    let mut lines = data.lines().peekable();
 
     let mut model = Model::new();
 
@@ -804,6 +826,9 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
     model.directory = directory.to_string();
     model.full_path = file_path.to_string();
 
+    let mut use_color_for_texture = false;   // header toggle (if present)
+    let mut saw_any_color = false;           // infer from data
+
     while let Some(line) = lines.next() {
         let parts: Vec<&str> = line.split_whitespace().collect();
 
@@ -812,16 +837,36 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
         }
 
         match parts[0] {
+            "USE_COLOR_FOR_TEXTURE" => {},
             "MEME" => {}
             "VERT:" => {
                 let position = parse_vec3(lines.next().unwrap());
                 let normal = parse_vec3(lines.next().unwrap());
                 let uv = parse_vec2(lines.next().unwrap());
 
+                let mut base_color = glam::Vec4::splat(1.0);
+
+                if let Some(peek) = lines.peek() {
+                    if peek.trim_start().starts_with("COLOR:") {
+                        let color_line = lines.next().unwrap(); // consume it
+                        let col_str = color_line.trim_start_matches("COLOR:").trim();
+                        let parsed = parse_vec4(col_str);
+                        base_color = parsed;
+
+                        // mark that we saw color data
+                        saw_any_color = true;
+
+                        // If you want presence of COLOR to auto-enable usage:
+                        // (remove this if you only want to respect the header directive)
+                        use_color_for_texture = true;
+                    }
+                }
+
                 let mut vertex = Vertex {
                     position,
                     normal,
                     uv,
+                    base_color,
                     bone_ids: [-1; MAX_BONE_INFLUENCE],
                     bone_weights: [0.0; MAX_BONE_INFLUENCE],
                 };
@@ -883,6 +928,8 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
             _ => {}
         }
     }
+
+    model.color_for_texture = use_color_for_texture || saw_any_color;
 
     model.setup_opengl();
 
