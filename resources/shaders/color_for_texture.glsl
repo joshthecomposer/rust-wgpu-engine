@@ -147,7 +147,7 @@ vec4 calculate_directional_light() {
         alpha     = base_color.a;
     } else {
         float view_dist = length(view_position - FragPos);
-        float lod = clamp((view_dist - 4.5) / 3.0, 0.0, 10.0);
+        float lod = clamp((view_dist - 5.0) / 5.0, 0.0, 30.0);
         vec4 tex_sample = textureLod(material.Diffuse, TexCoords, lod);
 
         // keep your “transparent becomes white” safety
@@ -161,7 +161,7 @@ vec4 calculate_directional_light() {
     vec3 spec_color  = texture(material.Specular,  TexCoords).rgb;
     vec3 emiss_color = texture(material.Emissive, TexCoords).rgb;
 
-    if (alpha_test_pass && alpha < 0.1)
+    if (alpha_test_pass && alpha < 0.5)
         discard;
 
     if (flash_white) {

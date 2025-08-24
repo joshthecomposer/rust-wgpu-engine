@@ -65,7 +65,9 @@ impl GameState {
         #[cfg(target_os = "macos")]
         glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
 
-        let (mut width, mut height):(i32, i32) = (1920, 1080);
+        glfw.window_hint(glfw::WindowHint::Samples(Some(16)));
+
+        let (mut width, mut height):(i32, i32) = (1280, 720);
 
         let (mut window, events) = glfw
             .create_window(width as u32, height as u32, "Hello this is window", glfw::WindowMode::Windowed)
@@ -89,8 +91,8 @@ impl GameState {
                         // glfw::WindowMode::FullScreen(monitor),
                         100,      // X-position on that monitor
                         100,      // Y-position on that monitor
-                        1920,
-                        1080,
+                        1920 as u32,
+                        1080 as u32,
                         // width as u32,
                         // height as u32,
                         Some(refresh_rate)
@@ -117,6 +119,7 @@ impl GameState {
             gl::Enable(gl::DEBUG_OUTPUT);
             gl::Enable(gl::BLEND);
             gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+            gl::Enable(gl::MULTISAMPLE);
         }
 
         // =============================================================
@@ -144,8 +147,8 @@ impl GameState {
         let imgui_manager = ImguiManager::new(&mut window);
 
         //TERRAIN
-        // let mut terrain = Terrain::from_height_map("resources/textures/grid_height.png");
-        let mut terrain = Terrain::from_height_map("resources/textures/perlin_small.png");
+        // let mut terrain = Terrain::from_height_map("resources/textures/perlin.png");
+        let mut terrain = Terrain::from_height_map("resources/textures/brushes/301B1.png");
 
         let model = terrain.into_opengl_model();
 

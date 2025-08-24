@@ -168,7 +168,8 @@ impl ImguiManager {
                                         entity_type: e_type.value().clone(),
                                         faction: faction.clone(),
                                         position: trans.position.into(),
-                                        rotation: (trans.rotation * trans.original_rotation.inverse()).into(),
+                                        // rotation: (trans.rotation).into(),
+                                        rotation: (Quat::IDENTITY).into(),
                                     }
                                 );
                             }

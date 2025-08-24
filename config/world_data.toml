@@ -1,41 +1,48 @@
 [[entities]]
 entity_type = "YRobot"
 faction = "Player"
-position = [4.9224, 10.0, -13.6717]
-rotation = [0.0, -1.0, 0.0, 0.05]
+position = [-33.9139, -5.0516, -121.0264]
+rotation = [0.0, 0.0, 0.0, 1.0]
 
 [[entities]]
 entity_type = "YRobot"
 faction = "Enemy"
-position = [30.9224, 10.0, -20.6717]
-rotation = [0.0, -1.0, 0.0, 0.05]
+position = [30.2394, -8117.458, -20.146]
+rotation = [0.0, 0.0, 0.0, 1.0]
 
 [[entities]]
 entity_type = "MooseMan"
 faction = "Enemy"
-position = [11.312, 0.0, 8.1137]
+position = [3.0967, -8120.707, 16.4185]
 rotation = [0.0, 0.0, 0.0, 1.0]
 
 [[entities]]
 entity_type = "TreeFoliage"
 faction = "Static"
-position = [-3.9293, 0.0, 14.0707]
+position = [-3.9293, 19.2934, 14.0707]
 rotation = [0.0, 0.0, 0.0, 1.0]
 
 [[entities]]
 entity_type = "TreeTrunk"
 faction = "Static"
-position = [-4.0707, 0.0, 13.9293]
+position = [-4.0707, 19.238, 13.9293]
 rotation = [0.0, 0.0, 0.0, 1.0]
 
 [[entities]]
 entity_type = "TreeFoliage"
 faction = "Static"
-position = [19.1117, 0.0, 16.6127]
+position = [19.1117, 28.5057, 16.6127]
 rotation = [0.0, 0.0, 0.0, 1.0]
 
 [[entities]]
 entity_type = "TreeTrunk"
 faction = "Static"
-position = [18.9703, 0.0, 16.4713]
+position = [18.9703, 28.4139, 16.4713]
 rotation = [0.0, 0.0, 0.0, 1.0]
+
+[[entities]]
+entity_type = "OrcSword"
+faction = "Item"
+position = [5.8415, -4.3887, -134.591]
+rotation = [0.0, 0.0, 0.0, 1.0]
+

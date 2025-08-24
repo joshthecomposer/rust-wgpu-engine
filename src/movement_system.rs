@@ -45,20 +45,20 @@ fn handle_player_movement_rapier(
         return;
     }
 
-    if player_state.state == PlayerState::Attacking {
-        return;
-    }
+    // if player_state.state == PlayerState::Attacking {
+    //     return;
+    // }
 
     let physics_handle = em.physics_handles.get(player_key).unwrap();
     let rb = ps.rigid_body_set.get(physics_handle.rigid_body).unwrap();
 
-    if matches!(player_state.state, PlayerState::Jumping | PlayerState::Freefalling) && rb.linvel().y.abs() > ANIMATION_EPSILON {
-        let transform = em.transforms.get_mut(player_key).unwrap();
-        let iso = rb.position();
-        transform.position = Vec3::from_slice(iso.translation.vector.as_slice());
-        transform.rotation = Quat::from_array(iso.rotation.coords.as_slice().try_into().unwrap());
-        return;
-    }
+    // if matches!(player_state.state, PlayerState::Jumping | PlayerState::Freefalling) && rb.linvel().y.abs() > ANIMATION_EPSILON {
+    //     let transform = em.transforms.get_mut(player_key).unwrap();
+    //     let iso = rb.position();
+    //     transform.position = Vec3::from_slice(iso.translation.vector.as_slice());
+    //     transform.rotation = Quat::from_array(iso.rotation.coords.as_slice().try_into().unwrap());
+    //     return;
+    // }
 
     let speed = 2.0;
     let mut move_dir = vec3(0.0, 0.0, 0.0);
@@ -83,7 +83,7 @@ fn handle_player_movement_rapier(
         linvel.x = move_dir.x * speed;
         linvel.z = move_dir.z * speed;
 
-        let yaw = f32::atan2(-move_dir.x, -move_dir.z);
+        let yaw = f32::atan2(move_dir.x, move_dir.z);
         let desired_rot = Quat::from_rotation_y(yaw) * transform.original_rotation;
 
         if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {

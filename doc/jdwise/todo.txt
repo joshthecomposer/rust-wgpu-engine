@@ -17,4 +17,8 @@ OPTIMIZATION: look into root motion, this is going to be especially important fo
 
 ===================================================================================================================
 
+Rotation bug:
+
+Example: The player rotatoin is saved as [0.0, 0.0, 0.0, 1.0] (identity rotation). When the player is loaded, the bones of the model are corrected because the player is rotated 90 degress on the X or Z axis. When we save the rotation in game, this messes up the correction because now we are correcting it and not applying the saved rotation. But the saved rotation is used for calculating the new rotations when moving, so it breaks it. We should figure out how to fix this. For now, we are going to disable saving rotation and instead only save position.
+
 ===================================================================================================================

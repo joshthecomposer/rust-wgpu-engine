@@ -28,7 +28,7 @@ impl Terrain {
         let height_map: Vec<f32> = grayscale
             .pixels()
             // TODO: replace 10.0 with some max height value
-            .map(|p| p[0] as f32 / 255.0 * 10.0)
+            .map(|p| p[0] as f32 / 255.0 * 50.0)
             .collect();
 
         // VERTICES
