@@ -50,7 +50,7 @@ fn handle_player_movement_rapier(
     // }
 
     let physics_handle = em.physics_handles.get(player_key).unwrap();
-    let rb = ps.rigid_body_set.get(physics_handle.rigid_body).unwrap();
+    let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
 
     // if matches!(player_state.state, PlayerState::Jumping | PlayerState::Freefalling) && rb.linvel().y.abs() > ANIMATION_EPSILON {
     //     let transform = em.transforms.get_mut(player_key).unwrap();
@@ -73,8 +73,6 @@ fn handle_player_movement_rapier(
 
     let transform = em.transforms.get_mut(player_key).unwrap();
     let rotator = em.rotators.get_mut(player_key).unwrap();
-    let physics_handle = em.physics_handles.get(player_key).unwrap();
-    let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
 
     let mut linvel = *rb.linvel();
 
@@ -84,7 +82,7 @@ fn handle_player_movement_rapier(
         linvel.z = move_dir.z * speed;
 
         let yaw = f32::atan2(-move_dir.x, -move_dir.z);
-        let desired_rot = Quat::from_rotation_y(yaw) * transform.original_rotation;
+        let desired_rot = Quat::from_rotation_y(yaw); // * transform.original_rotation;
 
         if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {
             rotator.next_rot = desired_rot;
