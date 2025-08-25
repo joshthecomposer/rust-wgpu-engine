@@ -208,6 +208,19 @@ vec4 calculate_directional_light() {
     return vec4(result_rgb, alpha);
 }
 
+// DEBUG NORMALS
+// void main() {
+//     vec3 n = normalize(Normal);
+//     FragColor = vec4(abs(n), 1.0); // RGB encodes normals
+// }
+
+// DEBUG DIFFUSE
+// void main() {
+// 	vec4 dbg = texture(material.Diffuse, TexCoords);
+// 	FragColor = vec4(dbg.rgb, 1.0); return;
+// }
+
+
 void main() {
     FragColor = calculate_directional_light();
 }

@@ -74,6 +74,26 @@ impl Model {
         }
     }
 
+    /// Get a texture by index (0 = Diffuse, 1 = Specular, etc.)
+    pub fn get_tex(&self, index: usize) -> Option<&Texture> {
+        if index < self.textures.len() {
+            self.textures[index].as_ref()
+        } else {
+            None
+        }
+    }
+
+    /// Convenience: get by "type" using a fixed mapping
+    pub fn get_tex_by_type(&self, tex_type: &str) -> Option<&Texture> {
+        match tex_type {
+            "Diffuse"  => self.textures[0].as_ref(),
+            "Specular" => self.textures[1].as_ref(),
+            "Emissive" => self.textures[2].as_ref(),
+            "Opacity"  => self.textures[3].as_ref(),
+            _ => None,
+        }
+    }
+
     pub fn setup_opengl(&mut self) {
         unsafe {
             gl_call!(gl::GenVertexArrays(1, &mut self.vao));
@@ -163,28 +183,25 @@ impl Model {
     }
 
     pub fn draw(&self, shader: &mut Shader) {
-        shader.activate();
         if self.color_for_texture {
             shader.set_bool("use_base_color", true);
+            shader.set_bool("has_opacity_texture", false);
         } else {
-            if self.textures[8].is_some() {
-                shader.set_bool("has_opacity_texture", true);
+            shader.set_bool("use_base_color", false);
+            if let Some(diff) = self.get_tex(1) { // Diffuse
+                unsafe { gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, diff.id); }
             }
-            for (i, texture) in self.textures.iter().enumerate() {
-                if let Some(texture) = texture {
-
-                    let gl_tex_key = i;
-
-                    unsafe { 
-                        gl_call!(gl::ActiveTexture(gl::TEXTURE0 + gl_tex_key as u32));
-                    }
-
-                    let final_str = format!("material.{}", texture._type);
-                    shader.set_int(final_str.as_str(), gl_tex_key as u32);
-                    unsafe {
-                        gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture.id));
-                    }
-                }
+            if let Some(spec) = self.get_tex(2) { // Specular
+                unsafe { gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, spec.id); }
+            }
+            if let Some(emis) = self.get_tex(3) { // Emissive
+                unsafe { gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, emis.id); }
+            }
+            if let Some(opac) = self.get_tex(8) {
+                shader.set_bool("has_opacity_texture", true);
+                unsafe { gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, opac.id); }
+            } else {
+                shader.set_bool("has_opacity_texture", false);
             }
         }
 
@@ -200,26 +217,6 @@ impl Model {
             shader.set_bool("has_opacity_texture", false);
             shader.set_bool("use_base_color", false);
             gl_call!(gl::BindVertexArray(0));
-
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::ActiveTexture(gl::TEXTURE1));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::ActiveTexture(gl::TEXTURE2));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::ActiveTexture(gl::TEXTURE3));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::ActiveTexture(gl::TEXTURE4));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::ActiveTexture(gl::TEXTURE5));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::ActiveTexture(gl::TEXTURE6));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::ActiveTexture(gl::TEXTURE7));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::ActiveTexture(gl::TEXTURE8));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::ActiveTexture(gl::TEXTURE9));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
         }
     }
 }

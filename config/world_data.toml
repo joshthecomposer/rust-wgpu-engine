@@ -11,79 +11,43 @@ position = [-49.0062, -5.3441, -119.7894]
 rotation = [0.0, 0.8701, 0.0, 0.4929]
 
 [[entities]]
+entity_type = "YRobot"
+faction = "Enemy"
+position = [-20.0062, 10.3441, -119.7894]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+
+[[entities]]
 entity_type = "MooseMan"
 faction = "Enemy"
 position = [3.0967, -151254.6563, 16.4185]
 rotation = [0.0, 0.0, 0.0, 1.0]
 
-[[entities]]
-entity_type = "TreeFoliage"
-faction = "Static"
-position = [-3.9293, 19.2934, 14.0707]
-rotation = [0.0, 0.0, 0.0, 1.0]
-
-[[entities]]
-entity_type = "TreeTrunk"
-faction = "Static"
-position = [-4.0707, 19.238, 13.9293]
-rotation = [0.0, 0.0, 0.0, 1.0]
-
-[[entities]]
-entity_type = "TreeFoliage"
-faction = "Static"
-position = [19.1117, 28.5057, 16.6127]
-rotation = [0.0, 0.0, 0.0, 1.0]
-
-[[entities]]
-entity_type = "TreeTrunk"
-faction = "Static"
-position = [18.9703, 28.4139, 16.4713]
-rotation = [0.0, 0.0, 0.0, 1.0]
+# [[entities]]
+# entity_type = "TreeFoliage"
+# faction = "Static"
+# position = [-3.9293, 19.2934, 14.0707]
+# rotation = [0.0, 0.0, 0.0, 1.0]
+# 
+# [[entities]]
+# entity_type = "TreeTrunk"
+# faction = "Static"
+# position = [-4.0707, 19.238, 13.9293]
+# rotation = [0.0, 0.0, 0.0, 1.0]
+# 
+# [[entities]]
+# entity_type = "TreeFoliage"
+# faction = "Static"
+# position = [19.1117, 28.5057, 16.6127]
+# rotation = [0.0, 0.0, 0.0, 1.0]
+# 
+# [[entities]]
+# entity_type = "TreeTrunk"
+# faction = "Static"
+# position = [18.9703, 28.4139, 16.4713]
+# rotation = [0.0, 0.0, 0.0, 1.0]
 
 [[entities]]
 entity_type = "OrcSword"
 faction = "Item"
 position = [5.8415, -4.3887, -134.591]
 rotation = [0.0, 0.0, 0.0, 1.0]
-
-[[entities]]
-entity_type = "OrcSword"
-faction = "Item"
-position = [-61.6646, -4.6496, -131.4491]
-rotation = [0.0, 0.0, 0.0, 1.0]
-
-[[entities]]
-entity_type = "OrcSword"
-faction = "Item"
-position = [0.0, 0.0, 0.0]
-rotation = [0.0, 0.0, 0.0, 1.0]
-
-[[entities]]
-entity_type = "OrcSword"
-faction = "Item"
-position = [-73.8651, -4.4626, -102.4924]
-rotation = [0.0, 0.0, 0.0, 1.0]
-
-[[entities]]
-entity_type = "OrcSword"
-faction = "Item"
-position = [-27.1716, -3.2845, -111.9685]
-rotation = [-0.6169, -0.6488, 0.1558, 0.4173]
-
-[[entities]]
-entity_type = "OrcSword"
-faction = "Item"
-position = [0.0, 0.0, 0.0]
-rotation = [-0.5, 0.5, -0.5, 0.5]
-
-[[entities]]
-entity_type = "OrcSword"
-faction = "Item"
-position = [-71.3221, -4.4536, -112.861]
-rotation = [0.6116, 0.7653, 0.1997, 0.0197]
-
-[[entities]]
-entity_type = "OrcSword"
-faction = "Item"
-position = [0.0, 0.0, 0.0]
-rotation = [-0.5, 0.5, -0.5, 0.5]

@@ -7,10 +7,17 @@ use image::GenericImageView;
 
 use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{EntityType, Faction, FboType, ShaderType, VaoType}, gl_call, grid::Grid, lights::Lights, shaders::Shader, some_data::{FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES}, sound::{fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR}, sound_manager::SoundManager}};
 
+pub struct DefaultTextures {
+    pub white: u32,
+    pub black: u32,
+    pub opaque: u32,
+}
+
 pub struct Renderer {
     pub shaders: HashMap<ShaderType, Shader>,
     pub vaos: HashMap<VaoType, u32>,
     pub fbos: HashMap<FboType, u32>,
+    pub defaults: DefaultTextures,
     pub depth_map: u32,
     pub cubemap_texture: u32,
 
@@ -36,6 +43,12 @@ impl Renderer {
             gl::Uniform1i(loc, 1); 
         }
         let model_shader = Shader::new("resources/shaders/color_for_texture.glsl");
+        model_shader.activate();
+        model_shader.set_int("material.Diffuse",  1);  // matches your binds below
+        model_shader.set_int("material.Specular", 2);
+        model_shader.set_int("material.Emissive", 3);
+        model_shader.set_int("material.Opacity",  4);  // we'll bind opacity on unit 4
+        model_shader.set_int("shadow_map",        7);  // keep this well away from material slots
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
         let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");
@@ -219,11 +232,19 @@ impl Renderer {
         shaders.insert(ShaderType::Particles, particle_shader);
         shaders.insert(ShaderType::GameUi, game_ui_shader);
 
+        // DEFAULT TEXTURES
+        let defaults = DefaultTextures {
+            white:  Self::make_solid_texture(255,255,255,255),
+            black:  Self::make_solid_texture(0,0,0,255),
+            opaque: Self::make_solid_texture(255,255,255,255),
+        };
+
         Self {
             shaders,
             vaos,
             fbos,
             depth_map,
+            defaults,
 
             cubemap_texture,
             shadow_debug: false,
@@ -306,9 +327,39 @@ impl Renderer {
         }
     }
 
+    fn make_solid_texture(r: u8, g: u8, b: u8, a: u8) -> u32 {
+        let mut id = 0;
+        unsafe {
+            gl::GenTextures(1, &mut id);
+            gl::BindTexture(gl::TEXTURE_2D, id);
+            let pix = [r, g, b, a];
+            gl::TexImage2D(
+                gl::TEXTURE_2D, 0, gl::RGBA8 as i32, 1, 1, 0,
+                gl::RGBA, gl::UNSIGNED_BYTE, pix.as_ptr() as *const _
+            );
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+            gl::BindTexture(gl::TEXTURE_2D, 0);
+        }
+        id
+    }
+
     fn ani_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, sound_manager: &mut SoundManager, ids: Vec<usize>, elapsed: f32) {
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
         shader.activate();
+
+        unsafe {
+            gl::ActiveTexture(gl::TEXTURE7);
+            gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
+                
+            // Set default textures for models that don't have one
+            gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
+            gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
+            gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
+            gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
+        }
 
         shader.set_bool("is_animated", true);
         shader.set_bool("alpha_test_pass", false);
@@ -399,6 +450,13 @@ impl Renderer {
             gl_call!(gl::Enable(gl::DEPTH_TEST));
             gl_call!(gl::DepthMask(gl::TRUE)); // Allow writing to depth buffer
             gl_call!(gl::Disable(gl::BLEND));
+
+
+            // Set default textures for models that don't have one
+            gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
+            gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
+            gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
+            gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
         }
         // Alpha pass
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
