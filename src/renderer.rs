@@ -297,9 +297,11 @@ impl Renderer {
 
         // Animated models
         let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);
+        let trash_guy_ids = em.get_ids_for_type(EntityType::TrashGuy);
         let moose_ids = em.get_ids_for_type(EntityType::MooseMan);
 
         self.ani_model_pass(camera, em, light_manager, sound_manager, y_robot_ids, elapsed);
+        self.ani_model_pass(camera, em, light_manager, sound_manager, trash_guy_ids, elapsed);
         self.ani_model_pass(camera, em, light_manager, sound_manager, moose_ids, elapsed);
     }
 

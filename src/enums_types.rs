@@ -78,6 +78,7 @@ pub enum EntityType {
     Cylinder,
     Stump,
     OrcSword,
+    TrashGuy,
 }
 
 impl Display for EntityType {
@@ -92,6 +93,7 @@ impl Display for EntityType {
             EntityType::Cylinder => write!(f, "Cylinder"),
             EntityType::Stump => write!(f, "Stump"),
             EntityType::OrcSword => write!(f, "OrcSword"),
+            EntityType::TrashGuy => write!(f, "TrashGuy"),
         }
     }
 }

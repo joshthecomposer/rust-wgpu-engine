@@ -148,8 +148,10 @@ impl ImguiManager {
                         };
 
                         for e_type in em.entity_types.iter() {
-                            if *e_type.value() == EntityType::Terrain {
-                                continue;
+                            match *e_type.value() {
+                                EntityType::Terrain => { continue; }
+                                EntityType::OrcSword => { continue; }
+                                _ => ()
                             }
 
                             if let (
@@ -221,8 +223,8 @@ impl ImguiManager {
 
                 });
 
-        } 
-
+        }
+        /*
         ui.window("Some Info")
             .size([400.0, 150.0], imgui::Condition::FirstUseEver)
             .position([1100.0, 50.0], imgui::Condition::FirstUseEver)
@@ -269,6 +271,7 @@ impl ImguiManager {
 
 
             });
+*/
 
         self.renderer.render(&mut self.imgui);
     }

@@ -137,9 +137,11 @@ impl EntityManager {
                 Faction::Item, 
                 Vec3::splat(0.0), 
                 Vec3::splat(1.0), 
-                Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2) * Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2), 
+                // Quat::IDENTITY,
+                // 90 about y and then -90 about z, this gives us a perpendicular weapon.
+                Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
                 Quat::IDENTITY, 
-                "resources/models/static/weapons/swords/001_double_axe.txt", 
+                "resources/models/static/weapons/swords/001_double_axe_new.txt", 
                 None,
                 ps,
             );

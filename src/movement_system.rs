@@ -81,7 +81,7 @@ fn handle_player_movement_rapier(
         linvel.x = move_dir.x * speed;
         linvel.z = move_dir.z * speed;
 
-        let yaw = f32::atan2(-move_dir.x, -move_dir.z);
+        let yaw = f32::atan2(move_dir.x, move_dir.z);
         let desired_rot = Quat::from_rotation_y(yaw); // * transform.original_rotation;
 
         if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {

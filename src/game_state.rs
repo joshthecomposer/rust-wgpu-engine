@@ -30,7 +30,7 @@ pub struct GameState {
 
     pub entity_manager: EntityManager,
     pub light_manager: Lights,
-    pub imgui_manager: ImguiManager,
+    //pub imgui_manager: ImguiManager,
 
 
     pub paused: bool,
@@ -241,7 +241,7 @@ impl GameState {
 
             entity_manager,
             light_manager,
-            imgui_manager,
+            // imgui_manager,
 
             paused: false,
             was_paused: false,
@@ -273,7 +273,7 @@ impl GameState {
         let events: Vec<(f64, glfw::WindowEvent)> = glfw::flush_messages(&self.events).collect();
 
         for (_, event) in events {
-            self.imgui_manager.handle_imgui_event(&event);
+            // self.imgui_manager.handle_imgui_event(&event);
             match event {
                 glfw::WindowEvent::FramebufferSize(w, h) => {
                     self.window_width = w as u32;
@@ -482,7 +482,7 @@ impl GameState {
             &self.camera,
         );
         
-        self.imgui_manager.draw(&mut self.window, self.fb_width as f32, self.fb_height as f32, self.delta_time, &mut self.light_manager, &mut self.renderer, &mut self.sound_manager, &self.camera, &mut self.entity_manager);
+        // self.imgui_manager.draw(&mut self.window, self.fb_width as f32, self.fb_height as f32, self.delta_time, &mut self.light_manager, &mut self.renderer, &mut self.sound_manager, &self.camera, &mut self.entity_manager);
 
 
         // let phrase = format!("FPS: {}", self.fps);

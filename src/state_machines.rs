@@ -148,9 +148,11 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
             if input.just_pressed(Key::Space) {
                 rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
                 rb.apply_impulse((Vec3::Y * 0.65).into(), true);
-
-                animator.animations.get_mut(&AnimationType::Jump).unwrap().current_time = 0.0;
-                animator.set_next_animation(AnimationType::Jump);
+                
+                if let Some(jump_anim) = animator.animations.get_mut(&AnimationType::Jump) {
+                    jump_anim.current_time = 0.0;
+                    animator.set_next_animation(AnimationType::Jump);
+                }
 
                 controller.time_in_state = 0.0;
                 return PlayerState::Jumping
@@ -195,7 +197,9 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
             }
 
             if rb.linvel().y <= (-(GRAVITY * DECREASED_GRAVITY_SCALAR) + ANIMATION_EPSILON) && controller.time_in_state >= 0.5 {
-                animator.set_next_animation(AnimationType::Freefall);
+                if let Some(_) = animator.animations.get(&AnimationType::Freefall) {
+                    animator.set_next_animation(AnimationType::Freefall);
+                }
             }
 
             return PlayerState::Freefalling
