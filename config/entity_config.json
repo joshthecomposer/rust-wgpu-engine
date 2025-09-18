@@ -45,7 +45,7 @@
 				{
 					"name": "Run",
 					"one_shots": {
-						"Footstep": [7, 18]
+						"Footstep": [5, 15]
 					},
 					"continuous_sounds": []
 				},
