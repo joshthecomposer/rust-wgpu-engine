@@ -198,6 +198,7 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
             if rb.linvel().y <= (-(GRAVITY * DECREASED_GRAVITY_SCALAR) + ANIMATION_EPSILON) && controller.time_in_state >= 0.5 {
                 if let Some(_) = animator.animations.get(&AnimationType::Freefall) {
+                    println!("SETTING FREEFALL ||||||||||||||||||||||||||||||||||||||||");
                     animator.set_next_animation(AnimationType::Freefall);
                 }
             }

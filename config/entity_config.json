@@ -4,8 +4,8 @@
 			"__note__": "use Quat::from_rotation_x()",
 			"rot_correction": "",
 			"scale_correction": [0.01, 0.01, 0.01],
-			"mesh_path": "resources/models/animated/002_y_robot/y_robot_base_color_empty_rot_mesh.txt", 
-			"bone_path":"resources/models/animated/002_y_robot/y_robot_base_color_empty_rot_bones.txt",
+			"mesh_path": "resources/models/animated/roby.txt", 
+			"bone_path":"resources/models/animated/roby.txt",
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
 			"hit_cyl": { "r": 0.188, "h": 1.6 },
 			"animation_properties" : [
@@ -37,8 +37,8 @@
 			"__note__": "use Quat::from_rotation_x()",
 			"rot_correction": "",
 			"scale_correction": [1.0, 1.0, 1.0],
-			"mesh_path": "resources/models/animated/trash_guy/trash_guy_mesh.txt", 
-			"bone_path":"resources/models/animated/trash_guy/trash_guy_bones.txt",
+			"mesh_path": "resources/models/animated/newnewnewnew.txt", 
+			"bone_path":"resources/models/animated/newnewnewnew.txt",
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
 			"hit_cyl": { "r": 0.188, "h": 1.6 },
 			"animation_properties" : [

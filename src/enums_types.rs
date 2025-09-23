@@ -234,7 +234,7 @@ impl AnimationType {
             "Slash" => Some(AnimationType::Slash),
             "Jump" => Some(AnimationType::Jump),
             "Freefall" => Some(AnimationType::Freefall),
-            _ => panic!("Invalid AnimationType passed in."),
+            _ => panic!("Invalid AnimationType passed in. {}", input),
         }
     }
 }

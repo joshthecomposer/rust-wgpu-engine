@@ -438,7 +438,13 @@ impl Animation {
     }
 
     fn get_bone_local_transform(&mut self, skeleton: &Bone, delta: f32) -> (Vec3, Quat, Vec3) {
-        let btt = self.bone_transforms.get(&skeleton.name).unwrap();
+        let btt = match self.bone_transforms.get(&skeleton.name) {
+            Some(name) => name,
+            _=> {
+                dbg!(skeleton);
+                panic!("skeleton name not found")
+            }
+        };
 
         let (segment, fraction) = get_time_fraction(&btt.position_timestamps, delta);
 
@@ -633,11 +639,15 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
             "WiseModel" => {
                 // name = "DefaultAnimation".to_string();
             }
+            "SKELETON_DATA" => {
+                println!("Found the beginning of skeleton data, beginning parse.");
+            }
             "BONECOUNT:" => {
                 bone_count = parts[1].parse().unwrap();
             }
             "BONE_NAME:" => {
                 let name = parts[1].to_string();
+                dbg!(&name);
                 let parsed_parent: i32 = lines.next().unwrap().split_whitespace().collect::<Vec<&str>>()[1].parse().unwrap();
 
                 let parent_index = match parsed_parent {
@@ -690,7 +700,8 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
 
     let mut animator = Animator::new();
     let mut ticks_per_second = 0.0;
-
+    
+    // THis assumes we always have ANIMATION_DATA after bone data.
     while let Some(line) = lines.next() {
         let parts: Vec<&str> = line.split_whitespace().collect();
 
@@ -699,7 +710,11 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
         }
 
         match parts[0] {
+            "ANIMATION_DATA" => {
+                println!("Found the beginning of animation data, beginning parse.");
+            }
             "ANIMATION_NAME:" => {
+                dbg!(&parts);
                 if !current_anim_str.is_empty() {
                     // Save the previous animation before creating a new one
                     animation.model_animation_join = model_animation_join.clone();
@@ -743,6 +758,7 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
 
                     let mut position = parse_vec3(lines.next().unwrap());
                     let mut rotation = parse_quat(lines.next().unwrap());
+                    rotation = rotation.normalize();
 
                     // if i == 0 {
                     //     let correction = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2) *
@@ -777,7 +793,7 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
 
     animation.model_animation_join = model_animation_join.clone();
     animation.ticks_per_second = ticks_per_second;
-
+    
     animator.set_current_animation(AnimationType::from_str(current_anim_str).unwrap());
     animator.set_next_animation(AnimationType::from_str(current_anim_str).unwrap());
     animator.animations.insert(AnimationType::from_str(current_anim_str).unwrap(), animation.clone());
@@ -804,6 +820,12 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
             track.rotation_timestamps.remove(0);
             track.scales.remove(0);
             track.scale_timestamps.remove(0);
+        }
+    }
+
+    for b in &bones_no_children {
+        if !animation.bone_transforms.contains_key(&b.name) {
+            eprintln!("WARN: no track for bone {:?}", b.name);
         }
     }
 
@@ -834,6 +856,9 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
         }
 
         match parts[0] {
+            "MESH_DATA" => {
+                println!("Found the beginning of skeleton data, beginning parse.");
+            }
             "USE_COLOR_FOR_TEXTURE" => {},
             "MEME" => {}
             "VERT:" => {
@@ -886,11 +911,17 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
                         vertex.bone_ids[i] = bone_id;
                         vertex.bone_weights[i] = weight;
 
-                        let total_weight = vertex.bone_weights.iter().sum::<f32>();
-                        if total_weight > 0.0 {
-                            for w in vertex.bone_weights.iter_mut() {
-                                *w /= total_weight;
-                            }
+                        // let total_weight = vertex.bone_weights.iter().sum::<f32>();
+                        // if total_weight > 0.0 {
+                        //     for w in vertex.bone_weights.iter_mut() {
+                        //         *w /= total_weight;
+                        //     }
+                        // }
+                    }
+                    let sum: f32 = vertex.bone_weights.iter().sum();
+                    if sum > 0.0 {
+                        for w in vertex.bone_weights.iter_mut() {
+                            *w /= sum;
                         }
                     }
                 }
