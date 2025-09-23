@@ -72,10 +72,10 @@
 			"__note__": "use Quat::from_rotation_x()",
 			"rot_correction": "",
 			"scale_correction": [0.013, 0.013, 0.013],
-			"mesh_path": "resources/models/animated/001_moose/moose_model_FINAL.txt", 
-			"bone_path": "resources/models/animated/001_moose/moose_bones_FINAL.txt",
+			"mesh_path": "resources/models/animated/moosey.txt", 
+			"bone_path": "resources/models/animated/moosey.txt",
 			"hit_cyl": { "r": 0.5, "h": 2.0 },
-			"flip_180": true,
+			"flip_180": false,
 			"animation_properties" : [
 				{
 					"name": "Dance",

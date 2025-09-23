@@ -284,6 +284,13 @@ impl Animator {
         }
     }
 
+    pub fn get_current_animation(&self) -> Option<&Animation> {
+        self.animations
+            .get(&self.current_animation)
+            .or_else(|| self.animations.get(&AnimationType::Idle))
+            .or_else(|| self.animations.values().next())
+    }
+
     pub fn set_current_animation(&mut self, input: AnimationType) {
         self.current_animation = input;
     }

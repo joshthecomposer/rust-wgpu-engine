@@ -379,7 +379,7 @@ impl Renderer {
             let trans = em.transforms.get(id).unwrap();
 
             let animator = em.animators.get(id).unwrap();
-            let animation = animator.animations.get(&animator.current_animation).unwrap();
+            let animation = animator.get_current_animation().unwrap();
 
             for os in animation.one_shots.iter() {
                 if animation.current_segment == os.segment {
@@ -697,7 +697,8 @@ impl Renderer {
 
         for ani_model in em.ani_models.iter() {
             if let Some(animator) = em.animators.get(ani_model.key()) {
-                let animation = animator.animations.get(&animator.current_animation).unwrap();
+                let animation = animator.get_current_animation().unwrap();
+
                 let trans = em.transforms.get(ani_model.key()).unwrap();
 
                 depth_shader.set_mat4_array("bone_transforms", &animation.current_pose);

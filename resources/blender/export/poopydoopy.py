@@ -216,8 +216,8 @@ def write_mesh(f, mesh_obj, bone_index_of):
             f.write("VERT:\n")
             f.write(f"{p.x:.5f} {p.y:.5f} {p.z:.5f}\n")
             f.write(f"{n.x:.5f} {n.y:.5f} {n.z:.5f}\n")
-            f.write(f"{uv[0]:.5f} {uv[1]:.5f}\n")
-            f.write(f"COLOR: {col[0]:.5f} {col[1]:.5f} {col[2]:.5f} {col[3]:.5f}\n")
+            f.write(f"{uv[0]:.5f} {1.0 - uv[1]:.5f}\n")
+            #f.write(f"COLOR: {col[0]:.5f} {col[1]:.5f} {col[2]:.5f} {col[3]:.5f}\n")
 
             if any(name and w > 0 for name, w in weights):
                 f.write(" ".join(f"{name} {w:.5f}" for name, w in weights if name and w > 0) + "\n")
@@ -260,4 +260,4 @@ def export_game_data(filepath):
     finally:
         bpy.context.scene.frame_set(cur)
              
-export_game_data("E:/Software_Dev/rust/rust-opengl-engine/resources/models/animated/roby.txt")
+export_game_data("E:/Software_Dev/rust/rust-opengl-engine/resources/models/animated/moosey.txt")
