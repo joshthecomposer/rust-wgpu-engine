@@ -38,4 +38,5 @@ pub struct EntityTypeHelper {
     pub bone_path: String,
     pub hit_cyl: Option<Cylinder>,
     pub animation_properties: Vec<AnimationPropHelper>,
+    pub flip_180: bool,
 }

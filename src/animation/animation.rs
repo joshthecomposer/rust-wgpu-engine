@@ -616,7 +616,7 @@ pub fn get_time_fraction(times: &[f32], dt: f32) -> (u32, f32) {
     (segment as u32, frac)
 }
 
-pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
+pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Animation) {
     let data = std::fs::read_to_string(file_path).unwrap();
     let mut lines = data.lines();
 
@@ -760,12 +760,11 @@ pub fn import_bone_data(file_path: &str) -> (Bone, Animator, Animation) {
                     let mut rotation = parse_quat(lines.next().unwrap());
                     rotation = rotation.normalize();
 
-                    // if i == 0 {
-                    //     let correction = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2) *
-                    //         Quat::from_rotation_z(std::f32::consts::PI);
-                    //     position = correction * position;
-                    //     rotation = correction * rotation;
-                    // }
+                    if flip_180 && i == 0 {
+                        let correction = Quat::from_rotation_y(std::f32::consts::PI);
+                        position = correction * position;
+                        rotation = correction * rotation;
+                    }
                     let scale = parse_vec3(lines.next().unwrap());
 
                     lines.next();

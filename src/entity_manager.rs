@@ -108,6 +108,7 @@ impl EntityManager {
                         instance.entity_type.clone(),
                         archetype.hit_cyl.clone(),
                         ps,
+                        archetype.flip_180,
                     );
                 },
                 Faction::World | Faction::Static | Faction::Gizmo | Faction::Item => {
@@ -275,6 +276,7 @@ impl EntityManager {
         entity_type: EntityType,
         cylinder: Option<crate::debug::gizmos::Cylinder>,
         ps: &mut PhysicsState,
+        flip_180: bool,
     ) {
         // Reserve an ID for the main entity
         let entity_id = self.next_entity_id;
@@ -289,7 +291,7 @@ impl EntityManager {
         };
 
         // === ANIMATION DATA ===
-        let (skellington, mut animator, animation) = import_bone_data(animation_path);
+        let (skellington, mut animator, animation) = import_bone_data(animation_path, flip_180);
 
         for prop in animation_props {
             if let Some(anim) = animator.animations.get_mut(&prop.name) {
