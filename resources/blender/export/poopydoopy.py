@@ -216,7 +216,7 @@ def write_mesh(f, mesh_obj, bone_index_of):
             f.write("VERT:\n")
             f.write(f"{p.x:.5f} {p.y:.5f} {p.z:.5f}\n")
             f.write(f"{n.x:.5f} {n.y:.5f} {n.z:.5f}\n")
-            f.write(f"{uv[0]:.5f} {1.0 - uv[1]:.5f}\n")
+            f.write(f"{uv[0]:.5f} {uv[1]:.5f}\n")
             #f.write(f"COLOR: {col[0]:.5f} {col[1]:.5f} {col[2]:.5f} {col[3]:.5f}\n")
 
             if any(name and w > 0 for name, w in weights):

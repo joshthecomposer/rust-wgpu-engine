@@ -293,9 +293,9 @@ impl GameState {
                 glfw::WindowEvent::Key(key, _, action, _) => {
                     match key {
                         glfw::Key::G => {
-                            if action == glfw::Action::Press {
-                                self.particles.spawn_oneshot_emitter(50, Vec3::splat(0.0));
-                            }
+                            //if action == glfw::Action::Press {
+                            //    self.particles.spawn_oneshot_emitter(50, Vec3::splat(0.0));
+                            //}
                         },
                         glfw::Key::Escape => {
                             if action == glfw::Action::Press {
@@ -358,18 +358,18 @@ impl GameState {
             let animator = self.entity_manager.animators.get_mut(player_key).unwrap();
 
             if self.input_state.keys_current.contains(&glfw::Key::P) {
-                animator.set_next_animation(AnimationType::Death);
+                // animator.set_next_animation(AnimationType::Death);
             }
 
             if self.input_state.keys_current.contains(&glfw::Key::O) {
                 animator.set_next_animation(AnimationType::Idle);
             }
 
-            if self.input_state.just_pressed(glfw::Key::Space) {
-                if animator.next_animation != AnimationType::Death {
-                    animator.set_next_animation(AnimationType::Jump);
-                }
-            }
+            //if self.input_state.just_pressed(glfw::Key::Space) {
+            //    if animator.next_animation != AnimationType::Death {
+            //        animator.set_next_animation(AnimationType::Jump);
+            //    }
+            //}
         }
 
         if self.input_state.keys_current.contains(&glfw::Key::Delete) {

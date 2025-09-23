@@ -25,7 +25,7 @@ pub fn update(em: &mut EntityManager) {
             // SAFELY get both entries with mutable refs (no HashMap::remove)
             let (a1, a2) = {
                 let (left, right) = animator.animations.get_pair_mut(&current_key, &next_key)
-                    .expect("Both animations must exist");
+                    .expect(format!("Both animations must exist {}, {}", &current_key, &next_key).as_str());
                 (left, right)
             };
 
