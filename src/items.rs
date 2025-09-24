@@ -23,6 +23,11 @@ pub fn update(em: &mut EntityManager) {
         let rh_name = owner_item_bones.rh_name.as_str();
         let rh_weapon_id = a.value().right_hand.unwrap();
 
+        let rh_parent = em.parents.iter().find( |p|
+            p.value().parent_id == rh_weapon_id &&
+            (em.cuboids.get(p.key()).is_some())
+        ).unwrap();
+
         let maybe_bone_world_model_space = if blend_factor > 0.0 && current_key != next_key {
             // SAFELY get both entries with mutable refs (no HashMap::remove)
             let (a1, a2) = {
@@ -52,10 +57,14 @@ pub fn update(em: &mut EntityManager) {
         if let Some(bone_world_model_space) = maybe_bone_world_model_space {
             let bone_world_space = owner_model_trans * bone_world_model_space;
             let (_, rot, pos) = bone_world_space.to_scale_rotation_translation();
-
+            
             let weapon_trans = em.transforms.get_mut(rh_weapon_id).unwrap();
             weapon_trans.position = pos;
             weapon_trans.rotation = rot * weapon_trans.original_rotation;
+
+            let cuboid_trans = em.transforms.get_mut(rh_parent.key()).unwrap();
+            cuboid_trans.position = pos;
+            cuboid_trans.rotation = rot * cuboid_trans.original_rotation;
         }
     }
 }

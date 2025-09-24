@@ -6,7 +6,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, ItemBones}, world_data::WorldData}, debug::gizmos::Pill, enums_types::{ActiveItem, EntityType, Faction, Inventory, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
+use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, ItemBones}, world_data::WorldData}, debug::gizmos::{Cuboid, Pill}, enums_types::{ActiveItem, EntityType, Faction, Inventory, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -29,7 +29,7 @@ pub struct EntityManager {
     pub destinations: SparseSet<Vec3>,
 
     // Simulation gizmos
-    // pub cuboids: SparseSet<Cuboid>,
+    pub cuboids: SparseSet<Cuboid>,
     pub colliders: SparseSet<ColliderShape>,
     // pub cylinders: SparseSet<Cylinder>,
 
@@ -68,7 +68,7 @@ impl EntityManager {
 
             destinations: SparseSet::with_capacity(max_entities),
 
-            // cuboids: SparseSet::with_capacity(max_entities),
+            cuboids: SparseSet::with_capacity(max_entities),
             // this is just for visuals/debug. The *actual* collider is in 
             // the rapier physics system,tracked by a physics handle.
             colliders: SparseSet::with_capacity(max_entities),
@@ -185,6 +185,9 @@ impl EntityManager {
     }
 
     pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) {
+
+        let parent_id = self.next_entity_id;
+
         self.factions.insert(self.next_entity_id, faction);
         self.entity_types.insert(self.next_entity_id, entity_type);
 
@@ -195,7 +198,7 @@ impl EntityManager {
 
             original_rotation: rot_correction,
         };
-        self.transforms.insert(self.next_entity_id, transform);
+        self.transforms.insert(self.next_entity_id, transform.clone());
 
         let mut model = Model::new();
         let mut found = false;
@@ -209,8 +212,44 @@ impl EntityManager {
         if !found {
             model = import_model_data(model_path, &Animation::default());
         }
-        self.models.insert(self.next_entity_id, model);
+        self.models.insert(self.next_entity_id, model.clone());
         
+        self.next_entity_id += 1;
+
+        // GENERATE BOUNDING CUBE
+        let mut max_x = std::f32::MIN;
+        let mut max_y = std::f32::MIN;
+        let mut max_z = std::f32::MIN;
+
+        let mut min_x = std::f32::MAX;
+        let mut min_y = std::f32::MAX;
+        let mut min_z = std::f32::MAX;
+
+        for v in model.vertices.iter() {
+            if v.position.x > max_x { max_x = v.position.x };
+            if v.position.y > max_y { max_y = v.position.y };
+            if v.position.z > max_z { max_z = v.position.z };
+
+            if v.position.x < min_x { min_x = v.position.x };
+            if v.position.y < min_y { min_y = v.position.y };
+            if v.position.z < min_z { min_z = v.position.z };
+        }
+
+        let cuboid = Cuboid {
+            w: max_x.abs() + min_x.abs(),
+            h: max_y.abs() + min_y.abs(),
+            d: max_z.abs() + min_z.abs(),
+        };
+
+        let cuboid_model = cuboid.create_model();
+
+        self.cuboids.insert(self.next_entity_id, cuboid);
+        self.models.insert(self.next_entity_id, cuboid_model);
+        self.factions.insert(self.next_entity_id, Faction::Gizmo);
+        self.transforms.insert(self.next_entity_id, transform);
+
+        self.parents.insert(self.next_entity_id, Parent { parent_id });
+
         self.next_entity_id += 1;
 
         if let Some(cyl) = cylinder {
@@ -234,7 +273,7 @@ impl EntityManager {
             });
 
             self.parents.insert(self.next_entity_id, Parent{
-                parent_id: self.next_entity_id - 1,
+                parent_id,
             });
 
             // PHYSICS PASS

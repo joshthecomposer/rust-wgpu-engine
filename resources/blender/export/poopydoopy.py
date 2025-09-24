@@ -45,19 +45,6 @@ def write_mat_like_old(f, M: mathutils.Matrix):
     Mt = M.transposed()               # <-- transpose for legacy row-major on disk
     for r in Mt:
         f.write(f"{r[0]:.5f} {r[1]:.5f} {r[2]:.5f} {r[3]:.5f}\n")
-        
-def get_material_rgba(mat):
-    if mat and getattr(mat, "use_nodes", False) and mat.node_tree:
-        for n in mat.node_tree.nodes:
-            if n.type == 'BSDF_PRINCIPLED':
-                col = n.inputs.get("Base Color")
-                if col and col.default_value:
-                    v = col.default_value
-                    return (float(v[0]), float(v[1]), float(v[2]), float(v[3]))
-    if mat and getattr(mat, "diffuse_color", None):
-        v = mat.diffuse_color
-        return (float(v[0]), float(v[1]), float(v[2]), float(v[3] if len(v) > 3 else 1.0))
-    return (1.0, 1.0, 1.0, 1.0)
 
 # ---------- Skeleton + Anim export (fixed) ----------
 
@@ -183,8 +170,7 @@ def write_mesh(f, mesh_obj, bone_index_of):
                     c = col_layer.data[li].color
                     col = (float(c[0]), float(c[1]), float(c[2]), float(c[3] if len(c) > 3 else 1.0))
                 else:
-                    src_mat = me_eval.materials[poly.material_index] if me_eval.materials else None
-                    col = get_material_rgba(src_mat)
+                    col = (1.0, 1.0, 1.0, 1.0)
 
                 # Bone weights as NAME+weight pairs (top 4, pad)
                 weights = []
@@ -210,6 +196,8 @@ def write_mesh(f, mesh_obj, bone_index_of):
                 indices.extend([face_idx[0], face_idx[i], face_idx[i+1]])
 
         f.write("\nMESH_DATA ##############################\n")
+        f.write(f"TEXTURE_PROFILE: DecalCrisp\n")
+        f.write(f"TEXTURE_DIFFUSE: trashbot_diff.png\n")
         f.write(f"MESH_NAME: {mesh_obj.name}\n")
         f.write(f"VERTEX_COUNT: {len(unique)}\n")
         for (p, n, uv, col, weights) in unique:
@@ -217,7 +205,6 @@ def write_mesh(f, mesh_obj, bone_index_of):
             f.write(f"{p.x:.5f} {p.y:.5f} {p.z:.5f}\n")
             f.write(f"{n.x:.5f} {n.y:.5f} {n.z:.5f}\n")
             f.write(f"{uv[0]:.5f} {uv[1]:.5f}\n")
-            #f.write(f"COLOR: {col[0]:.5f} {col[1]:.5f} {col[2]:.5f} {col[3]:.5f}\n")
 
             if any(name and w > 0 for name, w in weights):
                 f.write(" ".join(f"{name} {w:.5f}" for name, w in weights if name and w > 0) + "\n")
@@ -260,4 +247,4 @@ def export_game_data(filepath):
     finally:
         bpy.context.scene.frame_set(cur)
              
-export_game_data("E:/Software_Dev/rust/rust-opengl-engine/resources/models/animated/moosey.txt")
+export_game_data("E:/Software_Dev/rust/rust-opengl-engine/resources/models/animated/newnewnewnew.txt")

@@ -1,6 +1,7 @@
 #![allow(clippy::useless_vec)]
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
+use rapier3d::prelude::Cuboid;
 use core::f32;
 use std::{collections::HashMap, ffi::c_void, mem::{self, offset_of}, path::Path, ptr, str::Lines};
 
@@ -856,6 +857,8 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
 
     let mut texture_prof = TextureProfile::BroadDefault;
 
+
+
     while let Some(line) = lines.next() {
         let parts: Vec<&str> = line.split_whitespace().collect();
 
@@ -874,6 +877,8 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
             "MEME" => {}
             "VERT:" => {
                 let position = parse_vec3(lines.next().unwrap());
+                
+
                 let normal = parse_vec3(lines.next().unwrap());
                 let uv = parse_vec2(lines.next().unwrap());
 
