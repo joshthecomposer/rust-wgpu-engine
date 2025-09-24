@@ -5,7 +5,7 @@ use imgui::sys::igSetWindowPosVec2;
 use nalgebra::Point3;
 use rapier3d::prelude::{Collider, ColliderBuilder};
 
-use crate::{animation::animation::{texture_from_file, Model, Vertex}, enums_types::TextureType, some_data::MAX_BONE_INFLUENCE};
+use crate::{animation::animation::{texture_from_file, Model, Vertex}, enums_types::{TextureProfile, TextureType}, some_data::MAX_BONE_INFLUENCE};
 
 pub struct Terrain {
     vertices: Vec<[f32; 3]>,
@@ -125,7 +125,7 @@ impl Terrain {
         };
 
         model.directory = "resources/models/static/terrain".to_string();
-        texture_from_file(&mut model, "ai_slop/dirt4.png".to_string(), TextureType::Diffuse);
+        texture_from_file(&mut model, "ai_slop/dirt4.png".to_string(), TextureType::Diffuse, TextureProfile::BroadDefault);
 
         model.indices = self.indices.clone();
         model.setup_opengl();

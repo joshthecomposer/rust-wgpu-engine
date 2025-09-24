@@ -287,3 +287,31 @@ impl SoundType {
 }
 
 pub const ANIMATION_EPSILON: f32 = 0.001;
+
+#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]
+pub enum TextureProfile {
+    BroadDefault, // For big textures like landscape/tree trunks etc.
+    DecalCrisp,   // For small details like a face etc.
+    AlphaMasked,  // For foliage
+}
+
+impl TextureProfile {
+    pub fn from_str(input: &str) -> Option<Self>  {
+        match input {
+            "BroadDefault" => Some(Self::BroadDefault),
+            "DecalCrisp"   => Some(Self::DecalCrisp),
+            "AlphaMasked"  => Some(Self::AlphaMasked),
+            _              => panic!("Invalid TextureProfile passed in."),
+        }
+    }
+}
+
+impl Display for TextureProfile {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Self::BroadDefault => write!(f, "BroadDefault"),
+            Self::AlphaMasked => write!(f, "AlphaMasked"),
+            Self::DecalCrisp => write!(f, "DecalCrisp"),
+        }
+    }
+}

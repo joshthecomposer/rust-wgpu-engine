@@ -16,9 +16,11 @@ pub fn update(em: &mut EntityManager) {
         let animator = em.animators.get_mut(owner_id).unwrap();
         let blend_factor = animator.blend_factor;
 
+        let owner_item_bones = em.item_bones.get(owner_id).unwrap();
+
         let current_key = animator.current_animation.clone();
         let next_key = animator.next_animation.clone();
-        let rh_name = "mixamorig:RightHand";
+        let rh_name = owner_item_bones.rh_name.as_str();
         let rh_weapon_id = a.value().right_hand.unwrap();
 
         let maybe_bone_world_model_space = if blend_factor > 0.0 && current_key != next_key {

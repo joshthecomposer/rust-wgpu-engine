@@ -4,6 +4,12 @@ use serde::Deserialize;
 
 use crate::{debug::gizmos::Cylinder, enums_types::{AnimationType, EntityType, Faction, SoundType}};
 
+#[derive(Clone, Deserialize, Debug)]
+pub struct ItemBones {
+    pub rh_name: String,
+    pub lh_name: String,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct EntityConfig {
     pub entity_types: HashMap<EntityType, EntityTypeHelper>
@@ -39,4 +45,5 @@ pub struct EntityTypeHelper {
     pub hit_cyl: Option<Cylinder>,
     pub animation_properties: Vec<AnimationPropHelper>,
     pub flip_180: bool,
+    pub item_bones: ItemBones,
 }

@@ -4,7 +4,7 @@ use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
 use core::f32;
 use std::{collections::HashMap, ffi::c_void, mem::{self, offset_of}, path::Path, ptr, str::Lines};
 
-use crate::{enums_types::{AnimationType, TextureType, ANIMATION_EPSILON}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}};
+use crate::{enums_types::{AnimationType, TextureProfile, TextureType, ANIMATION_EPSILON}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}};
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -854,6 +854,8 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
     let mut use_color_for_texture = false;   // header toggle (if present)
     let mut saw_any_color = false;           // infer from data
 
+    let mut texture_prof = TextureProfile::BroadDefault;
+
     while let Some(line) = lines.next() {
         let parts: Vec<&str> = line.split_whitespace().collect();
 
@@ -863,9 +865,12 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
 
         match parts[0] {
             "MESH_DATA" => {
-                println!("Found the beginning of skeleton data, beginning parse.");
+                    println!("Found the beginning of skeleton data, beginning parse.");
             }
-            "USE_COLOR_FOR_TEXTURE" => {},
+            "USE_COLOR_FOR_TEXTURE" => {}
+            "TEXTURE_PROFILE:" => {
+                texture_prof = TextureProfile::from_str(parts[1]).unwrap_or(TextureProfile::BroadDefault);
+            }
             "MEME" => {}
             "VERT:" => {
                 let position = parse_vec3(lines.next().unwrap());
@@ -945,19 +950,19 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
             }
             "TEXTURE_DIFFUSE:" => {
                 let path = parts[1].to_string();
-                texture_from_file(&mut model, path, TextureType::Diffuse);
+                texture_from_file(&mut model, path, TextureType::Diffuse, texture_prof.clone());
             }
             "TEXTURE_SPECULAR:" => {
                 let path = parts[1].to_string();
-                texture_from_file(&mut model, path, TextureType::Specular);
+                texture_from_file(&mut model, path, TextureType::Specular, texture_prof.clone());
             }
             "TEXTURE_EMISSIVE:" => {
                 let path = parts[1].to_string();
-                texture_from_file(&mut model, path, TextureType::Emissive);
+                texture_from_file(&mut model, path, TextureType::Emissive, texture_prof.clone());
             }
             "TEXTURE_OPACITY:" => {
                 let path = parts[1].to_string();
-                texture_from_file(&mut model, path, TextureType::Opacity);
+                texture_from_file(&mut model, path, TextureType::Opacity, texture_prof.clone());
             }
             _ => {}
         }
@@ -970,7 +975,7 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
     model
 }
 
-pub fn texture_from_file(model: &mut Model, path: String, texture_type: TextureType) {
+pub fn texture_from_file(model: &mut Model, path: String, texture_type: TextureType, texture_prof: TextureProfile) {
     println!("texture is {}", &path);
     let file_name = model.directory.clone() + "/" + path.as_str();
 
@@ -1030,11 +1035,29 @@ pub fn texture_from_file(model: &mut Model, path: String, texture_type: TextureT
                 raw.as_ptr() as *const c_void
             ));
 
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST_MIPMAP_LINEAR as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32));
-            gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
+            match texture_prof {
+                TextureProfile::DecalCrisp => {
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32));
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32));
+                    // gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
+                }, 
+                TextureProfile::BroadDefault => {
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32));
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32));
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST_MIPMAP_LINEAR as i32));
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32));
+                    gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
+                },
+                TextureProfile::AlphaMasked => {
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32));
+                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
+                    gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
+                },
+            }
 
             let texture = Texture {
                 id: texture_id,

@@ -6,7 +6,7 @@ use glam::vec3;
 use image::{ImageBuffer, Rgba};
 
 use crate::animation::animation::{texture_from_file, Model, Vertex};
-use crate::enums_types::TextureType;
+use crate::enums_types::{TextureProfile, TextureType};
 use crate::some_data::MAX_BONE_INFLUENCE;
 use crate::{enums_types::CellType, shaders::Shader};
 
@@ -83,7 +83,7 @@ impl Grid {
         let mut model = self.generate_grid_mesh();
         model.directory = "resources/textures".to_string();
 
-        texture_from_file(&mut model, "half_dark_half_light.png".to_string(), TextureType::Diffuse);
+        texture_from_file(&mut model, "half_dark_half_light.png".to_string(), TextureType::Diffuse, TextureProfile::BroadDefault);
         self.model = model;
     }
 

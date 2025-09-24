@@ -9,6 +9,10 @@
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
 			"hit_cyl": { "r": 0.188, "h": 1.6 },
 			"flip_180": true,
+			"item_bones": {
+				"rh_name": "mixamorg:RightHand",
+				"lh_name": "mixamorg:LeftHand"
+			},
 			"animation_properties" : [
 				{
 					"name": "Run",
@@ -43,6 +47,10 @@
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
 			"hit_cyl": { "r": 0.188, "h": 1.6 },
 			"flip_180": false,
+			"item_bones": {
+				"rh_name": "Bone.029.L",
+				"lh_name": "Bone.029.R"
+			},
 			"animation_properties" : [
 				{
 					"name": "Run",
@@ -76,6 +84,10 @@
 			"bone_path": "resources/models/animated/moosey.txt",
 			"hit_cyl": { "r": 0.5, "h": 2.0 },
 			"flip_180": false,
+			"item_bones": {
+				"rh_name": "mixamorg:RightHand",
+				"lh_name": "mixamorg:LeftHand"
+			},
 			"animation_properties" : [
 				{
 					"name": "Dance",
@@ -94,6 +106,10 @@
 			"bone_path":"",
 			"hit_cyl": null,
 			"flip_180": false,
+			"item_bones": {
+				"rh_name": "",
+				"lh_name": ""
+			},
 			"animation_properties" : []
 		},
 		"TreeTrunk": {
@@ -104,6 +120,10 @@
 			"bone_path":"",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
+			"item_bones": {
+				"rh_name": "",
+				"lh_name": ""
+			},
 			"animation_properties" : []
 		},
 		"Stump": {
@@ -114,6 +134,10 @@
 			"bone_path":"",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
+			"item_bones": {
+				"rh_name": "",
+				"lh_name": ""
+			},
 			"animation_properties" : []
 		},
 		"OrcSword": {
@@ -124,6 +148,10 @@
 			"bone_path":"",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
+			"item_bones": {
+				"rh_name": "",
+				"lh_name": ""
+			},
 			"animation_properties" : []
 		}
 	}

@@ -6,7 +6,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig}, world_data::WorldData}, debug::gizmos::Pill, enums_types::{ActiveItem, EntityType, Faction, Inventory, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
+use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, ItemBones}, world_data::WorldData}, debug::gizmos::Pill, enums_types::{ActiveItem, EntityType, Faction, Inventory, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -21,6 +21,7 @@ pub struct EntityManager {
     pub sim_states: SparseSet<SimState>,
     pub inventories: SparseSet<Inventory>,
     pub active_items: SparseSet<ActiveItem>,
+    pub item_bones: SparseSet<ItemBones>,
     pub impulse_applied: SparseSet<bool>,
     pub player_controllers: SparseSet<PlayerController>,
 
@@ -61,6 +62,7 @@ impl EntityManager {
             sim_states: SparseSet::with_capacity(max_entities),
             inventories: SparseSet::with_capacity(max_entities),
             active_items: SparseSet::with_capacity(max_entities),
+            item_bones: SparseSet::with_capacity(max_entities),
             impulse_applied: SparseSet::with_capacity(max_entities),
             player_controllers: SparseSet::with_capacity(max_entities),
 
@@ -108,7 +110,8 @@ impl EntityManager {
                         instance.entity_type.clone(),
                         archetype.hit_cyl.clone(),
                         ps,
-                        archetype.flip_180,
+                        archetype.flip_180.clone(),
+                        archetype.item_bones.clone(),
                     );
                 },
                 Faction::World | Faction::Static | Faction::Gizmo | Faction::Item => {
@@ -140,7 +143,7 @@ impl EntityManager {
                 Vec3::splat(1.0), 
                 // Quat::IDENTITY,
                 // 90 about y and then -90 about z, this gives us a perpendicular weapon.
-                Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+                Quat::from_rotation_z(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
                 Quat::IDENTITY, 
                 "resources/models/static/weapons/swords/001_double_axe_new.txt", 
                 None,
@@ -165,7 +168,7 @@ impl EntityManager {
                 Faction::Item, 
                 Vec3::splat(0.0), 
                 Vec3::splat(1.0), 
-                Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2) * Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2), 
+                Quat::from_rotation_z(std::f32::consts::PI) * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2), 
                 Quat::IDENTITY, 
                 "resources/models/static/weapons/swords/001_orc_sword_bc.txt", 
                 None,
@@ -277,6 +280,7 @@ impl EntityManager {
         cylinder: Option<crate::debug::gizmos::Cylinder>,
         ps: &mut PhysicsState,
         flip_180: bool,
+        item_bones: ItemBones,
     ) {
         // Reserve an ID for the main entity
         let entity_id = self.next_entity_id;
@@ -337,6 +341,7 @@ impl EntityManager {
         self.skellingtons.insert(entity_id, skellington);
         self.ani_models.insert(entity_id, model);
         self.rotators.insert(entity_id, rotator);
+        self.item_bones.insert(entity_id, item_bones);
         self.sim_states.insert(entity_id, match entity_type {
             EntityType::MooseMan => SimState::Dancing,
             _ => SimState::Waiting,

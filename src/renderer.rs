@@ -366,7 +366,7 @@ impl Renderer {
         shader.set_bool("is_animated", true);
         shader.set_bool("alpha_test_pass", false);
         shader.set_float("elapsed", elapsed);
-        shader.set_bool("do_reg_fresnel", true);
+        shader.set_bool("do_reg_fresnel", false);
         for id in ids {
             if em.v_effects.get(id).is_some() {
                 shader.set_bool("flash_white", true);
