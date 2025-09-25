@@ -76,6 +76,7 @@ fn handle_player_movement_rapier(
 
     let mut linvel = *rb.linvel();
 
+
     let new_state = if move_dir.length_squared() > 0.0 {
         let move_dir = move_dir.normalize();
         linvel.x = move_dir.x * speed;

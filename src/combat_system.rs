@@ -31,6 +31,8 @@ pub fn update(
                 if let Some(ha) = &anim.hurtbox_activation {
                     if ha.triggered.get() {
                         println!("DOING DAMAGE??!!!!!???!!?!!?!!");
+                    } else {
+                        println!("Collided but not activated");
                     }
                 }
             }

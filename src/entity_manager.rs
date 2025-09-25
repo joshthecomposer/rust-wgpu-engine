@@ -274,10 +274,13 @@ impl EntityManager {
                 .position(iso)
                 .build();
 
-            let collider_shape = ColliderShape::cuboid(size.x * 0.5, size.y * 0.5, size.z * 0.5);
+            let half_extents = size * 0.5;
+
+            let collider_shape = ColliderShape::cuboid(half_extents.x, half_extents.y, half_extents.z);
             self.colliders.insert(self.next_entity_id, collider_shape);
 
             let collider = ColliderBuilder::cuboid(size.x * 0.5, size.y * 0.5, size.z * 0.5)
+                .translation(vector![0.0, half_extents.y, 0.0])
                 .sensor(true)
                 .density(0.0)
                 .active_events(ActiveEvents::COLLISION_EVENTS)
@@ -564,18 +567,46 @@ impl EntityManager {
             }
         }
 
-        for rb in k_pos_based_rbs.iter() {
-            let entity_id = self.rigidbody_to_entity.get(rb).unwrap();
 
-            if let Some(transform) = self.transforms.get_mut(*entity_id) {
-                let iso: Isometry<f32> = (transform.position, transform.rotation).into();
-                let rb = ps.rigid_body_set.get_mut(*rb).unwrap();
-                
-                // TODO: should we wake up or does it not matter?
-                rb.set_position(iso, true);
+        for rbh in k_pos_based_rbs.iter() {
+            let entity_id = self.rigidbody_to_entity.get(rbh).unwrap();
+            let rb = ps.rigid_body_set.get_mut(*rbh).unwrap();
+
+            let set_iso = if let Some(parent) = self.parents.get(*entity_id) {
+                // RB should live at the parent's origin; collider's own local .translation handles the lift.
+                if let Some(pt) = self.transforms.get(parent.parent_id) {
+                    Some(Isometry::from_parts(
+                        Translation::from(vector![pt.position.x, pt.position.y, pt.position.z]),
+                        UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(pt.rotation.w, pt.rotation.x, pt.rotation.y, pt.rotation.z)),
+                    ))
+                } else { None }
+            } else if let Some(t) = self.transforms.get(*entity_id) {
+                // if no parent, drive from the entity itself
+                Some(Isometry::from_parts(
+                    Translation::from(vector![t.position.x, t.position.y, t.position.z]),
+                    UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(t.rotation.w, t.rotation.x, t.rotation.y, t.rotation.z)),
+                ))
+            } else {
+                None
+            };
+
+            if let Some(iso) = set_iso {
+                rb.set_next_kinematic_position(iso);
             }
-
         }
+
+        // for rb in k_pos_based_rbs.iter() {
+        //     let entity_id = self.rigidbody_to_entity.get(rb).unwrap();
+
+        //     if let Some(transform) = self.transforms.get_mut(*entity_id) {
+        //         let iso: Isometry<f32> = (transform.position, transform.rotation).into();
+        //         let rb = ps.rigid_body_set.get_mut(*rb).unwrap();
+        //         
+        //         // TODO: should we wake up or does it not matter?
+        //         rb.set_position(iso, true);
+        //     }
+
+        // }
 
         self.apply_parenting();
     }

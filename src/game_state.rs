@@ -85,6 +85,9 @@ impl GameState {
                     // Extract the current resolution & refresh rate from the monitor
                     (width, height) = (video_mode.width as i32, video_mode.height as i32);
                     let refresh_rate    = video_mode.refresh_rate; // e.g. 60, 144, etc.
+                    // let refresh_rate = 60;
+
+                    println!("Refresh rate was determined to be: {}", refresh_rate);
 
                     window.set_monitor(
                         glfw::WindowMode::Windowed,
@@ -342,6 +345,8 @@ impl GameState {
         if self.delta_time <= 0.0 {
             return;
         }
+
+        // self.delta_time = self.delta_timedd;
         
         // Fps calc
         let fps_now = (1.0 / self.delta_time.max(0.0001)) as u32;
