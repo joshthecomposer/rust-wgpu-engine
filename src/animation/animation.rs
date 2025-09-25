@@ -5,7 +5,7 @@ use rapier3d::prelude::Cuboid;
 use core::f32;
 use std::{collections::HashMap, ffi::c_void, mem::{self, offset_of}, path::Path, ptr, str::Lines};
 
-use crate::{enums_types::{AnimationType, TextureProfile, TextureType, ANIMATION_EPSILON}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}};
+use crate::{enums_types::{AnimationType, FrameActivation, TextureProfile, TextureType, ANIMATION_EPSILON}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}};
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -351,6 +351,7 @@ pub struct Animation {
     pub current_segment: u32,
     pub one_shots: Vec<OneShot>,
     pub continuous_sounds: Vec<ContinuousSound>,
+    pub hurtbox_activation: Option<FrameActivation>,
 
     pub current_time: f32,
     pub looping: bool,
@@ -369,6 +370,7 @@ impl Animation {
             current_segment: 0,
             one_shots: vec![],
             continuous_sounds: vec![],
+            hurtbox_activation: None,
 
             current_time: 0.0,
             looping: true,

@@ -1,12 +1,12 @@
 #![allow(clippy::too_many_arguments)]
 
-use glam::{Quat, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use nalgebra::UnitQuaternion;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, ItemBones}, world_data::WorldData}, debug::gizmos::{Cuboid, Pill}, enums_types::{ActiveItem, EntityType, Faction, Inventory, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
+use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, ItemBones}, world_data::WorldData}, debug::gizmos::{Cuboid, Pill}, enums_types::{ActiveItem, EntityType, Faction, FrameActivation, Inventory, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -34,6 +34,7 @@ pub struct EntityManager {
     // pub cylinders: SparseSet<Cylinder>,
 
     pub parents: SparseSet<Parent>,
+    pub child_locals: SparseSet<Transform>,
     pub rng: ChaCha8Rng,
 
     pub selected: Vec<usize>,
@@ -45,6 +46,7 @@ pub struct EntityManager {
     pub physics_handles: SparseSet<PhysicsHandle>,
     // Find entities from rapier
     pub collider_to_entity: HashMap<ColliderHandle, usize>,
+    pub rigidbody_to_entity: HashMap<RigidBodyHandle, usize>,
 }
 
 impl EntityManager {
@@ -75,6 +77,7 @@ impl EntityManager {
             // cylinders: SparseSet::with_capacity(max_entities),
 
             parents: SparseSet::with_capacity(max_entities),
+            child_locals: SparseSet::with_capacity(max_entities),
             rng: ChaCha8Rng::seed_from_u64(1),
 
             selected: Vec::new(),
@@ -82,6 +85,7 @@ impl EntityManager {
             entity_trashcan: Vec::new(),
             physics_handles: SparseSet::with_capacity(max_entities),
             collider_to_entity: HashMap::new(),
+            rigidbody_to_entity: HashMap::new(),
         }
     }
 
@@ -143,6 +147,7 @@ impl EntityManager {
                 Vec3::splat(1.0), 
                 // Quat::IDENTITY,
                 // 90 about y and then -90 about z, this gives us a perpendicular weapon.
+                // Quat::from_rotation_z(std::f32::consts::PI) * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
                 Quat::from_rotation_z(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
                 Quat::IDENTITY, 
                 "resources/models/static/weapons/swords/001_double_axe_new.txt", 
@@ -168,9 +173,10 @@ impl EntityManager {
                 Faction::Item, 
                 Vec3::splat(0.0), 
                 Vec3::splat(1.0), 
-                Quat::from_rotation_z(std::f32::consts::PI) * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2), 
+                // Quat::from_rotation_z(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+                Quat::from_rotation_x(std::f32::consts::PI) * Quat::from_rotation_z(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
                 Quat::IDENTITY, 
-                "resources/models/static/weapons/swords/001_orc_sword_bc.txt", 
+                "resources/models/static/weapons/001_orc_sword_bc.txt", 
                 None,
                 ps,
             );
@@ -215,76 +221,66 @@ impl EntityManager {
         self.models.insert(self.next_entity_id, model.clone());
         
         self.next_entity_id += 1;
+        
+        // ============================================================
+        // CREATE CUBE BOUNDING BOX
+        // ============================================================
+        {
+            let mut min = Vec3::splat(f32::MAX);
+            let mut max = Vec3::splat(f32::MIN);
 
-        // GENERATE BOUNDING CUBE
-        let mut max_x = std::f32::MIN;
-        let mut max_y = std::f32::MIN;
-        let mut max_z = std::f32::MIN;
+            for v in model.vertices.iter() {
+                min = min.min(v.position);
+                max = max.max(v.position);
+            }
 
-        let mut min_x = std::f32::MAX;
-        let mut min_y = std::f32::MAX;
-        let mut min_z = std::f32::MAX;
+            let size = max - min;
+            let center = (min + max) * 0.5;
 
-        for v in model.vertices.iter() {
-            if v.position.x > max_x { max_x = v.position.x };
-            if v.position.y > max_y { max_y = v.position.y };
-            if v.position.z > max_z { max_z = v.position.z };
+            let mut local_offset = center;
 
-            if v.position.x < min_x { min_x = v.position.x };
-            if v.position.y < min_y { min_y = v.position.y };
-            if v.position.z < min_z { min_z = v.position.z };
-        }
+            local_offset.y = 0.5 * size.y;
 
-        let cuboid = Cuboid {
-            w: max_x.abs() + min_x.abs(),
-            h: max_y.abs() + min_y.abs(),
-            d: max_z.abs() + min_z.abs(),
-        };
+            let cuboid = Cuboid {
+                w: size.x,
+                h: size.y,
+                d: size.z,
+            };
 
-        let cuboid_model = cuboid.create_model();
+            let cuboid_model = cuboid.create_model();
 
-        self.cuboids.insert(self.next_entity_id, cuboid);
-        self.models.insert(self.next_entity_id, cuboid_model);
-        self.factions.insert(self.next_entity_id, Faction::Gizmo);
-        self.transforms.insert(self.next_entity_id, transform);
-
-        self.parents.insert(self.next_entity_id, Parent { parent_id });
-
-        self.next_entity_id += 1;
-
-        if let Some(cyl) = cylinder {
-            // CYLINDER PASS
-            let cyl_mod = cyl.create_model(12);
-
-            let collider_vert_dim = (cyl.h * 0.5) - 0.025;
-
-            let collider_shape = ColliderShape::cylinder(collider_vert_dim, cyl.r);
-
-            self.colliders.insert(self.next_entity_id, collider_shape);
-
-            self.models.insert(self.next_entity_id, cyl_mod);
+            self.cuboids.insert(self.next_entity_id, cuboid);
+            self.models.insert(self.next_entity_id, cuboid_model);
             self.factions.insert(self.next_entity_id, Faction::Gizmo);
-            self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
-            self.transforms.insert(self.next_entity_id, Transform {
+            self.entity_types.insert(self.next_entity_id, EntityType::Cuboid);
+            self.parents.insert(self.next_entity_id, Parent { parent_id });
+            self.child_locals.insert(self.next_entity_id, Transform {
                 position,
                 rotation: Quat::IDENTITY,
-                scale: Vec3::splat(1.0),
-                original_rotation: Quat::IDENTITY,
+                scale,
+                original_rotation: Quat::IDENTITY
             });
-
-            self.parents.insert(self.next_entity_id, Parent{
-                parent_id,
+            self.transforms.insert(self.next_entity_id, Transform {
+                position: Vec3::ZERO,
+                rotation: Quat::IDENTITY,
+                scale,
+                original_rotation: Quat::IDENTITY,
             });
 
             // PHYSICS PASS
             let iso: Isometry<f32> = (position, rotation).into();
 
-            let body = RigidBodyBuilder::fixed()
+            let body = RigidBodyBuilder::kinematic_position_based()
                 .position(iso)
                 .build();
 
-            let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
-                .active_collision_types(ActiveCollisionTypes::all())
+            let collider_shape = ColliderShape::cuboid(size.x * 0.5, size.y * 0.5, size.z * 0.5);
+            self.colliders.insert(self.next_entity_id, collider_shape);
+
+            let collider = ColliderBuilder::cuboid(size.x * 0.5, size.y * 0.5, size.z * 0.5)
+                .sensor(true)
+                .density(0.0)
+                .active_events(ActiveEvents::COLLISION_EVENTS)
                 .build();
 
             let body_handle = ps.rigid_body_set.insert(body);
@@ -293,15 +289,75 @@ impl EntityManager {
                 body_handle,
                 &mut ps.rigid_body_set,
             );
-
             self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
                 rigid_body: body_handle,
                 collider: collider_handle,
             });
 
             self.collider_to_entity.insert(collider_handle, self.next_entity_id);
+            self.rigidbody_to_entity.insert(body_handle, self.next_entity_id);
 
             self.next_entity_id += 1;
+        }
+
+        // ============================================================
+        // CREATE CYLINDER HITBOX
+        // ============================================================
+        {
+            if let Some(cyl) = cylinder {
+                // CYLINDER PASS
+                let cyl_mod = cyl.create_model(12);
+
+                let collider_vert_dim = (cyl.h * 0.5) - 0.025;
+
+                let collider_shape = ColliderShape::cylinder(collider_vert_dim, cyl.r);
+
+                self.colliders.insert(self.next_entity_id, collider_shape);
+
+                self.models.insert(self.next_entity_id, cyl_mod);
+                self.factions.insert(self.next_entity_id, Faction::Gizmo);
+                self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
+                self.transforms.insert(self.next_entity_id, Transform {
+                    position,
+                    rotation: Quat::IDENTITY,
+                    scale,
+                    original_rotation: Quat::IDENTITY,
+                });
+
+                self.parents.insert(self.next_entity_id, Parent{
+                    parent_id,
+                });
+
+                // PHYSICS PASS
+                let iso: Isometry<f32> = (position, rotation).into();
+                
+                // TODO: This shouldn't be fixed always, we can have it be kinematic for some
+                // things
+                let body = RigidBodyBuilder::fixed()
+                    .position(iso)
+                    .build();
+
+                let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
+                    .active_collision_types(ActiveCollisionTypes::all())
+                    .build();
+
+                let body_handle = ps.rigid_body_set.insert(body);
+                let collider_handle = ps.collider_set.insert_with_parent(
+                    collider,
+                    body_handle,
+                    &mut ps.rigid_body_set,
+                );
+
+                self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+                    rigid_body: body_handle,
+                    collider: collider_handle,
+                });
+
+                self.collider_to_entity.insert(collider_handle, self.next_entity_id);
+                self.rigidbody_to_entity.insert(body_handle, self.next_entity_id);
+
+                self.next_entity_id += 1;
+            }
         }
     }
 
@@ -352,6 +408,13 @@ impl EntityManager {
                     anim.continuous_sounds.push(ContinuousSound {
                         sound_type: cs.clone(),
                         playing: false.into(),
+                    });
+                }
+
+                if !prop.hurtbox_activation.is_empty() {
+                    anim.hurtbox_activation = Some(FrameActivation {
+                        segment_range: prop.hurtbox_activation[0]..=prop.hurtbox_activation[1],
+                        triggered: false.into(),
                     });
                 }
             }
@@ -437,6 +500,7 @@ impl EntityManager {
 
             self.physics_handles.insert(entity_id, physics_handle);
             self.collider_to_entity.insert(collider_handle, entity_id);
+            self.rigidbody_to_entity.insert(body_handle, entity_id);
 
             // === CYLINDER GIZMO (child entity) ===
             let collider_id = self.next_entity_id;
@@ -469,23 +533,51 @@ impl EntityManager {
         }
     }
 
-    pub fn update(&mut self, sm: &mut SoundManager, ps: &PhysicsState) {
+    pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
         self.delete_entities(sm);
 
-        for handle in self.physics_handles.iter() {
-            if let Some(rb) = ps.rigid_body_set.get(handle.value().rigid_body) {
-                if let Some(transform) = self.transforms.get_mut(handle.key()) {
-                    let iso = rb.position();
-                    transform.position = Vec3::new(iso.translation.x, iso.translation.y, iso.translation.z);
-                    transform.rotation = Quat::from_xyzw(
-                        iso.rotation.i,
-                        iso.rotation.j,
-                        iso.rotation.k,
-                        iso.rotation.w,
-                    );
-                }
+        let dynamic_rbs: Vec<(RigidBodyHandle, &RigidBody)> = ps.rigid_body_set
+            .iter()
+            .filter(|rb| rb.1.body_type().is_dynamic())
+            .map(|rb| rb)
+            .collect();
+
+        let k_pos_based_rbs: Vec<RigidBodyHandle> = ps.rigid_body_set
+            .iter()
+            .filter(|rb| rb.1.body_type() == RigidBodyType::KinematicPositionBased)
+            .map(|rb| rb.0)
+            .collect();
+
+        for rb in dynamic_rbs.iter() {
+            let entity_id = self.rigidbody_to_entity.get(&rb.0).unwrap();
+
+            if let Some(transform) = self.transforms.get_mut(*entity_id) {
+                let iso = rb.1.position();
+
+                transform.position = Vec3::new(iso.translation.x, iso.translation.y, iso.translation.z);
+                transform.rotation = Quat::from_xyzw(
+                    iso.rotation.i,
+                    iso.rotation.j,
+                    iso.rotation.k,
+                    iso.rotation.w,
+                );
             }
         }
+
+        for rb in k_pos_based_rbs.iter() {
+            let entity_id = self.rigidbody_to_entity.get(rb).unwrap();
+
+            if let Some(transform) = self.transforms.get_mut(*entity_id) {
+                let iso: Isometry<f32> = (transform.position, transform.rotation).into();
+                let rb = ps.rigid_body_set.get_mut(*rb).unwrap();
+                
+                // TODO: should we wake up or does it not matter?
+                rb.set_position(iso, true);
+            }
+
+        }
+
+        self.apply_parenting();
     }
 
     pub fn delete_entities(&mut self, sm: &mut SoundManager) {
@@ -541,6 +633,22 @@ impl EntityManager {
             result
     }
 
+    pub fn player_get_ids_for_state(&self, state: PlayerState) -> Vec<usize> {
+        let result: Vec<usize> = self.player_controllers
+            .iter()
+            .filter_map(|f|
+                if f.value().state == state {
+                    Some(f.key())
+                } else {
+                    None
+                }
+            )
+            .collect();
+
+            result
+
+    }
+
     pub fn get_active_weapon_ids(&self) -> Vec<usize> {
         self.active_items
             .iter()
@@ -551,6 +659,43 @@ impl EntityManager {
                     .flatten()
             })
             .collect()
+    }
+
+    pub fn apply_parenting(&mut self) {
+        // NOTE: This handles one-level parenting. If you have deep hierarchies,
+        // sort by depth or recurse.
+        // Here, your cuboid is just one level under the weapon, so this is fine.
+        let mut to_update: Vec<(usize, usize)> = Vec::new();
+        for p in self.parents.iter() {
+            to_update.push((p.key(), p.value().parent_id)); // (child, parent)
+        }
+
+        for (child, parent) in to_update {
+            // Parent world
+            let pt = match self.transforms.get(parent) {
+                Some(t) => t.clone(),
+                None => continue, // parent lacks a world; skip
+            };
+            let parent_world =
+            Mat4::from_scale_rotation_translation(pt.scale, pt.rotation, pt.position);
+
+            // Child local (must exist)
+            let lt = match self.child_locals.get(child) {
+                Some(t) => t.clone(),
+                None => continue, // no local stored; skip
+            };
+            let child_local =
+            Mat4::from_scale_rotation_translation(lt.scale, lt.rotation, lt.position);
+
+            let world = parent_world * child_local; // compose
+
+            let (s, r, p) = world.to_scale_rotation_translation();
+            let ct = self.transforms.get_mut(child).unwrap(); // guaranteed present
+            ct.position = p;
+            ct.rotation = r;
+            ct.scale = s;
+            // Keep ct.original_rotation as-is (unused for gizmo)
+        }
     }
 }
 

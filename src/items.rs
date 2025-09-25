@@ -61,10 +61,6 @@ pub fn update(em: &mut EntityManager) {
             let weapon_trans = em.transforms.get_mut(rh_weapon_id).unwrap();
             weapon_trans.position = pos;
             weapon_trans.rotation = rot * weapon_trans.original_rotation;
-
-            let cuboid_trans = em.transforms.get_mut(rh_parent.key()).unwrap();
-            cuboid_trans.position = pos;
-            cuboid_trans.rotation = rot * cuboid_trans.original_rotation;
         }
     }
 }

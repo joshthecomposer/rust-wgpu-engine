@@ -3,11 +3,11 @@
 		"YRobot": {
 			"__note__": "use Quat::from_rotation_x()",
 			"rot_correction": "",
-			"scale_correction": [0.01, 0.01, 0.01],
+			"scale_correction": [0.0135, 0.0135, 0.0135],
 			"mesh_path": "resources/models/animated/roby.txt", 
 			"bone_path":"resources/models/animated/roby.txt",
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
-			"hit_cyl": { "r": 0.188, "h": 1.6 },
+			"hit_cyl": { "r": 0.195, "h": 2.16 },
 			"flip_180": true,
 			"item_bones": {
 				"rh_name": "mixamorg:RightHand",
@@ -19,22 +19,26 @@
 					"one_shots": {
 						"Footstep": [7, 18]
 					},
-					"continuous_sounds": []
+					"continuous_sounds": [],
+					"hurtbox_activation": []
 				},
 				{
 					"name": "Idle",
 					"one_shots": { },
-					"continuous_sounds": []
+					"continuous_sounds": [],
+					"hurtbox_activation": []
 				},
 				{
 					"name": "Death",
 					"one_shots": { },
-					"continuous_sounds": []
+					"continuous_sounds": [],
+					"hurtbox_activation": []
 				},
 				{
 					"name": "Slash",
 					"one_shots": { },
-					"continuous_sounds": []
+					"continuous_sounds": [],
+					"hurtbox_activation": []
 				}
 			]
 		},
@@ -45,7 +49,7 @@
 			"mesh_path": "resources/models/animated/newnewnewnew.txt", 
 			"bone_path":"resources/models/animated/newnewnewnew.txt",
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
-			"hit_cyl": { "r": 0.188, "h": 1.6 },
+			"hit_cyl": { "r": 0.192, "h": 1.8 },
 			"flip_180": false,
 			"item_bones": {
 				"rh_name": "Bone.029.L",
@@ -57,22 +61,26 @@
 					"one_shots": {
 						"Footstep": [5, 15]
 					},
-					"continuous_sounds": []
+					"continuous_sounds": [],
+					"hurtbox_activation": []
 				},
 				{
 					"name": "Idle",
 					"one_shots": { },
-					"continuous_sounds": []
+					"continuous_sounds": [],
+					"hurtbox_activation": []
 				},
 				{
 					"name": "Death",
 					"one_shots": { },
-					"continuous_sounds": []
+					"continuous_sounds": [],
+					"hurtbox_activation": []
 				},
 				{
 					"name": "Slash",
 					"one_shots": { },
-					"continuous_sounds": []
+					"continuous_sounds": [],
+					"hurtbox_activation": [8, 15]
 				}
 			]
 		},
@@ -94,7 +102,8 @@
 					"one_shots": { },
 					"continuous_sounds": [
 						"MooseHuff"
-					]
+					],
+					"hurtbox_activation": []
 				}
 			]
 		},

@@ -24,6 +24,7 @@ mod particles;
 mod items;
 mod physics;
 mod util;
+mod combat_system;
 
 use std::{fs::{self, OpenOptions}, path::Path};
 

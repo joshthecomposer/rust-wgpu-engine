@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{fmt::{self, Display, Formatter}, str::FromStr};
+use std::{cell::Cell, fmt::{self, Display, Formatter}, ops::RangeInclusive, str::FromStr};
 
 use glam::{Mat4, Quat, Vec3};
 use rapier3d::prelude::{ColliderHandle, RigidBodyHandle};
@@ -79,6 +79,7 @@ pub enum EntityType {
     Stump,
     OrcSword,
     TrashGuy,
+    Cuboid,
 }
 
 impl Display for EntityType {
@@ -94,6 +95,7 @@ impl Display for EntityType {
             EntityType::Stump => write!(f, "Stump"),
             EntityType::OrcSword => write!(f, "OrcSword"),
             EntityType::TrashGuy => write!(f, "TrashGuy"),
+            EntityType::Cuboid => write!(f, "Cuboid"),
         }
     }
 }
@@ -314,4 +316,10 @@ impl Display for TextureProfile {
             Self::DecalCrisp => write!(f, "DecalCrisp"),
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct FrameActivation {
+    pub segment_range: RangeInclusive<u32>,
+    pub triggered: Cell<bool>,
 }

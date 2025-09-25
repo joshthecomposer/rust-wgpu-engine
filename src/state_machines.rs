@@ -143,6 +143,9 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
     let animator = em.animators.get_mut(player_key).unwrap();
 
     let next_state = (|| match controller.state {
+        // ==================================================================================
+        // PLAYER IDLE 
+        // ==================================================================================
         PlayerState::Idle => {
             controller.time_in_state += dt;
             if input.just_pressed(Key::Space) {
@@ -173,6 +176,9 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
             return PlayerState::Idle
         },
+        // ==================================================================================
+        // PLAYER JUMPING
+        // ==================================================================================
         PlayerState::Jumping => {
             controller.time_in_state += dt;
             if rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
@@ -188,6 +194,10 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
             return PlayerState::Jumping
         },
+
+        // ==================================================================================
+        // PLAYER FREEFALLING
+        // ==================================================================================
         PlayerState::Freefalling => {
             controller.time_in_state += dt;
             if rb.linvel().y.abs() < ANIMATION_EPSILON {
@@ -205,6 +215,9 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
             return PlayerState::Freefalling
         },
+        // ==================================================================================
+        // PLAYER RUNNING
+        // ==================================================================================
         PlayerState::Running => {
             controller.time_in_state += dt;
 
@@ -243,6 +256,9 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
             return PlayerState::Running
         },
+        // ==================================================================================
+        // PLAYER ATTACKING
+        // ==================================================================================
         PlayerState::Attacking => {
             controller.time_in_state += dt;
         
@@ -257,9 +273,15 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
             return PlayerState::Attacking
         },
+        // ==================================================================================
+        // PLAYER DYING
+        // ==================================================================================
         PlayerState::Dying => {
             return PlayerState::Dying
         },
+        // ==================================================================================
+        // PLAYER DEAD
+        // ==================================================================================
         PlayerState::Dead {time, target_time} => {
             return PlayerState::Dead {time, target_time}
         },
