@@ -177,12 +177,19 @@ pub struct Parent {
     pub parent_id: usize,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum SimState {
     Aggro,
     Waiting,
     Dancing,
     Dying ,
     Dead { time: f32, target_time: f32 },
+    Attacking,
+}
+
+pub struct SimStateController {
+    pub state: SimState,
+    pub time_in_state: f32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -322,4 +329,11 @@ impl Display for TextureProfile {
 pub struct FrameActivation {
     pub segment_range: RangeInclusive<u32>,
     pub triggered: Cell<bool>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Knockback {
+    pub ttl: f32, // time remaining seconds
+    //pub play_flinch: bool,
+    //pub lock_rotation: bool,
 }

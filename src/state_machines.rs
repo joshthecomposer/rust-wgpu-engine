@@ -11,22 +11,24 @@ pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, i
 fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem) {
     for fac in em.factions.iter() {
         if *fac.value() == Faction::Enemy {
-            let state = em.sim_states.get_mut(fac.key()).unwrap();
+            let controller = em.simstate_controllers.get_mut(fac.key()).unwrap();
             let player_key = em.factions.iter().find(|e| *e.value() == Faction::Player).unwrap().key();
             let player_pos = em.transforms.get(player_key).unwrap().position;
             let entity_pos = em.transforms.get(fac.key()).unwrap().position;
             let animator = em.animators.get_mut(fac.key()).unwrap();
             let destination = em.destinations.get_mut(fac.key()).unwrap();
+            let health = em.healths.get(fac.key()).unwrap();
 
             let trans = em.transforms.get(fac.key()).unwrap();
 
-            let next_state = (|| match state {
+            let next_state = (|| match controller.state {
                 SimState::Dancing => {
                     *destination = entity_pos;
                     animator.set_next_animation(AnimationType::Dance);
                     SimState::Dancing
                 },
                 SimState::Waiting => {
+                    if *health <= 0.0 { return SimState::Dying; }
                     animator.set_next_animation(AnimationType::Idle);
                     *destination = entity_pos;
 
@@ -47,6 +49,9 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                     SimState::Waiting
                 },
                 SimState::Aggro => {
+                    if *health <= 0.0 { return SimState::Dying; }
+
+                    controller.time_in_state += dt;
                     animator.set_next_animation(AnimationType::Run);
                     *destination = player_pos;
 
@@ -57,6 +62,9 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                     SimState::Aggro
                 },
                 SimState::Dying => {
+
+                    em.v_effects.remove(fac.key());
+
                     animator.set_next_animation(AnimationType::Death);
                     *destination = entity_pos;
                     
@@ -74,13 +82,13 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                 SimState::Dead { time, target_time } => {
                     animator.set_next_animation(AnimationType::Death);
 
-                    let new_time = *time + dt;
+                    let new_time = time + dt;
 
                     if new_time >= 4.0 {
                         em.v_effects.insert(fac.key(), VisualEffect::Flashing);
                     }
 
-                    if new_time >= *target_time {
+                    if new_time >= target_time {
                         let model_transform = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
                         let skellington = em.skellingtons.get_mut(fac.key()).unwrap();
 
@@ -88,8 +96,6 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                             let anim = animator.animations.get(&animator.current_animation).unwrap();
                             anim.model_animation_join.iter().map(|b| b.name.clone()).collect()
                         };
-
-                        dbg!(&bone_names.len());
 
                         let anim = animator.animations.get_mut(&animator.current_animation).unwrap();
 
@@ -126,11 +132,20 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                         em.entity_trashcan.push(fac.key());
                     }
 
-                    SimState::Dead { time: new_time, target_time: *target_time }
+                    SimState::Dead { time: new_time, target_time: target_time }
+                },
+                SimState::Attacking => {
+                    if *health <= 0.0 { return SimState::Dying; }
+
+                    controller.time_in_state += dt;
+
+                    let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
+
+                    return SimState::Attacking;
                 },
             })();
 
-            *state = next_state;
+            controller.state = next_state;
         }
     }
 }

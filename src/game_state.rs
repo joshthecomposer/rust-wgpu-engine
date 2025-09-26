@@ -9,7 +9,7 @@ use nalgebra::{Point, Point3};
 use rapier3d::{math::Isometry, prelude::{ColliderBuilder, RigidBodyBuilder}};
 use rusttype::{point, Font, Scale};
 
-use crate::{animation::animation_system, camera::Camera, combat_system, config::{entity_config::{self, EntityConfig}, game_config::GameConfig, world_data::WorldData}, debug::{gizmos::Cylinder, write::write_data}, entity_manager::{self, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PhysicsHandle, ShaderType, SimState, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input, InputState}, items, lights::{DirLight, Lights}, movement_system, particles::{Emitter, ParticleSystem}, physics::PhysicsState, renderer::Renderer, sound::{fmod::FMOD_Studio_System_Update, sound_manager::SoundManager}, state_machines, terrain::Terrain, ui::{font::{self, FontManager}, game_ui::{self, GameUiContext}, imgui::ImguiManager, message_queue::{MessageQueue, UiMessage}}};
+use crate::{animation::animation_system, camera::Camera, combat_system, config::{entity_config::{self, EntityConfig}, game_config::GameConfig, world_data::WorldData}, debug::{gizmos::Cylinder, write::write_data}, entity_manager::{self, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PhysicsHandle, ShaderType, SimState, SimStateController, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input, InputState}, items, lights::{DirLight, Lights}, movement_system, particles::{Emitter, ParticleSystem}, physics::PhysicsState, renderer::Renderer, sound::{fmod::FMOD_Studio_System_Update, sound_manager::SoundManager}, state_machines, terrain::Terrain, ui::{font::{self, FontManager}, game_ui::{self, GameUiContext}, imgui::ImguiManager, message_queue::{MessageQueue, UiMessage}}};
 // use rand::prelude::*;
 // use rand_chacha::ChaCha8Rng;
 
@@ -379,7 +379,10 @@ impl GameState {
 
         if self.input_state.keys_current.contains(&glfw::Key::Delete) {
             for id in self.entity_manager.selected.iter() {
-                self.entity_manager.sim_states.insert(*id, SimState::Dying);
+                self.entity_manager.simstate_controllers.insert(*id, SimStateController {
+                    state: SimState::Dying,
+                    time_in_state: 0.0,
+                });
                 if let Some(parent) = self.entity_manager.parents.iter().find(|p| p.value().parent_id == *id) {
                     let cyl_id = parent.key();
 

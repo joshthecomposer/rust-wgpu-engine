@@ -1,12 +1,14 @@
 #![allow(clippy::too_many_arguments)]
 
+use std::collections::HashSet;
+
 use glam::{Mat4, Quat, Vec3};
 use nalgebra::UnitQuaternion;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, ItemBones}, world_data::WorldData}, debug::gizmos::{Cuboid, Pill}, enums_types::{ActiveItem, EntityType, Faction, FrameActivation, Inventory, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
+use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, ItemBones}, world_data::WorldData}, debug::gizmos::{Cuboid, Pill}, enums_types::{ActiveItem, EntityType, Faction, FrameActivation, Inventory, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -18,12 +20,12 @@ pub struct EntityManager {
     pub animators: SparseSet<Animator>,
     pub skellingtons: SparseSet<Bone>,
     pub rotators: SparseSet<Rotator>,
-    pub sim_states: SparseSet<SimState>,
     pub inventories: SparseSet<Inventory>,
     pub active_items: SparseSet<ActiveItem>,
     pub item_bones: SparseSet<ItemBones>,
     pub impulse_applied: SparseSet<bool>,
     pub player_controllers: SparseSet<PlayerController>,
+    pub simstate_controllers: SparseSet<SimStateController>,
 
     // Simulation/Behavior Components
     pub destinations: SparseSet<Vec3>,
@@ -47,6 +49,10 @@ pub struct EntityManager {
     // Find entities from rapier
     pub collider_to_entity: HashMap<ColliderHandle, usize>,
     pub rigidbody_to_entity: HashMap<RigidBodyHandle, usize>,
+    pub hitsets: SparseSet<HashSet<ColliderHandle>>,
+    pub yaws: SparseSet<f32>,
+    pub knockbacks: SparseSet<Knockback>,
+    pub healths: SparseSet<f32>,
 }
 
 impl EntityManager {
@@ -61,12 +67,12 @@ impl EntityManager {
             animators: SparseSet::with_capacity(max_entities),
             skellingtons: SparseSet::with_capacity(max_entities),
             rotators: SparseSet::with_capacity(max_entities),
-            sim_states: SparseSet::with_capacity(max_entities),
             inventories: SparseSet::with_capacity(max_entities),
             active_items: SparseSet::with_capacity(max_entities),
             item_bones: SparseSet::with_capacity(max_entities),
             impulse_applied: SparseSet::with_capacity(max_entities),
             player_controllers: SparseSet::with_capacity(max_entities),
+            simstate_controllers: SparseSet::with_capacity(max_entities),
 
             destinations: SparseSet::with_capacity(max_entities),
 
@@ -86,6 +92,10 @@ impl EntityManager {
             physics_handles: SparseSet::with_capacity(max_entities),
             collider_to_entity: HashMap::new(),
             rigidbody_to_entity: HashMap::new(),
+            hitsets: SparseSet::with_capacity(max_entities),
+            yaws: SparseSet::with_capacity(max_entities),
+            knockbacks: SparseSet::with_capacity(max_entities),
+            healths: SparseSet::with_capacity(max_entities),
         }
     }
 
@@ -162,6 +172,11 @@ impl EntityManager {
                     left_hand: None,
                 }
             );
+
+            self.hitsets.insert(
+                weapon_id,
+                HashSet::new(),
+            );
         }
 
         {
@@ -187,6 +202,11 @@ impl EntityManager {
                     items: vec![weapon_id],
                 },
             );
+
+            self.hitsets.insert(
+                weapon_id,
+                HashSet::new(),
+            );
         }
     }
 
@@ -205,6 +225,8 @@ impl EntityManager {
             original_rotation: rot_correction,
         };
         self.transforms.insert(self.next_entity_id, transform.clone());
+
+        self.yaws.insert(parent_id, 0.0);
 
         let mut model = Model::new();
         let mut found = false;
@@ -392,6 +414,9 @@ impl EntityManager {
             original_rotation: rotation,
         };
 
+        self.yaws.insert(entity_id, 0.0);
+        self.healths.insert(entity_id, 100.0);
+
         // === ANIMATION DATA ===
         let (skellington, mut animator, animation) = import_bone_data(animation_path, flip_180);
 
@@ -447,9 +472,19 @@ impl EntityManager {
         self.ani_models.insert(entity_id, model);
         self.rotators.insert(entity_id, rotator);
         self.item_bones.insert(entity_id, item_bones);
-        self.sim_states.insert(entity_id, match entity_type {
-            EntityType::MooseMan => SimState::Dancing,
-            _ => SimState::Waiting,
+        self.simstate_controllers.insert(entity_id, match entity_type {
+            EntityType::MooseMan => { 
+                SimStateController {
+                    state: SimState::Dancing,
+                    time_in_state: 0.0,
+                }
+            },
+            _ => {
+                SimStateController {
+                    state: SimState::Waiting,
+                    time_in_state: 0.0,
+                }
+            },
         });
 
         if faction == Faction::Player {
@@ -467,11 +502,18 @@ impl EntityManager {
             let cyl_pos = position;
             // === PHYSICS ===
             let iso: Isometry<f32> = (cyl_pos, rotation).into();
-            let body = RigidBodyBuilder::dynamic()
+            let mut body = RigidBodyBuilder::dynamic()
                 .ccd_enabled(true)
                 .position(iso)
                 .enabled_rotations(false, false, false)
                 .build();
+
+            match entity_type {
+                EntityType::YRobot => {
+                    body.set_additional_mass(1.2, false);
+                },
+                _ => ()
+            }
             
             let capsule_total_height = cyl.h;
             let capsule_half_height = (capsule_total_height - 2.0 * cyl.r) / 2.0;
@@ -623,7 +665,7 @@ impl EntityManager {
             self.animators.remove(*id);
             self.skellingtons.remove(*id);
             self.rotators.remove(*id);
-            self.sim_states.remove(*id);
+            self.simstate_controllers.remove(*id);
             self.destinations.remove(*id);
             self.parents.remove(*id);
             self.colliders.remove(*id);
@@ -666,6 +708,22 @@ impl EntityManager {
 
     pub fn player_get_ids_for_state(&self, state: PlayerState) -> Vec<usize> {
         let result: Vec<usize> = self.player_controllers
+            .iter()
+            .filter_map(|f|
+                if f.value().state == state {
+                    Some(f.key())
+                } else {
+                    None
+                }
+            )
+            .collect();
+
+            result
+
+    }
+
+    pub fn enemy_get_ids_for_state(&self, state: SimState) -> Vec<usize> {
+        let result: Vec<usize> = self.simstate_controllers
             .iter()
             .filter_map(|f|
                 if f.value().state == state {

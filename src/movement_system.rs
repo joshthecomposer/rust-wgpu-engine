@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use glam::{vec3, Quat, Vec3};
 
-use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PlayerState, Transform, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
+use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PlayerState, Transform, VisualEffect, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
 
 pub fn update(
     em: &mut EntityManager, 
@@ -83,6 +83,8 @@ fn handle_player_movement_rapier(
         linvel.z = move_dir.z * speed;
 
         let yaw = f32::atan2(move_dir.x, move_dir.z);
+        em.yaws.insert(player_key, yaw);
+
         let desired_rot = Quat::from_rotation_y(yaw); // * transform.original_rotation;
 
         if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {
@@ -119,6 +121,14 @@ fn handle_enemy_movement_rapier(
     ps: &mut PhysicsState,
 ) {
     for id in ids {
+
+        let kb_active = em.knockbacks.get_mut(id).map_or(false, |kb| {
+            kb.ttl -= dt;
+            kb.ttl > 0.0
+        });
+
+        if kb_active { em.v_effects.insert(id, VisualEffect::Flashing); continue; } else { em.knockbacks.remove(id); }
+
         let Some(dest) = em.destinations.get(id) else { continue };
 
         let (
@@ -135,9 +145,11 @@ fn handle_enemy_movement_rapier(
 
 
         // TODO: Why god
-        if *ent_type == EntityType::MooseMan { continue };
-
         if animator.next_animation == AnimationType::Death { continue };
+
+        em.v_effects.remove(id);
+
+        if *ent_type == EntityType::MooseMan { continue };
 
         let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
         let position = Vec3::from_slice(rb.translation().as_slice());
@@ -217,8 +229,15 @@ fn handle_gizmo_movement(ids: Vec<usize>, em: &mut EntityManager, dt: f32) {
     }
 
     for (child_id, parent_id) in transforms_to_update {
-        let parent_transform = em.transforms.get(parent_id).unwrap().clone();
-        let child_transform = em.transforms.get(child_id).unwrap().clone();
+        let parent_transform = match em.transforms.get(parent_id) {
+            Some(pt) => pt,
+            None => return,
+        }.clone();
+
+        let child_transform = match em.transforms.get(child_id) {
+            Some(ct) => ct,
+            None => return,
+        }.clone();
 
         // Some magic to make sure the cylinder is rotated properly despite the parent being originally offset in some way
         let adjusted_rotation = parent_transform.rotation
