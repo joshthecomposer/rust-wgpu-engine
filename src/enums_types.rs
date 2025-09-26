@@ -337,3 +337,7 @@ pub struct Knockback {
     //pub play_flinch: bool,
     //pub lock_rotation: bool,
 }
+
+pub struct PhysicsBody {
+
+}

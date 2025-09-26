@@ -403,7 +403,7 @@ impl EntityManager {
         item_bones: ItemBones,
     ) {
         // Reserve an ID for the main entity
-        let entity_id = self.next_entity_id;
+        let parent_id = self.next_entity_id;
         self.next_entity_id += 1;
 
         // === TRANSFORM ===
@@ -414,8 +414,8 @@ impl EntityManager {
             original_rotation: rotation,
         };
 
-        self.yaws.insert(entity_id, 0.0);
-        self.healths.insert(entity_id, 100.0);
+        self.yaws.insert(parent_id, 0.0);
+        self.healths.insert(parent_id, 100.0);
 
         // === ANIMATION DATA ===
         let (skellington, mut animator, animation) = import_bone_data(animation_path, flip_180);
@@ -464,15 +464,15 @@ impl EntityManager {
         };
 
         // === COMPONENT INSERTION ===
-        self.transforms.insert(entity_id, transform);
-        self.factions.insert(entity_id, faction.clone());
-        self.entity_types.insert(entity_id, entity_type.clone());
-        self.animators.insert(entity_id, animator);
-        self.skellingtons.insert(entity_id, skellington);
-        self.ani_models.insert(entity_id, model);
-        self.rotators.insert(entity_id, rotator);
-        self.item_bones.insert(entity_id, item_bones);
-        self.simstate_controllers.insert(entity_id, match entity_type {
+        self.transforms.insert(parent_id, transform);
+        self.factions.insert(parent_id, faction.clone());
+        self.entity_types.insert(parent_id, entity_type.clone());
+        self.animators.insert(parent_id, animator);
+        self.skellingtons.insert(parent_id, skellington);
+        self.ani_models.insert(parent_id, model);
+        self.rotators.insert(parent_id, rotator);
+        self.item_bones.insert(parent_id, item_bones);
+        self.simstate_controllers.insert(parent_id, match entity_type {
             EntityType::MooseMan => { 
                 SimStateController {
                     state: SimState::Dancing,
@@ -488,12 +488,12 @@ impl EntityManager {
         });
 
         if faction == Faction::Player {
-            self.player_controllers.insert(entity_id, PlayerController {
+            self.player_controllers.insert(parent_id, PlayerController {
                 state: PlayerState::Idle,
                 time_in_state: 0.0,
             });
         } else {
-            self.destinations.insert(entity_id, position);
+            self.destinations.insert(parent_id, position);
         }
 
         // PILL
@@ -543,9 +543,9 @@ impl EntityManager {
                 collider: collider_handle,
             };
 
-            self.physics_handles.insert(entity_id, physics_handle);
-            self.collider_to_entity.insert(collider_handle, entity_id);
-            self.rigidbody_to_entity.insert(body_handle, entity_id);
+            self.physics_handles.insert(parent_id, physics_handle);
+            self.collider_to_entity.insert(collider_handle, parent_id);
+            self.rigidbody_to_entity.insert(body_handle, parent_id);
 
             // === CYLINDER GIZMO (child entity) ===
             let collider_id = self.next_entity_id;
@@ -572,7 +572,7 @@ impl EntityManager {
             self.entity_types.insert(collider_id, EntityType::Cylinder);
             self.factions.insert(collider_id, Faction::Gizmo);
             self.colliders.insert(collider_id, collider_shape);
-            self.parents.insert(collider_id, Parent { parent_id: entity_id });
+            self.parents.insert(collider_id, Parent { parent_id: parent_id });
 
             self.next_entity_id += 1;
         }
