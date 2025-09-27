@@ -86,7 +86,7 @@
 					"name": "Slash2",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": [6, 11]
+					"hurtbox_activation": [6, 13]
 				}
 			]
 		},
