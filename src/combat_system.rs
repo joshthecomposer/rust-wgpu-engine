@@ -26,17 +26,23 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
 
         let player_cyl_handle = em.physics_handles.get(player_id).unwrap().collider;
         
-        let anim = em.animators
+        let slash = em.animators
             .get(player_id)
             .unwrap()
             .animations
             .get(&AnimationType::Slash)
             .unwrap();
 
-        let active = anim
-            .hurtbox_activation
-            .as_ref()
-            .map_or(false, |ha| ha.triggered.get());
+        let slash2 = em.animators
+            .get(player_id)
+            .unwrap()
+            .animations
+            .get(&AnimationType::Slash2)
+            .unwrap();
+
+        let active =
+        slash.hurtbox_activation.as_ref().map_or(false, |ha| ha.triggered.get()) ||
+        slash2.hurtbox_activation.as_ref().map_or(false, |ha| ha.triggered.get());
 
         if !active {
             hitset.clear();               // important: reset when inactive

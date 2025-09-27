@@ -217,6 +217,7 @@ pub enum AnimationType {
     Death,
     Dance,
     Slash,
+    Slash2,
     Jump,
     Freefall,
 }
@@ -229,6 +230,7 @@ impl Display for AnimationType {
             AnimationType::Death => write!(f, "Death"),
             AnimationType::Dance => write!(f, "Dance"),
             AnimationType::Slash => write!(f, "Slash"),
+            AnimationType::Slash2 => write!(f, "Slash2"),
             AnimationType::Jump => write!(f, "Jump"),
             AnimationType::Freefall => write!(f, "Freefall"),
         }
@@ -245,6 +247,7 @@ impl AnimationType {
             "Slash" => Some(AnimationType::Slash),
             "Jump" => Some(AnimationType::Jump),
             "Freefall" => Some(AnimationType::Freefall),
+            "Slash2" => Some(AnimationType::Slash2),
             _ => panic!("Invalid AnimationType passed in. {}", input),
         }
     }

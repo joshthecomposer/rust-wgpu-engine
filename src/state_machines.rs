@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3};
 use glfw::{Key, MouseButton};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, Faction, PlayerState, SimState, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, Faction, PlayerState, SimState, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, util::data_structure::HashMapGetPairMut};
 
 pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, input: &InputState, ps: &mut PhysicsState) {
     player_state_machine(em, dt, input, ps);
@@ -305,18 +305,65 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
         // ==================================================================================
         PlayerState::Attacking => {
             controller.time_in_state += dt;
-        
-            let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
 
-            if anim.current_time >= anim.duration - ANIMATION_EPSILON {
-                animator.set_next_animation(AnimationType::Idle);
+            // Helpers
+            let chain_start_seg = |k: AnimationType| -> u32 {
+                match k {
+                    AnimationType::Slash  => 16,
+                    AnimationType::Slash2 => 15,
+                    _ => u32::MAX, // never chain from other clips
+                }
+            };
+            let run_cancel_seg = |k: AnimationType| -> u32 {
+                match k {
+                    AnimationType::Slash  => 25,
+                    AnimationType::Slash2 => 20,
+                    _ => u32::MAX,
+                }
+            };
+            let next_combo = |k: AnimationType| -> Option<AnimationType> {
+                match k {
+                    AnimationType::Slash  => Some(AnimationType::Slash2),
+                    AnimationType::Slash2 => Some(AnimationType::Slash),
+                    _ => None,
+                }
+            };
 
-                controller.time_in_state = 0.0;
-                return PlayerState::Idle
+            // Current clip info
+            let cur_kind = &animator.current_animation;
+            let cur_anim = animator.animations.get_mut(&cur_kind).unwrap();
+            let seg = cur_anim.current_segment;
+            let time = cur_anim.current_time;
+            let end  = cur_anim.duration;
+
+
+            if seg >= chain_start_seg(cur_kind.clone()) && input.mouse_just_pressed(MouseButton::Left) {
+                if let Some(next_kind) = next_combo(cur_kind.clone()) {
+                    if let Some(next_anim) = animator.animations.get_mut(&next_kind) {
+                        next_anim.current_time = 0.0; // start fresh
+                    }
+                    animator.set_next_animation(next_kind);
+                }
+                return PlayerState::Attacking; // stay in attacking
             }
 
-            return PlayerState::Attacking
-        },
+            if seg >= run_cancel_seg(cur_kind.clone()) && input.wasd_is_down() {
+                animator.set_next_animation(AnimationType::Run);
+                controller.time_in_state = 0.0;
+                return PlayerState::Running;
+            }
+
+            if time >= end - ANIMATION_EPSILON {
+                if matches!(animator.next_animation, AnimationType::Slash | AnimationType::Slash2) {
+                    return PlayerState::Attacking;
+                }
+                animator.set_next_animation(AnimationType::Idle);
+                controller.time_in_state = 0.0;
+                return PlayerState::Idle;
+            }
+
+            PlayerState::Attacking
+        }
         // ==================================================================================
         // PLAYER DYING
         // ==================================================================================

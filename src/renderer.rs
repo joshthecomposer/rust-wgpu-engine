@@ -5,7 +5,7 @@ use gl::CULL_FACE;
 use glam::{vec3, vec4, Mat4, Vec3, Vec4};
 use image::GenericImageView;
 
-use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{EntityType, Faction, FboType, ShaderType, VaoType}, gl_call, grid::Grid, lights::Lights, shaders::Shader, some_data::{FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES}, sound::{fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR}, sound_manager::SoundManager}};
+use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, EntityType, Faction, FboType, ShaderType, VaoType}, gl_call, grid::Grid, lights::Lights, shaders::Shader, some_data::{FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES}, sound::{fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR}, sound_manager::SoundManager}};
 
 pub struct DefaultTextures {
     pub white: u32,
@@ -397,6 +397,9 @@ impl Renderer {
             if let Some(fa) = &animation.hurtbox_activation {
                 if fa.segment_range.contains(&animation.current_segment) { 
                     if !fa.triggered.get() {
+                        if animator.current_animation == AnimationType::Slash2 {
+                            println!("TRIGGERED");
+                        }
                         fa.triggered.set(true);
                     }
                 } else {

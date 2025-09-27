@@ -80,7 +80,13 @@
 					"name": "Slash",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": [8, 15]
+					"hurtbox_activation": [10, 16]
+				},
+				{
+					"name": "Slash2",
+					"one_shots": { },
+					"continuous_sounds": [],
+					"hurtbox_activation": [6, 11]
 				}
 			]
 		},
