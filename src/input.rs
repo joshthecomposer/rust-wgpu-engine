@@ -83,12 +83,6 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, cursor_pos:
 
                 if !pressed_keys.contains(&glfw::Key::LeftShift) {
                     em.selected.clear();
-
-
-                    let player_id = em.factions.iter().filter(|f| *f.value() == Faction::Player).last().unwrap().key();
-                    let animator = em.animators.get_mut(player_id).unwrap();
-
-                    animator.set_next_animation(AnimationType::Slash);
                 }
 
                 let (ray_origin, ray_dir) = mouse_ray_from_screen(cursor_pos, screen_size, camera);

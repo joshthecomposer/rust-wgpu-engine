@@ -5,7 +5,7 @@ use rapier3d::prelude::Cuboid;
 use core::f32;
 use std::{collections::HashMap, ffi::c_void, mem::{self, offset_of}, path::Path, ptr, str::Lines};
 
-use crate::{enums_types::{AnimationType, FrameActivation, TextureProfile, TextureType, ANIMATION_EPSILON}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}};
+use crate::{enums_types::{AnimationType, FrameActivation, TextureProfile, TextureType, ANIMATION_EPSILON}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}, util::data_structure::HashMapGetPairMut};
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -316,7 +316,7 @@ impl Animator {
             self.blend_factor += dt / self.blend_time;
             if self.blend_factor >= 1.0 {
                 self.blend_factor = 0.0;
-                self.current_animation = self.next_animation.clone();
+                self.set_current_animation(self.next_animation.clone());
             }
         }
 
@@ -324,17 +324,11 @@ impl Animator {
         let next_key = self.next_animation.clone();
 
         if curr_key != next_key {
-            if let (Some(mut current), Some(mut next)) = (
-                self.animations.remove(&curr_key),
-                self.animations.remove(&next_key)
-            ) {
-                current.update(skellington, Some(&mut next), self.blend_factor, dt,);
-                self.animations.insert(curr_key, current);
-                self.animations.insert(next_key, next);
+            if let Some((current, next)) = self.animations.get_pair_mut(&curr_key, &next_key) {
+                current.update(skellington, Some(next), self.blend_factor, dt,);
             }
-        } else if let Some(mut current) = self.animations.remove(&curr_key) {
+        } else if let Some(current) = self.animations.get_mut(&curr_key) {
             current.update(skellington, None, self.blend_factor, dt);
-            self.animations.insert(curr_key, current);
         }
     }
 }
@@ -814,7 +808,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
     if !current_anim_str.is_empty() {
         animation.model_animation_join = model_animation_join.clone();
         animation.ticks_per_second = ticks_per_second;
-        if current_anim_str == "Death" || current_anim_str == "Slash" {
+        if current_anim_str == "Death" || current_anim_str == "Slash" || current_anim_str == "Slash2" || current_anim_str == "Jump" {
             println!("Found {}, setting looping to false", &current_anim_str);
             animation.looping = false;
         }

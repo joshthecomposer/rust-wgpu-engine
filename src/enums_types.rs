@@ -207,7 +207,14 @@ pub enum PlayerState {
 
 pub struct PlayerController {
     pub state: PlayerState,
+    pub attack_state: AttackState,
     pub time_in_state: f32,
+}
+
+pub enum AttackState {
+    Attack1,
+    Attack2,
+    Attack3,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]

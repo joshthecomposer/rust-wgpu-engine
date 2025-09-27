@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3};
 use glfw::{Key, MouseButton};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, Faction, PlayerState, SimState, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, util::data_structure::HashMapGetPairMut};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, EntityType, Faction, PlayerState, SimState, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, util::data_structure::HashMapGetPairMut};
 
 pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, input: &InputState, ps: &mut PhysicsState) {
     player_state_machine(em, dt, input, ps);
@@ -182,9 +182,12 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
 fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps: &mut PhysicsState) {
     let player_key = em.factions.iter().find(|e| *e.value() == Faction::Player).unwrap().key();
     let controller = em.player_controllers.get_mut(player_key).unwrap();
-    let ph = em.physics_handles.get_mut(player_key).unwrap();
+    let ph = em.physics_handles.get(player_key).unwrap();
     let rb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
     let animator = em.animators.get_mut(player_key).unwrap();
+
+    let ground_id = em.entity_types.iter().find(|e| *e.value() == EntityType::Terrain).unwrap().key();
+    let ground_ph = em.physics_handles.get(ground_id).unwrap();
 
     let next_state = (|| match controller.state {
         // ==================================================================================
@@ -225,16 +228,18 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
         // ==================================================================================
         PlayerState::Jumping => {
             controller.time_in_state += dt;
+            
             if rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
                 controller.time_in_state = 0.0;
                 return PlayerState::Freefalling
             }
 
-            if rb.linvel().y <= ANIMATION_EPSILON && rb.linvel().y >= -ANIMATION_EPSILON {
 
-                controller.time_in_state = 0.0;
-                return PlayerState::Running;
-            }
+            //if rb.linvel().y <= ANIMATION_EPSILON && rb.linvel().y >= -ANIMATION_EPSILON {
+
+            //    controller.time_in_state = 0.0;
+            //    return PlayerState::Running;
+            //}
 
             return PlayerState::Jumping
         },
@@ -244,10 +249,24 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
         // ==================================================================================
         PlayerState::Freefalling => {
             controller.time_in_state += dt;
-            if rb.linvel().y.abs() < ANIMATION_EPSILON {
-                controller.time_in_state = 0.0;
+
+            let grounded = ps.narrow_phase
+                .contact_pairs_with(ph.collider)
+                .any(|cp| {
+                    let is_player_vs_ground =
+                    (cp.collider1 == ph.collider && cp.collider2 == ground_ph.collider) ||
+                    (cp.collider2 == ph.collider && cp.collider1 == ground_ph.collider);
+
+                    if !is_player_vs_ground { return false; }
+
+                    if cp.has_any_active_contact { return true; } else { return false; }
+
+                });
+
+            if grounded {
                 return PlayerState::Running;
             }
+
 
             if rb.linvel().y <= (-(GRAVITY * DECREASED_GRAVITY_SCALAR) + ANIMATION_EPSILON) && controller.time_in_state >= 0.5 {
                 if let Some(_) = animator.animations.get(&AnimationType::Freefall) {
@@ -289,6 +308,8 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
                 animator.animations.get_mut(&AnimationType::Slash).unwrap().current_time = 0.0;
                 animator.set_next_animation(AnimationType::Slash);
 
+                controller.attack_state = AttackState::Attack1;
+
                 controller.time_in_state = 0.0;
                 return PlayerState::Attacking
             }
@@ -304,65 +325,74 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
         // PLAYER ATTACKING
         // ==================================================================================
         PlayerState::Attacking => {
-            controller.time_in_state += dt;
-
-            // Helpers
-            let chain_start_seg = |k: AnimationType| -> u32 {
-                match k {
-                    AnimationType::Slash  => 16,
-                    AnimationType::Slash2 => 15,
-                    _ => u32::MAX, // never chain from other clips
-                }
-            };
-            let run_cancel_seg = |k: AnimationType| -> u32 {
-                match k {
-                    AnimationType::Slash  => 25,
-                    AnimationType::Slash2 => 20,
-                    _ => u32::MAX,
-                }
-            };
-            let next_combo = |k: AnimationType| -> Option<AnimationType> {
-                match k {
-                    AnimationType::Slash  => Some(AnimationType::Slash2),
-                    AnimationType::Slash2 => Some(AnimationType::Slash),
-                    _ => None,
-                }
-            };
-
-            // Current clip info
-            let cur_kind = &animator.current_animation;
-            let cur_anim = animator.animations.get_mut(&cur_kind).unwrap();
-            let seg = cur_anim.current_segment;
-            let time = cur_anim.current_time;
-            let end  = cur_anim.duration;
-
-
-            if seg >= chain_start_seg(cur_kind.clone()) && input.mouse_just_pressed(MouseButton::Left) {
-                if let Some(next_kind) = next_combo(cur_kind.clone()) {
-                    if let Some(next_anim) = animator.animations.get_mut(&next_kind) {
-                        next_anim.current_time = 0.0; // start fresh
+            // AttackState state machine (kinda a mini state machine)
+            match controller.attack_state {
+                AttackState::Attack1 => {
+                    // lock into attacking until we are fully transitioned into new anim
+                    if animator.current_animation != AnimationType::Slash {
+                        return PlayerState::Attacking;
                     }
-                    animator.set_next_animation(next_kind);
-                }
-                return PlayerState::Attacking; // stay in attacking
+
+                    let anim = animator.animations.get(&animator.current_animation).unwrap();
+
+                    if anim.current_segment >= 12 && anim.current_segment < 22 {
+                        if input.mouse_just_pressed(MouseButton::Left) {
+                            animator.animations.get_mut(&AnimationType::Slash2).unwrap().current_time = 0.0;
+                            animator.set_next_animation(AnimationType::Slash2);
+                            controller.attack_state = AttackState::Attack2;
+
+                            return PlayerState::Attacking;
+                        }
+                    }
+
+                    if anim.current_segment >= 22 {
+                        if input.wasd_is_down() {
+                            animator.set_next_animation(AnimationType::Run);
+                            controller.attack_state = AttackState::Attack1;
+
+                            controller.time_in_state = 0.0;
+
+                            return PlayerState::Running;
+                        }
+                    }
+
+                    if anim.current_time >= anim.duration- ANIMATION_EPSILON {
+                        animator.set_next_animation(AnimationType::Idle);
+                        controller.attack_state = AttackState::Attack1;
+                        controller.time_in_state = 0.0;
+                        return PlayerState::Idle;
+                    }
+                },
+                AttackState::Attack2 => {
+                    if animator.current_animation != AnimationType::Slash2 {
+                        return PlayerState::Attacking;
+                    }
+
+                    let anim = animator.animations.get(&animator.current_animation).unwrap();
+
+                    if anim.current_segment >= 22 {
+                        if input.wasd_is_down() {
+                            animator.set_next_animation(AnimationType::Run);
+                            controller.attack_state = AttackState::Attack1;
+
+                            controller.time_in_state = 0.0;
+
+                            return PlayerState::Running;
+                        }
+                    }
+                    if anim.current_time >= anim.duration - ANIMATION_EPSILON {
+                        animator.set_next_animation(AnimationType::Idle);
+                        controller.attack_state = AttackState::Attack1;
+                        controller.time_in_state = 0.0;
+
+                        return PlayerState::Idle;
+                    }
+
+                },
+                _ => {},
             }
 
-            if seg >= run_cancel_seg(cur_kind.clone()) && input.wasd_is_down() {
-                animator.set_next_animation(AnimationType::Run);
-                controller.time_in_state = 0.0;
-                return PlayerState::Running;
-            }
-
-            if time >= end - ANIMATION_EPSILON {
-                if matches!(animator.next_animation, AnimationType::Slash | AnimationType::Slash2) {
-                    return PlayerState::Attacking;
-                }
-                animator.set_next_animation(AnimationType::Idle);
-                controller.time_in_state = 0.0;
-                return PlayerState::Idle;
-            }
-
-            PlayerState::Attacking
+            return PlayerState::Attacking;
         }
         // ==================================================================================
         // PLAYER DYING
@@ -380,3 +410,4 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
     controller.state = next_state;
 }
+
