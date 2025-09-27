@@ -29,6 +29,7 @@ mod combat_system;
 use std::{fs::{self, OpenOptions}, path::Path};
 
 use game_state::GameState;
+use glam::Quat;
 use std::io::Write;
 
 fn main() {

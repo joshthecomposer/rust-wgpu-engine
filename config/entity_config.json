@@ -2,16 +2,16 @@
 	"entity_types":{
 		"YRobot": {
 			"__note__": "use Quat::from_rotation_x()",
-			"rot_correction": "",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
 			"scale_correction": [0.0135, 0.0135, 0.0135],
 			"mesh_path": "resources/models/animated/roby.txt", 
 			"bone_path":"resources/models/animated/roby.txt",
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
 			"hit_cyl": { "r": 0.195, "h": 2.16 },
-			"flip_180": true,
+			"flip_180": false,
 			"item_bones": {
-				"rh_name": "mixamorg:RightHand",
-				"lh_name": "mixamorg:LeftHand"
+				"rh_name": "mixamorig:RightHand",
+				"lh_name": "mixamorig:LeftHand"
 			},
 			"animation_properties" : [
 				{
@@ -38,13 +38,13 @@
 					"name": "Slash",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": []
+					"hurtbox_activation": [14, 22]
 				}
 			]
 		},
 		"TrashGuy": {
 			"__note__": "use Quat::from_rotation_x()",
-			"rot_correction": "",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/animated/newnewnewnew.txt", 
 			"bone_path":"resources/models/animated/newnewnewnew.txt",
@@ -86,7 +86,7 @@
 		},
 		"MooseMan": {
 			"__note__": "use Quat::from_rotation_x()",
-			"rot_correction": "",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
 			"scale_correction": [0.013, 0.013, 0.013],
 			"mesh_path": "resources/models/animated/moosey.txt", 
 			"bone_path": "resources/models/animated/moosey.txt",
@@ -109,7 +109,7 @@
 		},
 		"TreeFoliage": {
 			"__note__": "use Quat::from_rotation_x()",
-			"rot_correction": "",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/trees/001_tree_foliage_model.txt", 
 			"bone_path":"",
@@ -123,7 +123,7 @@
 		},
 		"TreeTrunk": {
 			"__note__": "use Quat::from_rotation_x()",
-			"rot_correction": "",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/trees/001_tree_trunk_model.txt", 
 			"bone_path":"",
@@ -137,7 +137,7 @@
 		},
 		"Stump": {
 			"__note__": "use Quat::from_rotation_x()",
-			"rot_correction": "",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/stump/001_stump.txt", 
 			"bone_path":"",
@@ -151,9 +151,23 @@
 		},
 		"OrcSword": {
 			"__note__": "use Quat::from_rotation_x()",
-			"rot_correction": "",
+			"rot_correction": [0.5, -0.5, 0.5, 0.5],
 			"scale_correction": [1.0, 1.0, 1.0],
-			"mesh_path": "resources/models/static/weapons/swords/001_orc_sword.txt", 
+			"mesh_path": "resources/models/static/weapons/001_orc_sword_bc.txt", 
+			"bone_path":"",
+			"hit_cyl": { "r": 0.1, "h": 2.0 },
+			"flip_180": false,
+			"item_bones": {
+				"rh_name": "",
+				"lh_name": ""
+			},
+			"animation_properties" : []
+		},
+		"DoubleAxe": {
+			"__note__": "use Quat::from_rotation_x()",
+			"rot_correction": [-0.5, 0.5, 0.5, 0.5] ,
+			"scale_correction": [2.0, 2.0, 2.0],
+			"mesh_path": "resources/models/static/weapons/swords/001_double_axe_new.txt", 
 			"bone_path":"",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,

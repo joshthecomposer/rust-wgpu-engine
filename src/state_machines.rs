@@ -19,6 +19,20 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
             let destination = em.destinations.get_mut(fac.key()).unwrap();
             let health = em.healths.get(fac.key()).unwrap();
 
+            let active_weapon_id = em
+                .active_items
+                .get(fac.key())
+                .and_then(|ai| ai.right_hand);
+
+            let distance = active_weapon_id
+                .and_then(|wid| {
+                    em.parents
+                        .iter()
+                        .find(|p| p.value().parent_id == wid && em.cuboids.get(p.key()).is_some())
+                        .and_then(|entry| em.cuboids.get(entry.key()).map(|hb| hb.h)) // child id = entry.key()
+                })
+                .unwrap_or(3.0); // fallback if no weapon or no cuboid
+
             let trans = em.transforms.get(fac.key()).unwrap();
 
             let next_state = (|| match controller.state {
@@ -55,9 +69,16 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                     animator.set_next_animation(AnimationType::Run);
                     *destination = player_pos;
 
+                    if entity_pos.distance(player_pos) < distance {
+                        animator.set_next_animation(AnimationType::Slash);
+                        controller.time_in_state = 0.0;
+                        return SimState::Attacking
+                    }
+
                     if entity_pos.distance(player_pos) > 12.0 {
                         return SimState::Waiting
                     } 
+
 
                     SimState::Aggro
                 },
@@ -137,9 +158,17 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                 SimState::Attacking => {
                     if *health <= 0.0 { return SimState::Dying; }
 
+                    let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
+
+                    if anim.current_time >= anim.duration - ANIMATION_EPSILON {
+                        controller.time_in_state = 0.0;
+                        anim.current_time = 0.0;
+                        return SimState::Aggro;
+                    }
+
                     controller.time_in_state += dt;
 
-                    let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
+
 
                     return SimState::Attacking;
                 },
@@ -165,7 +194,7 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
             controller.time_in_state += dt;
             if input.just_pressed(Key::Space) {
                 rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
-                rb.apply_impulse((Vec3::Y * 0.65).into(), true);
+                rb.apply_impulse((Vec3::Y * 5.2).into(), true);
                 
                 if let Some(jump_anim) = animator.animations.get_mut(&AnimationType::Jump) {
                     jump_anim.current_time = 0.0;
@@ -238,7 +267,7 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
             if input.just_pressed(Key::Space) {
                 rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
-                rb.apply_impulse((Vec3::Y * 0.65).into(), true);
+                rb.apply_impulse((Vec3::Y * 5.2).into(), true);
                 
                 if let Some(jump_anim) = animator.animations.get_mut(&AnimationType::Jump) {
                     jump_anim.current_time = 0.0;

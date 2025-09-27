@@ -8,7 +8,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, ItemBones}, world_data::WorldData}, debug::gizmos::{Cuboid, Pill}, enums_types::{ActiveItem, EntityType, Faction, FrameActivation, Inventory, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
+use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Pill}, enums_types::{ActiveItem, EntityType, Faction, FrameActivation, Inventory, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -99,33 +99,19 @@ impl EntityManager {
         }
     }
 
-    pub fn populate_initial_entity_data(&mut self, ec: &mut EntityConfig, wd: &mut WorldData, ps: &mut PhysicsState) {
+    pub fn populate_initial_entity_data(&mut self, ec: &EntityConfig, wd: &mut WorldData, ps: &mut PhysicsState) {
         for instance in wd.entities.iter() {
             let archetype = ec.entity_types.get(&instance.entity_type).unwrap();
             let position = instance.position;
             let rotation = instance.rotation;
             let scale_correction = archetype.scale_correction;
 
-            let rot_correction = match archetype.rot_correction.as_str() {
-                "-FRAC_PI_2" => Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2),
-                _ => Quat::IDENTITY,
-            };
             match instance.faction {
                 Faction::Player | Faction::Enemy => {
                     self.create_animated_entity(
-                        instance.faction.clone(),
-                        position.into(), 
-                        scale_correction.into(), 
-                        rot_correction, 
-                        Quat::from_xyzw(rotation[0], rotation[1], rotation[2], rotation[3]),
-                        &archetype.mesh_path, 
-                        &archetype.bone_path,
-                        &archetype.animation_properties,
-                        instance.entity_type.clone(),
-                        archetype.hit_cyl.clone(),
+                        ec,
+                        instance,
                         ps,
-                        archetype.flip_180.clone(),
-                        archetype.item_bones.clone(),
                     );
                 },
                 Faction::World | Faction::Static | Faction::Gizmo | Faction::Item => {
@@ -134,8 +120,8 @@ impl EntityManager {
                         instance.faction.clone(),
                         position.into(), 
                         scale_correction.into(), 
-                        rot_correction, 
-                        Quat::from_xyzw(rotation[0], rotation[1], rotation[2], rotation[3]),
+                        archetype.rot_correction, 
+                        rotation,
                         &archetype.mesh_path, 
                         archetype.hit_cyl.clone(),
                         ps,
@@ -146,71 +132,67 @@ impl EntityManager {
         }
 
 
-        {
-            // Load a weapon for the player // TODO: don't hard code this
-            let player_id = self.factions.iter().filter(|f| *f.value() == Faction::Player).last().unwrap().key();
-            let weapon_id = self.next_entity_id;
-            self.create_static_entity(
-                EntityType::OrcSword, 
-                Faction::Item, 
-                Vec3::splat(0.0), 
-                Vec3::splat(1.0), 
-                // Quat::IDENTITY,
-                // 90 about y and then -90 about z, this gives us a perpendicular weapon.
-                // Quat::from_rotation_z(std::f32::consts::PI) * Quat::from_rotation_x(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
-                Quat::from_rotation_z(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
-                Quat::IDENTITY, 
-                "resources/models/static/weapons/swords/001_double_axe_new.txt", 
-                None,
-                ps,
-            );
+        // {
+        //     // Load a weapon for the player // TODO: don't hard code this
+        //     let player_id = self.factions.iter().filter(|f| *f.value() == Faction::Player).last().unwrap().key();
+        //     let weapon_id = self.next_entity_id;
+        //     self.create_static_entity(
+        //         EntityType::OrcSword, 
+        //         Faction::Item, 
+        //         Vec3::splat(0.0), 
+        //         Vec3::splat(1.0), 
+        //         Quat::from_xyzw(-0.5, 0.5, 0.5, 0.5),
+        //         Quat::IDENTITY, 
+        //         "resources/models/static/weapons/swords/001_double_axe_new.txt", 
+        //         None,
+        //         ps,
+        //     );
 
-            self.active_items.insert(
-                player_id,
-                ActiveItem {
-                    right_hand: Some(weapon_id),
-                    left_hand: None,
-                }
-            );
+        //     self.active_items.insert(
+        //         player_id,
+        //         ActiveItem {
+        //             right_hand: Some(weapon_id),
+        //             left_hand: None,
+        //         }
+        //     );
 
-            self.hitsets.insert(
-                weapon_id,
-                HashSet::new(),
-            );
-        }
+        //     self.hitsets.insert(
+        //         weapon_id,
+        //         HashSet::new(),
+        //     );
+        // }
 
-        {
-            // Load an inventory weapon for the player // TODO: don't hard code this
-            let player_id = self.factions.iter().filter(|f| *f.value() == Faction::Player).last().unwrap().key();
-            let weapon_id = self.next_entity_id;
-            self.create_static_entity(
-                EntityType::OrcSword, 
-                Faction::Item, 
-                Vec3::splat(0.0), 
-                Vec3::splat(1.0), 
-                // Quat::from_rotation_z(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
-                Quat::from_rotation_x(std::f32::consts::PI) * Quat::from_rotation_z(std::f32::consts::FRAC_PI_2) * Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
-                Quat::IDENTITY, 
-                "resources/models/static/weapons/001_orc_sword_bc.txt", 
-                None,
-                ps,
-            );
+        // {
+        //     // Load an inventory weapon for the player // TODO: don't hard code this
+        //     let player_id = self.factions.iter().filter(|f| *f.value() == Faction::Player).last().unwrap().key();
+        //     let weapon_id = self.next_entity_id;
+        //     self.create_static_entity(
+        //         EntityType::OrcSword, 
+        //         Faction::Item, 
+        //         Vec3::splat(0.0), 
+        //         Vec3::splat(1.0), 
+        //         Quat::from_xyzw(0.5, -0.5, 0.5, 0.5),
+        //         Quat::IDENTITY, 
+        //         "resources/models/static/weapons/001_orc_sword_bc.txt", 
+        //         None,
+        //         ps,
+        //     );
 
-            self.inventories.insert(
-                player_id,
-                Inventory {
-                    items: vec![weapon_id],
-                },
-            );
+        //     self.inventories.insert(
+        //         player_id,
+        //         Inventory {
+        //             items: vec![weapon_id],
+        //         },
+        //     );
 
-            self.hitsets.insert(
-                weapon_id,
-                HashSet::new(),
-            );
-        }
+        //     self.hitsets.insert(
+        //         weapon_id,
+        //         HashSet::new(),
+        //     );
+        // }
     }
 
-    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) {
+    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) -> usize {
 
         let parent_id = self.next_entity_id;
 
@@ -382,29 +364,37 @@ impl EntityManager {
                 self.rigidbody_to_entity.insert(body_handle, self.next_entity_id);
 
                 self.next_entity_id += 1;
+
             }
+    
         }
+
+        parent_id
     }
 
     pub fn create_animated_entity(
         &mut self,
-        faction: Faction,
-        position: Vec3,
-        scale: Vec3,
-        rot_correction: Quat,
-        rotation: Quat,
-        model_path: &str,
-        animation_path: &str,
-        animation_props: &[AnimationPropHelper],
-        entity_type: EntityType,
-        cylinder: Option<crate::debug::gizmos::Cylinder>,
+        ec: &EntityConfig,
+        instance: &EntityInstance,
         ps: &mut PhysicsState,
-        flip_180: bool,
-        item_bones: ItemBones,
     ) {
         // Reserve an ID for the main entity
         let parent_id = self.next_entity_id;
         self.next_entity_id += 1;
+
+        let position = instance.position;
+        let rotation = instance.rotation;
+        let faction = &instance.faction;
+        let entity_type = &instance.entity_type;
+        
+        let archetype = ec.entity_types.get(&instance.entity_type).unwrap();
+        let model_path = &archetype.mesh_path;
+        let bone_path = &archetype.bone_path;
+        let rot_correction = archetype.rot_correction;
+        let scale = archetype.scale_correction; // We should do this by the instance
+        let animation_props = &archetype.animation_properties;
+        let item_bones = &archetype.item_bones;
+        let cylinder = &archetype.hit_cyl;
 
         // === TRANSFORM ===
         let transform = Transform {
@@ -418,7 +408,7 @@ impl EntityManager {
         self.healths.insert(parent_id, 100.0);
 
         // === ANIMATION DATA ===
-        let (skellington, mut animator, animation) = import_bone_data(animation_path, flip_180);
+        let (skellington, mut animator, animation) = import_bone_data(&bone_path, archetype.flip_180);
 
         for prop in animation_props {
             if let Some(anim) = animator.animations.get_mut(&prop.name) {
@@ -450,9 +440,9 @@ impl EntityManager {
 
         // === MODEL ===
         let model = self.ani_models.iter()
-            .find(|m| m.value().full_path == model_path)
+            .find(|m| m.value().full_path == *model_path)
             .map(|m| m.value().clone())
-            .unwrap_or_else(|| import_model_data(model_path, &animation));
+            .unwrap_or_else(|| import_model_data(&model_path, &animation));
 
         // === ROTATOR ===
         let starting_rot = rotation * rot_correction;
@@ -471,7 +461,7 @@ impl EntityManager {
         self.skellingtons.insert(parent_id, skellington);
         self.ani_models.insert(parent_id, model);
         self.rotators.insert(parent_id, rotator);
-        self.item_bones.insert(parent_id, item_bones);
+        self.item_bones.insert(parent_id, item_bones.clone());
         self.simstate_controllers.insert(parent_id, match entity_type {
             EntityType::MooseMan => { 
                 SimStateController {
@@ -487,7 +477,7 @@ impl EntityManager {
             },
         });
 
-        if faction == Faction::Player {
+        if *faction == Faction::Player {
             self.player_controllers.insert(parent_id, PlayerController {
                 state: PlayerState::Idle,
                 time_in_state: 0.0,
@@ -509,7 +499,7 @@ impl EntityManager {
                 .build();
 
             match entity_type {
-                EntityType::YRobot => {
+                EntityType::YRobot | EntityType::TrashGuy=> {
                     body.set_additional_mass(1.2, false);
                 },
                 _ => ()
@@ -575,6 +565,44 @@ impl EntityManager {
             self.parents.insert(collider_id, Parent { parent_id: parent_id });
 
             self.next_entity_id += 1;
+        }
+
+        // === WEAPONS ===
+
+        for weapon in instance.weapons.iter() {
+            let addtl_weap_rot = if *entity_type == EntityType::YRobot {
+                Quat::from_rotation_z(std::f32::consts::PI)
+            } else {
+                Quat::IDENTITY
+            };
+            let entity_id = parent_id;
+            let weapon_archetype = ec.entity_types.get(&weapon).unwrap();
+
+            let weapon_id = self.create_static_entity(
+                weapon.clone(),
+                Faction::Item,
+                Vec3::splat(0.0),
+                Vec3::splat(1.0),
+                addtl_weap_rot * weapon_archetype.rot_correction,
+                Quat::IDENTITY,
+                &weapon_archetype.mesh_path,
+                None,
+                ps,
+            );
+            
+            self.parents.insert(weapon_id, Parent { parent_id: entity_id });
+            self.active_items.insert(
+                entity_id,
+                ActiveItem {
+                    right_hand: Some(weapon_id),
+                    left_hand: None,
+                }
+            );
+
+            self.hitsets.insert(
+                weapon_id,
+                HashSet::new(),
+            );
         }
     }
 
@@ -657,6 +685,8 @@ impl EntityManager {
         // TODO: Also clean up colliders from here.
         for id in self.entity_trashcan.iter() {
             sm.cleanup_entity_sounds(*id);
+            self.active_items.remove(*id);
+            self.inventories.remove(*id);
             self.transforms.remove(*id);
             self.factions.remove(*id);
             self.entity_types.remove(*id);

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use glam::{vec3, Quat, Vec3};
 
-use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PlayerState, Transform, VisualEffect, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
+use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PlayerState, SimState, Transform, VisualEffect, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
 
 pub fn update(
     em: &mut EntityManager, 
@@ -41,6 +41,14 @@ fn handle_player_movement_rapier(
     let animator = em.animators.get_mut(player_key).unwrap();
     let player_state = em.player_controllers.get(player_key).unwrap();
 
+
+    let kb_active = em.knockbacks.get_mut(player_key).map_or(false, |kb| {
+        kb.ttl -= delta;
+        kb.ttl > 0.0
+    });
+
+    if kb_active { em.v_effects.insert(player_key, VisualEffect::Flashing); return; } else { em.knockbacks.remove(player_key); }
+
     if animator.next_animation == AnimationType::Death {
         return;
     }
@@ -48,6 +56,8 @@ fn handle_player_movement_rapier(
     if player_state.state == PlayerState::Attacking {
         return;
     }
+
+    em.v_effects.remove(player_key);
 
     let physics_handle = em.physics_handles.get(player_key).unwrap();
     let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
@@ -135,17 +145,21 @@ fn handle_enemy_movement_rapier(
             Some(rotator),
             Some(physics_handle),
             Some(animator),
-            Some(ent_type)
+            Some(ent_type),
+            Some(sim_controller),
         ) = (
             em.rotators.get_mut(id),
             em.physics_handles.get(id),
             em.animators.get_mut(id),
             em.entity_types.get(id),
+            em.simstate_controllers.get(id),
         ) else { continue };
 
 
         // TODO: Why god
         if animator.next_animation == AnimationType::Death { continue };
+
+        if sim_controller.state == SimState::Attacking { continue };
 
         em.v_effects.remove(id);
 
@@ -169,6 +183,8 @@ fn handle_enemy_movement_rapier(
 
             // Set rotation
             let angle = f32::atan2(move_dir.x, move_dir.z);
+            em.yaws.insert(id, angle);
+
             let desired_rot = Quat::from_rotation_y(angle);
 
             if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {

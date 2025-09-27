@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fs::read_to_string};
 
+use glam::{Quat, Vec3};
 use serde::Deserialize;
 
 use crate::{debug::gizmos::Cylinder, enums_types::{AnimationType, EntityType, Faction, SoundType}};
@@ -39,8 +40,8 @@ pub struct AnimationPropHelper {
 
 #[derive(Deserialize, Debug)]
 pub struct EntityTypeHelper {
-    pub rot_correction: String,
-    pub scale_correction: [f32; 3],
+    pub rot_correction: Quat,
+    pub scale_correction: Vec3,
     pub mesh_path: String,
     pub bone_path: String,
     pub hit_cyl: Option<Cylinder>,

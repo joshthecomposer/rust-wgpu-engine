@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 gl = "0.14.0"
 glfw = "0.59.0"
-glam = "0.29.2"
+glam = { version = "0.29.2", features = ["serde"] }
 image = "0.25.5"
 imgui-opengl-renderer = "0.12.1"
 imgui = "0.9.0"

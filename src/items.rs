@@ -21,6 +21,7 @@ pub fn update(em: &mut EntityManager) {
         let current_key = animator.current_animation.clone();
         let next_key = animator.next_animation.clone();
         let rh_name = owner_item_bones.rh_name.as_str();
+
         let rh_weapon_id = a.value().right_hand.unwrap();
 
         let rh_parent = em.parents.iter().find( |p|

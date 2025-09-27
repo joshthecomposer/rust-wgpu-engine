@@ -171,6 +171,7 @@ impl ImguiManager {
                                         faction: faction.clone(),
                                         position: trans.position.into(),
                                         rotation: (trans.rotation).into(),
+                                        weapons: vec![],
                                         // rotation: (Quat::IDENTITY).into(),
                                     }
                                 );

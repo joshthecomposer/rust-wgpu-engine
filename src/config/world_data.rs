@@ -1,4 +1,5 @@
 use std::fs::{read_to_string, write};
+use glam::{Quat, Vec3};
 use toml::value::{Table, Value, Array};
 
 use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
@@ -26,32 +27,32 @@ impl WorldData {
     }
 
     pub fn write_readable_world_data(&self, path: &str) {
-        let mut root = Table::new();
-        let mut entities_array = Vec::new();
+        // let mut root = Table::new();
+        // let mut entities_array = Vec::new();
 
-        for entity in &self.entities {
-            let mut ent = Table::new();
-            ent.insert("entity_type".into(), Value::String(entity.entity_type.to_string()));
-            ent.insert("faction".into(), Value::String(entity.faction.to_string()));
+        // for entity in &self.entities {
+        //     let mut ent = Table::new();
+        //     ent.insert("entity_type".into(), Value::String(entity.entity_type.to_string()));
+        //     ent.insert("faction".into(), Value::String(entity.faction.to_string()));
 
-            let pos_array: Array = entity.position
-                .iter()
-                .map(|f| Value::Float(snap(*f as f64, 4)))  // 4 decimals
-                .collect();
-            ent.insert("position".into(), Value::Array(pos_array));
+        //     let pos_array: Array = entity.position
+        //         .iter()
+        //         .map(|f| Value::Float(snap(*f as f64, 4)))  // 4 decimals
+        //         .collect();
+        //     ent.insert("position".into(), Value::Array(pos_array));
 
-            let rot_array: Array = entity.rotation
-                .iter()
-                .map(|f| Value::Float(snap(*f as f64, 4)))  // 4 decimals
-                .collect();
-            ent.insert("rotation".into(), Value::Array(rot_array));
+        //     let rot_array: Array = entity.rotation
+        //         .iter()
+        //         .map(|f| Value::Float(snap(*f as f64, 4)))  // 4 decimals
+        //         .collect();
+        //     ent.insert("rotation".into(), Value::Array(rot_array));
 
-            entities_array.push(Value::Table(ent));
-        }
+        //     entities_array.push(Value::Table(ent));
+        // }
 
-        root.insert("entities".into(), Value::Array(entities_array));
-        let toml_str = toml::to_string(&Value::Table(root)).unwrap();
-        write(path, toml_str).unwrap();
+        // root.insert("entities".into(), Value::Array(entities_array));
+        // let toml_str = toml::to_string(&Value::Table(root)).unwrap();
+        // write(path, toml_str).unwrap();
     }
 }
 
@@ -62,8 +63,9 @@ impl WorldData {
 pub struct EntityInstance {
     pub entity_type: EntityType,
     pub faction: Faction,
-    pub position: [f32; 3],
-    pub rotation: [f32; 4],
+    pub position: Vec3,
+    pub rotation: Quat,
+    pub weapons: Vec<EntityType>,
 }
 
 fn snap(v: f64, precision: u32) -> f64 {
