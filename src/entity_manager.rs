@@ -589,20 +589,29 @@ impl EntityManager {
                 None,
                 ps,
             );
-            
-            self.parents.insert(weapon_id, Parent { parent_id: entity_id });
-            self.active_items.insert(
-                entity_id,
-                ActiveItem {
-                    right_hand: Some(weapon_id),
-                    left_hand: None,
-                }
-            );
 
             self.hitsets.insert(
                 weapon_id,
                 HashSet::new(),
             );
+            
+            self.parents.insert(weapon_id, Parent { parent_id: entity_id });
+            if let Some(_) = self.active_items.get(entity_id) {
+                if let Some(inv) = self.inventories.get_mut(entity_id) {
+                    inv.items.push(weapon_id);
+                } else {
+                    self.inventories.insert(entity_id, Inventory { items: vec![weapon_id] });
+                }
+            } else {
+                self.active_items.insert(
+                    entity_id,
+                    ActiveItem {
+                        right_hand: Some(weapon_id),
+                        left_hand: None,
+                    }
+                );
+            }
+
         }
     }
 
@@ -664,19 +673,6 @@ impl EntityManager {
                 rb.set_next_kinematic_position(iso);
             }
         }
-
-        // for rb in k_pos_based_rbs.iter() {
-        //     let entity_id = self.rigidbody_to_entity.get(rb).unwrap();
-
-        //     if let Some(transform) = self.transforms.get_mut(*entity_id) {
-        //         let iso: Isometry<f32> = (transform.position, transform.rotation).into();
-        //         let rb = ps.rigid_body_set.get_mut(*rb).unwrap();
-        //         
-        //         // TODO: should we wake up or does it not matter?
-        //         rb.set_position(iso, true);
-        //     }
-
-        // }
 
         self.apply_parenting();
     }

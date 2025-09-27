@@ -627,7 +627,11 @@ pub fn get_time_fraction(times: &[f32], dt: f32) -> (u32, f32) {
 }
 
 pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Animation) {
-    let data = std::fs::read_to_string(file_path).unwrap();
+    let data = match std::fs::read_to_string(file_path) {
+        Ok(data) => data,
+        Err(_) => panic!("{}", file_path),
+    };
+
     let mut lines = data.lines();
 
     let mut bones_no_children = Vec::new();
