@@ -11,6 +11,9 @@
 	"sounds": {
 		"MooseHuff":"event:/moose3D",
 		"Footstep":"event:/footstep",
-		"Music":"event:/music"
+		"Music":"event:/music",
+		"StopRunning":"event:/stop_running",
+		"Jump":"event:/jump",
+		"Land":"event:/land"
 	}
 }

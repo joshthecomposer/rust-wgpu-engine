@@ -418,7 +418,7 @@ impl GameState {
         self.light_manager.update(&self.delta_time);
 
         // UPDATE SYSTEMS
-        state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state);
+        state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state, &mut self.sound_manager);
         self.physics_state.update();
         movement_system::update(
             &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.input_state, &mut self.physics_state

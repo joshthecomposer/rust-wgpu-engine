@@ -204,6 +204,7 @@ pub enum PlayerState {
     Dying,
     Dead { time: f32, target_time: f32 },
     Dashing,
+    Blocking,
 }
 
 pub struct PlayerController {
@@ -229,6 +230,7 @@ pub enum AnimationType {
     Jump,
     Freefall,
     DashF,
+    Block,
 }
 
 impl Display for AnimationType {
@@ -243,6 +245,7 @@ impl Display for AnimationType {
             AnimationType::Jump => write!(f, "Jump"),
             AnimationType::Freefall => write!(f, "Freefall"),
             AnimationType::DashF => write!(f, "DashF"),
+            AnimationType::Block => write!(f, "Block"),
         }
     }
 }
@@ -259,6 +262,7 @@ impl AnimationType {
             "Freefall" => Some(AnimationType::Freefall),
             "Slash2" => Some(AnimationType::Slash2),
             "DashF" => Some(AnimationType::DashF),
+            "Block" => Some(AnimationType::Block),
             _ => panic!("Invalid AnimationType passed in. {}", input),
         }
     }
@@ -288,6 +292,9 @@ pub enum SoundType {
     Footstep,
     MooseHuff,
     Music,
+    Jump,
+    Land,
+    StopRunning,
 }
 
 impl Display for SoundType {
@@ -296,6 +303,10 @@ impl Display for SoundType {
             SoundType::Footstep => write!(f, "Footstep"),
             SoundType::MooseHuff => write!(f, "MooseHuff"),
             SoundType::Music => write!(f, "Music"),
+            SoundType::Jump => write!(f, "Jump"),
+            SoundType::Land => write!(f, "Land"),
+            SoundType::StopRunning => write!(f, "StopRunning"),
+
         }
     }
 }

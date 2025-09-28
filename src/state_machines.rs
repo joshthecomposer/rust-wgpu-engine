@@ -1,10 +1,10 @@
 use glam::{vec3, Mat4, Vec3};
 use glfw::{Key, MouseButton};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, EntityType, Faction, PlayerState, SimState, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, util::data_structure::HashMapGetPairMut};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, EntityType, Faction, PlayerState, SimState, SoundType, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
-pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, input: &InputState, ps: &mut PhysicsState) {
-    player_state_machine(em, dt, input, ps);
+pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, input: &InputState, ps: &mut PhysicsState, sm: &mut SoundManager) {
+    player_state_machine(em, dt, input, ps, sm);
     entity_sim_state_machine(em, dt, particles);
 }
 
@@ -179,12 +179,13 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
     }
 }
 
-fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps: &mut PhysicsState) {
+fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps: &mut PhysicsState, sm: &mut SoundManager){ 
     let player_key = em.factions.iter().find(|e| *e.value() == Faction::Player).unwrap().key();
     let controller = em.player_controllers.get_mut(player_key).unwrap();
     let ph = em.physics_handles.get(player_key).unwrap();
     let rb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
     let animator = em.animators.get_mut(player_key).unwrap();
+    let trans = em.transforms.get(player_key).unwrap();
 
     let ground_id = em.entity_types.iter().find(|e| *e.value() == EntityType::Terrain).unwrap().key();
     let ground_ph = em.physics_handles.get(ground_id).unwrap();
@@ -236,6 +237,12 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
                 return PlayerState::Freefalling
             }
 
+            if input.wasd_is_down() {
+                sm.play_sound_3d(SoundType::Jump, &trans.position, player_key);
+                controller.time_in_state = 0.0;
+                return PlayerState::Running;
+            }
+
             return PlayerState::Idle
         },
         // ==================================================================================
@@ -279,6 +286,8 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
                 });
 
             if grounded {
+                controller.time_in_state = 0.0;
+                sm.play_sound_3d(SoundType::Land, &trans.position, player_key);
                 return PlayerState::Running;
             }
 
@@ -324,6 +333,7 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
             if !input.wasd_is_down() {
                 controller.time_in_state = 0.0;
+                sm.play_sound_3d(SoundType::Jump, &trans.position, player_key);
                 return PlayerState::Idle
             }
 
@@ -469,6 +479,9 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
         // ==================================================================================
         PlayerState::Dead {time, target_time} => {
             return PlayerState::Dead {time, target_time}
+        },
+        PlayerState::Blocking => {
+            return PlayerState::Blocking;
         },
     })();
 
