@@ -130,66 +130,6 @@ impl EntityManager {
             }
 
         }
-
-
-        // {
-        //     // Load a weapon for the player // TODO: don't hard code this
-        //     let player_id = self.factions.iter().filter(|f| *f.value() == Faction::Player).last().unwrap().key();
-        //     let weapon_id = self.next_entity_id;
-        //     self.create_static_entity(
-        //         EntityType::OrcSword, 
-        //         Faction::Item, 
-        //         Vec3::splat(0.0), 
-        //         Vec3::splat(1.0), 
-        //         Quat::from_xyzw(-0.5, 0.5, 0.5, 0.5),
-        //         Quat::IDENTITY, 
-        //         "resources/models/static/weapons/swords/001_double_axe_new.txt", 
-        //         None,
-        //         ps,
-        //     );
-
-        //     self.active_items.insert(
-        //         player_id,
-        //         ActiveItem {
-        //             right_hand: Some(weapon_id),
-        //             left_hand: None,
-        //         }
-        //     );
-
-        //     self.hitsets.insert(
-        //         weapon_id,
-        //         HashSet::new(),
-        //     );
-        // }
-
-        // {
-        //     // Load an inventory weapon for the player // TODO: don't hard code this
-        //     let player_id = self.factions.iter().filter(|f| *f.value() == Faction::Player).last().unwrap().key();
-        //     let weapon_id = self.next_entity_id;
-        //     self.create_static_entity(
-        //         EntityType::OrcSword, 
-        //         Faction::Item, 
-        //         Vec3::splat(0.0), 
-        //         Vec3::splat(1.0), 
-        //         Quat::from_xyzw(0.5, -0.5, 0.5, 0.5),
-        //         Quat::IDENTITY, 
-        //         "resources/models/static/weapons/001_orc_sword_bc.txt", 
-        //         None,
-        //         ps,
-        //     );
-
-        //     self.inventories.insert(
-        //         player_id,
-        //         Inventory {
-        //             items: vec![weapon_id],
-        //         },
-        //     );
-
-        //     self.hitsets.insert(
-        //         weapon_id,
-        //         HashSet::new(),
-        //     );
-        // }
     }
 
     pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) -> usize {

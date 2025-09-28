@@ -280,7 +280,7 @@ impl Animator {
             next_animation: AnimationType::Idle,
             animations: HashMap::new(),
             blend_factor: 0.0,
-            blend_time: 0.2,
+            blend_time: 0.14,
             restarted: false,
         }
     }
@@ -728,7 +728,11 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                     animation.model_animation_join = model_animation_join.clone();
                     animation.ticks_per_second = ticks_per_second;
 
-                    if current_anim_str == "Death" || current_anim_str == "Slash" || current_anim_str == "Slash2" || current_anim_str == "Jump" {
+                    if current_anim_str == "Death" 
+                        || current_anim_str == "Slash" 
+                        || current_anim_str == "Slash2" 
+                        || current_anim_str == "DashF"
+                        || current_anim_str == "Jump" {
                         println!("Found {}, setting looping to false", &current_anim_str);
                         animation.looping = false;
                     }
@@ -808,7 +812,12 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
     if !current_anim_str.is_empty() {
         animation.model_animation_join = model_animation_join.clone();
         animation.ticks_per_second = ticks_per_second;
-        if current_anim_str == "Death" || current_anim_str == "Slash" || current_anim_str == "Slash2" || current_anim_str == "Jump" {
+
+        if current_anim_str == "Death" 
+        || current_anim_str == "Slash" 
+        || current_anim_str == "Slash2" 
+        || current_anim_str == "DashF"
+        || current_anim_str == "Jump" {
             println!("Found {}, setting looping to false", &current_anim_str);
             animation.looping = false;
         }

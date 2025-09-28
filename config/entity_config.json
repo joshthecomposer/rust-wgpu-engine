@@ -59,7 +59,7 @@
 				{
 					"name": "Run",
 					"one_shots": {
-						"Footstep": [5, 15]
+						"Footstep": [4, 14]
 					},
 					"continuous_sounds": [],
 					"hurtbox_activation": []
@@ -87,6 +87,12 @@
 					"one_shots": { },
 					"continuous_sounds": [],
 					"hurtbox_activation": [6, 13]
+				},
+				{
+					"name": "DashF",
+					"one_shots": { },
+					"continuous_sounds": [],
+					"hurtbox_activation": [6, 12]
 				}
 			]
 		},

@@ -41,6 +41,7 @@ fn handle_player_movement_rapier(
     let animator = em.animators.get_mut(player_key).unwrap();
     let player_state = em.player_controllers.get(player_key).unwrap();
 
+    if player_state.state == PlayerState::Dashing { return; }
 
     let kb_active = em.knockbacks.get_mut(player_key).map_or(false, |kb| {
         kb.ttl -= delta;

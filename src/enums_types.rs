@@ -203,6 +203,7 @@ pub enum PlayerState {
     Attacking,
     Dying,
     Dead { time: f32, target_time: f32 },
+    Dashing,
 }
 
 pub struct PlayerController {
@@ -227,6 +228,7 @@ pub enum AnimationType {
     Slash2,
     Jump,
     Freefall,
+    DashF,
 }
 
 impl Display for AnimationType {
@@ -240,6 +242,7 @@ impl Display for AnimationType {
             AnimationType::Slash2 => write!(f, "Slash2"),
             AnimationType::Jump => write!(f, "Jump"),
             AnimationType::Freefall => write!(f, "Freefall"),
+            AnimationType::DashF => write!(f, "DashF"),
         }
     }
 }
@@ -255,6 +258,7 @@ impl AnimationType {
             "Jump" => Some(AnimationType::Jump),
             "Freefall" => Some(AnimationType::Freefall),
             "Slash2" => Some(AnimationType::Slash2),
+            "DashF" => Some(AnimationType::DashF),
             _ => panic!("Invalid AnimationType passed in. {}", input),
         }
     }

@@ -1,4 +1,4 @@
-use glam::{Mat4, Vec3};
+use glam::{vec3, Mat4, Vec3};
 use glfw::{Key, MouseButton};
 
 use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, EntityType, Faction, PlayerState, SimState, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, util::data_structure::HashMapGetPairMut};
@@ -189,6 +189,13 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
     let ground_id = em.entity_types.iter().find(|e| *e.value() == EntityType::Terrain).unwrap().key();
     let ground_ph = em.physics_handles.get(ground_id).unwrap();
 
+    let yaw = em.yaws.get(player_key).unwrap();
+    let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
+
+    let impulse_strength = vec3(7.0, 3.5, 7.0);
+    let m = rb.mass();
+    let impulse = vec3(dir.x * (7.0 * m), 0.0, dir.z * (7.0 * m));
+
     let next_state = (|| match controller.state {
         // ==================================================================================
         // PLAYER IDLE 
@@ -196,6 +203,14 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
         PlayerState::Idle => {
             controller.time_in_state += dt;
             if input.just_pressed(Key::Space) {
+                if input.is_down(Key::LeftShift) {
+                    rb.apply_impulse(impulse.into(), true);
+
+                    animator.set_next_animation(AnimationType::DashF);
+
+                    return PlayerState::Dashing;
+                }
+
                 rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
                 rb.apply_impulse((Vec3::Y * 5.2).into(), true);
                 
@@ -285,6 +300,14 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
             controller.time_in_state += dt;
 
             if input.just_pressed(Key::Space) {
+                if input.is_down(Key::LeftShift) {
+                    rb.apply_impulse(impulse.into(), true);
+
+                    animator.set_next_animation(AnimationType::DashF);
+
+                    return PlayerState::Dashing;
+                }
+
                 rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
                 rb.apply_impulse((Vec3::Y * 5.2).into(), true);
                 
@@ -370,6 +393,22 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
                     let anim = animator.animations.get(&animator.current_animation).unwrap();
 
+                    if anim.current_segment >= 12
+                        && anim.current_segment < 22
+                        && input.just_pressed(Key::Space) {
+
+                        controller.attack_state = AttackState::Attack1;
+
+                        let yaw = em.yaws.get(player_key).unwrap();
+                        let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
+
+                        rb.apply_impulse(impulse.into(), true);
+
+                        animator.set_next_animation(AnimationType::DashF);
+
+                        return PlayerState::Dashing;
+                    }
+
                     if anim.current_segment >= 22 {
                         if input.wasd_is_down() {
                             animator.set_next_animation(AnimationType::Run);
@@ -395,10 +434,35 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
             return PlayerState::Attacking;
         }
         // ==================================================================================
+        // PLAYER DASHING
+        // ==================================================================================
+        PlayerState::Dashing => {
+            if animator.current_animation != AnimationType::DashF {
+                animator.set_next_animation(AnimationType::DashF);
+                return PlayerState::Dashing;
+            }
+
+            let anim = animator.animations.get(&animator.current_animation).unwrap();
+
+            if input.wasd_is_down() && anim.current_segment >= 12 {
+                controller.time_in_state = 0.0;
+                animator.set_next_animation(AnimationType::Run);
+                return PlayerState::Running;
+            } 
+
+            if anim.current_time >= anim.duration - ANIMATION_EPSILON {
+                controller.time_in_state = 0.0;
+                return PlayerState::Idle;
+            }
+
+            return PlayerState::Dashing;
+        },
+        // ==================================================================================
         // PLAYER DYING
         // ==================================================================================
         PlayerState::Dying => {
-            return PlayerState::Dying
+
+            return PlayerState::Dying;
         },
         // ==================================================================================
         // PLAYER DEAD
