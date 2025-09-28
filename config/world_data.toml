@@ -6,7 +6,7 @@ rotation = [0.0, -0.9239, 0.0, 0.3827]
 weapons = ["DoubleAxe", "OrcSword"]
 
 [[entities]]
-entity_type = "YRobot"
+entity_type = "TrashGuy"
 faction = "Enemy"
 position = [-49.0062, -5.3441, -119.7894]
 rotation = [0.0, 0.8701, 0.0, 0.4929]

@@ -381,6 +381,7 @@ impl GameState {
             for id in self.entity_manager.selected.iter() {
                 self.entity_manager.simstate_controllers.insert(*id, SimStateController {
                     state: SimState::Dying,
+                    attack_state: crate::enums_types::AttackState::Attack1,
                     time_in_state: 0.0,
                 });
                 if let Some(parent) = self.entity_manager.parents.iter().find(|p| p.value().parent_id == *id) {

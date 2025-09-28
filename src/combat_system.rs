@@ -94,6 +94,13 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
 
         let entity_cyl_handle = em.physics_handles.get(entity_id).unwrap().collider;
 
+        let controller = em.simstate_controllers.get(entity_id).unwrap();
+
+        let strength = match controller.attack_state {
+            AttackState::Attack2 => 4.3,
+            _=> 2.5
+        };
+
         let anim = em.animators
             .get(entity_id)
             .unwrap()
@@ -125,7 +132,6 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
                     if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
                         if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
                         let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
-                        let strength = 6.0;
                         rb.apply_impulse((dir * strength).into(), true);
                         em.knockbacks.insert(target_id, Knockback { ttl: 0.35 });
                     }

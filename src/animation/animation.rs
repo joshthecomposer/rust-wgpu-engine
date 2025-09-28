@@ -569,7 +569,7 @@ impl Animation {
                 self.current_time = 0.0;
             } else {
                 // self.current_time = self.duration;
-                self.current_time = self.duration - ANIMATION_EPSILON;
+                self.current_time = self.duration;
             }
         }
 

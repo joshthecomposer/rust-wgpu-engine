@@ -19,6 +19,8 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
             let destination = em.destinations.get_mut(fac.key()).unwrap();
             let health = em.healths.get(fac.key()).unwrap();
 
+            if controller.state == SimState::Dancing { continue };
+
             let active_weapon_id = em
                 .active_items
                 .get(fac.key())
@@ -31,7 +33,8 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                         .find(|p| p.value().parent_id == wid && em.cuboids.get(p.key()).is_some())
                         .and_then(|entry| em.cuboids.get(entry.key()).map(|hb| hb.h)) // child id = entry.key()
                 })
-                .unwrap_or(3.0); // fallback if no weapon or no cuboid
+                .unwrap();
+                // .unwrap_or(3.0); // fallback if no weapon or no cuboid
 
             let trans = em.transforms.get(fac.key()).unwrap();
 
@@ -160,15 +163,22 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
 
                     let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
 
-                    if anim.current_time >= anim.duration - ANIMATION_EPSILON {
-                        controller.time_in_state = 0.0;
-                        anim.current_time = 0.0;
-                        return SimState::Aggro;
-                    }
-
                     controller.time_in_state += dt;
 
+                    match controller.attack_state {
+                        AttackState::Attack1 => {
+                            if animator.current_animation != AnimationType::Slash {
+                                return SimState::Attacking;
+                            }
 
+                        },
+                        AttackState::Attack2 => {
+                            if animator.current_animation != AnimationType::Slash2 {
+                                return SimState::Attacking;
+                            }
+                        },
+                        _ => {},
+                    }
 
                     return SimState::Attacking;
                 },

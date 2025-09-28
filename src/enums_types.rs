@@ -191,6 +191,7 @@ pub enum SimState {
 
 pub struct SimStateController {
     pub state: SimState,
+    pub attack_state: AttackState,
     pub time_in_state: f32,
 }
 
@@ -322,7 +323,7 @@ impl SoundType {
     }
 }
 
-pub const ANIMATION_EPSILON: f32 = 0.001;
+// pub const ANIMATION_EPSILON: f32 = 0.001;
 
 #[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]
 pub enum TextureProfile {

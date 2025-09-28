@@ -406,12 +406,14 @@ impl EntityManager {
             EntityType::MooseMan => { 
                 SimStateController {
                     state: SimState::Dancing,
+                    attack_state: AttackState::Attack1,
                     time_in_state: 0.0,
                 }
             },
             _ => {
                 SimStateController {
                     state: SimState::Waiting,
+                    attack_state: AttackState::Attack1,
                     time_in_state: 0.0,
                 }
             },
