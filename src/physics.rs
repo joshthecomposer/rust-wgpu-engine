@@ -38,7 +38,9 @@ impl PhysicsState {
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, dt: f32) {
+        // self.integration_parameters.dt = dt;
+
         self.pipeline.step(
             &self.gravity,
             &self.integration_parameters,

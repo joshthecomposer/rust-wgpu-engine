@@ -346,7 +346,7 @@ impl GameState {
             return;
         }
 
-        // self.delta_time = self.delta_timedd;
+        // self.delta_time = self.delta_time * 0.25;
         
         // Fps calc
         let fps_now = (1.0 / self.delta_time.max(0.0001)) as u32;
@@ -420,7 +420,7 @@ impl GameState {
 
         // UPDATE SYSTEMS
         state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state, &mut self.sound_manager);
-        self.physics_state.update();
+        self.physics_state.update(self.delta_time);
         movement_system::update(
             &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.input_state, &mut self.physics_state
         );

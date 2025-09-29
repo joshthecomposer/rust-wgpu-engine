@@ -3,7 +3,7 @@ use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
 use rapier3d::prelude::Cuboid;
 use core::f32;
-use std::{collections::HashMap, ffi::c_void, mem::{self, offset_of}, path::Path, ptr, str::Lines};
+use std::{any::Any, collections::HashMap, ffi::c_void, mem::{self, offset_of}, path::Path, ptr, str::Lines};
 
 use crate::{enums_types::{AnimationType, FrameActivation, TextureProfile, TextureType, ANIMATION_EPSILON}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}, util::data_structure::HashMapGetPairMut};
 
@@ -569,7 +569,7 @@ impl Animation {
                 self.current_time = 0.0;
             } else {
                 // self.current_time = self.duration;
-                self.current_time = self.duration;
+                self.current_time = self.duration - ANIMATION_EPSILON;
             }
         }
 

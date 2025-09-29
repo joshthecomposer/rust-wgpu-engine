@@ -397,9 +397,6 @@ impl Renderer {
             if let Some(fa) = &animation.hurtbox_activation {
                 if fa.segment_range.contains(&animation.current_segment) { 
                     if !fa.triggered.get() {
-                        if animator.current_animation == AnimationType::Slash2 {
-                            println!("TRIGGERED");
-                        }
                         fa.triggered.set(true);
                     }
                 } else {

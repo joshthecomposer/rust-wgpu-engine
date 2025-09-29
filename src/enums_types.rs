@@ -323,7 +323,7 @@ impl SoundType {
     }
 }
 
-// pub const ANIMATION_EPSILON: f32 = 0.001;
+pub const ANIMATION_EPSILON: f32 = 0.001;
 
 #[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]
 pub enum TextureProfile {
