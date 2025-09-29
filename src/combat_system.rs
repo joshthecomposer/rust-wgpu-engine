@@ -81,8 +81,9 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                 if let Some(ph) = em.physics_handles.get(target_id) {
                     if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
 
-                        let kb = Knockback {
+                        let mut kb = Knockback {
                             ttl: 0.35,
+                            flinch: false,
                         };
 
                         if sim_state.state != SimState::Blocking {
@@ -92,6 +93,8 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                                 effect: Effect::Flashing,
                                 ttl: kb.ttl,
                             });
+
+                            kb.flinch = true;
                         }
                         let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
                         rb.apply_impulse((dir * strength).into(), true);
@@ -158,8 +161,9 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
 
                 if let Some(ph) = em.physics_handles.get(target_id) {
                     if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
-                        let kb = Knockback {
+                        let mut kb = Knockback {
                             ttl: 0.35,
+                            flinch: false,
                         };
                         if player_state.state != PlayerState::Blocking {
                             if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
@@ -168,6 +172,8 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
                                 effect: Effect::Flashing,
                                 ttl: kb.ttl,
                             });
+
+                            kb.flinch = true;
                         }
                         let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
                         rb.apply_impulse((dir * strength).into(), true);

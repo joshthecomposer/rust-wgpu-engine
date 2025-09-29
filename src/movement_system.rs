@@ -42,7 +42,6 @@ fn handle_player_movement_rapier(
     let player_state = em.player_controllers.get(player_key).unwrap();
     let speed = em.base_speeds.get(player_key).unwrap();
 
-
     let kb = em.knockbacks.get_mut(player_key);
 
     let kb_active = em.knockbacks.get_mut(player_key).map_or(false, |kb| {
@@ -167,6 +166,8 @@ fn handle_enemy_movement_rapier(
 
         // TODO: Why god
         if animator.next_animation == AnimationType::Death { continue };
+
+        if animator.next_animation == AnimationType::Flinch { continue };
 
         if sim_controller.state == SimState::Attacking { continue };
 

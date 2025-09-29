@@ -174,6 +174,7 @@ impl ImguiManager {
                                         weapons: vec![],
                                         // rotation: (Quat::IDENTITY).into(),
                                         base_speed: em.base_speeds.get(e_type.key()).copied(),
+                                        health: *em.healths.get(e_type.key()).unwrap(),
                                     }
                                 );
                             }

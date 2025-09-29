@@ -1,7 +1,7 @@
 use glam::{vec3, Mat4, Vec3};
 use glfw::{Key, MouseButton};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Effect, EntityType, Faction, PlayerState, SimState, SoundType, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Effect, EntityType, Faction, Knockback, PlayerState, SimState, SoundType, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, input: &InputState, ps: &mut PhysicsState, sm: &mut SoundManager) {
     player_state_machine(em, dt, input, ps, sm);
@@ -18,6 +18,11 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
             let animator = em.animators.get_mut(fac.key()).unwrap();
             let destination = em.destinations.get_mut(fac.key()).unwrap();
             let health = em.healths.get(fac.key()).unwrap();
+
+            let kb = match em.knockbacks.get(fac.key()) {
+                Some(kb) => kb,
+                None     => &Knockback { ttl: -1.0, flinch: false },
+            };
 
             if em.v_effects.get(fac.key()).is_some_and(|v| v.ttl <= 0.0) {
                 em.v_effects.remove(fac.key());
@@ -52,8 +57,15 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                 },
                 SimState::Waiting => {
                     if *health <= 0.0 { return SimState::Dying; }
+
                     animator.set_next_animation(AnimationType::Idle);
                     *destination = entity_pos;
+
+                    if kb.flinch && kb.ttl > 0.0 {
+                        controller.time_in_state = 0.0;
+                        animator.set_next_animation(AnimationType::Flinch);
+                        return SimState::Flinching;
+                    }
 
                     let to_player = (player_pos - entity_pos).with_y(0.0).normalize();
                     // let forward = (trans.rotation * trans.original_rotation.inverse() * -Vec3::Z).with_y(0.0).normalize();
@@ -75,14 +87,22 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                     if *health <= 0.0 { return SimState::Dying; }
 
                     controller.time_in_state += dt;
+
+                    if kb.flinch && kb.ttl > 0.0 {
+                        controller.time_in_state = 0.0;
+                        animator.set_next_animation(AnimationType::Flinch);
+                        return SimState::Flinching;
+                    }
+
                     animator.set_next_animation(AnimationType::Run);
-                    *destination = player_pos;
 
                     if entity_pos.distance(player_pos) < distance {
                         animator.set_next_animation(AnimationType::Slash);
                         controller.time_in_state = 0.0;
                         return SimState::Attacking
                     }
+
+                    *destination = player_pos;
 
                     if entity_pos.distance(player_pos) > 12.0 {
                         return SimState::Waiting
@@ -174,6 +194,14 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
 
                     controller.time_in_state += dt;
 
+                    if anim.current_segment < 10 {
+                        if kb.flinch && kb.ttl > 0.0 {
+                            controller.time_in_state = 0.0;
+                            animator.set_next_animation(AnimationType::Flinch);
+                            return SimState::Flinching;
+                        }
+                    }
+
                     match controller.attack_state {
                         AttackState::Attack1 => {
                             if animator.current_animation != AnimationType::Slash {
@@ -181,6 +209,11 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                             }
 
                             if anim.current_time >= anim.duration- ANIMATION_EPSILON {
+                                if entity_pos.distance(player_pos) < distance {
+                                    anim.current_time = 0.0;
+                                    return SimState::Attacking
+                                }
+
                                 animator.set_next_animation(AnimationType::Idle);
                                 controller.attack_state = AttackState::Attack1;
                                 controller.time_in_state = 0.0;
@@ -200,7 +233,20 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                 },
                 SimState::Blocking => {
                     return SimState::Blocking;
-                }
+                },
+                SimState::Flinching => {
+                    if animator.current_animation != AnimationType::Flinch {
+                        return SimState::Flinching;
+                    }
+
+                    let anim = animator.get_current_animation().unwrap();
+
+                    if anim.current_time >= anim.duration - ANIMATION_EPSILON {
+                        return SimState::Aggro;
+                    }
+
+                    return SimState::Flinching;
+                },
             })();
 
             controller.state = next_state;

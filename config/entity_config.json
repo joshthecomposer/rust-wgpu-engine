@@ -110,6 +110,13 @@
 					"continuous_sounds": [],
 					"hurtbox_activation": [6, 12],
 					"hold_frame": 6
+				},
+				{
+					"name": "Flinch",
+					"one_shots": { },
+					"continuous_sounds": [],
+					"hurtbox_activation": [],
+					"hold_frame": null
 				}
 			]
 		},

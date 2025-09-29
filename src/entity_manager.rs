@@ -347,7 +347,7 @@ impl EntityManager {
         };
 
         self.yaws.insert(parent_id, 0.0);
-        self.healths.insert(parent_id, 100.0);
+        self.healths.insert(parent_id, instance.health);
 
         if let Some(speed) = instance.base_speed {
             self.base_speeds.insert(parent_id, speed);

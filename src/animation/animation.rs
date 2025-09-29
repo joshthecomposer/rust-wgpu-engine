@@ -741,6 +741,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                         || current_anim_str == "Slash2" 
                         || current_anim_str == "DashF"
                         || current_anim_str == "Jump" 
+                        || current_anim_str == "Flinch" 
                         || current_anim_str == "Block" {
                         println!("Found {}, setting looping to false", &current_anim_str);
                         animation.looping = false;
@@ -826,6 +827,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
             || current_anim_str == "Slash" 
             || current_anim_str == "Slash2" 
             || current_anim_str == "DashF"
+            || current_anim_str == "Flinch" 
             || current_anim_str == "Jump"
             || current_anim_str == "Block" {
                 println!("Found {}, setting looping to false", &current_anim_str);

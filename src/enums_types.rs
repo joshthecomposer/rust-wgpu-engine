@@ -188,6 +188,7 @@ pub enum SimState {
     Dead { time: f32, target_time: f32 },
     Attacking,
     Blocking,
+    Flinching,
 }
 
 pub struct SimStateController {
@@ -233,6 +234,7 @@ pub enum AnimationType {
     Freefall,
     DashF,
     Block,
+    Flinch,
 }
 
 impl Display for AnimationType {
@@ -248,6 +250,7 @@ impl Display for AnimationType {
             AnimationType::Freefall => write!(f, "Freefall"),
             AnimationType::DashF => write!(f, "DashF"),
             AnimationType::Block => write!(f, "Block"),
+            AnimationType::Flinch => write!(f, "Flinch"),
         }
     }
 }
@@ -265,6 +268,7 @@ impl AnimationType {
             "Slash2" => Some(AnimationType::Slash2),
             "DashF" => Some(AnimationType::DashF),
             "Block" => Some(AnimationType::Block),
+            "Flinch" => Some(AnimationType::Flinch),
             _ => panic!("Invalid AnimationType passed in. {}", input),
         }
     }
@@ -369,7 +373,7 @@ pub struct FrameActivation {
 #[derive(Clone, Debug)]
 pub struct Knockback {
     pub ttl: f32, // time remaining seconds
-    //pub play_flinch: bool,
+    pub flinch: bool,
     //pub lock_rotation: bool,
 }
 
