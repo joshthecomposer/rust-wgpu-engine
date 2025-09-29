@@ -301,8 +301,6 @@ impl Animator {
     }
 
     pub fn update(&mut self, skellington: &mut Bone, dt: f32) {
-
-        // Check death condition:
         if self.current_animation == AnimationType::Death {
             if let Some(anim) = self.animations.get(&AnimationType::Death) {
                 if anim.current_time >= anim.duration {
@@ -311,7 +309,6 @@ impl Animator {
             }
         }
         
-        // TODO: Use the custom implementation of HasmapGetPairMut from items.rs#L64
         if self.current_animation != self.next_animation {
             self.blend_factor += dt / self.blend_time;
             if self.blend_factor >= 1.0 {
@@ -346,6 +343,8 @@ pub struct Animation {
     pub one_shots: Vec<OneShot>,
     pub continuous_sounds: Vec<ContinuousSound>,
     pub hurtbox_activation: Option<FrameActivation>,
+    pub hold_frame: Option<u32>,
+    pub do_hold: bool,
 
     pub current_time: f32,
     pub looping: bool,
@@ -365,6 +364,8 @@ impl Animation {
             one_shots: vec![],
             continuous_sounds: vec![],
             hurtbox_activation: None,
+            hold_frame: None,
+            do_hold: false,
 
             current_time: 0.0,
             looping: true,
@@ -563,6 +564,13 @@ impl Animation {
     }
 
     pub fn update(&mut self, skellington: &mut Bone, other_animation: Option<&mut Animation>, blend_factor: f32, dt: f32) {
+        
+        if let Some(hold_frame) = self.hold_frame  {
+            if self.current_segment == hold_frame && self.do_hold{
+                return;
+            }
+        }
+
         self.current_time += dt;
         if self.current_time > self.duration {
             if self.looping {
@@ -732,7 +740,8 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                         || current_anim_str == "Slash" 
                         || current_anim_str == "Slash2" 
                         || current_anim_str == "DashF"
-                        || current_anim_str == "Jump" {
+                        || current_anim_str == "Jump" 
+                        || current_anim_str == "Block" {
                         println!("Found {}, setting looping to false", &current_anim_str);
                         animation.looping = false;
                     }
@@ -814,12 +823,13 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
         animation.ticks_per_second = ticks_per_second;
 
         if current_anim_str == "Death" 
-        || current_anim_str == "Slash" 
-        || current_anim_str == "Slash2" 
-        || current_anim_str == "DashF"
-        || current_anim_str == "Jump" {
-            println!("Found {}, setting looping to false", &current_anim_str);
-            animation.looping = false;
+            || current_anim_str == "Slash" 
+            || current_anim_str == "Slash2" 
+            || current_anim_str == "DashF"
+            || current_anim_str == "Jump"
+            || current_anim_str == "Block" {
+                println!("Found {}, setting looping to false", &current_anim_str);
+                animation.looping = false;
         }
 
     animator.animations.insert(

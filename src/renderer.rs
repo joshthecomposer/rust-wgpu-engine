@@ -368,8 +368,11 @@ impl Renderer {
         shader.set_float("elapsed", elapsed);
         shader.set_bool("do_reg_fresnel", false);
         for id in ids {
-            if em.v_effects.get(id).is_some() {
-                shader.set_bool("flash_white", true);
+
+            if let Some(v_effect) = em.v_effects.get(id) {
+                if v_effect.ttl > 0.0 {
+                    shader.set_bool("flash_white", true);
+                }
             }
 
             let is_selected = em.selected.contains(&id);

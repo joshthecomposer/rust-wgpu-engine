@@ -4,6 +4,7 @@ faction = "Player"
 position = [-86.8102, -4.8841, -78.8799]
 rotation = [0.0, -0.9239, 0.0, 0.3827]
 weapons = ["DoubleAxe", "OrcSword"]
+base_speed = 2.0
 
 [[entities]]
 entity_type = "TrashGuy"
@@ -11,6 +12,7 @@ faction = "Enemy"
 position = [-49.0062, -5.3441, -119.7894]
 rotation = [0.0, 0.8701, 0.0, 0.4929]
 weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 1.65
 
 # [[entities]]
 # entity_type = "YRobot"

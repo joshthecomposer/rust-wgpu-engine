@@ -20,25 +20,29 @@
 						"Footstep": [7, 18]
 					},
 					"continuous_sounds": [],
-					"hurtbox_activation": []
+					"hurtbox_activation": [],
+					"hold_frame": null
 				},
 				{
 					"name": "Idle",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": []
+					"hurtbox_activation": [],
+					"hold_frame": null
 				},
 				{
 					"name": "Death",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": []
+					"hurtbox_activation": [],
+					"hold_frame": null
 				},
 				{
 					"name": "Slash",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": [14, 22]
+					"hurtbox_activation": [14, 22],
+					"hold_frame": null
 				}
 			]
 		},
@@ -62,37 +66,50 @@
 						"Footstep": [4, 14]
 					},
 					"continuous_sounds": [],
-					"hurtbox_activation": []
+					"hurtbox_activation": [],
+					"hold_frame": null
 				},
 				{
 					"name": "Idle",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": []
+					"hurtbox_activation": [],
+					"hold_frame": null
 				},
 				{
 					"name": "Death",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": []
+					"hurtbox_activation": [],
+					"hold_frame": null
 				},
 				{
 					"name": "Slash",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": [10, 16]
+					"hurtbox_activation": [10, 16],
+					"hold_frame": null
 				},
 				{
 					"name": "Slash2",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": [6, 13]
+					"hurtbox_activation": [6, 13],
+					"hold_frame": null
 				},
 				{
 					"name": "DashF",
 					"one_shots": { },
 					"continuous_sounds": [],
-					"hurtbox_activation": [6, 12]
+					"hurtbox_activation": [6, 12],
+					"hold_frame": null
+				},
+				{
+					"name": "Block",
+					"one_shots": { },
+					"continuous_sounds": [],
+					"hurtbox_activation": [6, 12],
+					"hold_frame": 6
 				}
 			]
 		},
@@ -115,7 +132,8 @@
 					"continuous_sounds": [
 						"MooseHuff"
 					],
-					"hurtbox_activation": []
+					"hurtbox_activation": [],
+					"hold_frame": null
 				}
 			]
 		},

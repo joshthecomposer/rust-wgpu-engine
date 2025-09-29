@@ -36,6 +36,7 @@ pub struct AnimationPropHelper {
     pub one_shots: HashMap<SoundType, Vec<u32>>,
     pub continuous_sounds: Vec<SoundType>,
     pub hurtbox_activation: Vec<u32>,
+    pub hold_frame: Option<u32>,
 }
 
 #[derive(Deserialize, Debug)]

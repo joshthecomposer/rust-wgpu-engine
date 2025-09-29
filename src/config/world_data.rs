@@ -66,6 +66,7 @@ pub struct EntityInstance {
     pub position: Vec3,
     pub rotation: Quat,
     pub weapons: Vec<EntityType>,
+    pub base_speed: Option<f32>,
 }
 
 fn snap(v: f64, precision: u32) -> f64 {

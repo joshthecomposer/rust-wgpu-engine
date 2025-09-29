@@ -40,15 +40,19 @@ fn handle_player_movement_rapier(
     let player_key = *player_keys.first().unwrap();
     let animator = em.animators.get_mut(player_key).unwrap();
     let player_state = em.player_controllers.get(player_key).unwrap();
+    let speed = em.base_speeds.get(player_key).unwrap();
 
-    if player_state.state == PlayerState::Dashing { return; }
+
+    let kb = em.knockbacks.get_mut(player_key);
 
     let kb_active = em.knockbacks.get_mut(player_key).map_or(false, |kb| {
         kb.ttl -= delta;
         kb.ttl > 0.0
     });
 
-    if kb_active { em.v_effects.insert(player_key, VisualEffect::Flashing); return; } else { em.knockbacks.remove(player_key); }
+    if kb_active { return; } else { em.knockbacks.remove(player_key); }
+
+    if player_state.state == PlayerState::Dashing  { return; }
 
     if animator.next_animation == AnimationType::Death {
         return;
@@ -71,7 +75,6 @@ fn handle_player_movement_rapier(
         return;
     }
 
-    let speed = 2.0;
     let mut move_dir = vec3(0.0, 0.0, 0.0);
 
     let forward_flat = vec3(camera.forward.x, 0.0, camera.forward.z).normalize_or_zero();
@@ -88,7 +91,7 @@ fn handle_player_movement_rapier(
     let mut linvel = *rb.linvel();
 
 
-    let new_state = if move_dir.length_squared() > 0.0 {
+    if move_dir.length_squared() > 0.0 {
         let move_dir = move_dir.normalize();
         linvel.x = move_dir.x * speed;
         linvel.z = move_dir.z * speed;
@@ -102,14 +105,14 @@ fn handle_player_movement_rapier(
             rotator.next_rot = desired_rot;
         }
 
-        AnimationType::Run
+        // AnimationType::Run
     } else {
         linvel.x = 0.0;
         linvel.z = 0.0;
-        AnimationType::Idle
+        // AnimationType::Idle
     };
 
-    animator.next_animation = new_state;
+    // animator.next_animation = new_state;
 
     if rotator.next_rot != rotator.cur_rot {
         rotator.blend_factor += delta / rotator.blend_time;
@@ -138,7 +141,7 @@ fn handle_enemy_movement_rapier(
             kb.ttl > 0.0
         });
 
-        if kb_active { em.v_effects.insert(id, VisualEffect::Flashing); continue; } else { em.knockbacks.remove(id); }
+        if kb_active { continue; } else { em.knockbacks.remove(id); }
 
         let Some(dest) = em.destinations.get(id) else { continue };
 
@@ -156,6 +159,11 @@ fn handle_enemy_movement_rapier(
             em.simstate_controllers.get(id),
         ) else { continue };
 
+        let speed = match em.base_speeds.get(id) {
+            Some(speed) => *speed,
+            None => 1.5,
+        };
+
 
         // TODO: Why god
         if animator.next_animation == AnimationType::Death { continue };
@@ -172,7 +180,6 @@ fn handle_enemy_movement_rapier(
         let distance = direction.length();
 
         if distance > 0.05 {
-            let speed = 1.0;
             let move_dir = direction.normalize();
             let velocity = move_dir * speed;
 
@@ -203,15 +210,12 @@ fn handle_enemy_movement_rapier(
             let blended = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
             rb.set_rotation(glam_to_nalgebra_quat(blended), true);
 
-            animator.set_next_animation(AnimationType::Run);
         } else {
             // Stop
             let mut linvel = *rb.linvel();
             linvel.x = 0.0;
             linvel.z = 0.0;
             rb.set_linvel(linvel, true);
-
-            animator.set_next_animation(AnimationType::Idle);
         }
 
         // Sync Transform for rendering
@@ -278,3 +282,15 @@ fn revolve_around_something(object: &mut Vec3, target: &Vec3, elapsed: f32, radi
     object.y = target.y + 1.0;
 }
 
+
+fn calc_desired_move_dir (
+    input_state: &InputState,
+    em: &mut EntityManager,
+    player_keys: Vec<usize>,
+    delta: f32,
+    camera: &Camera,
+    terrain: &Terrain,
+    ps: &mut PhysicsState,
+){
+
+}

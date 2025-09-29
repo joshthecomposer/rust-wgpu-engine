@@ -187,6 +187,7 @@ pub enum SimState {
     Dying ,
     Dead { time: f32, target_time: f32 },
     Attacking,
+    Blocking,
 }
 
 pub struct SimStateController {
@@ -269,7 +270,13 @@ impl AnimationType {
     }
 }
 
-pub enum VisualEffect {
+pub struct VisualEffect {
+    pub effect: Effect,
+    pub ttl: f32, // Time in seconds
+}
+
+#[derive(Clone, Debug)]
+pub enum Effect {
     Flashing,
 }
 

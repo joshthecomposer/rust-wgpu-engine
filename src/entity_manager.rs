@@ -53,6 +53,7 @@ pub struct EntityManager {
     pub yaws: SparseSet<f32>,
     pub knockbacks: SparseSet<Knockback>,
     pub healths: SparseSet<f32>,
+    pub base_speeds: SparseSet<f32>,
 }
 
 impl EntityManager {
@@ -96,6 +97,7 @@ impl EntityManager {
             yaws: SparseSet::with_capacity(max_entities),
             knockbacks: SparseSet::with_capacity(max_entities),
             healths: SparseSet::with_capacity(max_entities),
+            base_speeds: SparseSet::with_capacity(max_entities),
         }
     }
 
@@ -347,6 +349,10 @@ impl EntityManager {
         self.yaws.insert(parent_id, 0.0);
         self.healths.insert(parent_id, 100.0);
 
+        if let Some(speed) = instance.base_speed {
+            self.base_speeds.insert(parent_id, speed);
+        }
+
         // === ANIMATION DATA ===
         let (skellington, mut animator, animation) = import_bone_data(&bone_path, archetype.flip_180);
 
@@ -375,6 +381,8 @@ impl EntityManager {
                         triggered: false.into(),
                     });
                 }
+
+                anim.hold_frame = prop.hold_frame;
             }
         }
 

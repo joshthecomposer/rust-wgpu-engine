@@ -1,6 +1,6 @@
 use glam::{vec3, Vec3};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Faction, Knockback, PlayerState, SimState}, physics::PhysicsState};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Effect, Faction, Knockback, PlayerState, SimState, VisualEffect}, physics::PhysicsState};
 
 pub fn update(
     em: &mut EntityManager,
@@ -63,15 +63,39 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                 let other = if c1 == *rh_w_col_handle { c2 } else { c1 };
                 let target_id = *em.collider_to_entity.get(&other).unwrap();
 
+                match em.factions.get(target_id) {
+                    Some(faction) => {
+                        if *faction != Faction::Enemy {
+                            continue;
+                        }
+                    },
+                    None => { continue },
+                };
+
+                // if *faction != Faction::Enemy { continue; }
+
+                let sim_state = em.simstate_controllers.get(target_id).unwrap();
 
                 if !hitset.insert(other) { continue };
 
                 if let Some(ph) = em.physics_handles.get(target_id) {
                     if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
-                        if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
+
+                        let kb = Knockback {
+                            ttl: 0.35,
+                        };
+
+                        if sim_state.state != SimState::Blocking {
+                            if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
+
+                            em.v_effects.insert(target_id, VisualEffect {
+                                effect: Effect::Flashing,
+                                ttl: kb.ttl,
+                            });
+                        }
                         let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
                         rb.apply_impulse((dir * strength).into(), true);
-                        em.knockbacks.insert(target_id, Knockback { ttl: 0.35 });
+                        em.knockbacks.insert(target_id, kb);
                     }
                 }
             }
@@ -125,15 +149,29 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
                 let other = if c1 == *rh_w_col_handle { c2 } else { c1 };
                 let target_id = *em.collider_to_entity.get(&other).unwrap();
 
+                let faction = em.factions.get(target_id).unwrap();
+                if *faction != Faction::Player { continue; }
+
+                let player_state = em.player_controllers.get(target_id).unwrap();
 
                 if !hitset.insert(other) { continue };
 
                 if let Some(ph) = em.physics_handles.get(target_id) {
                     if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
-                        if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
+                        let kb = Knockback {
+                            ttl: 0.35,
+                        };
+                        if player_state.state != PlayerState::Blocking {
+                            if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
+
+                            em.v_effects.insert(target_id, VisualEffect {
+                                effect: Effect::Flashing,
+                                ttl: kb.ttl,
+                            });
+                        }
                         let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
                         rb.apply_impulse((dir * strength).into(), true);
-                        em.knockbacks.insert(target_id, Knockback { ttl: 0.35 });
+                        em.knockbacks.insert(target_id, kb);
                     }
                 }
             }

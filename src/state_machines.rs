@@ -1,7 +1,7 @@
 use glam::{vec3, Mat4, Vec3};
 use glfw::{Key, MouseButton};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, EntityType, Faction, PlayerState, SimState, SoundType, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Effect, EntityType, Faction, PlayerState, SimState, SoundType, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, input: &InputState, ps: &mut PhysicsState, sm: &mut SoundManager) {
     player_state_machine(em, dt, input, ps, sm);
@@ -18,6 +18,12 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
             let animator = em.animators.get_mut(fac.key()).unwrap();
             let destination = em.destinations.get_mut(fac.key()).unwrap();
             let health = em.healths.get(fac.key()).unwrap();
+
+            if em.v_effects.get(fac.key()).is_some_and(|v| v.ttl <= 0.0) {
+                em.v_effects.remove(fac.key());
+            } else if let Some(v_effect) = em.v_effects.get_mut(fac.key()) {
+                v_effect.ttl -= dt;
+            }
 
             if controller.state == SimState::Dancing { continue };
 
@@ -109,7 +115,10 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                     let new_time = time + dt;
 
                     if new_time >= 4.0 {
-                        em.v_effects.insert(fac.key(), VisualEffect::Flashing);
+                        em.v_effects.insert(fac.key(), VisualEffect { 
+                            effect: Effect::Flashing,
+                            ttl: 5.0,
+                        });
                     }
 
                     if new_time >= target_time {
@@ -171,6 +180,13 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                                 return SimState::Attacking;
                             }
 
+                            if anim.current_time >= anim.duration- ANIMATION_EPSILON {
+                                animator.set_next_animation(AnimationType::Idle);
+                                controller.attack_state = AttackState::Attack1;
+                                controller.time_in_state = 0.0;
+                                return SimState::Aggro;
+                            }
+
                         },
                         AttackState::Attack2 => {
                             if animator.current_animation != AnimationType::Slash2 {
@@ -182,6 +198,9 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
 
                     return SimState::Attacking;
                 },
+                SimState::Blocking => {
+                    return SimState::Blocking;
+                }
             })();
 
             controller.state = next_state;
@@ -213,6 +232,14 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
         // ==================================================================================
         PlayerState::Idle => {
             controller.time_in_state += dt;
+            animator.set_next_animation(AnimationType::Idle);
+
+            if input.mouse_is_down(MouseButton::Right) {
+                controller.time_in_state = 0.0;
+                animator.set_next_animation(AnimationType::Block);
+                return PlayerState::Blocking;
+            }
+
             if input.just_pressed(Key::Space) {
                 if input.is_down(Key::LeftShift) {
                     rb.apply_impulse(impulse.into(), true);
@@ -250,6 +277,7 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
             if input.wasd_is_down() {
                 sm.play_sound_3d(SoundType::Jump, &trans.position, player_key);
                 controller.time_in_state = 0.0;
+                animator.set_next_animation(AnimationType::Run);
                 return PlayerState::Running;
             }
 
@@ -490,7 +518,47 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
         PlayerState::Dead {time, target_time} => {
             return PlayerState::Dead {time, target_time}
         },
+        // ==================================================================================
+        // PLAYER BLOCKING
+        // ==================================================================================
         PlayerState::Blocking => {
+            controller.time_in_state += dt;
+            if animator.current_animation != AnimationType::Block {
+                return PlayerState::Blocking;
+            }
+
+            let anim = animator.animations.get_mut(&animator.current_animation).unwrap();
+
+            if input.mouse_is_down(MouseButton::Right) {
+                if let Some(hold_frame) = anim.hold_frame {
+                    if anim.current_segment == hold_frame  {
+                        anim.do_hold = true;
+                        return PlayerState::Blocking;
+                    }
+                }
+            }
+
+            anim.do_hold = false;
+
+            if input.wasd_is_down() && anim.current_segment > 6 {
+                controller.time_in_state = 0.0;
+                animator.set_next_animation(AnimationType::Run);
+                return PlayerState::Running;
+            }
+
+            if input.mouse_just_pressed(MouseButton::Left) && anim.current_segment >= 6 {
+                controller.time_in_state = 0.0;
+                controller.attack_state = AttackState::Attack1;
+                animator.set_next_animation(AnimationType::Slash);
+                return PlayerState::Attacking;
+            }
+
+            if anim.current_time >= anim.duration - ANIMATION_EPSILON {
+                controller.time_in_state = 0.0;
+                animator.set_next_animation(AnimationType::Idle);
+                return PlayerState::Idle;
+            }
+
             return PlayerState::Blocking;
         },
     })();
