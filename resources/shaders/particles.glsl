@@ -36,5 +36,5 @@ void main() {
 		color = texture(texture1, tex_coords);
 	}
 
-    FragColor = vec4(color.rgb, 1.0);
+    FragColor = vec4(color.rgb, color.a * particle_alpha);
 }

@@ -330,7 +330,11 @@ impl ParticleSystem {
         }
     }
 
-    pub fn spawn_oneshot_emitter(&mut self, count: usize, origin: Vec3) {
+    pub fn spawn_oneshot_emitter(
+        &mut self, 
+        count: usize, 
+        origin: Vec3
+    ) {
         let mut rng = rng();
 
         let mut emitter = Emitter::new();
@@ -411,7 +415,6 @@ impl ParticleSystem {
         emitter.origin = origin;
         emitter.emit_type = emit_type.to_string();
         self.emitters.push(emitter);
-
     }
 
     pub fn update(&mut self, dt: f32) {

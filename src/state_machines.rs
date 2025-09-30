@@ -691,6 +691,12 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
         // PLAYER DASHING
         // ==================================================================================
         PlayerState::Dashing => {
+            controller.time_in_state += dt;
+
+            if controller.time_in_state >= 0.04 {
+                controller.time_in_state = 0.0;
+                particles.spawn_oneshot_emitter(20, trans.position);
+            }
             if animator.current_animation != AnimationType::DashF {
                 animator.set_next_animation(AnimationType::DashF);
                 return PlayerState::Dashing;
