@@ -30,11 +30,11 @@ uniform bool has_tex;
 out vec4 FragColor;
 
 void main() {
-	vec4 color = vec4(1.0, 1.0, 1.0, particle_alpha);
+	vec4 color = vec4(0.58, 0.1, 0.1, particle_alpha);
 
 	if (has_tex) {
 		color = texture(texture1, tex_coords);
 	}
 
-    FragColor = vec4(color.rgb * vec3(2.0, 2.0, 2.0), color.a * particle_alpha);
+    FragColor = vec4(color.rgb, 1.0);
 }

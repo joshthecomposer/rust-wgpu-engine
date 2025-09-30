@@ -189,6 +189,7 @@ pub enum SimState {
     Attacking,
     Blocking,
     Flinching,
+    Dashing,
 }
 
 pub struct SimStateController {
@@ -216,6 +217,7 @@ pub struct PlayerController {
     pub time_in_state: f32,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum AttackState {
     Attack1,
     Attack2,
@@ -374,6 +376,7 @@ pub struct FrameActivation {
 pub struct Knockback {
     pub ttl: f32, // time remaining seconds
     pub flinch: bool,
+    pub did_particles: bool,
     //pub lock_rotation: bool,
 }
 

@@ -567,7 +567,6 @@ impl EntityManager {
     }
 
     pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
-        self.delete_entities(sm);
 
         let dynamic_rbs: Vec<(RigidBodyHandle, &RigidBody)> = ps.rigid_body_set
             .iter()
@@ -626,32 +625,33 @@ impl EntityManager {
         }
 
         self.apply_parenting();
+        self.delete_entities(sm);
     }
 
-    pub fn delete_entities(&mut self, sm: &mut SoundManager) {
-        // TODO: Also clean up colliders from here.
-        for id in self.entity_trashcan.iter() {
-            sm.cleanup_entity_sounds(*id);
-            self.active_items.remove(*id);
-            self.inventories.remove(*id);
-            self.transforms.remove(*id);
-            self.factions.remove(*id);
-            self.entity_types.remove(*id);
-            self.models.remove(*id);
-            self.ani_models.remove(*id);
-            self.animators.remove(*id);
-            self.skellingtons.remove(*id);
-            self.rotators.remove(*id);
-            self.simstate_controllers.remove(*id);
-            self.destinations.remove(*id);
-            self.parents.remove(*id);
-            self.colliders.remove(*id);
-            self.v_effects.remove(*id);
-            self.impulse_applied.remove(*id);
-        }
+   pub fn delete_entities(&mut self, sm: &mut SoundManager) {
+       // TODO: Also clean up colliders from here.
+       for id in self.entity_trashcan.iter() {
+           // sm.cleanup_entity_sounds(*id);
+           self.active_items.remove(*id);
+           self.inventories.remove(*id);
+           self.transforms.remove(*id);
+           self.factions.remove(*id);
+           self.entity_types.remove(*id);
+           self.models.remove(*id);
+           self.ani_models.remove(*id);
+           self.animators.remove(*id);
+           self.skellingtons.remove(*id);
+           self.rotators.remove(*id);
+           self.simstate_controllers.remove(*id);
+           self.destinations.remove(*id);
+           self.parents.remove(*id);
+           self.colliders.remove(*id);
+           self.v_effects.remove(*id);
+           self.impulse_applied.remove(*id);
+       }
 
-        self.entity_trashcan.clear();
-    }
+       self.entity_trashcan.clear();
+   }
 
     pub fn get_ids_for_faction(&self, faction: Faction) -> Vec<usize> {
         let result: Vec<usize> = self.factions
@@ -665,7 +665,7 @@ impl EntityManager {
             )
             .collect();
 
-            result
+        result
     }
 
     pub fn get_ids_for_type(&self, entity_type: EntityType) -> Vec<usize> {
@@ -680,7 +680,7 @@ impl EntityManager {
             )
             .collect();
 
-            result
+        result
     }
 
     pub fn player_get_ids_for_state(&self, state: PlayerState) -> Vec<usize> {
@@ -695,7 +695,7 @@ impl EntityManager {
             )
             .collect();
 
-            result
+        result
 
     }
 
@@ -711,7 +711,7 @@ impl EntityManager {
             )
             .collect();
 
-            result
+        result
 
     }
 

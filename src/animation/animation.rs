@@ -297,6 +297,13 @@ impl Animator {
     }
 
     pub fn set_next_animation(&mut self, input: AnimationType) {
+        // match self.animations.get_mut(&input) {
+        //     Some(anim) => anim.current_time = 0.0,
+        //     None => {
+        //         println!("WARNING: passed in an animation that wasn't found: {}", &input);
+        //         self.next_animation = self.current_animation.clone();
+        //     },
+        // }
         self.next_animation = input;
     }
 
@@ -308,7 +315,7 @@ impl Animator {
                 }
             }
         }
-        
+
         if self.current_animation != self.next_animation {
             self.blend_factor += dt / self.blend_time;
             if self.blend_factor >= 1.0 {
@@ -319,6 +326,7 @@ impl Animator {
 
         let curr_key = self.current_animation.clone();
         let next_key = self.next_animation.clone();
+
 
         if curr_key != next_key {
             if let Some((current, next)) = self.animations.get_pair_mut(&curr_key, &next_key) {

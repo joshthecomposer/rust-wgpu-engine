@@ -61,7 +61,12 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                 if c1 == player_cyl_handle || c2 == player_cyl_handle { continue; }
 
                 let other = if c1 == *rh_w_col_handle { c2 } else { c1 };
-                let target_id = *em.collider_to_entity.get(&other).unwrap();
+
+                let Some(&target_id) = em.collider_to_entity.get(&other) else {
+                    // optional: log once to help track leaks
+                    // eprintln!("[combat] collider {:?} has no entity; likely stale pair or missing insert", other);
+                    continue;
+                };
 
                 match em.factions.get(target_id) {
                     Some(faction) => {
@@ -84,6 +89,7 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                         let mut kb = Knockback {
                             ttl: 0.35,
                             flinch: false,
+                            did_particles: false,
                         };
 
                         if sim_state.state != SimState::Blocking {
@@ -128,17 +134,23 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
             _=> 2.5
         };
 
-        let anim = em.animators
+        let slash = em.animators
             .get(entity_id)
             .unwrap()
             .animations
             .get(&AnimationType::Slash)
             .unwrap();
 
-        let active = anim
-            .hurtbox_activation
-            .as_ref()
-            .map_or(false, |ha| ha.triggered.get());
+        let slash2 = em.animators
+            .get(entity_id)
+            .unwrap()
+            .animations
+            .get(&AnimationType::Slash2)
+            .unwrap();
+
+        let active =
+            slash.hurtbox_activation.as_ref().map_or(false, |ha| ha.triggered.get()) ||
+            slash2.hurtbox_activation.as_ref().map_or(false, |ha| ha.triggered.get());
 
         if !active {
             hitset.clear();               // important: reset when inactive
@@ -164,6 +176,7 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
                         let mut kb = Knockback {
                             ttl: 0.35,
                             flinch: false,
+                            did_particles: false,
                         };
                         if player_state.state != PlayerState::Blocking {
                             if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };

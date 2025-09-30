@@ -4,11 +4,16 @@ use glfw::{Key, MouseButton};
 use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Effect, EntityType, Faction, Knockback, PlayerState, SimState, SoundType, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, input: &InputState, ps: &mut PhysicsState, sm: &mut SoundManager) {
-    player_state_machine(em, dt, input, ps, sm);
-    entity_sim_state_machine(em, dt, particles);
+    player_state_machine(em, dt, input, ps, sm, particles);
+    entity_sim_state_machine(em, dt, particles, ps, input);
 }
 
-fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem) {
+fn entity_sim_state_machine(
+    em: &mut EntityManager, 
+    dt: f32, particles: &mut ParticleSystem, 
+    ps: &mut PhysicsState, 
+    input: &InputState
+) {
     for fac in em.factions.iter() {
         if *fac.value() == Faction::Enemy {
             let controller = em.simstate_controllers.get_mut(fac.key()).unwrap();
@@ -18,10 +23,19 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
             let animator = em.animators.get_mut(fac.key()).unwrap();
             let destination = em.destinations.get_mut(fac.key()).unwrap();
             let health = em.healths.get(fac.key()).unwrap();
+            let ph = em.physics_handles.get(fac.key()).unwrap();
+            let rb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
 
-            let kb = match em.knockbacks.get(fac.key()) {
+            let yaw = em.yaws.get(fac.key()).unwrap();
+            let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
+
+            let impulse_strength = vec3(7.0, 3.5, 7.0);
+            let m = rb.mass();
+            let impulse = vec3(dir.x * (7.0 * m), 0.0, dir.z * (7.0 * m));
+
+            let kb = match em.knockbacks.get_mut(fac.key()) {
                 Some(kb) => kb,
-                None     => &Knockback { ttl: -1.0, flinch: false },
+                None     => &mut Knockback { ttl: -1.0, flinch: false, did_particles: true },
             };
 
             if em.v_effects.get(fac.key()).is_some_and(|v| v.ttl <= 0.0) {
@@ -37,7 +51,7 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                 .get(fac.key())
                 .and_then(|ai| ai.right_hand);
 
-            let distance = active_weapon_id
+            let weapon_length = active_weapon_id
                 .and_then(|wid| {
                     em.parents
                         .iter()
@@ -45,7 +59,8 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                         .and_then(|entry| em.cuboids.get(entry.key()).map(|hb| hb.h)) // child id = entry.key()
                 })
                 .unwrap();
-                // .unwrap_or(3.0); // fallback if no weapon or no cuboid
+
+            let within_weapon_length = entity_pos.distance(player_pos) <= weapon_length;
 
             let trans = em.transforms.get(fac.key()).unwrap();
 
@@ -78,6 +93,7 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                     let player_in_range = entity_pos.distance(player_pos) <= view_distance;
 
                     if  alignment >= fov_threshold && player_in_range {
+                        animator.set_next_animation(AnimationType::Run);
                         return SimState::Aggro
                     }
 
@@ -94,9 +110,7 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                         return SimState::Flinching;
                     }
 
-                    animator.set_next_animation(AnimationType::Run);
-
-                    if entity_pos.distance(player_pos) < distance {
+                    if within_weapon_length {
                         animator.set_next_animation(AnimationType::Slash);
                         controller.time_in_state = 0.0;
                         return SimState::Attacking
@@ -123,7 +137,32 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                             return SimState::Dead { time: 0.0, target_time: 5.0 }
                         } 
                     } else {
-                        // particles.spawn_oneshot_emitter(1000, entity_pos);
+
+                        let model_transform = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
+                        let skellington = em.skellingtons.get_mut(fac.key()).unwrap();
+
+                        let bone_names: Vec<String> = {
+                            let anim = animator.animations.get(&animator.current_animation).unwrap();
+                            anim.model_animation_join.iter().map(|b| b.name.clone()).collect()
+                        };
+
+                        let anim = animator.animations.get_mut(&animator.current_animation).unwrap();
+                        for bone_name in bone_names{
+
+                            if let Some(bone_world_model_space) = anim.get_raw_global_bone_transform_by_name(
+                                &bone_name,
+                                skellington,
+                                Mat4::IDENTITY,
+                            ) {
+
+                                let bone_world_space = model_transform * bone_world_model_space;
+                                let position = bone_world_space.w_axis.truncate();
+
+                                // You can randomize velocity or make it static for now
+                                particles.spawn_oneshot_emitter(100, position);
+                            }
+                        }
+                        //particles.spawn_oneshot_emitter(1000, entity_pos);
                         em.entity_trashcan.push(fac.key());
                     }
                     
@@ -162,7 +201,7 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                                 let position = bone_world_space.w_axis.truncate();
 
                                 // You can randomize velocity or make it static for now
-                                // particles.spawn_oneshot_emitter(100, position);
+                                particles.spawn_oneshot_emitter(100, position);
                             }
                         }
 
@@ -171,13 +210,13 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                         // let  anim = animator.animations.get_mut(&animator.current_animation).unwrap();
                         // let skellington = em.skellingtons.get(fac.key()).unwrap();
 
-                        // if let Some(neck_transform_model_space) = anim.get_raw_global_bone_transform("mixamorig:Neck", skellington, Mat4::IDENTITY) {
+                        // if let Some(neck_transform_model_space) = anim.get_raw_global_bone_transform_by_name("mixamorig:Neck", skellington, Mat4::IDENTITY) {
                         //     let world_transform = model * neck_transform_model_space;
                         //     let neck_position = world_transform.w_axis.truncate();
                         //     particles.spawn_particles(1000, neck_position);
                         // }
 
-                        // if let Some(hip_transform_model_space) = anim.get_raw_global_bone_transform("mixamorig:Hips", skellington, Mat4::IDENTITY) {
+                        // if let Some(hip_transform_model_space) = anim.get_raw_global_bone_transform_by_name("mixamorig:Hips", skellington, Mat4::IDENTITY) {
                         //     let world_transform = model * hip_transform_model_space;
                         //     let neck_position = world_transform.w_axis.truncate();
                         //     particles.spawn_particles(1000, neck_position);
@@ -190,40 +229,95 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                 SimState::Attacking => {
                     if *health <= 0.0 { return SimState::Dying; }
 
-                    let anim = animator.animations.get_mut(&AnimationType::Slash).unwrap();
+                    let (slash1, slash2) = animator.animations.get_pair_mut(&AnimationType::Slash, &AnimationType::Slash2).unwrap();
 
                     controller.time_in_state += dt;
 
-                    if anim.current_segment < 10 {
-                        if kb.flinch && kb.ttl > 0.0 {
-                            controller.time_in_state = 0.0;
-                            animator.set_next_animation(AnimationType::Flinch);
-                            return SimState::Flinching;
-                        }
+                    if kb.flinch && kb.ttl > 0.0 {
+                        controller.time_in_state = 0.0;
+                        animator.set_next_animation(AnimationType::Flinch);
+                        return SimState::Flinching;
                     }
 
                     match controller.attack_state {
                         AttackState::Attack1 => {
+                            if animator.current_animation != AnimationType::Slash && animator.next_animation != AnimationType::Slash {
+                                animator.set_next_animation(AnimationType::Slash);
+                                controller.attack_state = AttackState::Attack1;
+                                return SimState::Attacking;
+                            }
+
                             if animator.current_animation != AnimationType::Slash {
                                 return SimState::Attacking;
                             }
 
-                            if anim.current_time >= anim.duration- ANIMATION_EPSILON {
-                                if entity_pos.distance(player_pos) < distance {
-                                    anim.current_time = 0.0;
+                            slash2.current_time = 0.0;
+
+                            if slash1.current_segment >= 14 {
+                                if within_weapon_length {
+
+                                    animator.set_next_animation(AnimationType::Slash2);
+                                    controller.attack_state = AttackState::Attack2;
                                     return SimState::Attacking
                                 }
-
-                                animator.set_next_animation(AnimationType::Idle);
-                                controller.attack_state = AttackState::Attack1;
-                                controller.time_in_state = 0.0;
-                                return SimState::Aggro;
                             }
 
+                            if slash1.current_time >= slash1.duration- ANIMATION_EPSILON {
+                                if within_weapon_length {
+                                    return SimState::Attacking
+                                }
+                                
+                                animator.set_next_animation(AnimationType::Run);
+                                controller.attack_state = AttackState::Attack1;
+                                return SimState::Aggro;
+                            }
                         },
                         AttackState::Attack2 => {
+
+                            if animator.current_animation != AnimationType::Slash2 && animator.next_animation != AnimationType::Slash2 {
+                                animator.set_next_animation(AnimationType::Slash2);
+                                controller.attack_state = AttackState::Attack2;
+                                return SimState::Attacking;
+                            }
+
                             if animator.current_animation != AnimationType::Slash2 {
                                 return SimState::Attacking;
+                            }
+
+                            slash1.current_time = 0.0;
+
+                            if slash2.current_segment >= 18 {
+                                if within_weapon_length {
+                                    controller.attack_state = AttackState::Attack1;
+                                    animator.set_next_animation(AnimationType::Slash);
+                                    return SimState::Attacking;
+                                } else {
+                                    // rb.apply_impulse(impulse.into(), true);
+                                    // controller.attack_state = AttackState::Attack1;
+                                    // animator.set_next_animation(AnimationType::Slash);
+                                    // animator.set_next_animation(AnimationType::DashF);
+                                    // return SimState::Dashing;
+                                    controller.attack_state = AttackState::Attack1;
+                                    animator.set_next_animation(AnimationType::Run);
+                                    return SimState::Aggro;
+                                }
+                            }
+
+                            if slash2.current_segment >= 22 {
+                                if within_weapon_length {
+                                    controller.attack_state = AttackState::Attack1;
+                                    animator.set_next_animation(AnimationType::Slash);
+                                    return SimState::Attacking;
+                                } else {
+                                    // rb.apply_impulse(impulse.into(), true);
+                                    // controller.attack_state = AttackState::Attack1;
+                                    // animator.set_next_animation(AnimationType::Slash);
+                                    // animator.set_next_animation(AnimationType::DashF);
+                                    // return SimState::Dashing;
+                                    controller.attack_state = AttackState::Attack1;
+                                    animator.set_next_animation(AnimationType::Run);
+                                    return SimState::Aggro;
+                                }
                             }
                         },
                         _ => {},
@@ -235,26 +329,90 @@ fn entity_sim_state_machine(em: &mut EntityManager, dt: f32, particles: &mut Par
                     return SimState::Blocking;
                 },
                 SimState::Flinching => {
+                    controller.time_in_state += dt;
+
                     if animator.current_animation != AnimationType::Flinch {
+                        return SimState::Flinching;
+                    }
+
+                    if !kb.did_particles {
+                            let model_transform = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
+                            let skellington = em.skellingtons.get_mut(fac.key()).unwrap();
+
+                            let bone_names: Vec<String> = {
+                                let anim = animator.animations.get(&animator.current_animation).unwrap();
+                                anim.model_animation_join.iter().map(|b| b.name.clone()).collect()
+                            };
+
+                        let anim = animator.animations.get_mut(&animator.current_animation).unwrap();
+
+                            for bone_name in bone_names{
+                                if let Some(bone_world_model_space) = anim.get_raw_global_bone_transform_by_name(
+                                    &bone_name,
+                                    skellington,
+                                    Mat4::IDENTITY,
+                                ) {
+                                    let bone_world_space = model_transform * bone_world_model_space;
+                                    let position = bone_world_space.w_axis.truncate();
+
+                                    // You can randomize velocity or make it static for now
+                                    particles.spawn_oneshot_emitter(10, position);
+                                }
+                            }
+                        kb.did_particles = true;
+                    }
+
+
+
+                    if kb.flinch && kb.ttl > 0.0 {
+                        animator.set_next_animation(AnimationType::Flinch);
                         return SimState::Flinching;
                     }
 
                     let anim = animator.get_current_animation().unwrap();
 
                     if anim.current_time >= anim.duration - ANIMATION_EPSILON {
+                        animator.set_next_animation(AnimationType::Run);
                         return SimState::Aggro;
                     }
 
                     return SimState::Flinching;
                 },
+                SimState::Dashing => {
+                    return SimState::Dashing;
+                }
             })();
 
-            controller.state = next_state;
+            if input.is_down(Key::U) {
+                dbg!(&next_state);
+                dbg!(&controller.attack_state);
+                dbg!(&animator.get_current_animation().unwrap().current_segment);
+                dbg!(&animator.get_current_animation().unwrap().current_time);
+                dbg!(&animator.get_current_animation().unwrap().duration);
+                dbg!(&animator.get_current_animation().unwrap().duration - ANIMATION_EPSILON);
+                dbg!(&animator.current_animation);
+                dbg!(&animator.next_animation);
+            }
+            
+
+            if input.is_down(Key::Y) {
+                controller.state = SimState::Waiting;
+
+                for (_, anim) in animator.animations.iter_mut() {
+                    anim.current_time = 0.0;
+                }
+
+                animator.set_next_animation(AnimationType::Idle);
+                animator.set_current_animation(AnimationType::Idle);
+                controller.attack_state = AttackState::Attack1;
+            } else {
+                controller.state = next_state;
+            }
         }
     }
 }
 
-fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps: &mut PhysicsState, sm: &mut SoundManager){ 
+fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps: &mut PhysicsState, sm: &mut SoundManager,particles: &mut ParticleSystem){ 
     let player_key = em.factions.iter().find(|e| *e.value() == Faction::Player).unwrap().key();
     let controller = em.player_controllers.get_mut(player_key).unwrap();
     let ph = em.physics_handles.get(player_key).unwrap();
@@ -271,6 +429,8 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
     let impulse_strength = vec3(7.0, 3.5, 7.0);
     let m = rb.mass();
     let impulse = vec3(dir.x * (7.0 * m), 0.0, dir.z * (7.0 * m));
+
+    let kb = em.knockbacks.get_mut(player_key);
 
     let next_state = (|| match controller.state {
         // ==================================================================================
@@ -608,6 +768,35 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
             return PlayerState::Blocking;
         },
     })();
+
+    if let Some(kb) = kb {
+        if !kb.did_particles && next_state != PlayerState::Blocking {
+            let model_transform = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
+            let skellington = em.skellingtons.get_mut(player_key).unwrap();
+
+            let bone_names: Vec<String> = {
+                let anim = animator.animations.get(&animator.current_animation).unwrap();
+                anim.model_animation_join.iter().map(|b| b.name.clone()).collect()
+            };
+
+            let anim = animator.animations.get_mut(&animator.current_animation).unwrap();
+
+            for bone_name in bone_names{
+                if let Some(bone_world_model_space) = anim.get_raw_global_bone_transform_by_name(
+                    &bone_name,
+                    skellington,
+                    Mat4::IDENTITY,
+                ) {
+                    let bone_world_space = model_transform * bone_world_model_space;
+                    let position = bone_world_space.w_axis.truncate();
+
+                    // You can randomize velocity or make it static for now
+                    particles.spawn_oneshot_emitter(10, position);
+                }
+            }
+            kb.did_particles = true;
+        }
+    }
 
     controller.state = next_state;
 }

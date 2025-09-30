@@ -32,9 +32,13 @@ pub fn update(em: &mut EntityManager) {
         let maybe_bone_world_model_space = if blend_factor > 0.0 && current_key != next_key {
             // SAFELY get both entries with mutable refs (no HashMap::remove)
             let (a1, a2) = {
-                let (left, right) = animator.animations.get_pair_mut(&current_key, &next_key)
-                    .expect(format!("Both animations must exist {}, {}", &current_key, &next_key).as_str());
-                (left, right)
+                match animator.animations.get_pair_mut(&current_key, &next_key) {
+                    Some((a1, a2)) => (a1, a2),
+                    None => {
+                        eprintln!("WARNING: both animations do not exist in animator.get_pair_mut {}, {}", &current_key, &next_key);
+                        return;
+                    },
+                }
             };
 
             a1.get_raw_global_bone_transform_by_name_blended(

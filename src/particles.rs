@@ -179,7 +179,12 @@ impl Emitter {
                 shader.set_bool("has_tex", false);
             }
             _ => {
+                let mut matrices = Vec::with_capacity(self.count);
+
                 for i in 0..self.count {
+                    let t = self.times_alive[i];
+                    let t_norm = (t / self.lifetimes[i]).clamp(0.0, 1.0);
+
                     let view = camera.view;
                     let view_rot = Mat3::from_cols(
                         view.x_axis.truncate(),
@@ -190,41 +195,87 @@ impl Emitter {
                     let model_rot = Mat4::from_mat3(inv_view_rot);
                     let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(self.scales[i]);
 
-                    shader.set_mat4("model", model);
-                    shader.set_mat4("view", camera.view);
-                    shader.set_mat4("projection", camera.projection);
-                    shader.set_float("particle_alpha", 0.67);
-                    shader.set_bool("has_tex", false);
-
-                    unsafe {
-                        gl_call!(gl::BindVertexArray(vao));
-                        gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.instance_vbo));
-
-                        let vec4_size = std::mem::size_of::<f32>() * 4;
-                        for i in 0..4 {
-                            let location = 2 + i;
-                            gl_call!(gl::EnableVertexAttribArray(location));
-                            gl_call!(gl::VertexAttribPointer(
-                                location,
-                                4,
-                                gl::FLOAT,
-                                gl::FALSE,
-                                std::mem::size_of::<Mat4>() as i32,
-                                (i * vec4_size as u32) as *const std::ffi::c_void,
-                            ));
-                            gl_call!(gl::VertexAttribDivisor(location, 1));
-                        }
-
-                        gl_call!(gl::DrawArraysInstanced(gl::TRIANGLES, 0, 6, self.count as i32));
-                        gl_call!(gl::BindVertexArray(0));
-                    }
+                    matrices.push(model);
                 }
-                unsafe { gl_call!(gl::DepthMask(gl::TRUE)); }
-            },
+
+                unsafe {
+                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.alpha_vbo));
+                    gl_call!(gl::BufferData(
+                        gl::ARRAY_BUFFER,
+                        (self.alphas.len() * std::mem::size_of::<f32>()) as isize,
+                        self.alphas.as_ptr() as *const _,
+                        gl::STREAM_DRAW,
+                    ));
+                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.instance_vbo));
+                    gl_call!(gl::BufferData(
+                        gl::ARRAY_BUFFER,
+                        (matrices.len() * std::mem::size_of::<Mat4>()) as isize,
+                        matrices.as_ptr() as *const _,
+                        gl::STREAM_DRAW,
+                    ));
+                }
+
+                shader.activate();
+                shader.set_mat4("view", camera.view);
+                shader.set_mat4("projection", camera.projection);
+                shader.set_bool("has_tex", false);
+
+
+
+                unsafe {
+                    gl::Enable(gl::BLEND);
+                    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+                    gl_call!(gl::DepthMask(gl::FALSE));
+
+                    gl_call!(gl::BindVertexArray(vao));
+                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.instance_vbo));
+
+                    let vec4_size = std::mem::size_of::<f32>() * 4;
+                    for i in 0..4 {
+                        let location = 2 + i;
+                        gl_call!(gl::EnableVertexAttribArray(location));
+                        gl_call!(gl::VertexAttribPointer(
+                            location,
+                            4,
+                            gl::FLOAT,
+                            gl::FALSE,
+                            std::mem::size_of::<Mat4>() as i32,
+                            (i * vec4_size as u32) as *const std::ffi::c_void,
+                        ));
+                        gl_call!(gl::VertexAttribDivisor(location, 1));
+                    }
+
+                    // Setup alpha attribute (location = 6)
+                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.alpha_vbo));
+                    gl_call!(gl::EnableVertexAttribArray(6));
+                    gl_call!(gl::VertexAttribPointer(
+                        6,
+                        1,
+                        gl::FLOAT,
+                        gl::FALSE,
+                        std::mem::size_of::<f32>() as i32,
+                        std::ptr::null(),
+                    ));
+                    gl_call!(gl::VertexAttribDivisor(6, 1));
+                    // gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
+                    // gl::Disable(gl::CULL_FACE);
+                    // gl::Disable(gl::DEPTH_TEST);
+                    gl_call!(gl::DrawArraysInstanced(gl::TRIANGLES, 0, 6, self.count as i32));
+                    gl_call!(gl::BindVertexArray(0));
+//                     gl::Enable(gl::CULL_FACE);
+//                     gl::Enable(gl::DEPTH_TEST);
+
+                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+                    gl_call!(gl::DepthMask(gl::TRUE));
+                }
+
+                shader.set_bool("has_tex", false);
+            }
         }
 
     }
 }
+
 
 pub struct ParticleSystem {
     pub emitters: Vec<Emitter>,
@@ -284,12 +335,15 @@ impl ParticleSystem {
 
         let mut emitter = Emitter::new();
 
+        emitter.origin = origin;
+
         for _ in 0..count {
             let angle = rng.random_range(0.0..std::f32::consts::TAU);
             let radius = rng.random_range(0.01..0.1);
 
             let x = radius * angle.cos();
             let z = radius * angle.sin();
+
             let position = origin + vec3(x, 0.0, z);
 
             let outward = vec3(x, 0.0, z).normalize();
@@ -298,6 +352,7 @@ impl ParticleSystem {
 
             let lifetime = rng.random_range(1.0..5.0);
             let scale = Vec3::splat(rng.random_range(0.005..0.010));
+            //let scale = Vec3::splat(0.5);
 
             emitter.positions.push(position);
             emitter.velocities.push(velocity);
@@ -306,6 +361,7 @@ impl ParticleSystem {
             emitter.times_alive.push(0.0);
             emitter.rotation_speeds.push(0.0);
             emitter.rotation_offsets.push(0.0);
+            emitter.alphas.push(1.0);
         }
 
         emitter.count = count;
@@ -394,39 +450,30 @@ impl ParticleSystem {
 
                     emitter.count -= 1;
                 } else {
-                    let t_norm = (emitter.times_alive[i] / emitter.lifetimes[i]).clamp(0.0, 1.0);
+                    // let t_norm = (emitter.times_alive[i] / emitter.lifetimes[i]).clamp(0.0, 1.0);
 
-                    let velocity_scale = 1.0 - t_norm * t_norm;
-                    emitter.velocities[i] *= velocity_scale;
+                    // let velocity_scale = 1.0 - t_norm * t_norm;
+                    // emitter.velocities[i] *= velocity_scale;
 
+                    // emitter.velocities[i] += gravity * dt;
+                    // emitter.positions[i] += emitter.velocities[i] * dt;
+                    // emitter.times_alive[i] += dt;
+
+                    // if emitter.positions[i].y <= 0.0 {
+                    //     emitter.positions[i].y = 0.0;
+                    //     emitter.velocities[i].y *= -0.3;
+
+                    //     let friction = 0.9; // Lower = more friction
+                    //     emitter.velocities[i].x *= friction;
+                    //     emitter.velocities[i].z *= friction;
+                    // }
+
+                    // i += 1;
 
                     emitter.velocities[i] += gravity * dt;
                     emitter.positions[i] += emitter.velocities[i] * dt;
                     emitter.times_alive[i] += dt;
-
-                    let sphere_center = emitter.origin;
-                    let radius = 10.0;
-
-                    let to_center = emitter.positions[i] - sphere_center;
-                    let distance = to_center.length();
-
-                    if distance > radius {
-                        let normal = to_center.normalize();
-                        emitter.positions[i] = sphere_center + normal * radius;
-                        emitter.velocities[i] = Vec3::ZERO;
-                    }
-
-                    if emitter.positions[i].y <= 0.0 {
-                        emitter.positions[i].y = 0.0;
-                        emitter.velocities[i].y *= -0.3;
-
-
-                        let friction = 0.9; // Lower = more friction, e.g., 0.8 retains 80% 
-                        emitter.velocities[i].x *= friction;
-                        emitter.velocities[i].z *= friction;
-                    }
-
-                    i += 1;
+                i += 1;
                 }
             }
 
