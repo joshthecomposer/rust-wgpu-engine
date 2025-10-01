@@ -1,7 +1,7 @@
 use glam::{vec3, Mat4, Vec3};
 use glfw::{Key, MouseButton};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Effect, EntityType, Faction, Knockback, PlayerState, SimState, SoundType, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Effect, EmitterName, EntityType, Faction, Knockback, PlayerState, SimState, SoundType, VisualEffect, ANIMATION_EPSILON}, input::InputState, particles::{Emitter, ParticleSystem}, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub fn update(em: &mut EntityManager, dt: f32, particles: &mut ParticleSystem, input: &InputState, ps: &mut PhysicsState, sm: &mut SoundManager) {
     player_state_machine(em, dt, input, ps, sm, particles);
@@ -159,7 +159,7 @@ fn entity_sim_state_machine(
                                 let position = bone_world_space.w_axis.truncate();
 
                                 // You can randomize velocity or make it static for now
-                                particles.spawn_oneshot_emitter(100, position);
+                                particles.spawn_oneshot_emitter(EmitterName::DamageBlood, position);
                             }
                         }
                         //particles.spawn_oneshot_emitter(1000, entity_pos);
@@ -201,7 +201,7 @@ fn entity_sim_state_machine(
                                 let position = bone_world_space.w_axis.truncate();
 
                                 // You can randomize velocity or make it static for now
-                                particles.spawn_oneshot_emitter(100, position);
+                                particles.spawn_oneshot_emitter(EmitterName::DamageBlood, position);
                             }
                         }
 
@@ -356,7 +356,7 @@ fn entity_sim_state_machine(
                                     let position = bone_world_space.w_axis.truncate();
 
                                     // You can randomize velocity or make it static for now
-                                    particles.spawn_oneshot_emitter(10, position);
+                                    particles.spawn_oneshot_emitter(EmitterName::DamageBlood, position);
                                 }
                             }
                         kb.did_particles = true;
@@ -695,7 +695,7 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
 
             if controller.time_in_state >= 0.04 {
                 controller.time_in_state = 0.0;
-                particles.spawn_oneshot_emitter(20, trans.position);
+                particles.spawn_oneshot_emitter(EmitterName::DesertDust, trans.position);
             }
             if animator.current_animation != AnimationType::DashF {
                 animator.set_next_animation(AnimationType::DashF);
@@ -797,7 +797,7 @@ fn player_state_machine(em: &mut EntityManager, dt: f32, input: &InputState, ps:
                     let position = bone_world_space.w_axis.truncate();
 
                     // You can randomize velocity or make it static for now
-                    particles.spawn_oneshot_emitter(10, position);
+                    particles.spawn_oneshot_emitter(EmitterName::DamageBlood, position);
                 }
             }
             kb.did_particles = true;

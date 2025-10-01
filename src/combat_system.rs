@@ -95,10 +95,10 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                         if sim_state.state != SimState::Blocking {
                             if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
 
-                            em.v_effects.insert(target_id, VisualEffect {
-                                effect: Effect::Flashing,
-                                ttl: kb.ttl,
-                            });
+                            // em.v_effects.insert(target_id, VisualEffect {
+                            //     effect: Effect::Flashing,
+                            //     ttl: kb.ttl,
+                            // });
 
                             kb.flinch = true;
                         }
@@ -181,10 +181,10 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
                         if player_state.state != PlayerState::Blocking {
                             if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
 
-                            em.v_effects.insert(target_id, VisualEffect {
-                                effect: Effect::Flashing,
-                                ttl: kb.ttl,
-                            });
+                            // em.v_effects.insert(target_id, VisualEffect {
+                            //     effect: Effect::Flashing,
+                            //     ttl: kb.ttl,
+                            // });
 
                             kb.flinch = true;
                         }

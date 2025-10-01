@@ -1,14 +1,39 @@
-[[one_shots_archetypes]]
-name = "DesertDust"
+[one_shot_data.DamageBlood]
+name = "DamageBlood"
 angle_rand = [0.0, 6.2831855] # random range betwee value 0 and value 1, use the same value for no deviation
 radius_rand = [0.01, 0.01] # random range betwee value 0 and value 1, use the same value for no deviation
-gravity = 0.0 # positive makes it float, negative falls
-upward_velocity = [
+gravity = -9.8 # positive makes it float, negative falls
+velocity = [
 	[0.0, 0.0],
 	[0.0, 2.0],
 	[0.0, 0.0]
 ]
-particle_lifetime = [1.0, 5.0]
-particle_scale = [0.01, 0.05]
+particle_lifetime = [0.35, 1.0]
+particle_scale = [0.005, 0.01]
 # texture_file = 
-color = [0.2, 0.2, 0.2, 0.45]
+colors = [
+	[0.58, 0.1, 0.1, 1.0],
+]
+particle_count = 8
+
+[one_shot_data.DesertDust]
+name = "DesertDust"
+angle_rand = [0.0, 6.2831855] # random range betwee value 0 and value 1, use the same value for no deviation
+radius_rand = [0.01, 0.01] # random range betwee value 0 and value 1, use the same value for no deviation
+gravity = 0.0 # positive makes it float, negative falls
+velocity = [
+	[0.0, 0.0],
+	[0.0, 2.0],
+	[0.0, 0.0]
+]
+particle_lifetime = [0.35, 0.9]
+particle_scale = [0.08, 0.2]
+# texture_file = 
+colors = [
+	[0.38, 0.18, 0.0, 0.8],
+	[0.506, 0.325, 0.122, 0.8],
+	[0.427, 0.247, 0.051, 0.8],
+	[0.624, 0.416, 0.2, 0.8],
+]
+particle_count = 3
+texture = "resources/textures/smoke.png"

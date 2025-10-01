@@ -380,6 +380,17 @@ pub struct Knockback {
     //pub lock_rotation: bool,
 }
 
-pub struct PhysicsBody {
+#[derive(Deserialize, Debug, Serialize, Hash, PartialEq, Eq)]
+pub enum EmitterName {
+    DesertDust,
+    DamageBlood,
+}
 
+impl Display for EmitterName {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            EmitterName::DesertDust => write!(f, "DesertDust"),
+            EmitterName::DamageBlood => write!(f, "DamageBlood"),
+        }
+    }
 }

@@ -1,8 +1,10 @@
-use glam::{vec3, Mat3, Mat4, Quat, Vec3};
-use image::GenericImageView;
+use gl::SampleMaski;
+use glam::{vec3, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
+use image::{GenericImageView, Rgba};
 use rand::{rng, Rng};
+use rapier3d::parry::utils::hashmap::HashMap;
 
-use crate::{camera::Camera, gl_call, lights::Lights, shaders::Shader};
+use crate::{camera::Camera, config::emitter_data::EmitterData, enums_types::EmitterName, gl_call, lights::Lights, shaders::Shader};
 
 pub struct Emitter {
     pub positions: Vec<Vec3>,
@@ -24,15 +26,20 @@ pub struct Emitter {
     pub instance_vbo: u32,
     pub alphas: Vec<f32>,
     pub alpha_vbo: u32,
+    pub color_vbo: u32,
+    pub colors: Vec<Vec4>,
+    pub gravity: f32,
 }
 
 impl Emitter {
     pub fn new() -> Self {
         let mut instance_vbo = 0;
         let mut alpha_vbo = 0;
+        let mut color_vbo = 0;
         unsafe {
             gl_call!(gl::GenBuffers(1, &mut instance_vbo));
             gl_call!(gl::GenBuffers(1, &mut alpha_vbo));
+            gl_call!(gl::GenBuffers(1, &mut color_vbo));
         }
         Self {
             positions: vec![],
@@ -54,6 +61,9 @@ impl Emitter {
             instance_vbo,
             alphas: vec![],
             alpha_vbo,
+            color_vbo,
+            colors: vec![],
+            gravity: 0.0,
         }
     }
 
@@ -66,213 +76,125 @@ impl Emitter {
 
         shader.activate();
 
-        match self.emit_type.as_str() {
-            "Smoke" => {
-                // Build per-instance model matrices
-                let mut matrices = Vec::with_capacity(self.count);
+        let mut rng = rng();
 
-                for i in 0..self.count {
-                    let t = self.times_alive[i];
-                    let t_norm = (t / self.lifetimes[i]).clamp(0.0, 1.0);
+        let mut matrices = Vec::with_capacity(self.count);
 
-                    self.alphas[i] = (0.4 - t_norm).clamp(0.0, 1.0);
+        for i in 0..self.count {
+            let t = self.times_alive[i];
+            let t_norm = (t / self.lifetimes[i]).clamp(0.0, 1.0);
 
-                    let growth = 1.0 + t_norm * 8.0;
-                    let scale = self.scales[i] * growth;
-                    let rotation = self.rotation_offsets[i] + self.rotation_speeds[i] * t;
+            let view = camera.view;
+            let view_rot = Mat3::from_cols(
+                view.x_axis.truncate(),
+                view.y_axis.truncate(),
+                view.z_axis.truncate(),
+            );
+            let inv_view_rot = view_rot.transpose();
+            let model_rot = Mat4::from_mat3(inv_view_rot);
+            let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(self.scales[i]);
 
-                    let z_rotation = Mat4::from_rotation_z(rotation);
-                    let view = camera.view;
-                    let view_rot = Mat3::from_cols(
-                        view.x_axis.truncate(),
-                        view.y_axis.truncate(),
-                        view.z_axis.truncate(),
-                    );
-                    let inv_view_rot = view_rot.transpose();
-                    let model_rot = Mat4::from_mat3(inv_view_rot);
-
-                    let model = Mat4::from_translation(self.positions[i])
-                    * model_rot
-                    * z_rotation
-                    * Mat4::from_scale(scale);
-
-                    matrices.push(model);
-                }
-
-                // Upload model matrices to GPU
-                unsafe {
-                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.alpha_vbo));
-                    gl_call!(gl::BufferData(
-                        gl::ARRAY_BUFFER,
-                        (self.alphas.len() * std::mem::size_of::<f32>()) as isize,
-                        self.alphas.as_ptr() as *const _,
-                        gl::STREAM_DRAW,
-                    ));
-                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.instance_vbo));
-                    gl_call!(gl::BufferData(
-                        gl::ARRAY_BUFFER,
-                        (matrices.len() * std::mem::size_of::<Mat4>()) as isize,
-                        matrices.as_ptr() as *const _,
-                        gl::STREAM_DRAW,
-                    ));
-                }
-
-                // Shader and global uniforms
-                shader.activate();
-                shader.set_mat4("view", camera.view);
-                shader.set_mat4("projection", camera.projection);
-                shader.set_bool("has_tex", self.texture.is_some());
-
-                if let Some(texture) = self.texture {
-                    shader.set_int("texture1", 1);
-                    unsafe {
-                        gl_call!(gl::ActiveTexture(gl::TEXTURE1));
-                        gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
-                    }
-                }
-
-                unsafe {
-                    gl::Enable(gl::BLEND);
-                    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-                    gl_call!(gl::DepthMask(gl::FALSE));
-
-                    // BIND VAO and setup instance attributes
-                    gl_call!(gl::BindVertexArray(vao));
-                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.instance_vbo));
-
-                    let vec4_size = std::mem::size_of::<f32>() * 4;
-                    for i in 0..4 {
-                        let location = 2 + i;
-                        gl_call!(gl::EnableVertexAttribArray(location));
-                        gl_call!(gl::VertexAttribPointer(
-                            location,
-                            4,
-                            gl::FLOAT,
-                            gl::FALSE,
-                            std::mem::size_of::<Mat4>() as i32,
-                            (i * vec4_size as u32) as *const std::ffi::c_void,
-                        ));
-                        gl_call!(gl::VertexAttribDivisor(location, 1));
-                    }
-
-                    // Setup alpha attribute (location = 6)
-                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.alpha_vbo));
-                    gl_call!(gl::EnableVertexAttribArray(6));
-                    gl_call!(gl::VertexAttribPointer(
-                        6,
-                        1,
-                        gl::FLOAT,
-                        gl::FALSE,
-                        std::mem::size_of::<f32>() as i32,
-                        std::ptr::null(),
-                    ));
-                    gl_call!(gl::VertexAttribDivisor(6, 1));
-
-                    // Now draw
-                    gl_call!(gl::DrawArraysInstanced(gl::TRIANGLES, 0, 6, self.count as i32));
-                    gl_call!(gl::BindVertexArray(0));
-
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-                    gl_call!(gl::DepthMask(gl::TRUE));
-                }
-
-                shader.set_bool("has_tex", false);
-            }
-            _ => {
-                let mut matrices = Vec::with_capacity(self.count);
-
-                for i in 0..self.count {
-                    let t = self.times_alive[i];
-                    let t_norm = (t / self.lifetimes[i]).clamp(0.0, 1.0);
-
-                    let view = camera.view;
-                    let view_rot = Mat3::from_cols(
-                        view.x_axis.truncate(),
-                        view.y_axis.truncate(),
-                        view.z_axis.truncate(),
-                    );
-                    let inv_view_rot = view_rot.transpose();
-                    let model_rot = Mat4::from_mat3(inv_view_rot);
-                    let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(self.scales[i]);
-
-                    matrices.push(model);
-                }
-
-                unsafe {
-                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.alpha_vbo));
-                    gl_call!(gl::BufferData(
-                        gl::ARRAY_BUFFER,
-                        (self.alphas.len() * std::mem::size_of::<f32>()) as isize,
-                        self.alphas.as_ptr() as *const _,
-                        gl::STREAM_DRAW,
-                    ));
-                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.instance_vbo));
-                    gl_call!(gl::BufferData(
-                        gl::ARRAY_BUFFER,
-                        (matrices.len() * std::mem::size_of::<Mat4>()) as isize,
-                        matrices.as_ptr() as *const _,
-                        gl::STREAM_DRAW,
-                    ));
-                }
-
-                shader.activate();
-                shader.set_mat4("view", camera.view);
-                shader.set_mat4("projection", camera.projection);
-                shader.set_bool("has_tex", false);
-
-
-
-                unsafe {
-                    gl::Enable(gl::BLEND);
-                    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-                    gl_call!(gl::DepthMask(gl::FALSE));
-
-                    gl_call!(gl::BindVertexArray(vao));
-                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.instance_vbo));
-
-                    let vec4_size = std::mem::size_of::<f32>() * 4;
-                    for i in 0..4 {
-                        let location = 2 + i;
-                        gl_call!(gl::EnableVertexAttribArray(location));
-                        gl_call!(gl::VertexAttribPointer(
-                            location,
-                            4,
-                            gl::FLOAT,
-                            gl::FALSE,
-                            std::mem::size_of::<Mat4>() as i32,
-                            (i * vec4_size as u32) as *const std::ffi::c_void,
-                        ));
-                        gl_call!(gl::VertexAttribDivisor(location, 1));
-                    }
-
-                    // Setup alpha attribute (location = 6)
-                    gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.alpha_vbo));
-                    gl_call!(gl::EnableVertexAttribArray(6));
-                    gl_call!(gl::VertexAttribPointer(
-                        6,
-                        1,
-                        gl::FLOAT,
-                        gl::FALSE,
-                        std::mem::size_of::<f32>() as i32,
-                        std::ptr::null(),
-                    ));
-                    gl_call!(gl::VertexAttribDivisor(6, 1));
-                    // gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
-                    // gl::Disable(gl::CULL_FACE);
-                    // gl::Disable(gl::DEPTH_TEST);
-                    gl_call!(gl::DrawArraysInstanced(gl::TRIANGLES, 0, 6, self.count as i32));
-                    gl_call!(gl::BindVertexArray(0));
-//                     gl::Enable(gl::CULL_FACE);
-//                     gl::Enable(gl::DEPTH_TEST);
-
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-                    gl_call!(gl::DepthMask(gl::TRUE));
-                }
-
-                shader.set_bool("has_tex", false);
-            }
+            matrices.push(model);
         }
 
+        unsafe {
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.alpha_vbo));
+            gl_call!(gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (self.alphas.len() * std::mem::size_of::<f32>()) as isize,
+                self.alphas.as_ptr() as *const _,
+                gl::STREAM_DRAW,
+            ));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.color_vbo));
+            gl_call!(gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (self.colors.len() * std::mem::size_of::<Vec4>()) as isize,
+                self.colors.as_ptr() as *const _,
+                gl::STREAM_DRAW,
+            ));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.instance_vbo));
+            gl_call!(gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (matrices.len() * std::mem::size_of::<Mat4>()) as isize,
+                matrices.as_ptr() as *const _,
+                gl::STREAM_DRAW,
+            ));
+        }
+
+        shader.activate();
+        shader.set_mat4("view", camera.view);
+        shader.set_mat4("projection", camera.projection);
+        shader.set_bool("has_tex", self.texture.is_some());
+
+        if let Some(texture) = self.texture {
+            unsafe {
+                gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
+            }
+            shader.set_int("texture1", 0);
+        }
+
+        unsafe {
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+            gl_call!(gl::DepthMask(gl::FALSE));
+
+            gl_call!(gl::BindVertexArray(vao));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.instance_vbo));
+
+            let vec4_size = std::mem::size_of::<f32>() * 4;
+            for i in 0..4 {
+                let location = 2 + i;
+                gl_call!(gl::EnableVertexAttribArray(location));
+                gl_call!(gl::VertexAttribPointer(
+                    location,
+                    4,
+                    gl::FLOAT,
+                    gl::FALSE,
+                    std::mem::size_of::<Mat4>() as i32,
+                    (i * vec4_size as u32) as *const std::ffi::c_void,
+                ));
+                gl_call!(gl::VertexAttribDivisor(location, 1));
+            }
+
+            // Setup alpha attribute (location = 6)
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.alpha_vbo));
+            gl_call!(gl::EnableVertexAttribArray(6));
+            gl_call!(gl::VertexAttribPointer(
+                6,
+                1,
+                gl::FLOAT,
+                gl::FALSE,
+                std::mem::size_of::<f32>() as i32,
+                std::ptr::null(),
+            ));
+            gl_call!(gl::VertexAttribDivisor(6, 1));
+
+            // Color attribute location (location = 7)
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.color_vbo));
+            gl_call!(gl::EnableVertexAttribArray(7));
+            gl_call!(gl::VertexAttribPointer(
+                7,
+                4,
+                gl::FLOAT,
+                gl::FALSE,
+                std::mem::size_of::<Vec4>() as i32,
+                std::ptr::null(),
+            ));
+            gl_call!(gl::VertexAttribDivisor(7, 4));
+            // gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
+            // gl::Disable(gl::CULL_FACE);
+            // gl::Disable(gl::DEPTH_TEST);
+            gl_call!(gl::DrawArraysInstanced(gl::TRIANGLES, 0, 6, self.count as i32));
+            gl_call!(gl::BindVertexArray(0));
+            //                     gl::Enable(gl::CULL_FACE);
+            //                     gl::Enable(gl::DEPTH_TEST);
+
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+            gl_call!(gl::DepthMask(gl::TRUE));
+        }
+
+        shader.set_bool("has_tex", false);
     }
 }
 
@@ -280,10 +202,11 @@ impl Emitter {
 pub struct ParticleSystem {
     pub emitters: Vec<Emitter>,
     pub vao: u32,
+    pub emitter_data: EmitterData,
 }
 
 impl ParticleSystem {
-    pub fn new() -> Self {
+    pub fn new(ed_file: &str) -> Self {
         let mut vao = 0;
         let mut vbo = 0;
 
@@ -324,26 +247,44 @@ impl ParticleSystem {
             gl_call!(gl::BindVertexArray(0));
         }
 
+        let emitter_data = EmitterData::load_from_file(ed_file);
+
         Self {
             emitters: Vec::new(),
             vao,
+            emitter_data,
         }
     }
 
     pub fn spawn_oneshot_emitter(
         &mut self, 
-        count: usize, 
-        origin: Vec3
+        emitter_name: EmitterName,
+        origin: Vec3,
     ) {
         let mut rng = rng();
 
+        let ed = match self.emitter_data.one_shot_data.get(&emitter_name) {
+            Some(ed) => ed,
+            None     => { 
+                eprintln!("WARNING: no emitter found for type {}", emitter_name);
+                return;
+            }
+        };
+
         let mut emitter = Emitter::new();
 
-        emitter.origin = origin;
+        emitter.texture = ed.texture;
 
-        for _ in 0..count {
+        emitter.origin = origin;
+        emitter.gravity = ed.gravity;
+
+        for _ in 0..ed.particle_count {
             let angle = rng.random_range(0.0..std::f32::consts::TAU);
-            let radius = rng.random_range(0.01..0.1);
+            let radius = if ed.radius_rand.x == ed.radius_rand.y {
+                ed.radius_rand.x
+            } else { 
+                rng.random_range(ed.radius_rand.x..ed.radius_rand.y)
+            };
 
             let x = radius * angle.cos();
             let z = radius * angle.sin();
@@ -354,12 +295,19 @@ impl ParticleSystem {
             let upward = vec3(0.0, rng.random_range(0.0..2.0), 0.0);
             let velocity = (outward + upward).normalize() * rng.random_range(1.0..3.0);
 
-            let lifetime = rng.random_range(1.0..5.0);
-            let scale = Vec3::splat(rng.random_range(0.005..0.010));
-            //let scale = Vec3::splat(0.5);
+            let lifetime = rng.random_range(ed.particle_lifetime.x..ed.particle_lifetime.y);
+            let scale = Vec3::splat(rng.random_range(ed.particle_scale.x..ed.particle_scale.y));
+
+            // color randomization
+            let color = if ed.colors.len() > 1 {
+                ed.colors[rng.random_range(0..ed.colors.len()-1)]
+            } else {
+                ed.colors[0]
+            };
 
             emitter.positions.push(position);
             emitter.velocities.push(velocity);
+            emitter.colors.push(color);
             emitter.lifetimes.push(lifetime);
             emitter.scales.push(scale);
             emitter.times_alive.push(0.0);
@@ -368,7 +316,8 @@ impl ParticleSystem {
             emitter.alphas.push(1.0);
         }
 
-        emitter.count = count;
+        emitter.count = ed.particle_count;
+        // emitter.colors = ed.colors.clone();
         self.emitters.push(emitter);
     }
 
@@ -418,17 +367,8 @@ impl ParticleSystem {
     }
 
     pub fn update(&mut self, dt: f32) {
-        let mut gravity = vec3(0.0, 0.0, 0.0);
-
         for emitter in self.emitters.iter_mut() {
-            match emitter.emit_type.as_str() {
-                "Smoke" => {
-                    gravity.y = 0.0;
-                },
-                _ => {
-                    gravity.y = -9.8;
-                }
-            }
+            let gravity = Vec3::new(0.0, emitter.gravity, 0.0);
             if emitter.pps > 0 {
                 emitter.emit_accumulator += dt;
                 let seconds_per_particle = 1.0 / emitter.pps as f32;
