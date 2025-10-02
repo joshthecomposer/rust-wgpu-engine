@@ -88,6 +88,7 @@ fn orphaned_items_pass(em: &mut EntityManager, ps: &mut PhysicsState) {
             if wrb.body_type() != RigidBodyType::Dynamic {
                 wrb.set_body_type(RigidBodyType::Dynamic, true);
                 wrb.set_gravity_scale(1.0, true);
+                wrb.enable_ccd(false); // TODO: Why does enabling ccd slow this down so much?
                 wrb.wake_up(true);
 
                 col.set_sensor(false);
