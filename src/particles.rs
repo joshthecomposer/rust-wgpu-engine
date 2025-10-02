@@ -181,7 +181,7 @@ impl Emitter {
                 std::mem::size_of::<Vec4>() as i32,
                 std::ptr::null(),
             ));
-            gl_call!(gl::VertexAttribDivisor(7, 4));
+            gl_call!(gl::VertexAttribDivisor(7, 1));
             // gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
             // gl::Disable(gl::CULL_FACE);
             // gl::Disable(gl::DEPTH_TEST);
@@ -195,6 +195,19 @@ impl Emitter {
         }
 
         shader.set_bool("has_tex", false);
+        unsafe {
+            gl_call!(gl::BindVertexArray(0));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
+            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+
+            gl_call!(gl::Disable(gl::BLEND));
+            gl_call!(gl::DepthMask(gl::TRUE));
+            gl_call!(gl::DepthFunc(gl::LESS));
+            gl_call!(gl::Enable(gl::DEPTH_TEST));
+            gl_call!(gl::CullFace(gl::BACK));
+            gl_call!(gl::Enable(gl::CULL_FACE));
+        }
     }
 }
 

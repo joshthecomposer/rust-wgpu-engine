@@ -261,6 +261,7 @@ impl Renderer {
         fb_width: u32,
         fb_height: u32,
         elapsed: f32,
+        render_gizmos: bool,
     ) {
         self.shadow_pass(em, camera, light_manager, fb_width, fb_height);
 
@@ -279,8 +280,10 @@ impl Renderer {
         // Render ECS things
         // =============================================================
         // Gizmo pass
-        let gizmo_ids = em.get_ids_for_faction(Faction::Gizmo);
-        // self.gizmo_pass(camera, em, gizmo_ids);
+        if render_gizmos {
+            let gizmo_ids = em.get_ids_for_faction(Faction::Gizmo);
+            self.gizmo_pass(camera, em, gizmo_ids);
+        }
 
         // Non-animated models
         let foliage_ids = em.get_ids_for_type(EntityType::TreeFoliage);
@@ -288,12 +291,14 @@ impl Renderer {
         let stump_ids = em.get_ids_for_type(EntityType::Stump);
         let active_weapon_ids = em.get_active_weapon_ids();
         let terrain_ids = em.get_ids_for_type(EntityType::Terrain);
+        let orphaned_weapons = em.get_all_orphaned_weapon_ids();
 
         self.static_model_pass(camera, em, light_manager, foliage_ids);
         self.static_model_pass(camera, em, light_manager, trunk_ids);
         self.static_model_pass(camera, em, light_manager, stump_ids);
         self.static_model_pass(camera, em, light_manager, active_weapon_ids);
         self.static_model_pass(camera, em, light_manager, terrain_ids);
+        self.static_model_pass(camera, em, light_manager, orphaned_weapons);
 
         // Animated models
         let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);
@@ -448,9 +453,9 @@ impl Renderer {
             shader.set_vec3("view_position", camera.position);
             model.draw(shader);
             unsafe {
-                gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-                gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-                shader.set_int("shadow_map", 0);
+                //gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+                //gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
+                //shader.set_int("shadow_map", 0);
             }
 
             model.draw(shader);
@@ -473,6 +478,9 @@ impl Renderer {
             gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
             gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
             gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
+
+            gl::ActiveTexture(gl::TEXTURE7);
+            gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
         }
         // Alpha pass
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
@@ -496,9 +504,9 @@ impl Renderer {
             shader.set_float("bias_scalar", light_manager.bias_scalar);
             shader.set_vec3("view_position", camera.position);
             unsafe {
-                gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-                gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-                shader.set_int("shadow_map", 0);
+                // gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+                // gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
+                // shader.set_int("shadow_map", 0);
                 model.draw(shader);
                 gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
             }
@@ -527,9 +535,9 @@ impl Renderer {
             shader.set_float("bias_scalar", light_manager.bias_scalar);
             shader.set_vec3("view_position", camera.position);
             unsafe {
-                gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-                gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-                shader.set_int("shadow_map", 0);
+                // gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+                // gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
+                // shader.set_int("shadow_map", 0);
                 model.draw(shader);
                 gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
             }
@@ -647,7 +655,7 @@ impl Renderer {
             //gl_call!(gl::CullFace(gl::BACK));
             gl::CullFace(gl::FRONT);
             self.render_sample_depth(em);
-            // gl_call!(gl::CullFace(gl::BACK)); 
+            gl_call!(gl::CullFace(gl::BACK)); 
             gl_call!(gl::Disable(CULL_FACE));
             // End render
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER,0));

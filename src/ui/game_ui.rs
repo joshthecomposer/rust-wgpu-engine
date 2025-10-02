@@ -82,7 +82,7 @@ pub struct Rect {
     pub texture_id: Option<u32>,
 }
 
-pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, fm: &mut FontManager, shader: &Shader, font_shader: &Shader, mq: &mut MessageQueue, paused: bool, cm: CursorMode, cs: &CameraState, pk: &HashSet<glfw::Key>, ui_ctx: &mut GameUiContext) {
+pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, fm: &mut FontManager, shader: &Shader, font_shader: &Shader, mq: &mut MessageQueue, paused: bool, cm: CursorMode, cs: &CameraState, pk: &HashSet<glfw::Key>, ui_ctx: &mut GameUiContext, render_gizmos: &mut bool) {
     let mut rects = vec![];
     // =============================================================
     // PAUSE PANEL
@@ -123,8 +123,8 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, fm: &mut FontManage
         }
 
         y -= button_h + gap;
-        if button("Placeholder 1", x, y, w, button_h, mouse_pos, mq, &mut rects, cm,pk, None) {
-            println!("PH1 clicked");
+        if button("Gizmo Rendering", x, y, w, button_h, mouse_pos, mq, &mut rects, cm,pk, None) {
+            *render_gizmos = !*render_gizmos;
         }
 
         // x button (close window)

@@ -181,21 +181,33 @@ pub struct Parent {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SimState {
-    Aggro,
+    Init,
     Waiting,
+    Aggro,
     Dancing,
     Dying ,
-    Dead { time: f32, target_time: f32 },
-    Attacking,
-    Blocking,
+    Dead,
+    Combat,
     Flinching,
-    Dashing,
+    Blocking,
 }
 
 pub struct SimStateController {
     pub state: SimState,
     pub attack_state: AttackState,
     pub time_in_state: f32,
+    pub target_time: f32,
+}
+
+impl Default for SimStateController {
+    fn default() -> Self {
+        Self {
+            state: SimState::Init,
+            attack_state: AttackState::Attack1,
+            time_in_state: 0.0,
+            target_time: 0.0,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

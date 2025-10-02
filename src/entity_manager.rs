@@ -26,27 +26,16 @@ pub struct EntityManager {
     pub impulse_applied: SparseSet<bool>,
     pub player_controllers: SparseSet<PlayerController>,
     pub simstate_controllers: SparseSet<SimStateController>,
-
-    // Simulation/Behavior Components
     pub destinations: SparseSet<Vec3>,
-
-    // Simulation gizmos
     pub cuboids: SparseSet<Cuboid>,
     pub colliders: SparseSet<ColliderShape>,
-    // pub cylinders: SparseSet<Cylinder>,
-
     pub parents: SparseSet<Parent>,
     pub child_locals: SparseSet<Transform>,
     pub rng: ChaCha8Rng,
-
     pub selected: Vec<usize>,
     pub v_effects: SparseSet<VisualEffect>,
     pub entity_trashcan: Vec<usize>,
-
-    // Physics stuff
-    // Find colliders from entities
     pub physics_handles: SparseSet<PhysicsHandle>,
-    // Find entities from rapier
     pub collider_to_entity: HashMap<ColliderHandle, usize>,
     pub rigidbody_to_entity: HashMap<RigidBodyHandle, usize>,
     pub hitsets: SparseSet<HashSet<ColliderHandle>>,
@@ -54,6 +43,7 @@ pub struct EntityManager {
     pub knockbacks: SparseSet<Knockback>,
     pub healths: SparseSet<f32>,
     pub base_speeds: SparseSet<f32>,
+    pub aggro_ranges: SparseSet<f32>,
 }
 
 impl EntityManager {
@@ -81,7 +71,6 @@ impl EntityManager {
             // this is just for visuals/debug. The *actual* collider is in 
             // the rapier physics system,tracked by a physics handle.
             colliders: SparseSet::with_capacity(max_entities),
-            // cylinders: SparseSet::with_capacity(max_entities),
 
             parents: SparseSet::with_capacity(max_entities),
             child_locals: SparseSet::with_capacity(max_entities),
@@ -98,6 +87,7 @@ impl EntityManager {
             knockbacks: SparseSet::with_capacity(max_entities),
             healths: SparseSet::with_capacity(max_entities),
             base_speeds: SparseSet::with_capacity(max_entities),
+            aggro_ranges: SparseSet::with_capacity(max_entities),
         }
     }
 
@@ -218,6 +208,7 @@ impl EntityManager {
 
             let body = RigidBodyBuilder::kinematic_position_based()
                 .position(iso)
+                .ccd_enabled(true)
                 .build();
 
             let half_extents = size * 0.5;
@@ -238,13 +229,13 @@ impl EntityManager {
                 body_handle,
                 &mut ps.rigid_body_set,
             );
-            self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+            self.physics_handles.insert(parent_id, PhysicsHandle {
                 rigid_body: body_handle,
                 collider: collider_handle,
             });
 
-            self.collider_to_entity.insert(collider_handle, self.next_entity_id);
-            self.rigidbody_to_entity.insert(body_handle, self.next_entity_id);
+            self.collider_to_entity.insert(collider_handle, parent_id);
+            self.rigidbody_to_entity.insert(body_handle, parent_id);
 
             self.next_entity_id += 1;
         }
@@ -252,64 +243,64 @@ impl EntityManager {
         // ============================================================
         // CREATE CYLINDER HITBOX
         // ============================================================
-        {
-            if let Some(cyl) = cylinder {
-                // CYLINDER PASS
-                let cyl_mod = cyl.create_model(12);
+        // {
+        //     if let Some(cyl) = cylinder {
+        //         // CYLINDER PASS
+        //         let cyl_mod = cyl.create_model(12);
 
-                let collider_vert_dim = (cyl.h * 0.5) - 0.025;
+        //         let collider_vert_dim = (cyl.h * 0.5) - 0.025;
 
-                let collider_shape = ColliderShape::cylinder(collider_vert_dim, cyl.r);
+        //         let collider_shape = ColliderShape::cylinder(collider_vert_dim, cyl.r);
 
-                self.colliders.insert(self.next_entity_id, collider_shape);
+        //         self.colliders.insert(self.next_entity_id, collider_shape);
 
-                self.models.insert(self.next_entity_id, cyl_mod);
-                self.factions.insert(self.next_entity_id, Faction::Gizmo);
-                self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
-                self.transforms.insert(self.next_entity_id, Transform {
-                    position,
-                    rotation: Quat::IDENTITY,
-                    scale,
-                    original_rotation: Quat::IDENTITY,
-                });
+        //         self.models.insert(self.next_entity_id, cyl_mod);
+        //         self.factions.insert(self.next_entity_id, Faction::Gizmo);
+        //         self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
+        //         self.transforms.insert(self.next_entity_id, Transform {
+        //             position,
+        //             rotation: Quat::IDENTITY,
+        //             scale,
+        //             original_rotation: Quat::IDENTITY,
+        //         });
 
-                self.parents.insert(self.next_entity_id, Parent{
-                    parent_id,
-                });
+        //         self.parents.insert(self.next_entity_id, Parent{
+        //             parent_id,
+        //         });
 
-                // PHYSICS PASS
-                let iso: Isometry<f32> = (position, rotation).into();
-                
-                // TODO: This shouldn't be fixed always, we can have it be kinematic for some
-                // things
-                let body = RigidBodyBuilder::fixed()
-                    .position(iso)
-                    .build();
+        //         // PHYSICS PASS
+        //         let iso: Isometry<f32> = (position, rotation).into();
+        //         
+        //         // TODO: This shouldn't be fixed always, we can have it be kinematic for some
+        //         // things
+        //         let body = RigidBodyBuilder::fixed()
+        //             .position(iso)
+        //             .build();
 
-                let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
-                    .active_collision_types(ActiveCollisionTypes::all())
-                    .build();
+        //         let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
+        //             .active_collision_types(ActiveCollisionTypes::all())
+        //             .build();
 
-                let body_handle = ps.rigid_body_set.insert(body);
-                let collider_handle = ps.collider_set.insert_with_parent(
-                    collider,
-                    body_handle,
-                    &mut ps.rigid_body_set,
-                );
+        //         let body_handle = ps.rigid_body_set.insert(body);
+        //         let collider_handle = ps.collider_set.insert_with_parent(
+        //             collider,
+        //             body_handle,
+        //             &mut ps.rigid_body_set,
+        //         );
 
-                self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
-                    rigid_body: body_handle,
-                    collider: collider_handle,
-                });
+        //         self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+        //             rigid_body: body_handle,
+        //             collider: collider_handle,
+        //         });
 
-                self.collider_to_entity.insert(collider_handle, self.next_entity_id);
-                self.rigidbody_to_entity.insert(body_handle, self.next_entity_id);
+        //         self.collider_to_entity.insert(collider_handle, self.next_entity_id);
+        //         self.rigidbody_to_entity.insert(body_handle, self.next_entity_id);
 
-                self.next_entity_id += 1;
+        //         self.next_entity_id += 1;
 
-            }
+        //     }
     
-        }
+        // }
 
         parent_id
     }
@@ -410,22 +401,6 @@ impl EntityManager {
         self.ani_models.insert(parent_id, model);
         self.rotators.insert(parent_id, rotator);
         self.item_bones.insert(parent_id, item_bones.clone());
-        self.simstate_controllers.insert(parent_id, match entity_type {
-            EntityType::MooseMan => { 
-                SimStateController {
-                    state: SimState::Dancing,
-                    attack_state: AttackState::Attack1,
-                    time_in_state: 0.0,
-                }
-            },
-            _ => {
-                SimStateController {
-                    state: SimState::Waiting,
-                    attack_state: AttackState::Attack1,
-                    time_in_state: 0.0,
-                }
-            },
-        });
 
         if *faction == Faction::Player {
             self.player_controllers.insert(parent_id, PlayerController {
@@ -435,6 +410,8 @@ impl EntityManager {
             });
         } else {
             self.destinations.insert(parent_id, position);
+            self.simstate_controllers.insert(parent_id, SimStateController::default());
+            self.aggro_ranges.insert(parent_id, archetype.aggro_range);
         }
 
         // PILL
@@ -599,29 +576,17 @@ impl EntityManager {
 
         for rbh in k_pos_based_rbs.iter() {
             let entity_id = self.rigidbody_to_entity.get(rbh).unwrap();
+
             let rb = ps.rigid_body_set.get_mut(*rbh).unwrap();
 
-            let set_iso = if let Some(parent) = self.parents.get(*entity_id) {
-                // RB should live at the parent's origin; collider's own local .translation handles the lift.
-                if let Some(pt) = self.transforms.get(parent.parent_id) {
-                    Some(Isometry::from_parts(
-                        Translation::from(vector![pt.position.x, pt.position.y, pt.position.z]),
-                        UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(pt.rotation.w, pt.rotation.x, pt.rotation.y, pt.rotation.z)),
-                    ))
-                } else { None }
-            } else if let Some(t) = self.transforms.get(*entity_id) {
-                // if no parent, drive from the entity itself
-                Some(Isometry::from_parts(
-                    Translation::from(vector![t.position.x, t.position.y, t.position.z]),
-                    UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(t.rotation.w, t.rotation.x, t.rotation.y, t.rotation.z)),
-                ))
-            } else {
-                None
-            };
+            let t = self.transforms.get(*entity_id).unwrap();
 
-            if let Some(iso) = set_iso {
-                rb.set_next_kinematic_position(iso);
-            }
+             
+            let iso = Isometry::from_parts(
+                Translation::from(vector![t.position.x, t.position.y, t.position.z]),
+                UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(t.rotation.w, t.rotation.x, t.rotation.y, t.rotation.z)),
+            );
+            rb.set_next_kinematic_position(iso);
         }
 
         self.apply_parenting();
@@ -725,6 +690,18 @@ impl EntityManager {
                     .flatten()
             })
             .collect()
+    }
+
+    pub fn get_all_orphaned_weapon_ids(&self) -> Vec<usize> {
+        self.factions
+            .iter()
+            .filter(|w_type| {
+                *w_type.value() == Faction::Item 
+                    && self.active_items.get(w_type.key()).is_none()
+                    && self.parents.get(w_type.key()).is_none()
+            })
+            .map(|e| e.key())
+            .collect::<Vec<usize>>()
     }
 
     pub fn apply_parenting(&mut self) {

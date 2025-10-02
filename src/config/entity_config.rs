@@ -49,4 +49,5 @@ pub struct EntityTypeHelper {
     pub animation_properties: Vec<AnimationPropHelper>,
     pub flip_180: bool,
     pub item_bones: ItemBones,
+    pub aggro_range: f32,
 }

@@ -1,7 +1,13 @@
-use glam::Mat4;
-use crate::{entity_manager::EntityManager, util::data_structure::HashMapGetPairMut};
+use glam::{Mat4, Vec3};
+use rapier3d::prelude::RigidBodyType;
+use crate::{entity_manager::EntityManager, physics::PhysicsState, util::data_structure::HashMapGetPairMut};
 
-pub fn update(em: &mut EntityManager) {
+pub fn update(em: &mut EntityManager, ps: &mut PhysicsState) {
+    active_items_pass(em);
+    orphaned_items_pass(em, ps);
+}
+
+fn active_items_pass(em: &mut EntityManager) {
     for a in em.active_items.iter_mut() {
         let owner_id = a.key();
 
@@ -62,10 +68,34 @@ pub fn update(em: &mut EntityManager) {
         if let Some(bone_world_model_space) = maybe_bone_world_model_space {
             let bone_world_space = owner_model_trans * bone_world_model_space;
             let (_, rot, pos) = bone_world_space.to_scale_rotation_translation();
-            
+
             let weapon_trans = em.transforms.get_mut(rh_weapon_id).unwrap();
             weapon_trans.position = pos;
             weapon_trans.rotation = rot * weapon_trans.original_rotation;
+        }
+    }
+}
+
+fn orphaned_items_pass(em: &mut EntityManager, ps: &mut PhysicsState) {
+
+    let orphaned = em.get_all_orphaned_weapon_ids();
+
+    for id in orphaned.iter() {
+        if let Some(ph) = em.physics_handles.get(*id){
+            let wrb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
+            let col = ps.collider_set.get_mut(ph.collider).unwrap();
+
+            if wrb.body_type() != RigidBodyType::Dynamic {
+                wrb.set_body_type(RigidBodyType::Dynamic, true);
+                wrb.set_gravity_scale(1.0, true);
+                wrb.wake_up(true);
+
+                col.set_sensor(false);
+                col.set_density(50.0);
+                col.set_enabled(true);
+
+                wrb.apply_impulse(Vec3::new(0.0, 3.0, 0.0).into(), true);
+            }
         }
     }
 }

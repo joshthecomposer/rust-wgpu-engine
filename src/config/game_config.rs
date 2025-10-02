@@ -16,6 +16,7 @@ pub struct GameConfig {
     pub debug_mode: bool,
     pub fps_counter: bool,
     pub sounds: HashMap<SoundType, String>,
+    pub render_gizmos: bool,
 }
 
 impl GameConfig {

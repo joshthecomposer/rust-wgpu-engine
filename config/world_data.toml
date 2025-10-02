@@ -10,11 +10,20 @@ health = 100_000.0
 [[entities]]
 entity_type = "TrashGuy"
 faction = "Enemy"
-position = [-69.0062, -5.3441, -119.7894]
+position = [-69.0062, 1.3441, -119.7894]
 rotation = [0.0, 0.8701, 0.0, 0.4929]
 weapons = ["OrcSword", "DoubleAxe"]
 base_speed = 1.65
-health = 100_000.0
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-80.0062, 1.3441, -119.7894]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 1.65
+health = 100.0
 
 # [[entities]]
 # entity_type = "YRobot"

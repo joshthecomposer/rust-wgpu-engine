@@ -13,6 +13,7 @@
 				"rh_name": "mixamorig:RightHand",
 				"lh_name": "mixamorig:LeftHand"
 			},
+			"aggro_range": 20.0,
 			"animation_properties" : [
 				{
 					"name": "Run",
@@ -53,18 +54,20 @@
 			"mesh_path": "resources/models/animated/trash_guy/trash_guy.txt", 
 			"bone_path": "resources/models/animated/trash_guy/trash_guy.txt",
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
-			"hit_cyl": { "r": 0.192, "h": 1.8 },
+			"hit_cyl": { "r": 0.25, "h": 1.8 },
 			"flip_180": false,
 			"item_bones": {
 				"rh_name": "Bone.029.L",
 				"lh_name": "Bone.029.R"
 			},
+			"aggro_range": 20.0,
 			"animation_properties" : [
 				{
 					"name": "Run",
 					"one_shots": {
 						"Footstep": [4, 14]
 					},
+			"aggro_range": 20.0,
 					"continuous_sounds": [],
 					"hurtbox_activation": [],
 					"hold_frame": null
@@ -132,6 +135,7 @@
 				"rh_name": "mixamorg:RightHand",
 				"lh_name": "mixamorg:LeftHand"
 			},
+			"aggro_range": 20.0,
 			"animation_properties" : [
 				{
 					"name": "Dance",
@@ -152,6 +156,7 @@
 			"bone_path":"",
 			"hit_cyl": null,
 			"flip_180": false,
+			"aggro_range": 0.0,
 			"item_bones": {
 				"rh_name": "",
 				"lh_name": ""
@@ -166,6 +171,7 @@
 			"bone_path":"",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
+			"aggro_range": 0.0,
 			"item_bones": {
 				"rh_name": "",
 				"lh_name": ""
@@ -180,6 +186,7 @@
 			"bone_path":"",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
+			"aggro_range": 0.0,
 			"item_bones": {
 				"rh_name": "",
 				"lh_name": ""
@@ -194,6 +201,7 @@
 			"bone_path":"",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
+			"aggro_range": 0.0,
 			"item_bones": {
 				"rh_name": "",
 				"lh_name": ""
@@ -208,6 +216,7 @@
 			"bone_path":"",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
+			"aggro_range": 0.0,
 			"item_bones": {
 				"rh_name": "",
 				"lh_name": ""

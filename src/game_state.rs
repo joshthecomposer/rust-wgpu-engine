@@ -30,7 +30,7 @@ pub struct GameState {
 
     pub entity_manager: EntityManager,
     pub light_manager: Lights,
-    //pub imgui_manager: ImguiManager,
+    pub imgui_manager: ImguiManager,
 
 
     pub paused: bool,
@@ -53,6 +53,7 @@ pub struct GameState {
     pub message_queue: MessageQueue,
     pub game_ui_context: GameUiContext,
     pub physics_state: PhysicsState,
+    pub render_gizmos: bool,
 }
 
 impl GameState {
@@ -67,7 +68,7 @@ impl GameState {
 
         glfw.window_hint(glfw::WindowHint::Samples(Some(16)));
 
-        let (mut width, mut height):(i32, i32) = (1280, 720);
+        let (mut width, mut height):(i32, i32) = (1920, 1080);
 
         let (mut window, events) = glfw
             .create_window(width as u32, height as u32, "Hello this is window", glfw::WindowMode::Windowed)
@@ -244,7 +245,7 @@ impl GameState {
 
             entity_manager,
             light_manager,
-            // imgui_manager,
+            imgui_manager,
 
             paused: false,
             was_paused: false,
@@ -264,6 +265,7 @@ impl GameState {
             message_queue: MessageQueue::new(), 
             game_ui_context: ui_ctx,
             physics_state,
+            render_gizmos: game_config.render_gizmos,
         }
     }
 
@@ -276,7 +278,7 @@ impl GameState {
         let events: Vec<(f64, glfw::WindowEvent)> = glfw::flush_messages(&self.events).collect();
 
         for (_, event) in events {
-            // self.imgui_manager.handle_imgui_event(&event);
+            self.imgui_manager.handle_imgui_event(&event);
             match event {
                 glfw::WindowEvent::FramebufferSize(w, h) => {
                     self.window_width = w as u32;
@@ -377,24 +379,6 @@ impl GameState {
             //}
         }
 
-        if self.input_state.keys_current.contains(&glfw::Key::Delete) {
-            for id in self.entity_manager.selected.iter() {
-                self.entity_manager.simstate_controllers.insert(*id, SimStateController {
-                    state: SimState::Dying,
-                    attack_state: crate::enums_types::AttackState::Attack1,
-                    time_in_state: 0.0,
-                });
-                if let Some(parent) = self.entity_manager.parents.iter().find(|p| p.value().parent_id == *id) {
-                    let cyl_id = parent.key();
-
-                    if let Some(_cyl) = self.entity_manager.colliders.get(cyl_id) {
-                        self.entity_manager.entity_trashcan.push(cyl_id);
-                    }
-                }
-            }
-        }
-
-
         let desired_cursor_mode = if self.paused {
             // println!("Setting cursormode to normal at line 305");
             glfw::CursorMode::Normal
@@ -426,7 +410,7 @@ impl GameState {
         );
         animation_system::update(&mut self.entity_manager, self.delta_time);
         self.entity_manager.update(&mut self.sound_manager, &mut self.physics_state);
-        items::update(&mut self.entity_manager);
+        items::update(&mut self.entity_manager, &mut self.physics_state);
 
         self.input_state.update();// likely this shoudl always be last because it just checks if we
         // are holding a key
@@ -486,14 +470,14 @@ impl GameState {
         // ======================================
         // Actually draw stuff
         // ======================================
-        self.renderer.draw(&self.entity_manager, &mut self.camera, &self.light_manager, &mut self.grid, &mut self.sound_manager, self.fb_width, self.fb_height, self.elapsed);
+        self.renderer.draw(&self.entity_manager, &mut self.camera, &self.light_manager, &mut self.grid, &mut self.sound_manager, self.fb_width, self.fb_height, self.elapsed, self.render_gizmos);
 
         self.particles.render(
             self.renderer.shaders.get_mut(&ShaderType::Particles).unwrap(),
             &self.camera,
         );
         
-        // self.imgui_manager.draw(&mut self.window, self.fb_width as f32, self.fb_height as f32, self.delta_time, &mut self.light_manager, &mut self.renderer, &mut self.sound_manager, &self.camera, &mut self.entity_manager);
+        self.imgui_manager.draw(&mut self.window, self.fb_width as f32, self.fb_height as f32, self.delta_time, &mut self.light_manager, &mut self.renderer, &mut self.sound_manager, &self.camera, &mut self.entity_manager);
 
 
         // let phrase = format!("FPS: {}", self.fps);
@@ -521,6 +505,7 @@ impl GameState {
             &self.camera.move_state,
             &self.input_state.keys_current,
             &mut self.game_ui_context,
+            &mut self.render_gizmos,
         );
 
         if self.message_queue.queue.contains(&UiMessage::WindowShouldClose) {

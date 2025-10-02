@@ -165,11 +165,13 @@ fn handle_enemy_movement_rapier(
 
 
         // TODO: Why god
-        if animator.next_animation == AnimationType::Death { continue };
+        if animator.next_animation == AnimationType::Death
+            || sim_controller.state == SimState::Dying 
+            || sim_controller.state == SimState::Dead { continue };
 
         if animator.next_animation == AnimationType::Flinch { continue };
 
-        if sim_controller.state == SimState::Attacking { continue };
+        if sim_controller.state == SimState::Combat { continue };
 
         em.v_effects.remove(id);
 

@@ -20,8 +20,7 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
         let rh_id = active_item.right_hand.unwrap(); // Only doing right hand weeapons right now.
         let hitset = em.hitsets.get_mut(rh_id).unwrap();
 
-        let rh_parent = em.parents.iter().find(|p| p.value().parent_id == rh_id).unwrap();
-        let rh_w_col_handle = em.collider_to_entity.iter().find(|c| *c.1 == rh_parent.key()).unwrap().0;
+        let rh_w_col_handle = em.collider_to_entity.iter().find(|ce| *ce.1 == rh_id).unwrap().0;
 
         let controller = em.player_controllers.get(player_id).unwrap();
 
@@ -113,7 +112,7 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
 }
 
 fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
-    let attacking_enemy_ids = em.enemy_get_ids_for_state(SimState::Attacking);
+    let attacking_enemy_ids = em.enemy_get_ids_for_state(SimState::Combat);
 
     for entity_id in attacking_enemy_ids {
         let yaw = em.yaws.get(entity_id).unwrap();
@@ -122,8 +121,7 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
         let rh_id = active_item.right_hand.unwrap(); // Only doing right hand weeapons right now.
         let hitset = em.hitsets.get_mut(rh_id).unwrap();
 
-        let rh_parent = em.parents.iter().find(|p| p.value().parent_id == rh_id).unwrap();
-        let rh_w_col_handle = em.collider_to_entity.iter().find(|c| *c.1 == rh_parent.key()).unwrap().0;
+        let rh_w_col_handle = em.collider_to_entity.iter().find(|ce| *ce.1 == rh_id).unwrap().0;
 
         let entity_cyl_handle = em.physics_handles.get(entity_id).unwrap().collider;
 
