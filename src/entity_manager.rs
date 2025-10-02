@@ -106,7 +106,20 @@ impl EntityManager {
                         ps,
                     );
                 },
-                Faction::World | Faction::Static | Faction::Gizmo | Faction::Item => {
+                Faction::Item => {
+                    self.create_item_entity(
+                        instance.entity_type.clone(),
+                        instance.faction.clone(),
+                        position.into(), 
+                        scale_correction.into(), 
+                        archetype.rot_correction, 
+                        rotation,
+                        &archetype.mesh_path, 
+                        archetype.hit_cyl.clone(),
+                        ps,
+                    );
+                },
+                Faction::World | Faction::Static | Faction::Gizmo => {
                     self.create_static_entity(
                         instance.entity_type.clone(),
                         instance.faction.clone(),
@@ -124,7 +137,7 @@ impl EntityManager {
         }
     }
 
-    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) -> usize {
+    pub fn create_item_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) -> usize {
 
         let parent_id = self.next_entity_id;
 
@@ -240,67 +253,103 @@ impl EntityManager {
             self.next_entity_id += 1;
         }
 
+        parent_id
+    }
+
+    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) -> usize {
+
+        let parent_id = self.next_entity_id;
+
+        self.factions.insert(self.next_entity_id, faction);
+        self.entity_types.insert(self.next_entity_id, entity_type);
+
+        let transform = Transform {
+            position,
+            rotation: rotation * rot_correction,
+            scale,
+
+            original_rotation: rot_correction,
+        };
+        self.transforms.insert(self.next_entity_id, transform.clone());
+
+        //self.yaws.insert(parent_id, 0.0);
+
+        let mut model = Model::new();
+        let mut found = false;
+        for m in self.models.iter_mut() {
+            if m.value().full_path == *model_path.to_string() {
+                model = m.value().clone();
+                found = true;
+            }
+        }
+
+        if !found {
+            model = import_model_data(model_path, &Animation::default());
+        }
+        self.models.insert(self.next_entity_id, model.clone());
+        
+        self.next_entity_id += 1;
+        
         // ============================================================
         // CREATE CYLINDER HITBOX
         // ============================================================
-        // {
-        //     if let Some(cyl) = cylinder {
-        //         // CYLINDER PASS
-        //         let cyl_mod = cyl.create_model(12);
+        {
+            if let Some(cyl) = cylinder {
+                // CYLINDER PASS
+                let cyl_mod = cyl.create_model(12);
 
-        //         let collider_vert_dim = (cyl.h * 0.5) - 0.025;
+                let collider_vert_dim = (cyl.h * 0.5) - 0.025;
 
-        //         let collider_shape = ColliderShape::cylinder(collider_vert_dim, cyl.r);
+                let collider_shape = ColliderShape::cylinder(collider_vert_dim, cyl.r);
 
-        //         self.colliders.insert(self.next_entity_id, collider_shape);
+                self.colliders.insert(self.next_entity_id, collider_shape);
 
-        //         self.models.insert(self.next_entity_id, cyl_mod);
-        //         self.factions.insert(self.next_entity_id, Faction::Gizmo);
-        //         self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
-        //         self.transforms.insert(self.next_entity_id, Transform {
-        //             position,
-        //             rotation: Quat::IDENTITY,
-        //             scale,
-        //             original_rotation: Quat::IDENTITY,
-        //         });
+                self.models.insert(self.next_entity_id, cyl_mod);
+                self.factions.insert(self.next_entity_id, Faction::Gizmo);
+                self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
+                self.transforms.insert(self.next_entity_id, Transform {
+                    position,
+                    rotation: Quat::IDENTITY,
+                    scale,
+                    original_rotation: Quat::IDENTITY,
+                });
 
-        //         self.parents.insert(self.next_entity_id, Parent{
-        //             parent_id,
-        //         });
+                self.parents.insert(self.next_entity_id, Parent{
+                    parent_id,
+                });
 
-        //         // PHYSICS PASS
-        //         let iso: Isometry<f32> = (position, rotation).into();
-        //         
-        //         // TODO: This shouldn't be fixed always, we can have it be kinematic for some
-        //         // things
-        //         let body = RigidBodyBuilder::fixed()
-        //             .position(iso)
-        //             .build();
+                // PHYSICS PASS
+                let iso: Isometry<f32> = (position, rotation).into();
+                
+                // TODO: This shouldn't be fixed always, we can have it be kinematic for some
+                // things
+                let body = RigidBodyBuilder::fixed()
+                    .position(iso)
+                    .build();
 
-        //         let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
-        //             .active_collision_types(ActiveCollisionTypes::all())
-        //             .build();
+                let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
+                    .active_collision_types(ActiveCollisionTypes::all())
+                    .build();
 
-        //         let body_handle = ps.rigid_body_set.insert(body);
-        //         let collider_handle = ps.collider_set.insert_with_parent(
-        //             collider,
-        //             body_handle,
-        //             &mut ps.rigid_body_set,
-        //         );
+                let body_handle = ps.rigid_body_set.insert(body);
+                let collider_handle = ps.collider_set.insert_with_parent(
+                    collider,
+                    body_handle,
+                    &mut ps.rigid_body_set,
+                );
 
-        //         self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
-        //             rigid_body: body_handle,
-        //             collider: collider_handle,
-        //         });
+                self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+                    rigid_body: body_handle,
+                    collider: collider_handle,
+                });
 
-        //         self.collider_to_entity.insert(collider_handle, self.next_entity_id);
-        //         self.rigidbody_to_entity.insert(body_handle, self.next_entity_id);
+                self.collider_to_entity.insert(collider_handle, parent_id);
+                self.rigidbody_to_entity.insert(body_handle, parent_id);
 
-        //         self.next_entity_id += 1;
-
-        //     }
+                self.next_entity_id += 1;
+            }
     
-        // }
+        }
 
         parent_id
     }
@@ -506,7 +555,7 @@ impl EntityManager {
             let entity_id = parent_id;
             let weapon_archetype = ec.entity_types.get(&weapon).unwrap();
 
-            let weapon_id = self.create_static_entity(
+            let weapon_id = self.create_item_entity(
                 weapon.clone(),
                 Faction::Item,
                 Vec3::splat(0.0),

@@ -81,6 +81,7 @@ pub enum EntityType {
     DoubleAxe,
     TrashGuy,
     Cuboid,
+    Cactus1,
 }
 
 impl Display for EntityType {
@@ -98,6 +99,7 @@ impl Display for EntityType {
             EntityType::DoubleAxe => write!(f, "DoubleAxe"),
             EntityType::TrashGuy => write!(f, "TrashGuy"),
             EntityType::Cuboid => write!(f, "Cuboid"),
+            EntityType::Cactus1 => write!(f, "Cactus1"),
         }
     }
 }

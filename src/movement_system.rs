@@ -24,7 +24,7 @@ pub fn update(
     }
 
     handle_enemy_movement_rapier(enemy_keys, em, terrain, dt, ps,);
-    handle_static_movement(static_keys, em, terrain);
+    // handle_static_movement(static_keys, em, terrain);
     handle_gizmo_movement(gizmo_keys, em, dt);
 }
 

@@ -222,6 +222,21 @@
 				"lh_name": ""
 			},
 			"animation_properties" : []
+		},
+		"Cactus1": {
+			"__note__": "use Quat::from_rotation_x()",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
+			"scale_correction": [1.0, 1.0, 1.0],
+			"mesh_path": "resources/models/static/plants/cactus1.txt", 
+			"bone_path":"",
+			"hit_cyl": { "r": 0.2, "h": 3.0 },
+			"flip_180": false,
+			"aggro_range": 0.0,
+			"item_bones": {
+				"rh_name": "",
+				"lh_name": ""
+			},
+			"animation_properties" : []
 		}
 	}
 }
