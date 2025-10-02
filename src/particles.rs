@@ -205,8 +205,6 @@ impl Emitter {
             gl_call!(gl::DepthMask(gl::TRUE));
             gl_call!(gl::DepthFunc(gl::LESS));
             gl_call!(gl::Enable(gl::DEPTH_TEST));
-            gl_call!(gl::CullFace(gl::BACK));
-            gl_call!(gl::Enable(gl::CULL_FACE));
         }
     }
 }

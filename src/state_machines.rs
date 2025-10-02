@@ -164,14 +164,20 @@ fn entity_sim_state_machine(
                 controller.time_in_state += dt;
                 rb.set_enabled_rotations(true, true, true, true);
 
+                if let Some(rh_weapon_id) = rh_weapon_id {
+                    em.parents.remove(rh_weapon_id);
+                    em.active_items.remove(entity_id);
+                    em.inventories.remove(entity_id);
+                }
+
                 if controller.time_in_state >= 5.0 {
                     entity_non_combat_transition(controller, SimState::Dead, animator, false);
                 }
             },
             SimState::Dead => {
-                if let Some(rh_weapon_id) = rh_weapon_id {
-                    em.parents.remove(rh_weapon_id);
-                }
+                // if let Some(rh_weapon_id) = rh_weapon_id {
+                //     em.parents.remove(rh_weapon_id);
+                // }
                 em.entity_trashcan.push(entity_id);
             },
             SimState::Dancing => {
