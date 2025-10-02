@@ -396,6 +396,7 @@ pub struct Knockback {
 pub enum EmitterName {
     DesertDust,
     DamageBlood,
+    BodyPoof,
 }
 
 impl Display for EmitterName {
@@ -403,6 +404,7 @@ impl Display for EmitterName {
         match self {
             EmitterName::DesertDust => write!(f, "DesertDust"),
             EmitterName::DamageBlood => write!(f, "DamageBlood"),
+            EmitterName::BodyPoof => write!(f, "BodyPoof"),
         }
     }
 }

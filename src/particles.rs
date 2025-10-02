@@ -74,6 +74,8 @@ impl Emitter {
             gl_call!(gl::DepthMask(gl::FALSE));
         }
 
+        // TODO: add growth back in for smoke based ones
+
         shader.activate();
 
         let mut rng = rng();
@@ -306,12 +308,12 @@ impl ParticleSystem {
             let upward = vec3(0.0, rng.random_range(0.0..2.0), 0.0);
             let velocity = (outward + upward).normalize() * rng.random_range(1.0..3.0);
 
-            let lifetime = rng.random_range(ed.particle_lifetime.x..ed.particle_lifetime.y);
-            let scale = Vec3::splat(rng.random_range(ed.particle_scale.x..ed.particle_scale.y));
+            let lifetime = rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y);
+            let scale = Vec3::splat(rng.random_range(ed.particle_scale.x..=ed.particle_scale.y));
 
             // color randomization
             let color = if ed.colors.len() > 1 {
-                ed.colors[rng.random_range(0..ed.colors.len()-1)]
+                ed.colors[rng.random_range(0..ed.colors.len())]
             } else {
                 ed.colors[0]
             };

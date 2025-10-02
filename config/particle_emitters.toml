@@ -9,7 +9,7 @@ velocity = [
 	[0.0, 0.0]
 ]
 particle_lifetime = [0.35, 1.0]
-particle_scale = [0.005, 0.01]
+particle_scale = [0.05, 0.09]
 # texture_file = 
 colors = [
 	[0.58, 0.1, 0.1, 1.0],
@@ -26,7 +26,7 @@ velocity = [
 	[0.0, 2.0],
 	[0.0, 0.0]
 ]
-particle_lifetime = [0.35, 0.9]
+particle_lifetime = [0.23, 0.5]
 particle_scale = [0.08, 0.2]
 # texture_file = 
 colors = [
@@ -34,6 +34,26 @@ colors = [
 	[0.506, 0.325, 0.122, 0.8],
 	[0.427, 0.247, 0.051, 0.8],
 	[0.624, 0.416, 0.2, 0.8],
+]
+particle_count = 3
+texture = "resources/textures/smoke.png"
+
+[one_shot_data.BodyPoof]
+name = "BodyPoof"
+angle_rand = [0.0, 6.2831855] # random range betwee value 0 and value 1, use the same value for no deviation
+radius_rand = [0.01, 0.01] # random range betwee value 0 and value 1, use the same value for no deviation
+gravity = 0.0 # positive makes it float, negative falls
+velocity = [
+	[0.0, 0.0],
+	[0.0, 2.0],
+	[0.0, 0.0]
+]
+particle_lifetime = [0.25, 0.5]
+particle_scale = [0.08, 0.2]
+# texture_file = 
+colors = [
+	[0.498, 0.498, 0.498, 0.7],
+	# [0.141, 0.396, 0.804, 0.4],
 ]
 particle_count = 3
 texture = "resources/textures/smoke.png"

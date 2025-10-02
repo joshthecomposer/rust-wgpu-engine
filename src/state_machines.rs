@@ -170,14 +170,40 @@ fn entity_sim_state_machine(
                     em.inventories.remove(entity_id);
                 }
 
-                if controller.time_in_state >= 5.0 {
+                if controller.time_in_state >= 3.0 {
                     entity_non_combat_transition(controller, SimState::Dead, animator, false);
                 }
             },
             SimState::Dead => {
+
+                let model_transform = Mat4::from_scale_rotation_translation(transform.scale, transform.rotation, transform.position);
+                let skellington = em.skellingtons.get_mut(entity_id).unwrap();
+
+                let bone_names: Vec<String> = {
+                    let anim = animator.animations.get(&animator.current_animation).unwrap();
+                    anim.model_animation_join.iter().map(|b| b.name.clone()).collect()
+                };
+
+                let anim = animator.animations.get_mut(&animator.current_animation).unwrap();
+
+                for bone_name in bone_names{
+                    if let Some(bone_world_model_space) = anim.get_raw_global_bone_transform_by_name(
+                        &bone_name,
+                        skellington,
+                        Mat4::IDENTITY,
+                    ) {
+                        let bone_world_space = model_transform * bone_world_model_space;
+                        let position = bone_world_space.w_axis.truncate();
+
+                        // You can randomize velocity or make it static for now
+                        particles.spawn_oneshot_emitter(EmitterName::BodyPoof, position);
+                    }
+                }
+
                 // if let Some(rh_weapon_id) = rh_weapon_id {
                 //     em.parents.remove(rh_weapon_id);
                 // }
+
                 em.entity_trashcan.push(entity_id);
             },
             SimState::Dancing => {
