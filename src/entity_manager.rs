@@ -4,7 +4,7 @@ use core::f32;
 use std::collections::HashSet;
 
 use glam::{Mat4, Quat, Vec3};
-use nalgebra::UnitQuaternion;
+use nalgebra::{Point3, UnitQuaternion};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
@@ -117,7 +117,7 @@ impl EntityManager {
                         instance,
                         archetype, 
                         ps,
-                        HitboxType::Cylinder,
+                        archetype.hitbox_type.clone(),
                     );
                 },
             }
@@ -177,6 +177,16 @@ impl EntityManager {
             },
             HitboxType::BoundingBox => {
                 self.create_bounding_hitbox(
+                    &model,
+                    position,
+                    scale,
+                    rotation,
+                    parent_id,
+                    ps,
+                );
+            },
+            HitboxType::Mesh => {
+                self.create_mesh_based_hitbox(
                     &model,
                     position,
                     scale,
@@ -576,6 +586,64 @@ impl EntityManager {
 
         self.collider_to_entity.insert(collider_handle, parent_id);
         self.rigidbody_to_entity.insert(body_handle, parent_id);
+
+        self.next_entity_id += 1;
+    }
+
+    pub fn create_mesh_based_hitbox(
+        &mut self,
+        model: &Model,
+        position: Vec3,
+        scale: Vec3,
+        rotation: Quat,
+        parent_id: usize,
+        ps: &mut PhysicsState,
+    ) {
+
+        println!("creating mesh based hitbox");
+        // Process vertices into arrays
+        let vertices: Vec<Point3<f32>> = model.vertices
+            .iter()
+            .map(|v| v.position.into())
+            .collect();
+        
+        let indices: Vec<[u32; 3]> = model.indices
+            .chunks(3)
+            .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+            .collect();
+
+        // let collider_shape = ColliderShape::trimesh(vertices, indices).unwrap();
+
+        // self.colliders.insert(self.next_entity_id, collider_shape);
+
+        self.transforms.insert(self.next_entity_id, Transform {
+            position,
+            rotation: Quat::IDENTITY,
+            scale,
+            original_rotation: Quat::IDENTITY,
+        });
+
+        let iso: Isometry<f32> = (position, rotation).into();
+
+        let body = RigidBodyBuilder::fixed()
+            .position(iso)
+            .build();
+
+        let collider = ColliderBuilder::trimesh(vertices, indices).unwrap()
+            .active_collision_types(ActiveCollisionTypes::all())
+            .build();
+
+        let body_handle = ps.rigid_body_set.insert(body);
+        let collider_handle = ps.collider_set.insert_with_parent(
+            collider,
+            body_handle,
+            &mut ps.rigid_body_set,
+        );
+
+        self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+            rigid_body: body_handle,
+            collider: collider_handle,
+        });
 
         self.next_entity_id += 1;
     }

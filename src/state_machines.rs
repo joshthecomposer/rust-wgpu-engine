@@ -215,23 +215,6 @@ fn entity_sim_state_machine(
             },
             SimState::Blocking => {
                 unreachable!("An entity shouldn't get to the blocking state right now.");
-
-
-                if let Some(rh_weapon_id) = rh_weapon_id {
-                    let ph = em.physics_handles.get(rh_weapon_id).unwrap();
-
-                    let wrb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
-                    let col = ps.collider_set.get_mut(ph.collider).unwrap();
-
-                    wrb.set_body_type(RigidBodyType::Dynamic, true);
-                    wrb.set_gravity_scale(1.0, true);
-                    wrb.wake_up(true);
-
-                    col.set_sensor(false);
-                    col.set_density(800.0);
-                    col.set_enabled(true);
-                }
-
             },
         }
     }
