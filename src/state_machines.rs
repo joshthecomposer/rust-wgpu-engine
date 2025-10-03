@@ -125,7 +125,7 @@ fn entity_sim_state_machine(
                     }
                 }
 
-                if !can_see_player {
+                if !within_aggro_range {
                     entity_non_combat_transition(controller, SimState::Waiting, animator, false);
                     break 'ns;
                 }

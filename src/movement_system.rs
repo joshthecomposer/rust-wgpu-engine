@@ -230,20 +230,6 @@ fn handle_enemy_movement_rapier(
     }
 }
 
-fn handle_static_movement(ids: Vec<usize>, em: &mut EntityManager, terrain: &Terrain) {
-    // TODO: This places things like trees at the proper height at their terrain position.
-    // this should not be done every frame, we should do this once upon entity creation.
-    for id in ids {
-        if let Some(ent_type) = em.entity_types.get(id) {
-            if ent_type != &EntityType::Terrain {
-                if let Some(trans) = em.transforms.get_mut(id) {
-                    trans.position.y = terrain.get_height_at(trans.position.x, trans.position.z);
-                }
-            }
-        }
-    }
-}
-
 fn handle_gizmo_movement(ids: Vec<usize>, em: &mut EntityManager, dt: f32) {
     let mut transforms_to_update:Vec<(usize, usize)> = vec![];
     for id in ids {
@@ -275,25 +261,4 @@ fn handle_gizmo_movement(ids: Vec<usize>, em: &mut EntityManager, dt: f32) {
             original_rotation: child_transform.original_rotation,
         });
     }
-}
-
-fn revolve_around_something(object: &mut Vec3, target: &Vec3, elapsed: f32, radius: f32, speed: f32) {
-    let angle = elapsed * speed;
-
-    object.x = target.x + radius * angle.cos();
-    object.z = target.z + radius * angle.sin();
-    object.y = target.y + 1.0;
-}
-
-
-fn calc_desired_move_dir (
-    input_state: &InputState,
-    em: &mut EntityManager,
-    player_keys: Vec<usize>,
-    delta: f32,
-    camera: &Camera,
-    terrain: &Terrain,
-    ps: &mut PhysicsState,
-){
-
 }
