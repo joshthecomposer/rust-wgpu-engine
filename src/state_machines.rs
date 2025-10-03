@@ -203,7 +203,11 @@ fn entity_sim_state_machine(
                 // if let Some(rh_weapon_id) = rh_weapon_id {
                 //     em.parents.remove(rh_weapon_id);
                 // }
-
+                
+                // remove the hitbox parent
+                if let Some(hitbox_parent) = em.parents.iter().find(|p| p.value().parent_id == entity_id) {
+                    em.entity_trashcan.push(hitbox_parent.key());
+                }
                 em.entity_trashcan.push(entity_id);
             },
             SimState::Dancing => {
