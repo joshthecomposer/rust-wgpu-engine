@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
+use core::f32;
 use std::collections::HashSet;
 
 use glam::{Mat4, Quat, Vec3};
@@ -8,7 +9,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Pill}, enums_types::{ActiveItem, AttackState, EntityType, Faction, FrameActivation, Inventory, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
+use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, Faction, FrameActivation, HitboxType, Inventory, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -94,9 +95,6 @@ impl EntityManager {
     pub fn populate_initial_entity_data(&mut self, ec: &EntityConfig, wd: &mut WorldData, ps: &mut PhysicsState) {
         for instance in wd.entities.iter() {
             let archetype = ec.entity_types.get(&instance.entity_type).unwrap();
-            let position = instance.position;
-            let rotation = instance.rotation;
-            let scale_correction = archetype.scale_correction;
 
             match instance.faction {
                 Faction::Player | Faction::Enemy => {
@@ -107,29 +105,19 @@ impl EntityManager {
                     );
                 },
                 Faction::Item => {
-                    self.create_item_entity(
-                        instance.entity_type.clone(),
-                        instance.faction.clone(),
-                        position.into(), 
-                        scale_correction.into(), 
-                        archetype.rot_correction, 
-                        rotation,
-                        &archetype.mesh_path, 
-                        archetype.hit_cyl.clone(),
+                    self.create_static_entity(
+                        instance,
+                        archetype, 
                         ps,
+                        HitboxType::BoundingBox,
                     );
                 },
                 Faction::World | Faction::Static | Faction::Gizmo => {
                     self.create_static_entity(
-                        instance.entity_type.clone(),
-                        instance.faction.clone(),
-                        position.into(), 
-                        scale_correction.into(), 
-                        archetype.rot_correction, 
-                        rotation,
-                        &archetype.mesh_path, 
-                        archetype.hit_cyl.clone(),
+                        instance,
+                        archetype, 
                         ps,
+                        HitboxType::Cylinder,
                     );
                 },
             }
@@ -137,218 +125,67 @@ impl EntityManager {
         }
     }
 
-    pub fn create_item_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) -> usize {
-
+    pub fn create_static_entity(
+        &mut self, instance: &EntityInstance, 
+        archetype: &EntityTypeHelper, 
+        ps: &mut PhysicsState,
+        hbt: HitboxType,
+    ) -> usize {
         let parent_id = self.next_entity_id;
+        let position = instance.position;
+        let rotation = instance.rotation;
+        let scale    = archetype.scale_correction;
 
-        self.factions.insert(self.next_entity_id, faction);
-        self.entity_types.insert(self.next_entity_id, entity_type);
+        self.factions.insert(self.next_entity_id, instance.faction.clone());
+        self.entity_types.insert(self.next_entity_id, instance.entity_type.clone());
 
         let transform = Transform {
             position,
-            rotation: rotation * rot_correction,
-            scale,
+            rotation: rotation * archetype.rot_correction,
+            scale: archetype.scale_correction,
 
-            original_rotation: rot_correction,
+            original_rotation: archetype.rot_correction,
         };
         self.transforms.insert(self.next_entity_id, transform.clone());
-
-        self.yaws.insert(parent_id, 0.0);
 
         let mut model = Model::new();
         let mut found = false;
         for m in self.models.iter_mut() {
-            if m.value().full_path == *model_path.to_string() {
+            if m.value().full_path == *archetype.mesh_path.to_string() {
                 model = m.value().clone();
                 found = true;
             }
         }
 
         if !found {
-            model = import_model_data(model_path, &Animation::default());
+            model = import_model_data(&archetype.mesh_path, &Animation::default());
         }
         self.models.insert(self.next_entity_id, model.clone());
         
         self.next_entity_id += 1;
-        
-        // ============================================================
-        // CREATE CUBE BOUNDING BOX
-        // ============================================================
-        {
-            let mut min = Vec3::splat(f32::MAX);
-            let mut max = Vec3::splat(f32::MIN);
 
-            for v in model.vertices.iter() {
-                min = min.min(v.position);
-                max = max.max(v.position);
-            }
-
-            let size = max - min;
-            let center = (min + max) * 0.5;
-
-            let mut local_offset = center;
-
-            local_offset.y = 0.5 * size.y;
-
-            let cuboid = Cuboid {
-                w: size.x,
-                h: size.y,
-                d: size.z,
-            };
-
-            let cuboid_model = cuboid.create_model();
-
-            self.cuboids.insert(self.next_entity_id, cuboid);
-            self.models.insert(self.next_entity_id, cuboid_model);
-            self.factions.insert(self.next_entity_id, Faction::Gizmo);
-            self.entity_types.insert(self.next_entity_id, EntityType::Cuboid);
-            self.parents.insert(self.next_entity_id, Parent { parent_id });
-            self.child_locals.insert(self.next_entity_id, Transform {
-                position,
-                rotation: Quat::IDENTITY,
-                scale,
-                original_rotation: Quat::IDENTITY
-            });
-            self.transforms.insert(self.next_entity_id, Transform {
-                position: Vec3::ZERO,
-                rotation: Quat::IDENTITY,
-                scale,
-                original_rotation: Quat::IDENTITY,
-            });
-
-            // PHYSICS PASS
-            let iso: Isometry<f32> = (position, rotation).into();
-
-            let body = RigidBodyBuilder::kinematic_position_based()
-                .position(iso)
-                .ccd_enabled(true)
-                .build();
-
-            let half_extents = size * 0.5;
-
-            let collider_shape = ColliderShape::cuboid(half_extents.x, half_extents.y, half_extents.z);
-            self.colliders.insert(self.next_entity_id, collider_shape);
-
-            let collider = ColliderBuilder::cuboid(size.x * 0.5, size.y * 0.5, size.z * 0.5)
-                .translation(vector![0.0, half_extents.y, 0.0])
-                .sensor(true)
-                .density(0.0)
-                .active_events(ActiveEvents::COLLISION_EVENTS)
-                .build();
-
-            let body_handle = ps.rigid_body_set.insert(body);
-            let collider_handle = ps.collider_set.insert_with_parent(
-                collider,
-                body_handle,
-                &mut ps.rigid_body_set,
-            );
-            self.physics_handles.insert(parent_id, PhysicsHandle {
-                rigid_body: body_handle,
-                collider: collider_handle,
-            });
-
-            self.collider_to_entity.insert(collider_handle, parent_id);
-            self.rigidbody_to_entity.insert(body_handle, parent_id);
-
-            self.next_entity_id += 1;
-        }
-
-        parent_id
-    }
-
-    pub fn create_static_entity(&mut self,entity_type: EntityType, faction: Faction, position: Vec3, scale: Vec3, rot_correction: Quat,rotation: Quat, model_path: &str, cylinder: Option<crate::debug::gizmos::Cylinder>, ps: &mut PhysicsState) -> usize {
-
-        let parent_id = self.next_entity_id;
-
-        self.factions.insert(self.next_entity_id, faction);
-        self.entity_types.insert(self.next_entity_id, entity_type);
-
-        let transform = Transform {
-            position,
-            rotation: rotation * rot_correction,
-            scale,
-
-            original_rotation: rot_correction,
-        };
-        self.transforms.insert(self.next_entity_id, transform.clone());
-
-        //self.yaws.insert(parent_id, 0.0);
-
-        let mut model = Model::new();
-        let mut found = false;
-        for m in self.models.iter_mut() {
-            if m.value().full_path == *model_path.to_string() {
-                model = m.value().clone();
-                found = true;
-            }
-        }
-
-        if !found {
-            model = import_model_data(model_path, &Animation::default());
-        }
-        self.models.insert(self.next_entity_id, model.clone());
-        
-        self.next_entity_id += 1;
-        
-        // ============================================================
-        // CREATE CYLINDER HITBOX
-        // ============================================================
-        {
-            if let Some(cyl) = cylinder {
-                // CYLINDER PASS
-                let cyl_mod = cyl.create_model(12);
-
-                let collider_vert_dim = (cyl.h * 0.5) - 0.025;
-
-                let collider_shape = ColliderShape::cylinder(collider_vert_dim, cyl.r);
-
-                self.colliders.insert(self.next_entity_id, collider_shape);
-
-                self.models.insert(self.next_entity_id, cyl_mod);
-                self.factions.insert(self.next_entity_id, Faction::Gizmo);
-                self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
-                self.transforms.insert(self.next_entity_id, Transform {
-                    position,
-                    rotation: Quat::IDENTITY,
-                    scale,
-                    original_rotation: Quat::IDENTITY,
-                });
-
-                self.parents.insert(self.next_entity_id, Parent{
-                    parent_id,
-                });
-
-                // PHYSICS PASS
-                let iso: Isometry<f32> = (position, rotation).into();
-                
-                // TODO: This shouldn't be fixed always, we can have it be kinematic for some
-                // things
-                let body = RigidBodyBuilder::fixed()
-                    .position(iso)
-                    .build();
-
-                let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
-                    .active_collision_types(ActiveCollisionTypes::all())
-                    .build();
-
-                let body_handle = ps.rigid_body_set.insert(body);
-                let collider_handle = ps.collider_set.insert_with_parent(
-                    collider,
-                    body_handle,
-                    &mut ps.rigid_body_set,
+        match hbt {
+            HitboxType::Cylinder => {
+                self.create_cylinder_hitbox(
+                    archetype.hit_cyl.as_ref().unwrap().clone(), 
+                    position, 
+                    scale, 
+                    rotation, 
+                    parent_id, 
+                    ps
                 );
-
-                self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
-                    rigid_body: body_handle,
-                    collider: collider_handle,
-                });
-
-                self.collider_to_entity.insert(collider_handle, parent_id);
-                self.rigidbody_to_entity.insert(body_handle, parent_id);
-
-                self.next_entity_id += 1;
-            }
-    
+            },
+            HitboxType::BoundingBox => {
+                self.create_bounding_hitbox(
+                    &model,
+                    position,
+                    scale,
+                    rotation,
+                    parent_id,
+                    ps,
+                );
+            },
+            _ => ()
         }
 
         parent_id
@@ -421,7 +258,6 @@ impl EntityManager {
                         triggered: false.into(),
                     });
                 }
-
                 anim.hold_frame = prop.hold_frame;
             }
         }
@@ -555,16 +391,21 @@ impl EntityManager {
             let entity_id = parent_id;
             let weapon_archetype = ec.entity_types.get(&weapon).unwrap();
 
-            let weapon_id = self.create_item_entity(
-                weapon.clone(),
-                Faction::Item,
-                Vec3::splat(0.0),
-                Vec3::splat(1.0),
-                addtl_weap_rot * weapon_archetype.rot_correction,
-                Quat::IDENTITY,
-                &weapon_archetype.mesh_path,
-                None,
+            let wi = EntityInstance {
+                entity_type: weapon.clone(),
+                faction: Faction::Item,
+                position: Vec3::splat(0.0),
+                rotation: addtl_weap_rot * weapon_archetype.rot_correction,
+                weapons: vec![],
+                base_speed: None,
+                health: 100.0,
+            };
+
+            let weapon_id = self.create_static_entity(
+                &wi, 
+                weapon_archetype,
                 ps,
+                HitboxType::BoundingBox,
             );
 
             self.hitsets.insert(
@@ -590,6 +431,153 @@ impl EntityManager {
             }
 
         }
+    }
+
+    pub fn create_cylinder_hitbox(
+        &mut self, 
+        cyl: Cylinder,
+        position: Vec3,
+        scale: Vec3,
+        rotation: Quat,
+        parent_id: usize,
+        ps: &mut PhysicsState,
+    ) {
+        let cyl_mod = cyl.create_model(12);
+
+        let collider_vert_dim = (cyl.h * 0.5) - 0.025;
+
+        let collider_shape = ColliderShape::cylinder(collider_vert_dim, cyl.r);
+
+        self.colliders.insert(self.next_entity_id, collider_shape);
+
+        self.models.insert(self.next_entity_id, cyl_mod);
+        self.factions.insert(self.next_entity_id, Faction::Gizmo);
+        self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
+        self.transforms.insert(self.next_entity_id, Transform {
+            position,
+            rotation: Quat::IDENTITY,
+            scale,
+            original_rotation: Quat::IDENTITY,
+        });
+
+        self.parents.insert(self.next_entity_id, Parent{
+            parent_id,
+        });
+
+        let iso: Isometry<f32> = (position, rotation).into();
+
+        let body = RigidBodyBuilder::fixed()
+            .position(iso)
+            .build();
+
+        let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
+            .active_collision_types(ActiveCollisionTypes::all())
+            .build();
+
+        let body_handle = ps.rigid_body_set.insert(body);
+        let collider_handle = ps.collider_set.insert_with_parent(
+            collider,
+            body_handle,
+            &mut ps.rigid_body_set,
+        );
+
+        self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+            rigid_body: body_handle,
+            collider: collider_handle,
+        });
+
+        self.collider_to_entity.insert(collider_handle, parent_id);
+        self.rigidbody_to_entity.insert(body_handle, parent_id);
+
+        self.next_entity_id += 1;
+
+    }
+
+    pub fn create_bounding_hitbox(
+        &mut self,
+        model: &Model,
+        position: Vec3,
+        scale: Vec3,
+        rotation: Quat,
+        parent_id: usize,
+        ps: &mut PhysicsState,
+    ) {
+        let mut min = Vec3::splat(f32::MAX);
+        let mut max = Vec3::splat(f32::MIN);
+
+        for v in model.vertices.iter() {
+            min = min.min(v.position);
+            max = max.max(v.position);
+        }
+
+        let size = max - min;
+        let center = (min + max) * 0.5;
+
+        let mut local_offset = center;
+
+        local_offset.y = 0.5 * size.y;
+
+        let cuboid = Cuboid {
+            w: size.x,
+            h: size.y,
+            d: size.z,
+        };
+
+        let cuboid_model = cuboid.create_model();
+
+        self.cuboids.insert(self.next_entity_id, cuboid);
+        self.models.insert(self.next_entity_id, cuboid_model);
+        self.factions.insert(self.next_entity_id, Faction::Gizmo);
+        self.entity_types.insert(self.next_entity_id, EntityType::Cuboid);
+        self.parents.insert(self.next_entity_id, Parent { parent_id });
+        self.child_locals.insert(self.next_entity_id, Transform {
+            position,
+            rotation: Quat::IDENTITY,
+            scale,
+            original_rotation: Quat::IDENTITY
+        });
+        self.transforms.insert(self.next_entity_id, Transform {
+            position: Vec3::ZERO,
+            rotation: Quat::IDENTITY,
+            scale,
+            original_rotation: Quat::IDENTITY,
+        });
+
+        // PHYSICS PASS
+        let iso: Isometry<f32> = (position, rotation).into();
+
+        let body = RigidBodyBuilder::kinematic_position_based()
+            .position(iso)
+            .ccd_enabled(true)
+            .build();
+
+        let half_extents = size * 0.5;
+
+        let collider_shape = ColliderShape::cuboid(half_extents.x, half_extents.y, half_extents.z);
+        self.colliders.insert(self.next_entity_id, collider_shape);
+
+        let collider = ColliderBuilder::cuboid(size.x * 0.5, size.y * 0.5, size.z * 0.5)
+            .translation(vector![0.0, half_extents.y, 0.0])
+            .sensor(true)
+            .density(0.0)
+            .active_events(ActiveEvents::COLLISION_EVENTS)
+            .build();
+
+        let body_handle = ps.rigid_body_set.insert(body);
+        let collider_handle = ps.collider_set.insert_with_parent(
+            collider,
+            body_handle,
+            &mut ps.rigid_body_set,
+        );
+        self.physics_handles.insert(parent_id, PhysicsHandle {
+            rigid_body: body_handle,
+            collider: collider_handle,
+        });
+
+        self.collider_to_entity.insert(collider_handle, parent_id);
+        self.rigidbody_to_entity.insert(body_handle, parent_id);
+
+        self.next_entity_id += 1;
     }
 
     pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {

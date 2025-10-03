@@ -293,6 +293,8 @@ impl Renderer {
         let terrain_ids = em.get_ids_for_type(EntityType::Terrain);
         let orphaned_weapons = em.get_all_orphaned_weapon_ids();
         let cacti = em.get_ids_for_type(EntityType::Cactus1);
+        let cacti2 = em.get_ids_for_type(EntityType::Cactus2);
+        let rocks = em.get_ids_for_type(EntityType::Rock1);
 
         self.static_model_pass(camera, em, light_manager, foliage_ids);
         self.static_model_pass(camera, em, light_manager, trunk_ids);
@@ -301,6 +303,8 @@ impl Renderer {
         self.static_model_pass(camera, em, light_manager, terrain_ids);
         self.static_model_pass(camera, em, light_manager, orphaned_weapons);
         self.static_model_pass(camera, em, light_manager, cacti);
+        self.static_model_pass(camera, em, light_manager, cacti2);
+        self.static_model_pass(camera, em, light_manager, rocks);
 
         // Animated models
         let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);

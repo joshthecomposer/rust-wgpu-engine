@@ -7,6 +7,7 @@
 			"mesh_path": "resources/models/animated/y_robot/y_robot_bc.txt", 
 			"bone_path":"resources/models/animated/y_robot/y_robot_bc.txt",
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
+			"hitbox_type": "Pill",
 			"hit_cyl": { "r": 0.195, "h": 2.16 },
 			"flip_180": false,
 			"item_bones": {
@@ -54,6 +55,7 @@
 			"mesh_path": "resources/models/animated/trash_guy/trash_guy.txt", 
 			"bone_path": "resources/models/animated/trash_guy/trash_guy.txt",
 			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
+			"hitbox_type": "Pill",
 			"hit_cyl": { "r": 0.25, "h": 1.8 },
 			"flip_180": false,
 			"item_bones": {
@@ -129,6 +131,7 @@
 			"scale_correction": [0.013, 0.013, 0.013],
 			"mesh_path": "resources/models/animated/moose/moosey.txt", 
 			"bone_path": "resources/models/animated/moose/moosey.txt",
+			"hitbox_type": "Pill",
 			"hit_cyl": { "r": 0.5, "h": 2.0 },
 			"flip_180": false,
 			"item_bones": {
@@ -154,6 +157,7 @@
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/trees/001_tree_foliage_model.txt", 
 			"bone_path":"",
+			"hitbox_type": "BoundingBox",
 			"hit_cyl": null,
 			"flip_180": false,
 			"aggro_range": 0.0,
@@ -169,6 +173,7 @@
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/trees/001_tree_trunk_model.txt", 
 			"bone_path":"",
+			"hitbox_type": "Cylinder",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
 			"aggro_range": 0.0,
@@ -184,6 +189,7 @@
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/stump/001_stump.txt", 
 			"bone_path":"",
+			"hitbox_type": "Mesh",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
 			"aggro_range": 0.0,
@@ -199,6 +205,7 @@
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/weapons/001_orc_sword_bc.txt", 
 			"bone_path":"",
+			"hitbox_type": "BoundingBox",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
 			"aggro_range": 0.0,
@@ -211,9 +218,10 @@
 		"DoubleAxe": {
 			"__note__": "use Quat::from_rotation_x()",
 			"rot_correction": [-0.5, 0.5, 0.5, 0.5] ,
-			"scale_correction": [2.0, 2.0, 2.0],
+			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/weapons/swords/001_double_axe_new.txt", 
 			"bone_path":"",
+			"hitbox_type": "BoundingBox",
 			"hit_cyl": { "r": 0.1, "h": 2.0 },
 			"flip_180": false,
 			"aggro_range": 0.0,
@@ -229,7 +237,40 @@
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/static/plants/cactus1.txt", 
 			"bone_path":"",
+			"hitbox_type": "Cylinder",
 			"hit_cyl": { "r": 0.2, "h": 3.0 },
+			"flip_180": false,
+			"aggro_range": 0.0,
+			"item_bones": {
+				"rh_name": "",
+				"lh_name": ""
+			},
+			"animation_properties" : []
+		},
+		"Cactus2": {
+			"__note__": "use Quat::from_rotation_x()",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
+			"scale_correction": [1.0, 1.0, 1.0],
+			"mesh_path": "resources/models/static/plants/cactus2.txt", 
+			"bone_path":"",
+			"hitbox_type": "Cylinder",
+			"hit_cyl": { "r": 0.2, "h": 3.0 },
+			"flip_180": false,
+			"aggro_range": 0.0,
+			"item_bones": {
+				"rh_name": "",
+				"lh_name": ""
+			},
+			"animation_properties" : []
+		},
+		"Rock1": {
+			"__note__": "use Quat::from_rotation_x()",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
+			"scale_correction": [1.0, 1.0, 1.0],
+			"mesh_path": "resources/models/static/terrain/rocks/rock1.txt", 
+			"bone_path":"",
+			"hitbox_type": "Mesh",
+			"hit_cyl": { "r": 0.3, "h": 0.5 },
 			"flip_180": false,
 			"aggro_range": 0.0,
 			"item_bones": {

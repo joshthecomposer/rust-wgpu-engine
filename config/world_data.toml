@@ -55,6 +55,21 @@ rotation = [0.0, 0.0, 0.0, 1.0]
 weapons = []
 health = 100.0
 
+[[entities]]
+entity_type = "Cactus2"
+faction = "Static"
+position = [-90.3714, -5.72, -127.8407]
+rotation = [0.0, 0.0, 0.0, 1.0]
+weapons = []
+health = 100.0
+
+[[entities]]
+entity_type = "Rock1"
+faction = "Static"
+position = [-110.3714, -5.4, -100.8407]
+rotation = [0.0, 0.0, 0.0, 1.0]
+weapons = []
+health = 100.0
 # 
 # [[entities]]
 # entity_type = "TreeFoliage"

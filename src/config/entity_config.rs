@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs::read_to_string};
 use glam::{Quat, Vec3};
 use serde::Deserialize;
 
-use crate::{debug::gizmos::Cylinder, enums_types::{AnimationType, EntityType, Faction, SoundType}};
+use crate::{debug::gizmos::Cylinder, enums_types::{AnimationType, EntityType, Faction, HitboxType, SoundType}};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct ItemBones {
@@ -50,4 +50,5 @@ pub struct EntityTypeHelper {
     pub flip_180: bool,
     pub item_bones: ItemBones,
     pub aggro_range: f32,
+    pub hitbox_type: HitboxType,
 }

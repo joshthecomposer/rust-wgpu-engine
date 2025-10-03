@@ -82,6 +82,8 @@ pub enum EntityType {
     TrashGuy,
     Cuboid,
     Cactus1,
+    Cactus2,
+    Rock1,
 }
 
 impl Display for EntityType {
@@ -100,6 +102,8 @@ impl Display for EntityType {
             EntityType::TrashGuy => write!(f, "TrashGuy"),
             EntityType::Cuboid => write!(f, "Cuboid"),
             EntityType::Cactus1 => write!(f, "Cactus1"),
+            EntityType::Cactus2 => write!(f, "Cactus2"),
+            EntityType::Rock1 => write!(f, "Rock1"),
         }
     }
 }
@@ -407,6 +411,30 @@ impl Display for EmitterName {
             EmitterName::DesertDust => write!(f, "DesertDust"),
             EmitterName::DamageBlood => write!(f, "DamageBlood"),
             EmitterName::BodyPoof => write!(f, "BodyPoof"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]
+pub enum HitboxType {
+    Cylinder,
+    Pill,
+    BoxDim, // Custom box dimensions
+    Sphere,
+    Mesh,  // The mesh itself is the collider
+    BoundingBox, // Dynamically generated box around the mesh
+}
+
+impl HitboxType {
+    pub fn from_str(input: &str) -> Option<Self>  {
+        match input {
+            "Cylinder" => Some(Self::Cylinder),
+            "Pill"   => Some(Self::Pill),
+            "BoxDim"  => Some(Self::BoxDim),
+            "Sphere"  => Some(Self::Sphere),
+            "Mesh"  => Some(Self::Mesh),
+            "BoundingBox"  => Some(Self::BoundingBox),
+            _              => panic!("Invalid TextureProfile passed in."),
         }
     }
 }

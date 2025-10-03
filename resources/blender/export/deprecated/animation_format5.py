@@ -31,84 +31,6 @@ def convert_y_up_quaternion(blender_quaternion):
 
     return q_new
 
-def export_animation_data(filepath):
-    with open(filepath, "w") as f:
-        f.write("# WiseModel 0.0.1\n")
-
-        armatures = [obj for obj in bpy.context.selected_objects if obj.type == 'ARMATURE']
-        if not armatures:
-            print("No armature selected for export.")
-            return
-
-        armature = armatures[0]  # Assuming one armature per model
-        f.write(f"BONECOUNT: {len(armature.pose.bones)}\n")
-        
-
-        #WARNING: This is kinda destructive, it changes the axis_conversion for the blender file.
-        conv = axis_conversion(from_forward='-Y', from_up='Z', to_forward='-Z', to_up='Y').to_4x4()
-        armature.data.transform(conv)
-        
-        fps = bpy.context.scene.render.fps
-        f.write(f"FPS: {fps}\n")
-        global_transform = armature.matrix_world.copy().inverted().transposed()
-        f.write(f"GLOBAL_TRANSFORM:\n")
-        for row in global_transform:
-            f.write(f"{row[0]:.5f} {row[1]:.5f} {row[2]:.5f} {row[3]:.5f}\n")
-        f.write("\n")
-    
-        for bone in armature.pose.bones:
-            current_frame = bpy.context.scene.frame_current
-            bpy.context.scene.frame_set(0)
-            
-            parent_index = -1 if bone.parent is None else list(armature.pose.bones).index(bone.parent)
-            f.write(f"BONE_NAME: {bone.name}\nPARENT_INDEX: {parent_index}\nOFFSET_MATRIX:\n")
-            
-            # inverse bindpose matrix for the bone.
-            
-            # offset_matrix = convert_y_up(armature.matrix_world.copy() @ bone.bone.matrix_local).transposed().inverted_safe();
-            offset_matrix = bone.bone.matrix_local.inverted().transposed()
-            
-            for row in offset_matrix:
-                f.write(f"{row[0]:.5f} {row[1]:.5f} {row[2]:.5f} {row[3]:.5f}\n")
-            f.write("\n")
-
-        for action in bpy.data.actions:  # Iterate over all actions
-            armature.animation_data.action = action  # Temporarily assign action to the armature
-
-            if armature.animation_data and armature.animation_data.action:
-                action = armature.animation_data.action
-            
-                f.write(f"ANIMATION_NAME: {action.name}\n")
-
-                frame_start = int(action.frame_range[0])
-                frame_end = int(action.frame_range[1])
-                duration = (frame_end - frame_start) / fps
-                f.write(f"DURATION: {duration:.5f}\n\n")
-
-                for frame in range(frame_start, frame_end + 1):
-                    bpy.context.scene.frame_set(frame)
-                    timestamp = frame / fps
-                    f.write(f"KEYFRAME: {frame}\n")
-                    f.write(f"TIMESTAMP: {timestamp:.5f}\n")
-
-                    for bone in armature.pose.bones:
-                        parent_matrix = bone.parent.matrix if bone.parent else mathutils.Matrix.Identity(4)
-                        local_matrix = parent_matrix.inverted_safe() @ bone.matrix
-                        position = local_matrix.translation
-
-                        rotation = local_matrix.to_quaternion()
-                        qw = rotation.w
-                        qx = rotation.x
-                        qy = rotation.y
-                        qz = rotation.z
-                        scale = bone.scale
-
-                        f.write(f"{position.x:.5f} {position.y:.5f} {position.z:.5f}\n")
-                        f.write(f"{qx:.5f} {qy:.5f} {qz:.5f} {qw:.5f}\n")
-                        f.write(f"{scale.x:.5f} {scale.y:.5f} {scale.z:.5f}\n\n")
-
-        armature.animation_data.action = None  # Clear the assigned action to avoid conflicts
-
 def export_mesh_with_indices(filepath):
     with open(filepath, "w") as f:
         meshes = [obj for obj in bpy.context.selected_objects if obj.type == 'MESH']
@@ -119,6 +41,7 @@ def export_mesh_with_indices(filepath):
         for mesh in meshes:
             mesh_data = mesh.data
             f.write(f"MESH_NAME: {mesh.name}\n")
+            f.write(f"TEXTURE_DIFFUSE: stonetex.png\n")
 
             # Parse base colors from Principled BSDF nodes in materials
             material_colors = []
@@ -143,6 +66,8 @@ def export_mesh_with_indices(filepath):
             uv_layer = mesh_eval_data.uv_layers.active
             submesh_count = max(1, len(mesh_eval_data.materials))
             index_buffers = [[] for _ in range(submesh_count)]
+            
+            Nmat = mesh.matrix_world.to_3x3().inverted().transposed()
 
             for poly in mesh_eval_data.polygons:
                 mat_idx = poly.material_index
@@ -153,7 +78,9 @@ def export_mesh_with_indices(filepath):
                     vert = mesh_eval_data.vertices[loop.vertex_index]
 
                     position = mesh.matrix_world @ vert.co
-                    normal = mesh.matrix_world.to_3x3() @ vert.normal
+                    #normal = mesh.matrix_world.to_3x3() @ vert.normal
+                    loop_normal_local = loop.normal
+                    normal_world = (Nmat @ loop_normal_local).normalized()
 
                     if uv_layer:
                         uv = uv_layer.data[loop.index].uv
@@ -172,7 +99,7 @@ def export_mesh_with_indices(filepath):
 
                     # Include material color in vertex key
                     vertex_key = (position.x, position.y, position.z,
-                                  normal.x, normal.y, normal.z,
+                                  normal_world.x, normal_world.y, normal_world.z,
                                   uv_tuple, tuple(vertex_weights), tuple(color))
 
                     if vertex_key not in vertex_map:
@@ -195,7 +122,7 @@ def export_mesh_with_indices(filepath):
 
                 f.write(f"VERT:\n{pos[0]:.5f} {pos[1]:.5f} {pos[2]:.5f}\n")
                 f.write(f"{norm[0]:.5f} {norm[1]:.5f} {norm[2]:.5f}\n")
-                f.write(f"{uv[0]:.5f} {uv[1]:.5f}\n")
+                f.write(f"{uv[0]:.5f} {1.0 - uv[1]:.5f}\n")
                 # f.write(f"COLOR: {color[0]:.4f} {color[1]:.4f} {color[2]:.4f} {color[3]:.4f}\n")
 
                 if weights:
@@ -210,10 +137,6 @@ def export_mesh_with_indices(filepath):
                     f.write(f"{indices[i]} {indices[i+1]} {indices[i+2]} ")
             f.write("\n\n")
 
-armature_output = os.path.expanduser("E:/Software_Dev/rust/rust-opengl-engine/resources/models/animated/002_y_robot/y_robot_idle_bones.txt")
-mesh_output = os.path.expanduser("E:/Software_Dev/rust/rust-opengl-engine/resources/models/static/stump/001_stump.txt")
+mesh_output = os.path.expanduser("E:/Software_Dev/rust/rust-opengl-engine/resources/models/static/terrain/rocks/rock1.txt")
 
-# export_animation_data(armature_output)
-
-bpy.context.scene.frame_set(0)
 export_mesh_with_indices(mesh_output)
