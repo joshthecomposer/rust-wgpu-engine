@@ -12,7 +12,8 @@ pub fn update(
 }
 
 fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
-    let attacking_player_ids = em.player_get_ids_for_state(PlayerState::Attacking);
+    let attacking_player_ids = em.player_get_ids_for_state(PlayerState::Combat);
+
 
     for player_id in attacking_player_ids {
         let yaw = em.yaws.get(player_id).unwrap();
@@ -90,6 +91,8 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                             flinch: false,
                             did_particles: false,
                         };
+
+                        println!("meme");
 
                         if sim_state.state != SimState::Blocking {
                             if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
@@ -176,7 +179,7 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
                             flinch: false,
                             did_particles: false,
                         };
-                        if player_state.state != PlayerState::Blocking {
+                        if player_state.state != PlayerState::Block {
                             if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
 
                             // em.v_effects.insert(target_id, VisualEffect {

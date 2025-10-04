@@ -9,7 +9,7 @@ use nalgebra::{Point, Point3};
 use rapier3d::{math::Isometry, prelude::{ColliderBuilder, RigidBodyBuilder}};
 use rusttype::{point, Font, Scale};
 
-use crate::{animation::animation_system, camera::Camera, combat_system, config::{emitter_data::EmitterData, entity_config::{self, EntityConfig}, game_config::GameConfig, world_data::WorldData}, debug::{gizmos::Cylinder, write::write_data}, entity_manager::{self, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PhysicsHandle, ShaderType, SimState, SimStateController, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input, InputState}, items, lights::{DirLight, Lights}, movement_system, particles::{Emitter, ParticleSystem}, physics::PhysicsState, renderer::Renderer, sound::{fmod::FMOD_Studio_System_Update, sound_manager::SoundManager}, state_machines, terrain::Terrain, ui::{font::{self, FontManager}, game_ui::{self, GameUiContext}, imgui::ImguiManager, message_queue::{MessageQueue, UiMessage}}};
+use crate::{animation::animation_system, camera::Camera, combat_system, config::{emitter_data::EmitterData, entity_config::{self, EntityConfig}, game_config::GameConfig, world_data::WorldData}, debug::{gizmos::Cylinder, write::write_data}, entity_manager::{self, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PhysicsHandle, ShaderType, SimState, SimStateController, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input, InputState}, items, lights::{DirLight, Lights}, movement_system, particles::{Emitter, ParticleSystem}, physics::PhysicsState, renderer::Renderer, sound::{fmod::FMOD_Studio_System_Update, sound_manager::SoundManager}, state_machines::{self, state_machine_system}, terrain::Terrain, ui::{font::{self, FontManager}, game_ui::{self, GameUiContext}, imgui::ImguiManager, message_queue::{MessageQueue, UiMessage}}};
 // use rand::prelude::*;
 // use rand_chacha::ChaCha8Rng;
 
@@ -403,7 +403,7 @@ impl GameState {
         self.light_manager.update(&self.delta_time);
 
         // UPDATE SYSTEMS
-        state_machines::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state, &mut self.sound_manager);
+        state_machine_system::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state, &mut self.sound_manager, &self.camera);
         self.physics_state.update(self.delta_time);
         movement_system::update(
             &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.input_state, &mut self.physics_state

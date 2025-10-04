@@ -17,12 +17,7 @@ pub fn update(
     let static_keys = em.get_ids_for_faction(Faction::Static);
     let gizmo_keys = em.get_ids_for_faction(Faction::Gizmo);
 
-    if camera.move_state != CameraState::Free {
-        if player_keys.len() > 0 {
-            handle_player_movement_rapier(input_state, em, player_keys, dt, camera, terrain, ps);
-        }
-    }
-
+    handle_player_movement_rapier(input_state, em, player_keys, dt, camera, terrain, ps);
     handle_enemy_movement_rapier(enemy_keys, em, terrain, dt, ps,);
     // handle_static_movement(static_keys, em, terrain);
     handle_gizmo_movement(gizmo_keys, em, dt);
@@ -57,7 +52,7 @@ fn handle_player_movement_rapier(
         return;
     }
 
-    if player_state.state == PlayerState::Attacking {
+    if player_state.state == PlayerState::Combat {
         return;
     }
 

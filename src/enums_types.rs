@@ -218,15 +218,16 @@ impl Default for SimStateController {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PlayerState {
+    Init,
     Idle,
     Running, 
     Jumping,
     Freefalling,
-    Attacking,
+    Combat,
     Dying,
-    Dead { time: f32, target_time: f32 },
+    Dead,
     Dashing,
-    Blocking,
+    Block,
 }
 
 pub struct PlayerController {

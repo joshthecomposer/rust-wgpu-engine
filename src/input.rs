@@ -33,16 +33,24 @@ impl InputState {
     pub fn just_released(&self, key: glfw::Key) -> bool {
         !self.keys_current.contains(&key) && self.keys_previous.contains(&key)
     }
+
+    pub fn space_just_pressed(&self) -> bool {
+        self.keys_current.contains(&glfw::Key::Space) && !self.keys_previous.contains(&glfw::Key::Space)
+    }
     
     pub fn is_down(&self, key: glfw::Key) -> bool {
         self.keys_current.contains(&key)
     }
 
     pub fn wasd_is_down(&self) -> bool {
-        self.keys_current.contains(&glfw::Key::W) ||
-        self.keys_current.contains(&glfw::Key::S) ||
-        self.keys_current.contains(&glfw::Key::A) ||
-        self.keys_current.contains(&glfw::Key::D)
+        self.keys_current.contains(&glfw::Key::W)
+       || self.keys_current.contains(&glfw::Key::S)
+       || self.keys_current.contains(&glfw::Key::A)
+       || self.keys_current.contains(&glfw::Key::D)
+    }
+    
+    pub fn shift_is_down(&self) -> bool {
+        self.keys_current.contains(&glfw::Key::LeftShift)
     }
 
     pub fn mouse_just_pressed(&self, b: glfw::MouseButton) -> bool {
@@ -53,9 +61,30 @@ impl InputState {
         !self.mouse_current.contains(&b) && self.mouse_previous.contains(&b)
     }
 
+    pub fn left_mouse_just_pressed(&self) -> bool {
+        self.mouse_current.contains(&glfw::MouseButtonLeft) && !self.mouse_previous.contains(&glfw::MouseButtonLeft)
+    }
+
+    pub fn left_mouse_just_released(&self) -> bool {
+        !self.mouse_current.contains(&glfw::MouseButtonLeft) && self.mouse_previous.contains(&glfw::MouseButtonLeft)
+    }
+
+    pub fn right_mouse_just_pressed(&self) -> bool {
+        self.mouse_current.contains(&glfw::MouseButtonLeft) && !self.mouse_previous.contains(&glfw::MouseButtonLeft)
+    }
+
+    pub fn right_mouse_just_released(&self) -> bool {
+        !self.mouse_current.contains(&glfw::MouseButtonRight) && self.mouse_previous.contains(&glfw::MouseButtonRight)
+    }
+
     pub fn mouse_is_down(&self, b: glfw::MouseButton) -> bool {
         self.mouse_current.contains(&b)
     }
+
+    pub fn right_mouse_is_down(&self) -> bool {
+        self.mouse_current.contains(&glfw::MouseButtonRight)
+    }
+
 
     pub fn update(&mut self) {
         self.keys_previous = self.keys_current.clone();
