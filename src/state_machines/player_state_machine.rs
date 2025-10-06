@@ -36,7 +36,7 @@ pub fn player_state_machine(
 
     let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
     let m = rb.mass();
-    let impulse = vec3(dir.x * (7.0 * m), 0.0, dir.z * (7.0 * m));
+    let impulse = vec3(dir.x * (14.0 * m), 0.0, dir.z * (14.0 * m));
 
     let camera_is_detached = camera.move_state != CameraState::Third;
 
@@ -127,7 +127,7 @@ pub fn player_state_machine(
                 }
 
                 if input.space_just_pressed() {
-                    player_non_combat_transition(controller, PlayerState::Jumping, animator, false, rb);
+                    player_non_combat_transition(controller, PlayerState::Jumping, animator, true, rb);
                     break 'ns
                 }
 
@@ -187,6 +187,7 @@ pub fn player_state_machine(
 
                 if let Some(grounded) = grounded { 
                     if grounded { 
+                        rb.set_gravity_scale(1.0, true);
                         player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
                         break 'ns
                     }
@@ -302,9 +303,9 @@ fn player_non_combat_transition(
         },
         PlayerState::Dashing     => AnimationType::DashF,
         PlayerState::Freefalling => {
-            // rb.set_gravity_scale(1.0, true);
+            rb.set_gravity_scale(1.5, true);
 
-            AnimationType::Idle 
+            a.next_animation.clone()
         },
         PlayerState::Block       => AnimationType::Block,
     };
