@@ -149,6 +149,11 @@ pub fn player_state_machine(
             PlayerState::Jumping => {
                 controller.time_in_state += dt;
 
+                if rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
+                    player_non_combat_transition(controller, PlayerState::Freefalling, animator, false, rb);
+                    break 'ns
+                }
+
                 if let Some(grounded) = grounded { 
                     if grounded && controller.time_in_state >= 0.15 { 
                         println!("grounded");
@@ -290,13 +295,17 @@ fn player_non_combat_transition(
         PlayerState::Combat      => AnimationType::Slash,
         PlayerState::Running     => AnimationType::Run,
         PlayerState::Jumping     => {
-            rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
-            rb.apply_impulse((Vec3::Y * 5.2).into(), true);
+            // rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
+            rb.apply_impulse((Vec3::Y * 8.0).into(), true);
 
             AnimationType::Jump
         },
         PlayerState::Dashing     => AnimationType::DashF,
-        PlayerState::Freefalling => AnimationType::Freefall,
+        PlayerState::Freefalling => {
+            // rb.set_gravity_scale(1.0, true);
+
+            AnimationType::Idle 
+        },
         PlayerState::Block       => AnimationType::Block,
     };
 

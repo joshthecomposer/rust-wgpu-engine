@@ -45,6 +45,8 @@ pub struct EntityManager {
     pub healths: SparseSet<f32>,
     pub base_speeds: SparseSet<f32>,
     pub aggro_ranges: SparseSet<f32>,
+
+    pub prev_transforms: SparseSet<Transform>,
 }
 
 impl EntityManager {
@@ -89,6 +91,8 @@ impl EntityManager {
             healths: SparseSet::with_capacity(max_entities),
             base_speeds: SparseSet::with_capacity(max_entities),
             aggro_ranges: SparseSet::with_capacity(max_entities),
+
+            prev_transforms: SparseSet::with_capacity(max_entities),
         }
     }
 
@@ -321,6 +325,8 @@ impl EntityManager {
                 .enabled_rotations(false, false, false)
                 .build();
 
+            body.set_linear_damping(0.0);
+
             match entity_type {
                 EntityType::YRobot | EntityType::TrashGuy=> {
                     body.set_additional_mass(1.2, false);
@@ -333,13 +339,17 @@ impl EntityManager {
 
             let offset = 0.039;
 
-            let collider = ColliderBuilder::capsule_y(capsule_half_height, cyl.r)
+            let mut collider = ColliderBuilder::capsule_y(capsule_half_height, cyl.r)
             // let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
                 .active_collision_types(ActiveCollisionTypes::all())
                 // TODO: This is a hacky way to fix the fact that colliders are centered at half height
                 // by default. Likely there is a better way to fix this?
                 .translation(vector![0.0, (capsule_total_height * 0.5) + offset, 0.0]) 
                 .build();
+
+            collider.set_friction(2.0);
+            collider.set_friction_combine_rule(CoefficientCombineRule::Max);
+            collider.set_restitution(0.0);
 
             let collider_shape = ColliderShape::capsule_y(capsule_half_height, cyl.r);
 

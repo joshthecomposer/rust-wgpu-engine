@@ -372,6 +372,8 @@ impl GameState {
                 animator.set_next_animation(AnimationType::Idle);
             }
 
+
+
             //if self.input_state.just_pressed(glfw::Key::Space) {
             //    if animator.next_animation != AnimationType::Death {
             //        animator.set_next_animation(AnimationType::Jump);
@@ -398,13 +400,15 @@ impl GameState {
         }
 
         // UPDATE OOP-ESQUE STRUCTS
-        self.camera.update(&self.entity_manager, self.delta_time);
+        self.camera.update(&self.entity_manager, self.delta_time, &self.physics_state);
         self.sound_manager.update(&self.camera);
         self.light_manager.update(&self.delta_time);
 
         // UPDATE SYSTEMS
         state_machine_system::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state, &mut self.sound_manager, &self.camera);
-        self.physics_state.update(self.delta_time);
+        self.physics_state.update(self.delta_time, &mut self.entity_manager);
+
+
         movement_system::update(
             &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.input_state, &mut self.physics_state
         );
@@ -470,7 +474,7 @@ impl GameState {
         // ======================================
         // Actually draw stuff
         // ======================================
-        self.renderer.draw(&self.entity_manager, &mut self.camera, &self.light_manager, &mut self.grid, &mut self.sound_manager, self.fb_width, self.fb_height, self.elapsed, self.render_gizmos);
+        self.renderer.draw(&self.entity_manager, &mut self.camera, &self.light_manager, &mut self.grid, &mut self.sound_manager, self.fb_width, self.fb_height, self.elapsed, self.render_gizmos, &self.physics_state);
 
         self.particles.render(
             self.renderer.shaders.get_mut(&ShaderType::Particles).unwrap(),

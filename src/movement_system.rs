@@ -119,6 +119,7 @@ fn handle_player_movement_rapier(
     let smoothed = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
     rb.set_rotation(glam_to_nalgebra_quat(smoothed), true);
     rb.set_linvel(linvel, true);
+
 }
 
 fn handle_enemy_movement_rapier(

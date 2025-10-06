@@ -2,7 +2,7 @@
 use glam::{vec3, Mat4, Vec3};
 use glfw::{Action, Key, PWindow, WindowEvent};
 
-use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction, PlayerState}};
+use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction, PlayerState}, physics::PhysicsState, renderer};
 
 pub struct Camera {
     pub yaw: f64,
@@ -81,14 +81,16 @@ impl Camera {
         }
     }
 
-    pub fn update(&mut self, _em: &EntityManager, dt: f32) {
+    pub fn update(&mut self, _em: &EntityManager, dt: f32, ps: &PhysicsState) {
         match self.move_state {
             CameraState::Free => {
                 self.forward = self.direction.normalize();
             }
             CameraState::Third => {
                 if let Some(player_key) = _em.factions.iter().find(|e| e.value() == &Faction::Player) {
-                    let player_transform = _em.transforms.get(player_key.key()).unwrap();
+                    let alpha = ps.interp_alpha();
+                    let player_transform = renderer::render_transform(_em, player_key.key(), alpha);
+
                     let player_controller = _em.player_controllers.get(player_key.key()).unwrap();
 
                     self.desired_target = player_transform.position + vec3(0.0, 1.1, 0.0);
@@ -108,8 +110,10 @@ impl Camera {
                         self.target = self.desired_target;
                     } else {
                         let smoothing = 50.0 * dt; // higher value is faster lerp
-                        self.position = self.position.lerp(self.desired_position, smoothing);
-                        self.target = self.target.lerp(self.desired_target, smoothing);
+                        // self.position = self.position.lerp(self.desired_position, smoothing);
+                        self.position = self.desired_position;
+                        //self.target = self.target.lerp(self.desired_target, smoothing);
+                        self.target = self.desired_target;
                     }
 
                     self.forward = (self.target - self.position).normalize();
