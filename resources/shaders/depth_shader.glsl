@@ -1,5 +1,5 @@
 // VERTEX_SHADER
-#version 460 core
+#version 410 core
 layout (location = 0) in vec3 a_pos;
 layout (location = 4) in ivec4 bone_ids;
 layout (location = 5) in vec4 bone_weights;
@@ -36,7 +36,7 @@ void main()
 }
 
 // FRAGMENT_SHADER
-#version 460 core
+#version 410 core
 
 void main()
 {             

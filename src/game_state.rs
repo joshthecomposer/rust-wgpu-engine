@@ -60,7 +60,7 @@ impl GameState {
     pub fn new() -> Self {
         let mut glfw = glfw::init(glfw::fail_on_errors).expect("Failed to init glfw");
 
-        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 6)); // OpenGL 3.3
+        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 1)); // OpenGL 3.3
         glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
         glfw.window_hint(glfw::WindowHint::Resizable(true));
         #[cfg(target_os = "macos")]

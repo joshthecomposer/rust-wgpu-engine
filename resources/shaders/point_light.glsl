@@ -1,5 +1,5 @@
 // VERTEX_SHADER
-#version 460 core
+#version 410 core
 layout (location = 0) in vec3 aPos; // the position variable has attribute position 0
 
 uniform mat4 model;
@@ -20,7 +20,7 @@ void main()
 }
 
 // FRAGMENT_SHADER
-#version 460 core
+#version 410 core
 
 in vec3 light_color;
 out vec4 FragColor;
