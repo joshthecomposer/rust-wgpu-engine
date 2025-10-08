@@ -7,7 +7,7 @@ use glam::{Mat4, Quat, Vec3};
 use nalgebra::{Point3, UnitQuaternion};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-use rapier3d::{parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
+use rapier3d::{control::KinematicCharacterController, parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
 use crate::{animation::animation::{import_bone_data, import_model_data, Animation, Animator, Bone, Model}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, Faction, FrameActivation, HitboxType, Inventory, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::SparseSet};
 
@@ -315,7 +315,6 @@ impl EntityManager {
 
         // PILL
         if let Some(cyl) = cylinder {
-
             let cyl_pos = position;
             // === PHYSICS ===
             let iso: Isometry<f32> = (cyl_pos, rotation).into();
@@ -695,7 +694,6 @@ impl EntityManager {
             let rb = ps.rigid_body_set.get_mut(*rbh).unwrap();
 
             let t = self.transforms.get(*entity_id).unwrap();
-
              
             let iso = Isometry::from_parts(
                 Translation::from(vector![t.position.x, t.position.y, t.position.z]),
@@ -822,7 +820,6 @@ impl EntityManager {
     pub fn apply_parenting(&mut self) {
         // NOTE: This handles one-level parenting. If you have deep hierarchies,
         // sort by depth or recurse.
-        // Here, your cuboid is just one level under the weapon, so this is fine.
         let mut to_update: Vec<(usize, usize)> = Vec::new();
         for p in self.parents.iter() {
             to_update.push((p.key(), p.value().parent_id)); // (child, parent)

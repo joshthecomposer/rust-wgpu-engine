@@ -30,11 +30,6 @@ fn active_items_pass(em: &mut EntityManager) {
 
         let rh_weapon_id = a.value().right_hand.unwrap();
 
-        let rh_parent = em.parents.iter().find( |p|
-            p.value().parent_id == rh_weapon_id &&
-            (em.cuboids.get(p.key()).is_some())
-        ).unwrap();
-
         let maybe_bone_world_model_space = if blend_factor > 0.0 && current_key != next_key {
             // SAFELY get both entries with mutable refs (no HashMap::remove)
             let (a1, a2) = {

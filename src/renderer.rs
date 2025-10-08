@@ -44,11 +44,11 @@ impl Renderer {
         }
         let model_shader = Shader::new("resources/shaders/color_for_texture.glsl");
         model_shader.activate();
-        model_shader.set_int("material.Diffuse",  1);  // matches your binds below
+        model_shader.set_int("material.Diffuse",  1);
         model_shader.set_int("material.Specular", 2);
         model_shader.set_int("material.Emissive", 3);
-        model_shader.set_int("material.Opacity",  4);  // we'll bind opacity on unit 4
-        model_shader.set_int("shadow_map",        7);  // keep this well away from material slots
+        model_shader.set_int("material.Opacity",  4);
+        model_shader.set_int("shadow_map",        7);
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
         let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");
@@ -263,8 +263,9 @@ impl Renderer {
         elapsed: f32,
         render_gizmos: bool,
         ps: &PhysicsState,
+        alpha: f32,
     ) {
-        self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps);
+        self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha);
 
         if self.shadow_debug {
             return;
@@ -283,7 +284,7 @@ impl Renderer {
         // Gizmo pass
         if render_gizmos {
             let gizmo_ids = em.get_ids_for_faction(Faction::Gizmo);
-            self.gizmo_pass(camera, em, gizmo_ids, ps);
+            self.gizmo_pass(camera, em, gizmo_ids, ps, alpha);
         }
 
         // Non-animated models
@@ -297,28 +298,28 @@ impl Renderer {
         let cacti2 = em.get_ids_for_type(EntityType::Cactus2);
         let rocks = em.get_ids_for_type(EntityType::Rock1);
 
-        self.static_model_pass(camera, em, light_manager, foliage_ids, ps);
-        self.static_model_pass(camera, em, light_manager, trunk_ids, ps);
-        self.static_model_pass(camera, em, light_manager, stump_ids, ps);
-        self.static_model_pass(camera, em, light_manager, active_weapon_ids, ps);
-        self.static_model_pass(camera, em, light_manager, terrain_ids, ps);
-        self.static_model_pass(camera, em, light_manager, orphaned_weapons, ps);
-        self.static_model_pass(camera, em, light_manager, cacti, ps);
-        self.static_model_pass(camera, em, light_manager, cacti2, ps);
-        self.static_model_pass(camera, em, light_manager, rocks, ps);
+        self.static_model_pass(camera, em, light_manager, foliage_ids, ps, alpha);
+        self.static_model_pass(camera, em, light_manager, trunk_ids, ps, alpha);
+        self.static_model_pass(camera, em, light_manager, stump_ids, ps, alpha);
+        self.static_model_pass(camera, em, light_manager, active_weapon_ids, ps, alpha);
+        self.static_model_pass(camera, em, light_manager, terrain_ids, ps, alpha);
+        self.static_model_pass(camera, em, light_manager, orphaned_weapons, ps, alpha);
+        self.static_model_pass(camera, em, light_manager, cacti, ps, alpha);
+        self.static_model_pass(camera, em, light_manager, cacti2, ps, alpha);
+        self.static_model_pass(camera, em, light_manager, rocks, ps, alpha);
 
         // Animated models
         let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);
         let trash_guy_ids = em.get_ids_for_type(EntityType::TrashGuy);
         let moose_ids = em.get_ids_for_type(EntityType::MooseMan);
 
-        self.ani_model_pass(camera, em, light_manager, sound_manager, y_robot_ids, elapsed, ps);
-        self.ani_model_pass(camera, em, light_manager, sound_manager, trash_guy_ids, elapsed, ps);
-        self.ani_model_pass(camera, em, light_manager, sound_manager, moose_ids, elapsed, ps);
+        self.ani_model_pass(camera, em, light_manager, sound_manager, y_robot_ids, elapsed, ps, alpha);
+        self.ani_model_pass(camera, em, light_manager, sound_manager, trash_guy_ids, elapsed, ps, alpha);
+        self.ani_model_pass(camera, em, light_manager, sound_manager, moose_ids, elapsed, ps, alpha);
     }
 
 
-    fn gizmo_pass(&mut self, camera: &mut Camera, em: &EntityManager, ids: Vec<usize>, ps: &PhysicsState) {
+    fn gizmo_pass(&mut self, camera: &mut Camera, em: &EntityManager, ids: Vec<usize>, ps: &PhysicsState, alpha: f32) {
         unsafe {
             gl_call!(gl::PolygonMode( gl::FRONT_AND_BACK, gl::LINE ));
         }
@@ -327,7 +328,6 @@ impl Renderer {
         shader.activate();
         for id in ids {
             let model = em.models.get(id).unwrap();
-            let alpha = ps.interp_alpha();
             let trans = render_transform(em, id, alpha);
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
@@ -361,7 +361,7 @@ impl Renderer {
         id
     }
 
-    fn ani_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, sound_manager: &mut SoundManager, ids: Vec<usize>, elapsed: f32, ps: &PhysicsState) {
+    fn ani_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, sound_manager: &mut SoundManager, ids: Vec<usize>, elapsed: f32, ps: &PhysicsState, alpha: f32) {
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
         shader.activate();
 
@@ -392,7 +392,6 @@ impl Renderer {
             shader.set_bool("selection_fresnel", is_selected);
 
             let model = em.ani_models.get(id).unwrap();
-            let alpha = ps.interp_alpha();
             let trans = render_transform(em, id, alpha);
 
             let animator = em.animators.get(id).unwrap();
@@ -461,13 +460,6 @@ impl Renderer {
             shader.set_mat4_array("bone_transforms", &animation.current_pose);
             shader.set_vec3("view_position", camera.position);
             model.draw(shader);
-            unsafe {
-                //gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-                //gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-                //shader.set_int("shadow_map", 0);
-            }
-
-            model.draw(shader);
             shader.set_bool("selection_fresnel", false);
             shader.set_bool("flash_white", false);
         }
@@ -475,7 +467,7 @@ impl Renderer {
     }
 
 
-    fn static_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, ids: Vec<usize>, ps: &PhysicsState) {
+    fn static_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, ids: Vec<usize>, ps: &PhysicsState, alpha: f32) {
         unsafe {
             gl_call!(gl::Enable(gl::DEPTH_TEST));
             gl_call!(gl::DepthMask(gl::TRUE)); // Allow writing to depth buffer
@@ -502,7 +494,6 @@ impl Renderer {
             shader.set_bool("selection_fresnel", is_selected);
 
             let model = em.models.get(*id).unwrap();
-            let alpha = ps.interp_alpha();
             let trans = render_transform(em, *id, alpha);
             // let trans = em.transforms.get(*id).unwrap();
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
@@ -535,7 +526,6 @@ impl Renderer {
             shader.set_bool("selection_fresnel", is_selected);
 
             let model = em.models.get(id).unwrap();
-            let alpha = ps.interp_alpha();
             let trans = render_transform(em, id, alpha);
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
@@ -631,7 +621,7 @@ impl Renderer {
         }
     }
 
-    fn shadow_pass(&mut self, em: &EntityManager, camera: &mut Camera, light_manager: &Lights, fb_width: u32, fb_height: u32, ps: &PhysicsState) {
+    fn shadow_pass(&mut self, em: &EntityManager, camera: &mut Camera, light_manager: &Lights, fb_width: u32, fb_height: u32, ps: &PhysicsState, alpha: f32) {
         let shader = self.shaders.get_mut(&ShaderType::Depth).unwrap();
         let near_plane = light_manager.near;
         let far_plane = light_manager.far;
@@ -666,7 +656,7 @@ impl Renderer {
             gl_call!(gl::Enable(CULL_FACE));
             //gl_call!(gl::CullFace(gl::BACK));
             gl::CullFace(gl::FRONT);
-            self.render_sample_depth(em, ps);
+            self.render_sample_depth(em, ps, alpha);
             gl_call!(gl::CullFace(gl::BACK)); 
             gl_call!(gl::Disable(CULL_FACE));
             // End render
@@ -690,7 +680,7 @@ impl Renderer {
         }
     }
 
-    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState) {
+    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32) {
         // TODO: shadow mapping should just do passes similar to the render ones where we gather
         // ids we can liekly gather IDs once and then do it with both...
         let active_weapon_ids: HashSet<usize> = em.get_active_weapon_ids().into_iter().collect();
@@ -709,7 +699,6 @@ impl Renderer {
             if check == &Faction::Gizmo {
                 continue;
             }
-            let alpha = ps.interp_alpha();
             let trans = render_transform(em, model.key(), alpha);
 
             let model_model = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
@@ -734,7 +723,6 @@ impl Renderer {
             if let Some(animator) = em.animators.get(ani_model.key()) {
                 let animation = animator.get_current_animation().unwrap();
 
-                let alpha = ps.interp_alpha();
                 let trans = render_transform(em, ani_model.key(), alpha);
 
                 depth_shader.set_mat4_array("bone_transforms", &animation.current_pose);

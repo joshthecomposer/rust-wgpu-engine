@@ -15,6 +15,7 @@ use crate::{animation::animation_system, camera::Camera, combat_system, config::
 
 pub struct GameState {
     pub delta_time: f32,
+    pub alpha_time: f32,
     pub last_frame: f32,
     pub elapsed: f32,
     pub camera: Camera,
@@ -231,6 +232,7 @@ impl GameState {
 
         Self {
             delta_time: 0.0,
+            alpha_time: 0.0,
             last_frame: 0.0,
             elapsed: 0.0,
             camera: Camera::new(),
@@ -348,6 +350,7 @@ impl GameState {
             return;
         }
 
+
         // self.delta_time = self.delta_time * 0.25;
         
         // Fps calc
@@ -358,28 +361,6 @@ impl GameState {
         }
 
         self.particles.update(self.delta_time);
-
-        if let Some(player_entry) = self.entity_manager.factions.iter().find(|f| f.value() == &Faction::Player) {
-            let player_key = player_entry.key();
-
-            let animator = self.entity_manager.animators.get_mut(player_key).unwrap();
-
-            if self.input_state.keys_current.contains(&glfw::Key::P) {
-                // animator.set_next_animation(AnimationType::Death);
-            }
-
-            if self.input_state.keys_current.contains(&glfw::Key::O) {
-                animator.set_next_animation(AnimationType::Idle);
-            }
-
-
-
-            //if self.input_state.just_pressed(glfw::Key::Space) {
-            //    if animator.next_animation != AnimationType::Death {
-            //        animator.set_next_animation(AnimationType::Jump);
-            //    }
-            //}
-        }
 
         let desired_cursor_mode = if self.paused {
             // println!("Setting cursormode to normal at line 305");
@@ -400,13 +381,18 @@ impl GameState {
         }
 
         // UPDATE OOP-ESQUE STRUCTS
-        self.camera.update(&self.entity_manager, self.delta_time, &self.physics_state);
+
+        // UPDATE SYSTEMS
+        self.physics_state.update(self.delta_time, &mut self.entity_manager);
+        state_machine_system::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state, &mut self.sound_manager, &self.camera);
+
         self.sound_manager.update(&self.camera);
         self.light_manager.update(&self.delta_time);
 
-        // UPDATE SYSTEMS
-        state_machine_system::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state, &mut self.sound_manager, &self.camera);
-        self.physics_state.update(self.delta_time, &mut self.entity_manager);
+        self.alpha_time = self.physics_state.interp_alpha();
+        self.camera.update(&self.entity_manager, self.delta_time, &self.physics_state, self.alpha_time);
+
+
 
 
         movement_system::update(
@@ -474,7 +460,7 @@ impl GameState {
         // ======================================
         // Actually draw stuff
         // ======================================
-        self.renderer.draw(&self.entity_manager, &mut self.camera, &self.light_manager, &mut self.grid, &mut self.sound_manager, self.fb_width, self.fb_height, self.elapsed, self.render_gizmos, &self.physics_state);
+        self.renderer.draw(&self.entity_manager, &mut self.camera, &self.light_manager, &mut self.grid, &mut self.sound_manager, self.fb_width, self.fb_height, self.elapsed, self.render_gizmos, &self.physics_state, self.alpha_time);
 
         self.particles.render(
             self.renderer.shaders.get_mut(&ShaderType::Particles).unwrap(),

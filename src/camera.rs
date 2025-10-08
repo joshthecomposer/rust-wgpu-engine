@@ -81,15 +81,17 @@ impl Camera {
         }
     }
 
-    pub fn update(&mut self, _em: &EntityManager, dt: f32, ps: &PhysicsState) {
+    pub fn update(&mut self, _em: &EntityManager, dt: f32, ps: &PhysicsState, alpha: f32) {
         match self.move_state {
             CameraState::Free => {
                 self.forward = self.direction.normalize();
             }
             CameraState::Third => {
                 if let Some(player_key) = _em.factions.iter().find(|e| e.value() == &Faction::Player) {
-                    let alpha = ps.interp_alpha();
+                    // let alpha = ps.interp_alpha();
                     let player_transform = renderer::render_transform(_em, player_key.key(), alpha);
+
+                    //let player_transform = _em.transforms.get(player_key.key()).unwrap();
 
                     let player_controller = _em.player_controllers.get(player_key.key()).unwrap();
 
