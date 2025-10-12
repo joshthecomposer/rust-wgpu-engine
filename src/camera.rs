@@ -89,7 +89,8 @@ impl Camera {
             CameraState::Third => {
                 if let Some(player_key) = _em.factions.iter().find(|e| e.value() == &Faction::Player) {
 
-                    let player_transform = _em.transforms.get(player_key.key()).unwrap();
+                    //let player_transform = _em.transforms.get(player_key.key()).unwrap();
+                    let player_transform = renderer::Renderer::render_transform(_em, player_key.key(), alpha);
 
                     self.desired_target = player_transform.position + vec3(0.0, 1.1, 0.0);
 

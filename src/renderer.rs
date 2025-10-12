@@ -331,7 +331,7 @@ impl Renderer {
         shader.activate();
         for id in ids {
             let model = em.models.get(id).unwrap();
-            let trans = em.transforms.get(id).unwrap();
+            let trans = Self::render_transform(em, id, alpha);
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
             shader.set_mat4("model", m_mat);
@@ -395,7 +395,7 @@ impl Renderer {
             shader.set_bool("selection_fresnel", is_selected);
 
             let model = em.models.get(id).unwrap();
-            let trans = em.transforms.get(id).unwrap();
+            let trans = Self::render_transform(em, id, alpha);
 
             let animator = em.animators.get(id).unwrap();
             let animation = animator.get_current_animation().unwrap();
@@ -497,7 +497,7 @@ impl Renderer {
             shader.set_bool("selection_fresnel", is_selected);
 
             let model = em.models.get(*id).unwrap();
-            let trans = em.transforms.get(*id).unwrap();
+            let trans = Self::render_transform(em, *id, alpha);
             // let trans = em.transforms.get(*id).unwrap();
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
@@ -529,7 +529,7 @@ impl Renderer {
             shader.set_bool("selection_fresnel", is_selected);
 
             let model = em.models.get(id).unwrap();
-            let trans = em.transforms.get(id).unwrap();
+            let trans = Self::render_transform(em, id, alpha);
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
             shader.set_mat4("model", m_mat);
@@ -698,7 +698,8 @@ impl Renderer {
             if check == &Faction::Gizmo {
                 continue;
             }
-            let trans = em.transforms.get(model.key()).unwrap();
+            let trans = Self::render_transform(em, model.key(), alpha);
+            //let trans = em.transforms.get(model.key()).unwrap();
 
             let model_model = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
             unsafe {
@@ -722,7 +723,7 @@ impl Renderer {
             if let Some(animator) = em.animators.get(ani_model.key()) {
                 let animation = animator.get_current_animation().unwrap();
 
-                let trans = em.transforms.get(ani_model.key()).unwrap();
+                let trans = Self::render_transform(em, ani_model.key(), alpha);
 
                 depth_shader.set_mat4_array("bone_transforms", &animation.current_pose);
 
@@ -819,4 +820,13 @@ impl Renderer {
         }
     }
 
+    pub fn render_transform(em: &EntityManager, id: usize, alpha: f32) -> Transform {
+        let curr = em.transforms.get(id).unwrap();
+        let prev = em.prev_transforms.get(id).unwrap_or(curr);
+        Transform {
+            position: prev.position.lerp(curr.position, alpha),
+            rotation: prev.rotation.slerp(curr.rotation, alpha),
+            scale:    curr.scale,
+        }
+    }
 }
