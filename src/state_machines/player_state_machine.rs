@@ -1,5 +1,3 @@
-use glam::{vec3, Mat4, Vec3};
-use glfw::{Key, MouseButton};
 use rapier3d::prelude::{ContactPair, RigidBody};
 
 use crate::{animation::{animation::Animator, animation_system}, camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, AttackState, CameraState, EmitterName, EntityType, Faction, PlayerController, PlayerState, SoundType, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
@@ -34,9 +32,9 @@ pub fn player_state_machine(
     let anim = animator.get_current_animation().unwrap();
     let anim_type = &animator.current_animation;
 
-   let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
+   let dir = glam::vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
    let m = rb.mass();
-   let impulse = vec3(dir.x * (14.0 * m), 0.0, dir.z * (14.0 * m));
+   let impulse = glam::vec3(dir.x * (14.0 * m), 0.0, dir.z * (14.0 * m));
 
     let camera_is_detached = camera.move_state != CameraState::Third;
 
@@ -172,7 +170,7 @@ pub fn player_state_machine(
 
                 let dash_anim = animator.animations.get(&AnimationType::DashF).unwrap();
 
-                if input.wasd_is_down() && dash_anim.current_segment >= 12 {
+                if input.wasd_is_down() && dash_anim.current_segment.get() >= 12 {
                     player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
                     break 'ns
                 }
@@ -224,12 +222,12 @@ fn player_combat_state_machine(
     'ns: {
         match c.attack_state {
             AttackState::Attack1 => {
-                if a1.current_segment >= 12 && input.right_mouse_is_down() {
+                if a1.current_segment.get() >= 12 && input.right_mouse_is_down() {
                     player_non_combat_transition(c, PlayerState::Block, a, false, rb);
                     break 'ns
                 }
 
-                if a1.current_segment >= 12 && input.left_mouse_just_pressed() {
+                if a1.current_segment.get() >= 12 && input.left_mouse_just_pressed() {
                     player_combat_transition(c, AttackState::Attack2, a, false);
                     break 'ns
                 }
@@ -240,7 +238,7 @@ fn player_combat_state_machine(
                 }
             },
             AttackState::Attack2 => {
-                if a2.current_segment >= 12 && input.right_mouse_is_down() {
+                if a2.current_segment.get() >= 12 && input.right_mouse_is_down() {
                     player_non_combat_transition(c, PlayerState::Block, a, false, rb);
                     break 'ns
                 }
@@ -297,7 +295,7 @@ fn player_non_combat_transition(
         PlayerState::Running     => AnimationType::Run,
         PlayerState::Jumping     => {
             // rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
-            rb.apply_impulse((Vec3::Y * 3.0).into(), true);
+            rb.apply_impulse((glam::Vec3::Y * 3.0).into(), true);
 
             AnimationType::Jump
         },

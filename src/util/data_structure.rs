@@ -22,3 +22,15 @@ impl<K: Eq + Hash, V> HashMapGetPairMut<K, V> for HashMap<K, V> {
         }
     }
 }
+
+pub trait HashMapGetPair<K: Eq + std::hash::Hash, V> {
+    fn get_pair(&self, k1: &K, k2: &K) -> Option<(&V, &V)>;
+}
+
+impl<K: Eq + Hash, V> HashMapGetPair<K, V> for HashMap<K, V> {
+    fn get_pair(&self, k1: &K, k2: &K) -> Option<(&V, &V)> {
+        let v1 = self.get(k1)?;
+        let v2 = self.get(k2)?;
+        Some((v1, v2))
+    }
+}

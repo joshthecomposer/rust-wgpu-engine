@@ -418,7 +418,7 @@ impl Renderer {
             // TODO: OneShot and FrameActivation are almost the same thing. I could likely
             // destructure this and use FrameActivation for both.
             for os in animation.one_shots.iter() {
-                if animation.current_segment == os.segment {
+                if animation.current_segment.get() == os.segment {
                     if !os.triggered.get() {
                         sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position, id);
                         os.triggered.set(true);
@@ -429,7 +429,7 @@ impl Renderer {
             }
             
             if let Some(fa) = &animation.hurtbox_activation {
-                if fa.segment_range.contains(&animation.current_segment) { 
+                if fa.segment_range.contains(&animation.current_segment.get()) { 
                     if !fa.triggered.get() {
                         fa.triggered.set(true);
                     }

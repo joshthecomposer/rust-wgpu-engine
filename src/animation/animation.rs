@@ -289,7 +289,7 @@ impl Animator {
         self.animations
             .get(&self.current_animation)
             .or_else(|| self.animations.get(&AnimationType::Idle))
-            .or_else(|| self.animations.values().next())
+            //.or_else(|| self.animations.values().next())
     }
 
     pub fn set_current_animation(&mut self, input: AnimationType) {
@@ -347,7 +347,7 @@ pub struct Animation {
     pub bone_transforms: HashMap<String, BoneTransformTrack>,
     pub current_pose: Vec<Mat4>,
 
-    pub current_segment: u32,
+    pub current_segment: std::cell::Cell<u32>,
     pub one_shots: Vec<OneShot>,
     pub continuous_sounds: Vec<ContinuousSound>,
     pub hurtbox_activation: Option<FrameActivation>,
@@ -368,7 +368,7 @@ impl Animation {
             bone_transforms: HashMap::new(),
             current_pose: vec![],
 
-            current_segment: 0,
+            current_segment: std::cell::Cell::new(0),
             one_shots: vec![],
             continuous_sounds: vec![],
             hurtbox_activation: None,
@@ -450,7 +450,7 @@ impl Animation {
         }
     }
 
-    fn get_bone_local_transform(&mut self, skeleton: &Bone, delta: f32) -> (Vec3, Quat, Vec3) {
+    fn get_bone_local_transform(&self, skeleton: &Bone, delta: f32) -> (Vec3, Quat, Vec3) {
         let btt = match self.bone_transforms.get(&skeleton.name) {
             Some(name) => name,
             _=> {
@@ -461,7 +461,7 @@ impl Animation {
 
         let (segment, fraction) = get_time_fraction(&btt.position_timestamps, delta);
 
-        self.current_segment = segment;
+        self.current_segment.set(segment);
 
         if segment == 0 {
             // Use the first keyframe
@@ -498,7 +498,7 @@ impl Animation {
     }
 
     pub fn get_raw_global_bone_transform_by_name(
-        &mut self,
+        &self,
         bone_name: &str,
         skeleton: &Bone,
         parent_transform: Mat4,
@@ -524,11 +524,11 @@ impl Animation {
     }
 
     pub fn get_raw_global_bone_transform_by_name_blended(
-        &mut self,
+        &self,
         bone_name: &str,
         skeleton: &Bone,
         parent_transform: Mat4,
-        other_animation: &mut Animation,
+        other_animation: &Animation,
         blend_factor: f32,
     ) -> Option<Mat4> {
         let delta1 = self.current_time % self.duration;
@@ -574,7 +574,7 @@ impl Animation {
     pub fn update(&mut self, skellington: &mut Bone, other_animation: Option<&mut Animation>, blend_factor: f32, dt: f32) {
         
         if let Some(hold_frame) = self.hold_frame  {
-            if self.current_segment == hold_frame && self.do_hold{
+            if self.current_segment.get() == hold_frame && self.do_hold{
                 return;
             }
         }

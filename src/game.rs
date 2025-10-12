@@ -7,7 +7,7 @@ use crate::input::{self, InputState};
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
 use crate::ui::message_queue::MessageQueue;
-use crate::util::data_structure::HashMapGetPairMut;
+use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::{movement_system, state_machines};
 use crate::physics::PhysicsState;
 use crate::renderer::Renderer;
@@ -108,6 +108,7 @@ impl Game {
 
                 // post-physics pull RBs, handle events, snapshot current transforms
                 Self::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
+                Self::propagate_children(&mut self.world.ecs);
 
                 self.time.end_fixed_step();
             }
@@ -192,6 +193,71 @@ impl Game {
                     rotation: rot,
                     scale: glam::Vec3::splat(1.0), // or preserve a known scale (e.g., Vec3::ONE)
                 });
+            }
+        }
+    }
+
+    fn propagate_children(em: &mut EntityManager) {
+        let non_weapon_joins = em.get_non_weapon_gizmo_joins();
+
+        for (child_id, parent_id) in non_weapon_joins.iter() {
+            let (pt, ct) = em.transforms.get_pair_mut(*parent_id, *child_id).unwrap();
+
+            ct.rotation = pt.rotation;
+            ct.position = pt.position;
+        }
+
+        let active_weapon_ids = em.get_active_weapon_ids();
+
+        for id in active_weapon_ids.iter() {
+            let parent_id = em.owners.get(*id).unwrap();
+            let parent_animator = em.animators.get(*parent_id).unwrap();
+            let current_key = parent_animator.current_animation.clone();
+            let next_key = parent_animator.next_animation.clone();
+            let blend_factor = parent_animator.blend_factor;
+            let pt = em.transforms.get(*parent_id).unwrap();
+            let pmatrix = glam::Mat4::from_scale_rotation_translation(pt.scale, pt.rotation, pt.position);
+            let bone = em.skellingtons.get(*parent_id).unwrap();
+            let item_bone = em.item_bones.get(*parent_id).unwrap();
+            let rh_name = item_bone.rh_name.clone();
+
+            let maybe_bone_world_model_space = if blend_factor > 0.0 && current_key != next_key {
+                // SAFELY get both entries with mutable refs (no HashMap::remove)
+                let (a1, a2) = {
+                    match parent_animator.animations.get_pair(&current_key, &next_key) {
+                        Some((a1, a2)) => (a1, a2),
+                        None => {
+                            eprintln!("WARNING: both animations do not exist in animator.get_pair_mut {}, {}", &current_key, &next_key);
+                            return;
+                        },
+                    }
+                };
+
+                a1.get_raw_global_bone_transform_by_name_blended(
+                    &rh_name,
+                    bone,
+                    pmatrix,
+                    a2,
+                    blend_factor,
+                )
+            } else {
+                parent_animator.animations
+                    .get(&current_key)
+                    .unwrap()
+                    .get_raw_global_bone_transform_by_name(
+                        &rh_name,
+                        bone,
+                        pmatrix,
+                    )
+            };
+
+            if let Some(raw_bone_transform) = maybe_bone_world_model_space {
+                let (_, rot, pos) = raw_bone_transform.to_scale_rotation_translation();
+
+                let weapon_trans = em.transforms.get_mut(*id).unwrap();
+
+                weapon_trans.position = pos;
+                weapon_trans.rotation = rot;
             }
         }
     }
