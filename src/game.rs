@@ -123,6 +123,7 @@ impl Game {
     pub fn update(&mut self) {
         self.world.camera.update(&self.world.ecs, self.time.dt, &self.physics, self.time.alpha, &self.input);
         self.world.lights.update(&self.time.dt);
+        self.world.particles.update(self.time.dt);
     }
 
     pub fn render(&mut self) {
@@ -137,6 +138,11 @@ impl Game {
             true,
             &self.physics,
             self.time.alpha,
+        );
+
+        self.world.particles.render(
+            self.renderer.shaders.get_mut(&ShaderType::Particles).unwrap(),
+            &self.world.camera,
         );
 
         let (ui_shader, font_shader) = self.renderer.shaders.get_pair_mut(&ShaderType::GameUi, &ShaderType::Text).unwrap();
