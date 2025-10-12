@@ -183,6 +183,7 @@ impl EntityManager {
 
         self.factions.insert(self.next_entity_id, instance.faction.clone());
         self.entity_types.insert(self.next_entity_id, instance.entity_type.clone());
+        self.yaws.insert(parent_id, 0.0);
 
         if let Some(health) = instance.health {
             self.healths.insert(parent_id, health);
@@ -326,11 +327,16 @@ impl EntityManager {
         let cyl_pos = position;
         // === PHYSICS ===
         let iso: Isometry<f32> = (cyl_pos, rotation).into();
-        let body = RigidBodyBuilder::kinematic_position_based()
+        let body = RigidBodyBuilder::dynamic()
             .ccd_enabled(true)
             .position(iso)
-            .enabled_rotations(true, true, true)
+            .enabled_rotations(false, false, false)
             .build();
+        //let body = RigidBodyBuilder::kinematic_position_based()
+        //    .ccd_enabled(true)
+        //    .position(iso)
+        //    .enabled_rotations(true, true, true)
+        //    .build();
 
         let capsule_total_height = h;
         let capsule_half_height = (capsule_total_height - 2.0 * r) / 2.0;
