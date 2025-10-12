@@ -3,18 +3,18 @@ use std::collections::HashSet;
 use glam::{vec3, Quat, Vec3};
 use rapier3d::{control::{CharacterAutostep, CharacterLength, KinematicCharacterController}, prelude::{QueryFilter, QueryFilterFlags}};
 
-use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PlayerState, SimState, Transform, VisualEffect, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
+use crate::{camera::{CamMoveBasis, Camera}, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PlayerState, SimState, Transform, VisualEffect, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
 
 pub fn update(
     em: &mut EntityManager, 
     dt: f32, 
-    camera: &Camera, 
+    cam_basis: &CamMoveBasis, 
     input_state: &InputState, 
     ps: &mut PhysicsState
 ) {
     let player_keys = em.get_ids_for_faction(Faction::Player);
 
-    handle_player_movement_rapier(input_state, em, player_keys, dt, camera, ps);
+    handle_player_movement_rapier(input_state, em, player_keys, dt, cam_basis, ps);
 }
 
 fn handle_player_movement_rapier(
@@ -22,7 +22,7 @@ fn handle_player_movement_rapier(
     em: &mut EntityManager,
     player_keys: Vec<usize>,
     delta: f32,
-    camera: &Camera,
+    cam_basis: &CamMoveBasis,
     ps: &mut PhysicsState,
 ) {
     let player_key = *player_keys.first().unwrap();
@@ -65,8 +65,8 @@ fn handle_player_movement_rapier(
 
     let mut move_dir = vec3(0.0, 0.0, 0.0);
 
-    let forward_flat = vec3(camera.forward.x, 0.0, camera.forward.z).normalize_or_zero();
-    let right_flat = vec3(camera.right.x, 0.0, camera.right.z).normalize_or_zero();
+    let forward_flat = vec3(cam_basis.fwd_flat.x, 0.0, cam_basis.fwd_flat.z).normalize_or_zero();
+    let right_flat = vec3(cam_basis.right_flat.x, 0.0, cam_basis.right_flat.z).normalize_or_zero();
 
     if input_state.keys_current.contains(&glfw::Key::W) { move_dir += forward_flat; }
     if input_state.keys_current.contains(&glfw::Key::S) { move_dir -= forward_flat; }

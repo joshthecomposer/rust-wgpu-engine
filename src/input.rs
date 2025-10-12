@@ -107,7 +107,8 @@ pub fn handle_keyboard_input(key: glfw::Key, action: glfw::Action, input_state: 
 pub fn handle_mouse_motion() {
 }
 
-pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, cursor_pos: Vec2, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &mut InputState, physics: &PhysicsState) {
+pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &mut InputState, physics: &PhysicsState) {
+    let cursor_pos = input_state.mouse_pos_current;
     let pressed_keys = &input_state.keys_current;
     match action {
         glfw::Action::Press => { 

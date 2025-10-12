@@ -4,6 +4,8 @@ use glfw::{Action, Key, PWindow, WindowEvent};
 
 use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction, PlayerState}, input::InputState, physics::PhysicsState, renderer};
 
+pub struct CamMoveBasis { pub fwd_flat: glam::Vec3, pub right_flat: glam::Vec3 }
+
 pub struct Camera {
     pub yaw: f64,
     pub pitch: f64,
@@ -79,6 +81,20 @@ impl Camera {
             desired_position: vec3(0.0, 15.0, 0.0),
             desired_target: vec3(2.5, 0.0, 0.0),
         }
+    }
+
+    pub fn basis_for_sim(&self) -> CamMoveBasis {
+        // Yaw-only basis on the XZ plane (RH coordinates, camera looks -Z at yaw=0)
+        let yaw = self.yaw.to_radians() as f32;
+
+        // "Camera forward" on ground plane — points from camera toward its target.
+        // At yaw=0 => (0,0,-1). As you orbit, this rotates smoothly.
+        let f = glam::Vec3::new(yaw.sin(), 0.0, -yaw.cos()).normalize();
+
+        // Right = f × up (RH). If you prefer A/D to be swapped, flip the cross order.
+        let r = f.cross(glam::Vec3::Y).normalize();
+
+        CamMoveBasis { fwd_flat: f, right_flat: r }
     }
 
     pub fn update(&mut self, _em: &EntityManager, dt: f32, ps: &PhysicsState, alpha: f32, input: &InputState) {

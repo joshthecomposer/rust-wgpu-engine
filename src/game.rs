@@ -71,6 +71,17 @@ impl Game {
                         self.input.mouse_pos_current.x = xpos as f32;
                         self.input.mouse_pos_current.y = ypos as f32;
                     },
+                    glfw::WindowEvent::MouseButton(button, action, _) => {
+                        input::handle_mouse_input(
+                            button, 
+                            action,
+                            glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32),
+                            &self.world.camera,
+                            &mut self.world.ecs,
+                            &mut self.input,
+                            &self.physics,
+                        );
+                    }
                     glfw::WindowEvent::Key(key, _, action, _) => {
                         input::handle_keyboard_input(key, action, &mut self.input);
                     },
@@ -86,6 +97,8 @@ impl Game {
                     self.world.ecs.prev_transforms.insert(curr.key(), curr.value().clone());
                 }
 
+                let cam_basis = self.world.camera.basis_for_sim();
+
                 state_machine_system::update(
                     &mut self.world.ecs, 
                     self.time.fixed_dt, 
@@ -99,7 +112,7 @@ impl Game {
                 movement_system::update(
                     &mut self.world.ecs,
                     self.time.fixed_dt,
-                    &self.world.camera,
+                    &cam_basis,
                     &self.input,
                     &mut self.physics,
                 );
