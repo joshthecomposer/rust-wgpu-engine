@@ -264,9 +264,39 @@ impl Renderer {
         ps: &PhysicsState,
         alpha: f32,
     ) {
+        // Non-animated models
+        let foliage_ids = em.get_ids_for_type(EntityType::TreeFoliage);
+        let trunk_ids = em.get_ids_for_type(EntityType::TreeTrunk);
+        let stump_ids = em.get_ids_for_type(EntityType::Stump);
+        let terrain_ids = em.get_ids_for_type(EntityType::Terrain);
+        let orphaned_weapons = em.get_all_orphaned_weapon_ids();
+        let cacti = em.get_ids_for_type(EntityType::Cactus1);
+        let cacti2 = em.get_ids_for_type(EntityType::Cactus2);
+        let rocks = em.get_ids_for_type(EntityType::Rock1);
+
+        let active_weapons = em.get_equipped_weapon_ids();
+
+        // Animated models
+        let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);
+        let trash_guy_ids = em.get_ids_for_type(EntityType::TrashGuy);
+        let moose_ids = em.get_ids_for_type(EntityType::MooseMan);
+
+        let non_animated_ids = em.entity_types.iter()
+            .filter(|e| {
+                em.skellingtons.get(e.key()).is_none()
+            })
+            .map(|e| e.key())
+            .collect::<Vec<usize>>();
+
+        let animated_ids = em.entity_types.iter()
+            .filter(|e| {
+                em.skellingtons.get(e.key()).is_some()
+            })
+            .map(|e| e.key())
+            .collect::<Vec<usize>>();
 
 
-        self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha);
+        self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha, animated_ids, non_animated_ids);
 
         if self.shadow_debug {
             return;
@@ -289,17 +319,6 @@ impl Renderer {
         }
 
         // Non-animated models
-        let foliage_ids = em.get_ids_for_type(EntityType::TreeFoliage);
-        let trunk_ids = em.get_ids_for_type(EntityType::TreeTrunk);
-        let stump_ids = em.get_ids_for_type(EntityType::Stump);
-        let terrain_ids = em.get_ids_for_type(EntityType::Terrain);
-        let orphaned_weapons = em.get_all_orphaned_weapon_ids();
-        let cacti = em.get_ids_for_type(EntityType::Cactus1);
-        let cacti2 = em.get_ids_for_type(EntityType::Cactus2);
-        let rocks = em.get_ids_for_type(EntityType::Rock1);
-
-        let active_weapons = em.get_equipped_weapon_ids();
-
         self.static_model_pass(camera, em, light_manager, foliage_ids, ps, alpha);
         self.static_model_pass(camera, em, light_manager, trunk_ids, ps, alpha);
         self.static_model_pass(camera, em, light_manager, stump_ids, ps, alpha);
@@ -312,10 +331,6 @@ impl Renderer {
         self.static_model_pass(camera, em, light_manager, active_weapons, ps, alpha);
 
         // Animated models
-        let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);
-        let trash_guy_ids = em.get_ids_for_type(EntityType::TrashGuy);
-        let moose_ids = em.get_ids_for_type(EntityType::MooseMan);
-
         self.ani_model_pass(camera, em, light_manager, sound_manager, y_robot_ids, elapsed, ps, alpha);
         self.ani_model_pass(camera, em, light_manager, sound_manager, trash_guy_ids, elapsed, ps, alpha);
         self.ani_model_pass(camera, em, light_manager, sound_manager, moose_ids, elapsed, ps, alpha);
@@ -624,7 +639,7 @@ impl Renderer {
         }
     }
 
-    fn shadow_pass(&mut self, em: &EntityManager, camera: &mut Camera, light_manager: &Lights, fb_width: u32, fb_height: u32, ps: &PhysicsState, alpha: f32) {
+    fn shadow_pass(&mut self, em: &EntityManager, camera: &mut Camera, light_manager: &Lights, fb_width: u32, fb_height: u32, ps: &PhysicsState, alpha: f32, animated_ids: Vec<usize>, non_animated_ids: Vec<usize>) {
         let shader = self.shaders.get_mut(&ShaderType::Depth).unwrap();
         let near_plane = light_manager.near;
         let far_plane = light_manager.far;
@@ -659,7 +674,7 @@ impl Renderer {
             gl_call!(gl::Enable(CULL_FACE));
             //gl_call!(gl::CullFace(gl::BACK));
             gl::CullFace(gl::FRONT);
-            self.render_sample_depth(em, ps, alpha);
+            self.render_sample_depth(em, ps, alpha, animated_ids, non_animated_ids);
             gl_call!(gl::CullFace(gl::BACK)); 
             gl_call!(gl::Disable(CULL_FACE));
             // End render
@@ -683,13 +698,13 @@ impl Renderer {
         }
     }
 
-    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32) {
+    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32, animated_ids: Vec<usize>, non_animated_ids: Vec<usize>) {
         let depth_shader = self.shaders.get(&ShaderType::Depth).unwrap();
         depth_shader.activate();
 
         depth_shader.set_bool("is_animated", false);
-        for model in em.models.iter() {
-            let check = em.factions.get(model.key()).unwrap();
+        for id in non_animated_ids {
+            let check = em.factions.get(id).unwrap();
 
            //  if !active_weapon_ids.contains(&model.key()) && check == &Faction::Item {
            //      continue;
@@ -698,18 +713,19 @@ impl Renderer {
             if check == &Faction::Gizmo {
                 continue;
             }
-            let trans = Self::render_transform(em, model.key(), alpha);
+            let model = em.models.get(id).unwrap();
+            let trans = Self::render_transform(em, id, alpha);
             //let trans = em.transforms.get(model.key()).unwrap();
 
             let model_model = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
             unsafe {
-                gl::BindVertexArray(model.value.vao);
+                gl::BindVertexArray(model.vao);
             }
             depth_shader.set_mat4("model", model_model);
             unsafe {
                 gl_call!(gl::DrawElements(
                     gl::TRIANGLES, 
-                    model.value.indices.len() as i32, 
+                    model.indices.len() as i32, 
                     gl::UNSIGNED_INT, 
                     std::ptr::null(),
                 ));
@@ -717,26 +733,28 @@ impl Renderer {
                 gl_call!(gl::BindVertexArray(0));
             }
         }
+
         depth_shader.set_bool("is_animated", true);
 
-        for ani_model in em.models.iter() {
-            if let Some(animator) = em.animators.get(ani_model.key()) {
+        for id in animated_ids {
+            if let Some(animator) = em.animators.get(id) {
                 let animation = animator.get_current_animation().unwrap();
 
-                let trans = Self::render_transform(em, ani_model.key(), alpha);
+                let trans = Self::render_transform(em, id, alpha);
+                let model = em.models.get(id).unwrap();
 
                 depth_shader.set_mat4_array("bone_transforms", &animation.current_pose);
 
                 let mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
                 unsafe {
-                    gl::BindVertexArray(ani_model.value.vao);
+                    gl::BindVertexArray(model.vao);
                 }
                 depth_shader.set_mat4("model", mat);
 
                 unsafe {
                     gl_call!(gl::DrawElements(
                         gl::TRIANGLES, 
-                        ani_model.value.indices.len() as i32, 
+                        model.indices.len() as i32, 
                         gl::UNSIGNED_INT, 
                         std::ptr::null(),
                     ));
