@@ -19,7 +19,7 @@ mod sound;
 mod config;
 mod terrain;
 // mod deprecated;
-// mod state_machines;
+mod state_machines;
 mod particles;
 //mod items;
 mod physics;

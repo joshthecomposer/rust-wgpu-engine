@@ -23,7 +23,7 @@ pub fn player_state_machine(
     let health      = em.healths.get(player_id).unwrap();
     let ph          = em.physics_handles.get(player_id).unwrap();
     let rb          = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
-    let yaw         = em.yaws.get(player_id).unwrap();
+    //let yaw         = em.yaws.get(player_id).unwrap();
     let transform   = em.transforms.get(player_id).unwrap();
     let kb          = em.knockbacks.get_mut(player_id);
     
@@ -34,34 +34,34 @@ pub fn player_state_machine(
     let anim = animator.get_current_animation().unwrap();
     let anim_type = &animator.current_animation;
 
-    let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
-    let m = rb.mass();
-    let impulse = vec3(dir.x * (14.0 * m), 0.0, dir.z * (14.0 * m));
+   // let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
+   // let m = rb.mass();
+   // let impulse = vec3(dir.x * (14.0 * m), 0.0, dir.z * (14.0 * m));
 
     let camera_is_detached = camera.move_state != CameraState::Third;
 
     // CHECK GROUNDED
 
 
-    let grounded = {
-        if controller.state == PlayerState::Jumping || controller.state == PlayerState::Freefalling {
-            let ground_id = em.entity_types.iter().find(|e| *e.value() == EntityType::Terrain).unwrap().key();
-            let ground_ph = em.physics_handles.get(ground_id).unwrap();
+    // let grounded = {
+    //     if controller.state == PlayerState::Jumping || controller.state == PlayerState::Freefalling {
+    //         let ground_id = em.entity_types.iter().find(|e| *e.value() == EntityType::Terrain).unwrap().key();
+    //         let ground_ph = em.physics_handles.get(ground_id).unwrap();
 
-            let check = ps.narrow_phase.contact_pairs_with(ph.collider)
-                .find(|cp| {
-                    (
-                        (cp.collider1 == ph.collider && cp.collider2 == ground_ph.collider) ||
-                        (cp.collider2 == ph.collider && cp.collider1 == ground_ph.collider)
-                    )
-                    && cp.has_any_active_contact
-                }).is_some();
+    //         let check = ps.narrow_phase.contact_pairs_with(ph.collider)
+    //             .find(|cp| {
+    //                 (
+    //                     (cp.collider1 == ph.collider && cp.collider2 == ground_ph.collider) ||
+    //                     (cp.collider2 == ph.collider && cp.collider1 == ground_ph.collider)
+    //                 )
+    //                 && cp.has_any_active_contact
+    //             }).is_some();
 
-            Some(check)
-        } else {
-            None
-        }
-    };
+    //         Some(check)
+    //     } else {
+    //         None
+    //     }
+    // };
     
     // ==================================================================================
     // GUARDS
@@ -96,11 +96,11 @@ pub fn player_state_machine(
                     break 'ns
                 }
 
-                if input.space_just_pressed() && input.shift_is_down() {
-                    rb.apply_impulse(impulse.into(), true);
-                    player_non_combat_transition(controller, PlayerState::Dashing, animator, true, rb);
-                    break 'ns
-                }
+                //if input.space_just_pressed() && input.shift_is_down() {
+                //    rb.apply_impulse(impulse.into(), true);
+                //    player_non_combat_transition(controller, PlayerState::Dashing, animator, true, rb);
+                //    break 'ns
+                //}
 
                 if input.space_just_pressed() {
                     player_non_combat_transition(controller, PlayerState::Jumping, animator, false, rb);
@@ -120,11 +120,11 @@ pub fn player_state_machine(
             PlayerState::Running     => {
                 controller.time_in_state += dt;
 
-                if input.space_just_pressed() && input.shift_is_down() {
-                    rb.apply_impulse(impulse.into(), true);
-                    player_non_combat_transition(controller, PlayerState::Dashing, animator, true, rb);
-                    break 'ns
-                }
+                //if input.space_just_pressed() && input.shift_is_down() {
+                //    rb.apply_impulse(impulse.into(), true);
+                //    player_non_combat_transition(controller, PlayerState::Dashing, animator, true, rb);
+                //    break 'ns
+                //}
 
                 if input.space_just_pressed() {
                     player_non_combat_transition(controller, PlayerState::Jumping, animator, true, rb);
@@ -154,13 +154,13 @@ pub fn player_state_machine(
                     break 'ns
                 }
 
-                if let Some(grounded) = grounded { 
-                    if grounded && controller.time_in_state >= 0.15 { 
-                        println!("grounded");
-                        player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
-                        break 'ns
-                    }
-                }
+                //if let Some(grounded) = grounded { 
+                //    if grounded && controller.time_in_state >= 0.15 { 
+                //        println!("grounded");
+                //        player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
+                //        break 'ns
+                //    }
+                //}
             },
             PlayerState::Dashing     => {
                 controller.time_in_state += dt;
@@ -185,13 +185,13 @@ pub fn player_state_machine(
             PlayerState::Freefalling => {
                 controller.time_in_state += dt;
 
-                if let Some(grounded) = grounded { 
-                    if grounded { 
-                        rb.set_gravity_scale(1.0, true);
-                        player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
-                        break 'ns
-                    }
-                }
+                //if let Some(grounded) = grounded { 
+                //    if grounded { 
+                //        rb.set_gravity_scale(1.0, true);
+                //        player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
+                //        break 'ns
+                //    }
+                //}
             },
             PlayerState::Combat => {
                 controller.time_in_state += dt;

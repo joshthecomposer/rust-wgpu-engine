@@ -2,9 +2,13 @@ use glfw::Context;
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
 use crate::entity_manager::EntityManager;
-use crate::enums_types::{PhysicsHandle, Transform};
+use crate::enums_types::{PhysicsHandle, ShaderType, Transform};
 use crate::input::{self, InputState};
-use crate::movement_system;
+use crate::state_machines::state_machine_system;
+use crate::ui::game_ui::{do_ui, GameUiContext};
+use crate::ui::message_queue::MessageQueue;
+use crate::util::data_structure::HashMapGetPairMut;
+use crate::{movement_system, state_machines};
 use crate::physics::PhysicsState;
 use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
@@ -21,7 +25,7 @@ pub struct Game {
     renderer: Renderer,
     sound: SoundManager,
     input: InputState,
-    // ui: SpagUi,
+    ui: GameUiContext,
     // imgui: SpagImgui,
 }
 
@@ -40,6 +44,8 @@ impl Game {
 
         let sound = SoundManager::new(&config);
 
+        let ui = GameUiContext::new();
+
         Self {
             platform,
             time,
@@ -48,6 +54,7 @@ impl Game {
             renderer,
             sound,
             input: InputState::new(),
+            ui,
         }
     }
     
@@ -59,8 +66,10 @@ impl Game {
 
             for (_, e) in glfw::flush_messages(&self.platform.events) {
                 match e {
-                    glfw::WindowEvent::CursorPos(_, _) => {
+                    glfw::WindowEvent::CursorPos(xpos, ypos) => {
                         self.world.camera.process_mouse_input(&self.platform.window, &e);
+                        self.input.mouse_pos_current.x = xpos as f32;
+                        self.input.mouse_pos_current.y = ypos as f32;
                     },
                     glfw::WindowEvent::Key(key, _, action, _) => {
                         input::handle_keyboard_input(key, action, &mut self.input);
@@ -77,7 +86,15 @@ impl Game {
                     self.world.ecs.prev_transforms.insert(curr.key(), curr.value().clone());
                 }
 
-                // pre-physics: animation, parenting_prekinematic, push kinematics to physics
+                state_machine_system::update(
+                    &mut self.world.ecs, 
+                    self.time.fixed_dt, 
+                    &mut self.world.particles,
+                    &self.input, 
+                    &mut self.physics, 
+                    &mut self.sound, 
+                    &self.world.camera
+                );
                 animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
                 movement_system::update(
                     &mut self.world.ecs,
@@ -119,6 +136,22 @@ impl Game {
             true,
             &self.physics,
             self.time.alpha,
+        );
+
+        let (ui_shader, font_shader) = self.renderer.shaders.get_pair_mut(&ShaderType::GameUi, &ShaderType::Text).unwrap();
+        do_ui(
+            self.platform.fb_width as f32, 
+            self.platform.fb_height as f32, 
+            self.input.mouse_pos_current, 
+            ui_shader,
+            font_shader,
+            &mut MessageQueue::new(), 
+            false, 
+            self.platform.window.get_cursor_mode(), 
+            &self.world.camera.move_state, 
+            &self.input.keys_current, 
+            &mut self.ui, 
+            &mut false //render_gizmos
         );
         self.platform.window.swap_buffers();
         self.platform.glfw.poll_events();

@@ -1,9 +1,10 @@
-use crate::{camera::Camera, entity_manager::EntityManager, lights::Lights};
+use crate::{camera::Camera, entity_manager::EntityManager, lights::Lights, particles::ParticleSystem};
 
 pub struct World {
     pub ecs: EntityManager,
     pub camera: Camera,
     pub lights: Lights,
+    pub particles: ParticleSystem,
 }
 
 impl World {
@@ -11,11 +12,13 @@ impl World {
         let ecs = EntityManager::new(10_000);
         let camera = Camera::new();
         let lights = Lights::new(50);
+        let particles = ParticleSystem::new("config/particle_emitters.toml");
 
         Self {
             ecs,
             camera,
             lights,
+            particles,
         }
     }
 }

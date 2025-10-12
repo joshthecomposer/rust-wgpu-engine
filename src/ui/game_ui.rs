@@ -33,10 +33,16 @@ pub struct GameUiContext {
     pub vbo: u32,
     pub quad_vertices: Vec<f32>,
     pub tex_cache: TextureCache,
+
+    pub font_manager: FontManager,
 }
 
 impl GameUiContext {
     pub fn new() -> Self {
+        let mut font_manager = FontManager::new();
+        font_manager.load_chars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:,.!?()[]{}<> ");
+        font_manager.setup_buffers();
+
         let mut vao = 0;
         let mut vbo = 0;
 
@@ -67,6 +73,7 @@ impl GameUiContext {
             vbo,
             quad_vertices: vec![0.0; 54],
             tex_cache: TextureCache::new(),
+            font_manager,
         }
     }
 }
@@ -82,7 +89,7 @@ pub struct Rect {
     pub texture_id: Option<u32>,
 }
 
-pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, fm: &mut FontManager, shader: &Shader, font_shader: &Shader, mq: &mut MessageQueue, paused: bool, cm: CursorMode, cs: &CameraState, pk: &HashSet<glfw::Key>, ui_ctx: &mut GameUiContext, render_gizmos: &mut bool) {
+pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, font_shader: &Shader, mq: &mut MessageQueue, paused: bool, cm: CursorMode, cs: &CameraState, pk: &HashSet<glfw::Key>, ui_ctx: &mut GameUiContext, render_gizmos: &mut bool) {
     let mut rects = vec![];
     // =============================================================
     // PAUSE PANEL
@@ -252,13 +259,13 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, fm: &mut FontManage
     // =============================================================
     // DRAW ALL BOXES AT THE END
     // =============================================================
-    draw_rects(rects, shader, fb_width, fb_height, fm, font_shader, ui_ctx);
+    draw_rects(rects, shader, fb_width, fb_height, font_shader, ui_ctx);
 }
 
 // =============================================================
 // Rendering
 // =============================================================
-fn draw_rects(rects: Vec<Rect>, shader: &Shader, fb_width: f32, fb_height: f32, fm: &mut FontManager, font_shader: &Shader, ui_ctx: &mut GameUiContext) {
+fn draw_rects(rects: Vec<Rect>, shader: &Shader, fb_width: f32, fb_height: f32, font_shader: &Shader, ui_ctx: &mut GameUiContext) {
     unsafe {
         gl_call!(gl::Enable(gl::BLEND));
         gl_call!(gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
@@ -319,9 +326,9 @@ fn draw_rects(rects: Vec<Rect>, shader: &Shader, fb_width: f32, fb_height: f32, 
                     rect.h * 0.4
                 };
 
-                let scale = target_font_height / fm.font_pixel_size;
+                let scale = target_font_height / ui_ctx.font_manager.font_pixel_size;
 
-                fm.render_phrase_centered(&rect.text, rect, fb_width, fb_height, font_shader, scale);
+                ui_ctx.font_manager.render_phrase_centered(&rect.text, rect, fb_width, fb_height, font_shader, scale);
 
             }
         }

@@ -170,8 +170,23 @@ impl EntityManager {
         let rotation = instance.rotation;
         let scale    = archetype.scale_correction;
 
+        match instance.faction {
+            Faction::Player => {
+                self.player_controllers.insert(parent_id, PlayerController {
+                    state: PlayerState::Init,
+                    attack_state: AttackState::Attack1,
+                    time_in_state: 0.0,
+                });
+            },
+            _=> ()
+        }
+
         self.factions.insert(self.next_entity_id, instance.faction.clone());
         self.entity_types.insert(self.next_entity_id, instance.entity_type.clone());
+
+        if let Some(health) = instance.health {
+            self.healths.insert(parent_id, health);
+        }
 
         let transform = Transform {
             position,

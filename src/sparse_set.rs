@@ -85,6 +85,28 @@ impl<T> SparseSet<T> {
             None
         }
     }
+    
+    // get two mutable references to two distinct values. Safe guard against the same value
+    pub fn get_pair_mut(&mut self, key1: usize, key2: usize) -> Option<(&mut T, &mut T)> {
+        if key1 == key2 {
+            // I wanna panic here because I want to know if this happens and where.
+            panic!("Can't access mutable references to the same key twice");
+        }
+
+        let idx1 = self.dense_idx(key1)?;
+        let idx2 = self.dense_idx(key2)?;
+
+        // SAFETY:
+        //  - idx1 and idx2 are distinct (we returned above if equal)
+        //  - both indexes are in-bounds
+        //  - we take disjoint mutable borrows via raw pointers
+        unsafe {
+            let ptr = self.dense.as_mut_ptr();
+            let val1 = &mut (*ptr.add(idx1)).value;
+            let val2 = &mut (*ptr.add(idx2)).value;
+            Some((val1, val2))
+        }
+    }
 
     // check if the given key is contained in the set in O(1).
     pub fn contains(&self, key: usize) -> bool {

@@ -13,6 +13,8 @@ pub struct InputState {
 
     pub mouse_current: HashSet<glfw::MouseButton>,  // Held this frame
     pub mouse_previous: HashSet<glfw::MouseButton>, // held last frame
+
+    pub mouse_pos_current: Vec2,
 }
 
 impl InputState {
@@ -23,6 +25,8 @@ impl InputState {
 
             mouse_current: HashSet::new(),
             mouse_previous: HashSet::new(),
+
+            mouse_pos_current: Vec2::splat(0.0),
         }
     }
 

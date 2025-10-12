@@ -1,7 +1,7 @@
 [[entities]]
 entity_type = "TrashGuy"
 faction = "Player"
-position = [-39.0062, 100.3441, -119.7894]
+position = [-39.0062, 2.3441, -119.7894]
 rotation = [0.0, -0.9239, 0.0, 0.3827]
 weapons = ["DoubleAxe", "OrcSword"]
 base_speed = 7.0
