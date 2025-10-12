@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs::read_to_string};
 use glam::{Quat, Vec3};
 use serde::Deserialize;
 
-use crate::{debug::gizmos::Cylinder, enums_types::{AnimationType, EntityType, Faction, HitboxType, SoundType}};
+use crate::{debug::gizmos::Cylinder, enums_types::{AnimationType, EntityType, Faction, HitboxShape, SoundType}};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct ItemBones {
@@ -36,6 +36,7 @@ pub struct AnimationPropHelper {
     pub one_shots: HashMap<SoundType, Vec<u32>>,
     pub continuous_sounds: Vec<SoundType>,
     pub hurtbox_activation: Vec<u32>,
+    #[serde(default)]
     pub hold_frame: Option<u32>,
 }
 
@@ -44,11 +45,11 @@ pub struct EntityTypeHelper {
     pub rot_correction: Quat,
     pub scale_correction: Vec3,
     pub mesh_path: String,
-    pub bone_path: String,
-    pub hit_cyl: Option<Cylinder>,
-    pub animation_properties: Vec<AnimationPropHelper>,
-    pub flip_180: bool,
+    #[serde(default)]
+    pub bone_path: Option<String>,
+    #[serde(default)]
+    pub animation_properties: Option<Vec<AnimationPropHelper>>,
     pub item_bones: ItemBones,
     pub aggro_range: f32,
-    pub hitbox_type: HitboxType,
+    pub hitbox: HitboxShape,
 }

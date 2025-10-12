@@ -132,9 +132,9 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, cursor_pos:
                     solid,
                     InteractionGroups::all().into(),
                 ) {
-                    if let Some(&entity_id) = em.collider_to_entity.get(&handle) {
-                        em.selected.push(entity_id);
-                    }
+                    // if let Some(&entity_id) = em.collider_to_entity.get(&handle) {
+                    //     em.selected.push(entity_id);
+                    // }
                 }
 
                 

@@ -1,0 +1,165 @@
+use glfw::Context;
+use crate::animation::animation_system;
+use crate::config::game_config::GameConfig;
+use crate::entity_manager::EntityManager;
+use crate::enums_types::{PhysicsHandle, Transform};
+use crate::input::{self, InputState};
+use crate::movement_system;
+use crate::physics::PhysicsState;
+use crate::renderer::Renderer;
+use crate::sound::sound_manager::SoundManager;
+use crate::time::Time;
+use crate::platform::Platform;
+use crate::world::World;
+
+
+pub struct Game {
+    platform: Platform, // OS/window/events
+    time: Time, // delta time, alpha time, elapsed time
+    physics: PhysicsState,
+    world: World, // ECS, terrain, particles, sim
+    renderer: Renderer,
+    sound: SoundManager,
+    input: InputState,
+    // ui: SpagUi,
+    // imgui: SpagImgui,
+}
+
+impl Game {
+    pub fn new() -> Self {
+        let config = GameConfig::load_from_file("config/game_config.json");
+
+        let platform = Platform::new("Spaghetti engine", 1920, 1080, true);
+        let time = Time::new(60.0, platform.glfw.get_time() as f32);
+        let mut physics = PhysicsState::new();
+        let mut world = World::new();
+
+        world.ecs.populate_entity_data(&mut physics);
+
+        let renderer = Renderer::new();
+
+        let sound = SoundManager::new(&config);
+
+        Self {
+            platform,
+            time,
+            physics,
+            world,
+            renderer,
+            sound,
+            input: InputState::new(),
+        }
+    }
+    
+    pub fn run(&mut self) {
+        while !self.platform.window.should_close() {
+            self.time.begin_frame(self.platform.glfw.get_time() as f32);
+
+            self.input.update();
+
+            for (_, e) in glfw::flush_messages(&self.platform.events) {
+                match e {
+                    glfw::WindowEvent::CursorPos(_, _) => {
+                        self.world.camera.process_mouse_input(&self.platform.window, &e);
+                    },
+                    glfw::WindowEvent::Key(key, _, action, _) => {
+                        input::handle_keyboard_input(key, action, &mut self.input);
+                    },
+                    _ => (),
+                }
+            }
+
+
+            while self.time.should_step() {
+                self.time.begin_fixed_step();
+
+                for curr in self.world.ecs.transforms.iter() {
+                    self.world.ecs.prev_transforms.insert(curr.key(), curr.value().clone());
+                }
+
+                // pre-physics: animation, parenting_prekinematic, push kinematics to physics
+                animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
+                movement_system::update(
+                    &mut self.world.ecs,
+                    self.time.fixed_dt,
+                    &self.world.camera,
+                    &self.input,
+                    &mut self.physics,
+                );
+
+                self.physics.step();
+
+                // post-physics pull RBs, handle events, snapshot current transforms
+                Self::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
+
+                self.time.end_fixed_step();
+            }
+
+            self.time.end_frame();
+
+            self.update(); // Variable rate systems
+            self.render(); // render uses time.alpha and interps
+        }
+    }
+
+    pub fn update(&mut self) {
+        self.world.camera.update(&self.world.ecs, self.time.dt, &self.physics, self.time.alpha, &self.input);
+        self.world.lights.update(&self.time.dt);
+    }
+
+    pub fn render(&mut self) {
+        self.renderer.draw(
+            &self.world.ecs, 
+            &mut self.world.camera, 
+            &self.world.lights, 
+            &mut self.sound,
+            self.platform.fb_width,
+            self.platform.fb_height,
+            self.time.elapsed,
+            true,
+            &self.physics,
+            self.time.alpha,
+        );
+        self.platform.window.swap_buffers();
+        self.platform.glfw.poll_events();
+    }
+
+    // PRIVATE //
+
+    fn sync_transforms_from_physics(em: &mut EntityManager, ps: &PhysicsState) {
+        // Collect first to avoid holding borrows to sets while mutating em.transforms
+        let mut updates: Vec<(usize, glam::Vec3, glam::Quat)> = Vec::with_capacity(em.physics_handles.len());
+
+        for ph in em.physics_handles.iter() {
+            let id = ph.key();
+            let PhysicsHandle { rigid_body, .. } = *ph.value();
+
+            if let Some(rb) = ps.rigid_body_set.get(rigid_body) {
+                let iso = rb.position(); // Isometry<f32>
+                let pos = glam::Vec3::from_slice(iso.translation.vector.as_slice());
+                // nalgebra stores a UnitQuaternion; take .coords (x,y,z,w)
+                let rot = {
+                    let c = iso.rotation.coords;
+                    glam::Quat::from_xyzw(c.x, c.y, c.z, c.w)
+                };
+                updates.push((id, pos, rot));
+            }
+        }
+
+        // Apply to ECS transforms
+        for (id, pos, rot) in updates {
+            if let Some(t) = em.transforms.get_mut(id) {
+                t.position = pos;
+                t.rotation = rot;
+                // keep existing t.scale as-is
+            } else {
+                // If some physics-driven entity somehow lacked a Transform, create one
+                em.transforms.insert(id, Transform {
+                    position: pos,
+                    rotation: rot,
+                    scale: glam::Vec3::splat(1.0), // or preserve a known scale (e.g., Vec3::ONE)
+                });
+            }
+        }
+    }
+}

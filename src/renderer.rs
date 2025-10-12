@@ -256,7 +256,6 @@ impl Renderer {
         em: &EntityManager, 
         camera: &mut Camera,
         light_manager: &Lights,
-        grid: &mut Grid,
         sound_manager: &mut SoundManager,
         fb_width: u32,
         fb_height: u32,
@@ -265,6 +264,8 @@ impl Renderer {
         ps: &PhysicsState,
         alpha: f32,
     ) {
+
+
         self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha);
 
         if self.shadow_debug {
@@ -291,22 +292,24 @@ impl Renderer {
         let foliage_ids = em.get_ids_for_type(EntityType::TreeFoliage);
         let trunk_ids = em.get_ids_for_type(EntityType::TreeTrunk);
         let stump_ids = em.get_ids_for_type(EntityType::Stump);
-        let active_weapon_ids = em.get_active_weapon_ids();
         let terrain_ids = em.get_ids_for_type(EntityType::Terrain);
         let orphaned_weapons = em.get_all_orphaned_weapon_ids();
         let cacti = em.get_ids_for_type(EntityType::Cactus1);
         let cacti2 = em.get_ids_for_type(EntityType::Cactus2);
         let rocks = em.get_ids_for_type(EntityType::Rock1);
 
+        let active_weapons = em.get_equipped_weapon_ids();
+
         self.static_model_pass(camera, em, light_manager, foliage_ids, ps, alpha);
         self.static_model_pass(camera, em, light_manager, trunk_ids, ps, alpha);
         self.static_model_pass(camera, em, light_manager, stump_ids, ps, alpha);
-        self.static_model_pass(camera, em, light_manager, active_weapon_ids, ps, alpha);
         self.static_model_pass(camera, em, light_manager, terrain_ids, ps, alpha);
         self.static_model_pass(camera, em, light_manager, orphaned_weapons, ps, alpha);
         self.static_model_pass(camera, em, light_manager, cacti, ps, alpha);
         self.static_model_pass(camera, em, light_manager, cacti2, ps, alpha);
         self.static_model_pass(camera, em, light_manager, rocks, ps, alpha);
+
+        self.static_model_pass(camera, em, light_manager, active_weapons, ps, alpha);
 
         // Animated models
         let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);
@@ -328,7 +331,7 @@ impl Renderer {
         shader.activate();
         for id in ids {
             let model = em.models.get(id).unwrap();
-            let trans = render_transform(em, id, alpha);
+            let trans = em.transforms.get(id).unwrap();
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
             shader.set_mat4("model", m_mat);
@@ -391,8 +394,8 @@ impl Renderer {
             let is_selected = em.selected.contains(&id);
             shader.set_bool("selection_fresnel", is_selected);
 
-            let model = em.ani_models.get(id).unwrap();
-            let trans = render_transform(em, id, alpha);
+            let model = em.models.get(id).unwrap();
+            let trans = em.transforms.get(id).unwrap();
 
             let animator = em.animators.get(id).unwrap();
             let animation = animator.get_current_animation().unwrap();
@@ -494,7 +497,7 @@ impl Renderer {
             shader.set_bool("selection_fresnel", is_selected);
 
             let model = em.models.get(*id).unwrap();
-            let trans = render_transform(em, *id, alpha);
+            let trans = em.transforms.get(*id).unwrap();
             // let trans = em.transforms.get(*id).unwrap();
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
@@ -526,7 +529,7 @@ impl Renderer {
             shader.set_bool("selection_fresnel", is_selected);
 
             let model = em.models.get(id).unwrap();
-            let trans = render_transform(em, id, alpha);
+            let trans = em.transforms.get(id).unwrap();
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
             shader.set_mat4("model", m_mat);
@@ -681,10 +684,6 @@ impl Renderer {
     }
 
     fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32) {
-        // TODO: shadow mapping should just do passes similar to the render ones where we gather
-        // ids we can liekly gather IDs once and then do it with both...
-        let active_weapon_ids: HashSet<usize> = em.get_active_weapon_ids().into_iter().collect();
-
         let depth_shader = self.shaders.get(&ShaderType::Depth).unwrap();
         depth_shader.activate();
 
@@ -692,14 +691,14 @@ impl Renderer {
         for model in em.models.iter() {
             let check = em.factions.get(model.key()).unwrap();
 
-            if !active_weapon_ids.contains(&model.key()) && check == &Faction::Item {
-                continue;
-            }
+           //  if !active_weapon_ids.contains(&model.key()) && check == &Faction::Item {
+           //      continue;
+           //  }
             // TODO:: Get rid of this. see above...
             if check == &Faction::Gizmo {
                 continue;
             }
-            let trans = render_transform(em, model.key(), alpha);
+            let trans = em.transforms.get(model.key()).unwrap();
 
             let model_model = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
             unsafe {
@@ -719,11 +718,11 @@ impl Renderer {
         }
         depth_shader.set_bool("is_animated", true);
 
-        for ani_model in em.ani_models.iter() {
+        for ani_model in em.models.iter() {
             if let Some(animator) = em.animators.get(ani_model.key()) {
                 let animation = animator.get_current_animation().unwrap();
 
-                let trans = render_transform(em, ani_model.key(), alpha);
+                let trans = em.transforms.get(ani_model.key()).unwrap();
 
                 depth_shader.set_mat4_array("bone_transforms", &animation.current_pose);
 
@@ -820,15 +819,4 @@ impl Renderer {
         }
     }
 
-}
-
-pub fn render_transform(em: &EntityManager, id: usize, alpha: f32) -> Transform {
-    let curr = em.transforms.get(id).unwrap();
-    let prev = em.prev_transforms.get(id).unwrap_or(curr);
-    Transform {
-        position: prev.position.lerp(curr.position, alpha),
-        rotation: prev.rotation.slerp(curr.rotation, alpha),
-        scale:    prev.scale.lerp(curr.scale, alpha), // if you animate scale
-        original_rotation: curr.original_rotation,     // doesn’t need interp
-    }
 }

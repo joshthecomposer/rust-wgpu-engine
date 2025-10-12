@@ -1,7 +1,7 @@
 [[entities]]
 entity_type = "TrashGuy"
 faction = "Player"
-position = [-39.0062, -5.3441, -119.7894]
+position = [-39.0062, 100.3441, -119.7894]
 rotation = [0.0, -0.9239, 0.0, 0.3827]
 weapons = ["DoubleAxe", "OrcSword"]
 base_speed = 7.0
@@ -44,7 +44,6 @@ entity_type = "MooseMan"
 faction = "Enemy"
 position = [-79.3714, -5.5401, -117.8407]
 rotation = [0.0, 0.0, 0.0, 1.0]
-weapons = []
 health = 100_000.0
 
 [[entities]]
@@ -52,24 +51,18 @@ entity_type = "Cactus1"
 faction = "Static"
 position = [-100.3714, -5.72, -117.8407]
 rotation = [0.0, 0.0, 0.0, 1.0]
-weapons = []
-health = 100.0
 
 [[entities]]
 entity_type = "Cactus2"
 faction = "Static"
 position = [-90.3714, -5.72, -127.8407]
 rotation = [0.0, 0.0, 0.0, 1.0]
-weapons = []
-health = 100.0
 
 [[entities]]
 entity_type = "Rock1"
 faction = "Static"
 position = [-110.3714, -5.4, -100.8407]
 rotation = [0.0, 0.0, 0.0, 1.0]
-weapons = []
-health = 100.0
 # 
 # [[entities]]
 # entity_type = "TreeFoliage"

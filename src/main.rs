@@ -1,6 +1,6 @@
 mod shaders;
 mod camera;
-mod game_state;
+// mod game_state;
 mod some_data;
 mod macros;
 mod enums_types;
@@ -19,25 +19,25 @@ mod sound;
 mod config;
 mod terrain;
 // mod deprecated;
-mod state_machines;
+// mod state_machines;
 mod particles;
-mod items;
+//mod items;
 mod physics;
 mod util;
-mod combat_system;
+// mod combat_system;
+mod game;
+mod time;
+mod platform;
 
+mod world;
 use std::{fs::{self, OpenOptions}, path::Path};
 
-use game_state::GameState;
+use game::Game;
+
 use glam::Quat;
 use std::io::Write;
 
 fn main() {
-    let mut state = GameState::new();
-    while !state.window.should_close() {
-        state.process_events();
-        state.update();
-        state.render();
-    }
-
+    let mut game = Game::new();
+    game.run();
 }

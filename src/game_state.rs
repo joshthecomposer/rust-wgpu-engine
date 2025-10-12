@@ -1,17 +1,9 @@
-#![allow(dead_code)]
-use std::collections::{HashSet, VecDeque};
-
-use gl::{AttachShader, PixelStoref};
-use glam::{vec2, vec3, Quat, Vec2, Vec3};
-use glfw::{Context, Glfw, GlfwReceiver, Key, PWindow, WindowEvent};
-use image::GrayImage;
-use nalgebra::{Point, Point3};
+use glam::{Quat, Vec2, Vec3};
+use glfw::{Context, Glfw, GlfwReceiver, PWindow, WindowEvent};
+use nalgebra::Point3;
 use rapier3d::{math::Isometry, prelude::{ColliderBuilder, RigidBodyBuilder}};
-use rusttype::{point, Font, Scale};
 
-use crate::{animation::animation_system, camera::Camera, combat_system, config::{emitter_data::EmitterData, entity_config::{self, EntityConfig}, game_config::GameConfig, world_data::WorldData}, debug::{gizmos::Cylinder, write::write_data}, entity_manager::{self, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PhysicsHandle, ShaderType, SimState, SimStateController, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input, InputState}, items, lights::{DirLight, Lights}, movement_system, particles::{Emitter, ParticleSystem}, physics::PhysicsState, renderer::Renderer, sound::{fmod::FMOD_Studio_System_Update, sound_manager::SoundManager}, state_machines::{self, state_machine_system}, terrain::Terrain, ui::{font::{self, FontManager}, game_ui::{self, GameUiContext}, imgui::ImguiManager, message_queue::{MessageQueue, UiMessage}}};
-// use rand::prelude::*;
-// use rand_chacha::ChaCha8Rng;
+use crate::{animation::animation_system, camera::Camera, config::game_config::GameConfig, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, PhysicsHandle, ShaderType, Transform}, gl_call, grid::Grid, input::{handle_keyboard_input, handle_mouse_input, InputState}, lights::{DirLight, Lights}, movement_system, particles::ParticleSystem, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, terrain::Terrain, ui::{font::FontManager, game_ui::{self, GameUiContext}, message_queue::{MessageQueue, UiMessage}}};
 
 pub struct GameState {
     pub delta_time: f32,
@@ -31,7 +23,7 @@ pub struct GameState {
 
     pub entity_manager: EntityManager,
     pub light_manager: Lights,
-    pub imgui_manager: ImguiManager,
+    // pub imgui_manager: ImguiManager,
 
 
     pub paused: bool,
@@ -44,7 +36,6 @@ pub struct GameState {
 
     pub sound_manager: SoundManager,
 
-    pub terrain: Terrain,
     pub cursor_pos: Vec2,
     pub font_manager: FontManager,
     pub fps: u32,
@@ -139,17 +130,13 @@ impl GameState {
 
         let sound_manager = SoundManager::new(&game_config);
 
-        let mut entity_config = EntityConfig::load_from_file("config/entity_config.json");
-        let mut world_data = WorldData::load_from_file("config/world_data.toml");
         let mut physics_state = PhysicsState::new();
         // physics_state.integration_parameters.dt = 1.0 / 120.0;
         let mut entity_manager = EntityManager::new(10_000);
-        entity_manager.populate_initial_entity_data(&mut entity_config, &mut world_data, &mut physics_state);
+        entity_manager.populate_entity_data(&mut physics_state);
 
         let mut grid = Grid::new(game_config.grid_width, game_config.grid_height, game_config.cell_size);
         grid.generate();
-
-        let imgui_manager = ImguiManager::new(&mut window);
 
         //TERRAIN
         // let mut terrain = Terrain::from_height_map("resources/textures/perlin.png");
@@ -161,11 +148,9 @@ impl GameState {
             position: Vec3::splat(0.0),
             rotation: Quat::IDENTITY,
             scale: Vec3::splat(1.0),
-            original_rotation: Quat::IDENTITY,
         };
 
         entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone(), );
-
         entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
         entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
 
@@ -174,7 +159,6 @@ impl GameState {
             position: Vec3::new(0.0, -0.5, 0.0),
             rotation: Quat::IDENTITY,
             scale: Vec3::splat(1.0),
-            original_rotation: Quat::IDENTITY,
         };
 
         entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
@@ -247,7 +231,6 @@ impl GameState {
 
             entity_manager,
             light_manager,
-            imgui_manager,
 
             paused: false,
             was_paused: false,
@@ -258,7 +241,6 @@ impl GameState {
             input_state: InputState::new(),
             sound_manager,
 
-            terrain,
             cursor_pos: Vec2::new(0.0, 0.0),
             font_manager,
             fps: 0,
@@ -280,7 +262,6 @@ impl GameState {
         let events: Vec<(f64, glfw::WindowEvent)> = glfw::flush_messages(&self.events).collect();
 
         for (_, event) in events {
-            self.imgui_manager.handle_imgui_event(&event);
             match event {
                 glfw::WindowEvent::FramebufferSize(w, h) => {
                     self.window_width = w as u32;
@@ -309,21 +290,6 @@ impl GameState {
                                 self.message_queue.send(UiMessage::PauseToggle);
                             }
                         },
-                        glfw::Key::Num1 => {
-                            if action == glfw::Action::Press {
-                                let player_id = self.entity_manager.factions.iter().filter(|f| *f.value() == Faction::Player).last().unwrap().key();
-                                let active_weapon = self.entity_manager.active_items.get_mut(player_id).unwrap();
-                                let curr_weapon_id = active_weapon.right_hand.unwrap();
-
-                                let inventory = self.entity_manager.inventories.get_mut(player_id).unwrap();
-
-                                let next_weapon_id = inventory.items.pop();
-
-                                active_weapon.right_hand = next_weapon_id;
-
-                                inventory.items.push(curr_weapon_id);
-                            }
-                        },
                         _ => {}
                     }
                     handle_keyboard_input(key, action, &mut self.input_state);
@@ -350,18 +316,6 @@ impl GameState {
             return;
         }
 
-
-        // self.delta_time = self.delta_time * 0.25;
-        
-        // Fps calc
-        let fps_now = (1.0 / self.delta_time.max(0.0001)) as u32;
-        if self.elapsed - self.last_fps_update >= 0.5 {
-            self.fps = fps_now;
-            self.last_fps_update = self.elapsed;
-        }
-
-        self.particles.update(self.delta_time);
-
         let desired_cursor_mode = if self.paused {
             // println!("Setting cursormode to normal at line 305");
             glfw::CursorMode::Normal
@@ -380,37 +334,20 @@ impl GameState {
             return;
         }
 
-        // UPDATE OOP-ESQUE STRUCTS
-
         // UPDATE SYSTEMS
         self.physics_state.update(self.delta_time, &mut self.entity_manager);
-        state_machine_system::update(&mut self.entity_manager, self.delta_time, &mut self.particles, &self.input_state, &mut self.physics_state, &mut self.sound_manager, &self.camera);
-
+        self.particles.update(self.delta_time);
+        self.camera.update(&self.entity_manager, self.delta_time, &self.physics_state, self.alpha_time);
+        movement_system::update(
+            &mut self.entity_manager, self.delta_time, &self.camera, &self.input_state, &mut self.physics_state
+        );
         self.sound_manager.update(&self.camera);
         self.light_manager.update(&self.delta_time);
 
-        self.alpha_time = self.physics_state.interp_alpha();
-        self.camera.update(&self.entity_manager, self.delta_time, &self.physics_state, self.alpha_time);
-
-
-
-
-        movement_system::update(
-            &mut self.entity_manager, &self.terrain, self.delta_time, &self.camera, &self.input_state, &mut self.physics_state
-        );
         animation_system::update(&mut self.entity_manager, self.delta_time);
         self.entity_manager.update(&mut self.sound_manager, &mut self.physics_state);
-        items::update(&mut self.entity_manager, &mut self.physics_state);
 
-        self.input_state.update();// likely this shoudl always be last because it just checks if we
-        // are holding a key
-        if let Some(player_entry) = self.entity_manager.factions.iter().find(|f| f.value() == &Faction::Player) {
-            let player_key = player_entry.key();
-            let trans = self.entity_manager.transforms.get_mut(player_key).unwrap();
-            // dbg!(trans.position);
-        }
-
-        combat_system::update(&mut self.entity_manager, self.delta_time, &mut self.physics_state);
+        self.input_state.update();
     }
 
     pub fn render(&mut self) {
@@ -467,8 +404,6 @@ impl GameState {
             &self.camera,
         );
         
-        self.imgui_manager.draw(&mut self.window, self.fb_width as f32, self.fb_height as f32, self.delta_time, &mut self.light_manager, &mut self.renderer, &mut self.sound_manager, &self.camera, &mut self.entity_manager);
-
 
         // let phrase = format!("FPS: {}", self.fps);
 

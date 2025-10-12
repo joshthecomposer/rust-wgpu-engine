@@ -65,9 +65,12 @@ pub struct EntityInstance {
     pub faction: Faction,
     pub position: Vec3,
     pub rotation: Quat,
-    pub weapons: Vec<EntityType>,
+    #[serde(default)]
+    pub weapons: Option<Vec<EntityType>>,
+    #[serde(default)]
     pub base_speed: Option<f32>,
-    pub health: f32, // TODO: Make this optional
+    #[serde(default)]
+    pub health: Option<f32>, // TODO: Make this optional
 }
 
 fn snap(v: f64, precision: u32) -> f64 {

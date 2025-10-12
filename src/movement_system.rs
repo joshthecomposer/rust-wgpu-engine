@@ -1,260 +1,108 @@
 use std::collections::HashSet;
 
 use glam::{vec3, Quat, Vec3};
+use rapier3d::{control::{CharacterAutostep, CharacterLength, KinematicCharacterController}, prelude::{QueryFilter, QueryFilterFlags}};
 
 use crate::{camera::Camera, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PlayerState, SimState, Transform, VisualEffect, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
 
 pub fn update(
     em: &mut EntityManager, 
-    terrain: &Terrain, 
     dt: f32, 
     camera: &Camera, 
     input_state: &InputState, 
     ps: &mut PhysicsState
 ) {
     let player_keys = em.get_ids_for_faction(Faction::Player);
-    let enemy_keys = em.get_ids_for_faction(Faction::Enemy);
-    let static_keys = em.get_ids_for_faction(Faction::Static);
-    let gizmo_keys = em.get_ids_for_faction(Faction::Gizmo);
 
-    handle_player_movement_rapier(input_state, em, player_keys, dt, camera, terrain, ps);
-    handle_enemy_movement_rapier(enemy_keys, em, terrain, dt, ps,);
-    // handle_static_movement(static_keys, em, terrain);
-    handle_gizmo_movement(gizmo_keys, em, dt);
+    handle_player_movement_rapier(input_state, em, player_keys, dt, camera, ps);
 }
 
 fn handle_player_movement_rapier(
     input_state: &InputState,
     em: &mut EntityManager,
     player_keys: Vec<usize>,
-    delta: f32,
+    dt: f32,
     camera: &Camera,
-    terrain: &Terrain,
     ps: &mut PhysicsState,
 ) {
     let player_key = *player_keys.first().unwrap();
-    let animator = em.animators.get_mut(player_key).unwrap();
-    let player_state = em.player_controllers.get(player_key).unwrap();
-    let speed = em.base_speeds.get(player_key).unwrap();
 
-    let kb = em.knockbacks.get_mut(player_key);
+    let mut kcc = KinematicCharacterController::default();
+    kcc.offset = CharacterLength::Absolute(0.01);
+    kcc.slide = true;
+    kcc.autostep = None;
 
-    let kb_active = em.knockbacks.get_mut(player_key).map_or(false, |kb| {
-        kb.ttl -= delta;
-        kb.ttl > 0.0
-    });
+    let speed = 20.0;
+    
+    let ph = em.physics_handles.get(player_key).unwrap();
 
-    if kb_active { return; } else { em.knockbacks.remove(player_key); }
+    let forward_flat = glam::vec3(camera.forward.x, 0.0, camera.forward.z).normalize();
+    let right_flat = glam::vec3(camera.right.x, 0.0, camera.right.z).normalize();
 
-    if player_state.state == PlayerState::Dashing  { return; }
-
-    if animator.next_animation == AnimationType::Death {
-        return;
-    }
-
-    if player_state.state == PlayerState::Combat {
-        return;
-    }
-
-    em.v_effects.remove(player_key);
-
-    let physics_handle = em.physics_handles.get(player_key).unwrap();
-    let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
-
-    if matches!(player_state.state, PlayerState::Jumping | PlayerState::Freefalling) && rb.linvel().y.abs() > ANIMATION_EPSILON {
-        let transform = em.transforms.get_mut(player_key).unwrap();
-        let iso = rb.position();
-        transform.position = Vec3::from_slice(iso.translation.vector.as_slice());
-        transform.rotation = Quat::from_array(iso.rotation.coords.as_slice().try_into().unwrap());
-        return;
-    }
-
-    let mut move_dir = vec3(0.0, 0.0, 0.0);
-
-    let forward_flat = vec3(camera.forward.x, 0.0, camera.forward.z).normalize_or_zero();
-    let right_flat = vec3(camera.right.x, 0.0, camera.right.z).normalize_or_zero();
+    let mut move_dir = glam::Vec3::ZERO;
 
     if input_state.keys_current.contains(&glfw::Key::W) { move_dir += forward_flat; }
     if input_state.keys_current.contains(&glfw::Key::S) { move_dir -= forward_flat; }
-    if input_state.keys_current.contains(&glfw::Key::D) { move_dir += right_flat; }
-    if input_state.keys_current.contains(&glfw::Key::A) { move_dir -= right_flat; }
+    if input_state.keys_current.contains(&glfw::Key::D) { move_dir += right_flat;   }
+    if input_state.keys_current.contains(&glfw::Key::A) { move_dir -= right_flat;   }
 
-    let transform = em.transforms.get_mut(player_key).unwrap();
-    let rotator = em.rotators.get_mut(player_key).unwrap();
+    if move_dir.length_squared() > 0.0 { move_dir = move_dir.normalize(); }
 
-    let mut linvel = *rb.linvel();
+    let mut desired = move_dir * speed * dt;
+    desired.y += -GRAVITY * dt;
 
+    let (body_iso, shape, local_iso) = {
+        let rb  = ps.rigid_body_set.get(ph.rigid_body).unwrap();
+        let col = ps.collider_set.get(ph.collider).unwrap();
 
-    if move_dir.length_squared() > 0.0 {
-        let move_dir = move_dir.normalize();
-        linvel.x = move_dir.x * speed;
-        linvel.z = move_dir.z * speed;
-
-        let yaw = f32::atan2(move_dir.x, move_dir.z);
-        em.yaws.insert(player_key, yaw);
-
-        let desired_rot = Quat::from_rotation_y(yaw); // * transform.original_rotation;
-
-        if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {
-            rotator.next_rot = desired_rot;
-        }
-
-        // AnimationType::Run
-    } else {
-        linvel.x = 0.0;
-        linvel.z = 0.0;
-        // AnimationType::Idle
+        (*rb.position(), col.shape(), col.position_wrt_parent().unwrap())
     };
 
-    // animator.next_animation = new_state;
+    let shape_iso = body_iso * local_iso;
 
-    if rotator.next_rot != rotator.cur_rot {
-        rotator.blend_factor += delta / rotator.blend_time;
-        if rotator.blend_factor >= 1.0 {
-            rotator.blend_factor = 0.0;
-            rotator.cur_rot = rotator.next_rot;
-        }
+
+    let filter = QueryFilter {
+        flags: QueryFilterFlags::EXCLUDE_SENSORS,
+        groups: None,
+        exclude_collider: Some(ph.collider),
+        exclude_rigid_body: Some(ph.rigid_body),
+        predicate: None,
+    };
+
+
+    let output = kcc.move_shape(
+        dt.into(),
+        &ps.rigid_body_set,
+        &ps.collider_set,
+        ps.query_pipeline.as_ref().unwrap(),
+        shape,
+        &shape_iso,
+        desired.into(),
+        filter,
+        |_| {},
+    );
+
+    {
+        let rb_mut = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
+        let mut iso = *rb_mut.position();
+        iso.translation.vector += output.translation;
+        rb_mut.set_next_kinematic_position(iso);
+
     }
 
-    let smoothed = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
-    rb.set_rotation(glam_to_nalgebra_quat(smoothed), true);
-    rb.set_linvel(linvel, true);
+    let hitbox_entity = em.collider_to_parent.get(&ph.collider).unwrap();
 
-}
+    let rb_cur = ps.rigid_body_set.get(ph.rigid_body).unwrap();
+    let iso = rb_cur.position();
 
-fn handle_enemy_movement_rapier(
-    ids: Vec<usize>,
-    em: &mut EntityManager,
-    terrain: &Terrain,
-    dt: f32,
-    ps: &mut PhysicsState,
-) {
-    for id in ids {
+    let t = em.transforms.get_mut(player_key).unwrap();
 
-        let kb_active = em.knockbacks.get_mut(id).map_or(false, |kb| {
-            kb.ttl -= dt;
-            kb.ttl > 0.0
-        });
+    t.position = glam::Vec3::from_slice(iso.translation.vector.as_slice());
+    t.rotation = glam::Quat::from_array(iso.rotation.coords.as_slice().try_into().unwrap());
 
-        if kb_active { continue; } else { em.knockbacks.remove(id); }
+    let t = t.clone();
 
-        let Some(dest) = em.destinations.get(id) else { continue };
-
-        let (
-            Some(rotator),
-            Some(physics_handle),
-            Some(animator),
-            Some(ent_type),
-            Some(sim_controller),
-        ) = (
-            em.rotators.get_mut(id),
-            em.physics_handles.get(id),
-            em.animators.get_mut(id),
-            em.entity_types.get(id),
-            em.simstate_controllers.get(id),
-        ) else { continue };
-
-        let speed = match em.base_speeds.get(id) {
-            Some(speed) => *speed,
-            None => 1.5,
-        };
-
-
-        // TODO: Why god
-        if animator.next_animation == AnimationType::Death
-            || sim_controller.state == SimState::Dying 
-            || sim_controller.state == SimState::Dead { continue };
-
-        if animator.next_animation == AnimationType::Flinch { continue };
-
-        if sim_controller.state == SimState::Combat { continue };
-
-        em.v_effects.remove(id);
-
-        if *ent_type == EntityType::MooseMan { continue };
-
-        let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
-        let position = Vec3::from_slice(rb.translation().as_slice());
-        let direction = *dest - position;
-        let distance = direction.length();
-
-        if distance > 0.05 {
-            let move_dir = direction.normalize();
-            let velocity = move_dir * speed;
-
-            // Set velocity
-            let mut linvel = *rb.linvel();
-            linvel.x = velocity.x;
-            linvel.z = velocity.z;
-            rb.set_linvel(linvel, true);
-
-            // Set rotation
-            let angle = f32::atan2(move_dir.x, move_dir.z);
-            em.yaws.insert(id, angle);
-
-            let desired_rot = Quat::from_rotation_y(angle);
-
-            if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {
-                rotator.next_rot = desired_rot;
-            }
-
-            if rotator.next_rot != rotator.cur_rot {
-                rotator.blend_factor += dt / rotator.blend_time;
-                if rotator.blend_factor >= 1.0 {
-                    rotator.blend_factor = 0.0;
-                    rotator.cur_rot = rotator.next_rot;
-                }
-            }
-
-            let blended = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
-            rb.set_rotation(glam_to_nalgebra_quat(blended), true);
-
-        } else {
-            // Stop
-            let mut linvel = *rb.linvel();
-            linvel.x = 0.0;
-            linvel.z = 0.0;
-            rb.set_linvel(linvel, true);
-        }
-
-        // Sync Transform for rendering
-        if let Some(transform) = em.transforms.get_mut(id) {
-            let iso = rb.position();
-            transform.position = Vec3::from_slice(iso.translation.vector.as_slice());
-            transform.rotation = Quat::from_array(iso.rotation.coords.as_slice().try_into().unwrap());
-        }
-    }
-}
-
-fn handle_gizmo_movement(ids: Vec<usize>, em: &mut EntityManager, dt: f32) {
-    let mut transforms_to_update:Vec<(usize, usize)> = vec![];
-    for id in ids {
-        if let Some(parent) = em.parents.get(id) {
-            transforms_to_update.push((id, parent.parent_id))
-        }
-    }
-
-    for (child_id, parent_id) in transforms_to_update {
-        let parent_transform = match em.transforms.get(parent_id) {
-            Some(pt) => pt,
-            None => return,
-        }.clone();
-
-        let child_transform = match em.transforms.get(child_id) {
-            Some(ct) => ct,
-            None => return,
-        }.clone();
-
-        // Some magic to make sure the cylinder is rotated properly despite the parent being originally offset in some way
-        let adjusted_rotation = parent_transform.rotation
-        * parent_transform.original_rotation.inverse()
-        * child_transform.original_rotation.inverse();
-
-        em.transforms.insert(child_id, Transform {
-            position: parent_transform.position,
-            rotation: adjusted_rotation,
-            scale: child_transform.scale,
-            original_rotation: child_transform.original_rotation,
-        });
-    }
+    let hbt = em.transforms.get_mut(*hitbox_entity).unwrap();
+    hbt.position = t.position;
+    hbt.rotation = t.rotation;
 }

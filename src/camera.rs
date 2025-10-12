@@ -2,7 +2,7 @@
 use glam::{vec3, Mat4, Vec3};
 use glfw::{Action, Key, PWindow, WindowEvent};
 
-use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction, PlayerState}, physics::PhysicsState, renderer};
+use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction, PlayerState}, input::InputState, physics::PhysicsState, renderer};
 
 pub struct Camera {
     pub yaw: f64,
@@ -81,19 +81,15 @@ impl Camera {
         }
     }
 
-    pub fn update(&mut self, _em: &EntityManager, dt: f32, ps: &PhysicsState, alpha: f32) {
+    pub fn update(&mut self, _em: &EntityManager, dt: f32, ps: &PhysicsState, alpha: f32, input: &InputState) {
         match self.move_state {
             CameraState::Free => {
                 self.forward = self.direction.normalize();
             }
             CameraState::Third => {
                 if let Some(player_key) = _em.factions.iter().find(|e| e.value() == &Faction::Player) {
-                    // let alpha = ps.interp_alpha();
-                    let player_transform = renderer::render_transform(_em, player_key.key(), alpha);
 
-                    //let player_transform = _em.transforms.get(player_key.key()).unwrap();
-
-                    let player_controller = _em.player_controllers.get(player_key.key()).unwrap();
+                    let player_transform = _em.transforms.get(player_key.key()).unwrap();
 
                     self.desired_target = player_transform.position + vec3(0.0, 1.1, 0.0);
 
@@ -105,33 +101,12 @@ impl Camera {
                     let z = self.distance_from_target * yaw_rad.sin() * pitch_rad.cos();
 
                     self.desired_position = self.desired_target + vec3(x, y, z);
-                    
-                    if player_controller.state == PlayerState::Freefalling && 
-                        player_controller.time_in_state >= 0.5 {
-                        self.position = self.desired_position;
-                        self.target = self.desired_target;
-                    } else {
-                        let smoothing = 50.0 * dt; // higher value is faster lerp
-                        // self.position = self.position.lerp(self.desired_position, smoothing);
-                        self.position = self.desired_position;
-                        //self.target = self.target.lerp(self.desired_target, smoothing);
-                        self.target = self.desired_target;
-                    }
+
+                    self.position = self.desired_position;
+                    self.target = self.desired_target;
 
                     self.forward = (self.target - self.position).normalize();
                 }
-
-
-                
-                // Interpolate camera
-                // TODO: Because the player is falling at a constant speed, I think the camera
-                // will always drift behind when the player falls very large distances. 
-                // Maybe there should be some check to determine that the player is in freefall
-                // and we turn off the smoothing or something... hmm. Or maybe depending on the 
-                // game idea, we just freeze the camera and watch the character fall away
-    
-                // uncomment this to not interpolate camera.
-
             }
             CameraState::Locked => {
                 self.target = self.locked_target;
@@ -142,6 +117,8 @@ impl Camera {
 
         self.right = self.forward.cross(vec3(0.0, 1.0, 0.0)).normalize();
         self.up = self.right.cross(self.forward).normalize();
+
+        self.process_key_event(dt, input);
     }
 
     pub fn get_view_matrix(&mut self) {
@@ -257,10 +234,8 @@ impl Camera {
         }
     }
 
-    pub fn process_key_event(&mut self, window: &PWindow, delta: f32) {
-        let f_pressed = window.get_key(Key::F) == Action::Press;
-
-        if f_pressed && !self.last_f_state {
+    pub fn process_key_event(&mut self, delta: f32, input: &InputState) {
+        if input.just_pressed(Key::F) {
             match self.move_state {
                 CameraState::Free => {
                     self.move_state = CameraState::Third;
@@ -273,33 +248,30 @@ impl Camera {
                 }
 
             }
-
         }
 
-        self.last_f_state = f_pressed;
-
         if self.move_state == CameraState::Free {
-            if window.get_key(Key::W) == Action::Press {
+            if input.is_down(Key::W) {
                 self.position += (self.movement_speed * self.forward) * delta;
             }
-            if window.get_key(Key::S) == Action::Press {
+            if input.is_down(Key::S) {
                 self.position -= (self.movement_speed * self.forward) * delta;
             }
-            if window.get_key(Key::A) == Action::Press {
+            if input.is_down(Key::A) {
                 self.position += ((self.up.cross(self.forward).normalize()) * self.movement_speed) * delta;
             }
-            if window.get_key(Key::D) == Action::Press {
+            if input.is_down(Key::D) {
                 self.position -= ((self.up.cross(self.forward).normalize()) * self.movement_speed) * delta;
             }
         }
 
-        if window.get_key(Key::U) == Action::Press {
+        if input.is_down(Key::U) {
             self.fovy = 5.0_f32.to_radians();
         } else {
             self.fovy = 45.0_f32.to_radians();
         }
         
-        if window.get_key(Key::L) == Action::Press {
+        if input.just_pressed(Key::L){
             self.locked_target = self.target;
             self.locked_position  = self.position;
         }

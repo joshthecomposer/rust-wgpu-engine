@@ -63,8 +63,6 @@ pub struct Transform {
     pub position: Vec3,
     pub rotation: Quat,
     pub scale: Vec3,
-
-    pub original_rotation: Quat,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Hash, Eq, Serialize)]
@@ -416,26 +414,20 @@ impl Display for EmitterName {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]
-pub enum HitboxType {
-    Cylinder,
-    Pill,
-    BoxDim, // Custom box dimensions
-    Sphere,
-    Mesh,  // The mesh itself is the collider
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Copy, Serialize)]
+#[serde(tag = "shape", rename_all = "PascalCase")]
+pub enum HitboxShape {
+    Cylinder   { r: f32, h: f32 },
+    Pill { r: f32, h: f32 },
+    BoxDim { hx: f32, hy: f32, hz: f32 },
+    Sphere { r: f32 },
+    Mesh, // The mesh itself is the collider
     BoundingBox, // Dynamically generated box around the mesh
 }
 
-impl HitboxType {
-    pub fn from_str(input: &str) -> Option<Self>  {
-        match input {
-            "Cylinder" => Some(Self::Cylinder),
-            "Pill"   => Some(Self::Pill),
-            "BoxDim"  => Some(Self::BoxDim),
-            "Sphere"  => Some(Self::Sphere),
-            "Mesh"  => Some(Self::Mesh),
-            "BoundingBox"  => Some(Self::BoundingBox),
-            _              => panic!("Invalid TextureProfile passed in."),
-        }
-    }
+#[derive(Clone, Debug, PartialEq, Deserialize, Hash, Eq, Serialize)]
+pub enum EquipSlot {
+    RHand,
+    LHand,
 }
