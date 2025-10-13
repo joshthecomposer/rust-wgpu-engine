@@ -112,7 +112,7 @@ pub fn player_state_machine(
                 }
 
                 if input.right_mouse_just_pressed() {
-                    player_non_combat_transition(controller, PlayerState::Block, animator, false, rb);
+                    player_non_combat_transition(controller, PlayerState::Block, animator, true, rb);
                     break 'ns
                 }
             },
@@ -200,7 +200,37 @@ pub fn player_state_machine(
             },
             PlayerState::Dying       => {},
             PlayerState::Dead        => {},
-            PlayerState::Block        => {},
+            PlayerState::Block        => {
+                controller.time_in_state += dt;
+
+                let block_anim = animator.animations.get_mut(&AnimationType::Block).unwrap();
+
+                if input.mouse_is_down(glfw::MouseButton::Right) {
+                    if let Some(hold_frame) = block_anim.hold_frame {
+                        if block_anim.current_segment.get() == hold_frame  {
+                            block_anim.do_hold = true;
+                            break 'ns
+                        }
+                    }
+                }
+
+                block_anim.do_hold = false;
+
+                if input.wasd_is_down() && block_anim.current_segment.get() > 6 {
+                    player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
+                    break 'ns
+                }
+
+                if input.left_mouse_just_pressed() && block_anim.current_segment.get() >= 6 {
+                    player_non_combat_transition(controller, PlayerState::Combat, animator, false, rb);
+                    break 'ns
+                }
+
+                if block_anim.current_time >= block_anim.duration - ANIMATION_EPSILON {
+                    player_non_combat_transition(controller, PlayerState::Idle, animator, false, rb);
+                    break 'ns
+                }
+            },
         }
     }
 }

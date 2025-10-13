@@ -50,6 +50,10 @@ fn handle_player_movement_rapier(
         return;
     }
 
+    if player_state.state == PlayerState::Block {
+        return;
+    }
+
     em.v_effects.remove(player_key);
 
     let physics_handle = em.physics_handles.get(player_key).unwrap();

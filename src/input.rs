@@ -74,7 +74,7 @@ impl InputState {
     }
 
     pub fn right_mouse_just_pressed(&self) -> bool {
-        self.mouse_current.contains(&glfw::MouseButtonLeft) && !self.mouse_previous.contains(&glfw::MouseButtonLeft)
+        self.mouse_current.contains(&glfw::MouseButtonRight) && !self.mouse_previous.contains(&glfw::MouseButtonRight)
     }
 
     pub fn right_mouse_just_released(&self) -> bool {
