@@ -2,7 +2,7 @@ use glfw::Context;
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
 use crate::entity_manager::EntityManager;
-use crate::enums_types::{CameraState, PhysicsHandle, ShaderType, Transform};
+use crate::enums_types::{AnimationType, CameraState, EntityType, Faction, PhysicsHandle, ShaderType, Transform};
 use crate::input::{self, InputState};
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
@@ -46,6 +46,23 @@ impl Game {
         let sound = SoundManager::new(&config);
 
         let ui = GameUiContext::new();
+
+        let ids = world.ecs.entity_types
+            .iter()
+            .filter(|entry| {
+                *entry.value() == EntityType::TrashGuy 
+                    //&& world.ecs.factions.get(entry.key()) == Some(&Faction::Enemy)
+            })
+            .map(|e| {
+                e.key()
+            })
+            .collect::<Vec<usize>>();
+
+        for id in ids.iter() {
+            let animator = world.ecs.animators.get_mut(*id).unwrap();
+
+            animator.set_next_animation(AnimationType::Run);
+        }
 
         Self {
             platform,
@@ -128,14 +145,19 @@ impl Game {
                 combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics);
                 
                 Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
-
-                movement_system::update(
-                    &mut self.world.ecs,
-                    self.time.fixed_dt,
-                    &cam_basis,
-                    &self.input,
-                    &mut self.physics,
-                );
+                
+                match self.world.camera.move_state {
+                    CameraState::Third | CameraState::Locked => {
+                        movement_system::update(
+                            &mut self.world.ecs,
+                            self.time.fixed_dt,
+                            &cam_basis,
+                            &self.input,
+                            &mut self.physics,
+                        );
+                    },
+                    _ => (),
+                }
 
                 {
                     self.physics.step();
@@ -144,6 +166,7 @@ impl Game {
                 // post-physics pull RBs, handle events, snapshot current transforms
                 Self::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
                 Self::propagate_children(&mut self.world.ecs);
+
 
                 self.time.end_fixed_step();
             }
