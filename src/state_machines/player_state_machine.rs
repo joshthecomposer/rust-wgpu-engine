@@ -184,7 +184,7 @@ pub fn player_state_machine(
             },
             PlayerState::Freefalling => {
                 controller.time_in_state += dt;
-
+                
                 if let Some(grounded) = grounded { 
                     if grounded { 
                         rb.set_gravity_scale(1.0, true);
@@ -328,7 +328,7 @@ fn player_non_combat_transition(
         PlayerState::Jumping     => { AnimationType::Jump },
         PlayerState::Dashing     => AnimationType::DashF,
         PlayerState::Freefalling => {
-            rb.set_gravity_scale(1.5, true);
+            rb.set_gravity_scale(3.0, true);
 
             a.next_animation.clone()
         },
