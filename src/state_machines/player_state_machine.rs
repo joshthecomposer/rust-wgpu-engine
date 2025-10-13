@@ -34,7 +34,7 @@ pub fn player_state_machine(
 
    let dir = glam::vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
    let m = rb.mass();
-   let impulse = glam::vec3(dir.x * (14.0 * m), 0.0, dir.z * (14.0 * m));
+   let impulse = glam::vec3(dir.x * (4.0 * m), 0.0, dir.z * (4.0 * m));
 
     let camera_is_detached = camera.move_state != CameraState::Third;
 

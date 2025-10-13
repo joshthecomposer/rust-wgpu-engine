@@ -604,8 +604,6 @@ impl Renderer {
     }
 
     fn skybox_pass(&mut self, camera: &mut Camera, fb_width: u32, fb_height: u32) {
-        camera.reset_matrices(fb_width as f32 / fb_height as f32);
-
         unsafe {
             let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
             if status != gl::FRAMEBUFFER_COMPLETE {

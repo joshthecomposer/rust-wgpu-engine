@@ -15,6 +15,8 @@ pub struct EntityManager {
     pub next_entity_id: usize,
     pub transforms: SparseSet<Transform>,
     pub prev_transforms: SparseSet<Transform>,
+    // This is pretty much exclusively for weapons that need an additional 90° orientation for instance
+    pub local_corrections: SparseSet<Transform>,
     pub parents: SparseSet<usize>,
     pub children: SparseSet<Vec<usize>>,
 
@@ -58,6 +60,8 @@ impl EntityManager {
             next_entity_id: 0,
             transforms: SparseSet::with_capacity(max_entities),
             prev_transforms: SparseSet::with_capacity(max_entities),
+
+            local_corrections: SparseSet::with_capacity(max_entities),
 
             collider_to_parent: HashMap::new(),
 
@@ -132,6 +136,15 @@ impl EntityManager {
                     &wi, 
                     ps,
                 );
+                
+                // create a local corrrection for weapons that need to be 90° perp to their socket
+                // match wi.entity_type {
+                //     EntityType::OrcSword | EntityType::DoubleAxe => {
+                //         self.local_corrections.insert(weapon_id, Transform {
+                //         })
+                //     }
+                //     _ => ()
+                // }
 
                 self.hitsets.insert(
                     weapon_id,
@@ -708,7 +721,19 @@ impl EntityManager {
             .filter(|p| {
                 self.owners.get(p.key()).is_none() 
                     && self.equip_slots.get(p.key()).is_none()
-            })
+                    && *self.factions.get(p.key()).unwrap() == Faction::Gizmo
+            })       // Child, parent
+            .map(|p| (p.key(), *p.value()))
+            .collect()
+    }
+
+    pub fn get_active_weapon_gizmo_joins(&self) -> Vec<(usize, usize)> {
+        self.parents
+            .iter()
+            .filter(|p| {
+                self.owners.get(p.key()).is_some() 
+                    && self.equip_slots.get(p.key()).is_some()
+            })       // Child, parent
             .map(|p| (p.key(), *p.value()))
             .collect()
     }

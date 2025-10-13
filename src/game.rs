@@ -2,7 +2,7 @@ use glfw::Context;
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
 use crate::entity_manager::EntityManager;
-use crate::enums_types::{PhysicsHandle, ShaderType, Transform};
+use crate::enums_types::{CameraState, PhysicsHandle, ShaderType, Transform};
 use crate::input::{self, InputState};
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
@@ -33,7 +33,7 @@ impl Game {
     pub fn new() -> Self {
         let config = GameConfig::load_from_file("config/game_config.json");
 
-        let platform = Platform::new("Spaghetti engine", 1920, 1080, true);
+        let platform = Platform::new("Spaghetti engine", 1920, 1080, false);
         let time = Time::new(60.0, platform.glfw.get_time() as f32);
         let mut physics = PhysicsState::new();
         let mut world = World::new();
@@ -62,39 +62,52 @@ impl Game {
         while !self.platform.window.should_close() {
             self.time.begin_frame(self.platform.glfw.get_time() as f32);
 
-            self.input.update();
-
-            for (_, e) in glfw::flush_messages(&self.platform.events) {
-                match e {
-                    glfw::WindowEvent::CursorPos(xpos, ypos) => {
-                        self.world.camera.process_mouse_input(&self.platform.window, &e);
-                        self.input.mouse_pos_current.x = xpos as f32;
-                        self.input.mouse_pos_current.y = ypos as f32;
-                    },
-                    glfw::WindowEvent::MouseButton(button, action, _) => {
-                        input::handle_mouse_input(
-                            button, 
-                            action,
-                            glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32),
-                            &self.world.camera,
-                            &mut self.world.ecs,
-                            &mut self.input,
-                            &self.physics,
-                        );
-                    }
-                    glfw::WindowEvent::Key(key, _, action, _) => {
-                        input::handle_keyboard_input(key, action, &mut self.input);
-                    },
-                    _ => (),
-                }
-            }
-
-
             while self.time.should_step() {
                 self.time.begin_fixed_step();
 
-                for curr in self.world.ecs.transforms.iter() {
-                    self.world.ecs.prev_transforms.insert(curr.key(), curr.value().clone());
+                
+                // Snapshot all transforms
+                {
+                    for curr in self.world.ecs.transforms.iter() {
+                        self.world.ecs.prev_transforms.insert(curr.key(), curr.value().clone());
+                    }
+                }
+
+                // Snapshot camera
+                {
+                    let cam = &mut self.world.camera;
+                    cam.prev_pos     = cam.position;
+                    cam.prev_forward = cam.forward;
+                    cam.prev_up      = cam.up;
+                    cam.prev_target  = cam.target;
+                }
+
+                self.input.update();
+                self.platform.glfw.poll_events();
+                for (_, e) in glfw::flush_messages(&self.platform.events) {
+                    match e {
+                        glfw::WindowEvent::CursorPos(x, y) => {
+                            self.world.camera.process_mouse_input(&self.platform.window, &e);
+                            self.input.mouse_pos_current = glam::vec2(x as f32, y as f32);
+                        }
+                        glfw::WindowEvent::MouseButton(b, a, _) => {
+                            input::handle_mouse_input(b, a,
+                                glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32),
+                                &self.world.camera, &mut self.world.ecs, &mut self.input, &self.physics);
+                        }
+                        glfw::WindowEvent::Key(k, _, a, _) => {
+                            input::handle_keyboard_input(k, a, &mut self.input);
+                        }
+                        _ => {}
+                    }
+                }
+
+                if self.input.just_pressed(glfw::Key::F) {
+                    self.world.camera.move_state = match self.world.camera.move_state {
+                        CameraState::Free  => CameraState::Third,
+                        CameraState::Third => CameraState::Locked,
+                        CameraState::Locked=> CameraState::Free,
+                    };
                 }
 
                 let cam_basis = self.world.camera.basis_for_sim();
@@ -134,7 +147,7 @@ impl Game {
     }
 
     pub fn update(&mut self) {
-        self.world.camera.update(&self.world.ecs, self.time.dt, &self.physics, self.time.alpha, &self.input);
+        self.world.camera.update(&self.world.ecs, self.time.dt, &self.physics, self.time.alpha, &self.input, self.platform.fb_width as f32 / self.platform.fb_height as f32);
         self.world.lights.update(&self.time.dt);
         self.world.particles.update(self.time.dt);
     }
@@ -263,6 +276,7 @@ impl Game {
                 parent_animator.animations
                     .get(&current_key)
                     .unwrap()
+
                     .get_raw_global_bone_transform_by_name(
                         &rh_name,
                         bone,
@@ -277,7 +291,15 @@ impl Game {
 
                 weapon_trans.position = pos;
                 weapon_trans.rotation = rot;
+
+                if let Some(weapon_gizmo) = em.parents.iter().find(|p| p.value() == id) {
+                    let t = em.transforms.get_mut(weapon_gizmo.key()).unwrap();
+
+                    t.position = pos;
+                    t.rotation = rot;
+                }
             }
+
         }
     }
 }

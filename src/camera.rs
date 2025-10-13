@@ -42,6 +42,12 @@ pub struct Camera {
 
     pub desired_position: Vec3,
     pub desired_target: Vec3,
+    
+    // TESTING
+    pub prev_pos: Vec3,
+    pub prev_forward: Vec3,
+    pub prev_up: Vec3,
+    pub prev_target: Vec3,
 }
 
 impl Camera {
@@ -80,6 +86,11 @@ impl Camera {
 
             desired_position: vec3(0.0, 15.0, 0.0),
             desired_target: vec3(2.5, 0.0, 0.0),
+            
+            prev_pos: vec3(0.0, 0.0, 15.0),
+            prev_forward: vec3(0.0, 0.0, -1.0),
+            prev_up: vec3(0.0, 1.0, 0.0),
+            prev_target: vec3(0.0, 0.0, 0.0),
         }
     }
 
@@ -89,7 +100,7 @@ impl Camera {
 
         // "Camera forward" on ground plane — points from camera toward its target.
         // At yaw=0 => (0,0,-1). As you orbit, this rotates smoothly.
-        let f = glam::Vec3::new(yaw.sin(), 0.0, -yaw.cos()).normalize();
+        let f = glam::Vec3::new(-yaw.cos(), 0.0, -yaw.sin()).normalize();
 
         // Right = f × up (RH). If you prefer A/D to be swapped, flip the cross order.
         let r = f.cross(glam::Vec3::Y).normalize();
@@ -97,16 +108,17 @@ impl Camera {
         CamMoveBasis { fwd_flat: f, right_flat: r }
     }
 
-    pub fn update(&mut self, _em: &EntityManager, dt: f32, ps: &PhysicsState, alpha: f32, input: &InputState) {
+    pub fn update(&mut self, _em: &EntityManager, dt: f32, ps: &PhysicsState, alpha: f32, input: &InputState, aspect: f32) {
         match self.move_state {
             CameraState::Free => {
                 self.forward = self.direction.normalize();
+                self.target = self.position + self.forward;
             }
             CameraState::Third => {
                 if let Some(player_key) = _em.factions.iter().find(|e| e.value() == &Faction::Player) {
 
-                    //let player_transform = _em.transforms.get(player_key.key()).unwrap();
-                    let player_transform = renderer::Renderer::render_transform(_em, player_key.key(), alpha);
+                    let player_transform = _em.transforms.get(player_key.key()).unwrap();
+                    //let player_transform = renderer::Renderer::render_transform(_em, player_key.key(), alpha);
 
                     self.desired_target = player_transform.position + vec3(0.0, 1.1, 0.0);
 
@@ -136,19 +148,32 @@ impl Camera {
         self.up = self.right.cross(self.forward).normalize();
 
         self.process_key_event(dt, input);
+
+        // final cleanup
+        self.projection = glam::Mat4::perspective_rh_gl(
+            self.fovy,
+            aspect,
+            self.z_near,
+            self.z_far,
+        );
+        match self.move_state {
+            CameraState::Free | CameraState::Locked => {
+                let p = self.prev_pos.lerp(self.position, alpha);
+                let f = self.prev_forward.lerp(self.forward, alpha).normalize();
+                let r = f.cross(glam::Vec3::Y).normalize();
+                let u = r.cross(f).normalize();
+                self.view = glam::Mat4::look_at_rh(p, p + f, u);
+            },
+            CameraState::Third => {
+                let pos    = self.prev_pos.lerp(self.position, alpha);
+                let target = self.prev_target.lerp(self.target, alpha);
+                let up     = self.prev_up.lerp(self.up, alpha).normalize();
+                self.view = glam::Mat4::look_at_rh(pos, target, up);
+            }
+        }
     }
 
     pub fn get_view_matrix(&mut self) {
-        self.view = Mat4::look_at_rh(self.position, self.target, self.up);
-    }
-
-    pub fn reset_matrices(&mut self, aspect: f32) {
-        self.projection = Mat4::IDENTITY;
-        self.projection = Mat4::perspective_rh_gl(self.fovy, aspect, self.z_near, self.z_far);
-        
-        self.view = Mat4::IDENTITY;
-        self.target = self.position + self.forward;
-
         self.view = Mat4::look_at_rh(self.position, self.target, self.up);
     }
 
@@ -252,21 +277,6 @@ impl Camera {
     }
 
     pub fn process_key_event(&mut self, delta: f32, input: &InputState) {
-        if input.just_pressed(Key::F) {
-            match self.move_state {
-                CameraState::Free => {
-                    self.move_state = CameraState::Third;
-                }
-                CameraState::Third => {
-                    self.move_state = CameraState::Locked;
-                }
-                CameraState::Locked => {
-                    self.move_state = CameraState::Free;
-                }
-
-            }
-        }
-
         if self.move_state == CameraState::Free {
             if input.is_down(Key::W) {
                 self.position += (self.movement_speed * self.forward) * delta;
