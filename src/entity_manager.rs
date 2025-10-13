@@ -52,6 +52,7 @@ pub struct EntityManager {
     pub base_speeds: SparseSet<f32>,
     pub aggro_ranges: SparseSet<f32>,
     pub jump_heights: SparseSet<JumpHeight>,
+    pub total_masses: SparseSet<f32>,
 }
 
 impl EntityManager {
@@ -98,6 +99,7 @@ impl EntityManager {
             base_speeds: SparseSet::with_capacity(max_entities),
             aggro_ranges: SparseSet::with_capacity(max_entities),
             jump_heights: SparseSet::with_capacity(max_entities),
+            total_masses: SparseSet::with_capacity(max_entities),
         }
     }
 
@@ -212,6 +214,10 @@ impl EntityManager {
 
         if let Some(jump_height) = instance.jump_height {
             self.jump_heights.insert(parent_id, JumpHeight { desired: jump_height, precalculated: None });
+        }
+
+        if let Some(total_mass) = archetype.total_mass {
+            self.total_masses.insert(parent_id, total_mass);
         }
 
         let transform = Transform {
@@ -375,6 +381,10 @@ impl EntityManager {
             // TODO: This is a hacky way to fix the fact that colliders are centered at half height
             // by default. Likely there is a better way to fix this?
             .translation(vector![0.0, capsule_half_height + r, 0.0]) 
+            .restitution(0.0)
+            .restitution_combine_rule(CoefficientCombineRule::Min)
+            .friction(2.0)
+            .friction_combine_rule(CoefficientCombineRule::Max)
             .build();
 
         let body_handle = ps.rigid_body_set.insert(body);
@@ -385,12 +395,30 @@ impl EntityManager {
             &mut ps.rigid_body_set,
         );
 
+
         {
             let body = ps.rigid_body_set.get_mut(body_handle).unwrap();
 
-            if let Some(jump_height) = self.jump_heights.get_mut(parent_id) {
+            body.recompute_mass_properties_from_colliders(&ps.collider_set);
 
-                let v0 = (2.0 * GRAVITY.abs() * h).sqrt();
+            if let Some(total_mass) = self.total_masses.get(parent_id) {
+                let current = body.mass(); // effective mass from colliders
+                let add = (total_mass - current).max(0.0);
+
+                println!("MASS(before recompute) = {}", current);
+                println!("TARGET(total)          = {}", total_mass);
+                println!("ADDITIONAL to add      = {}", add);
+
+                // 3) Apply delta so effective total becomes ~target.
+                body.set_additional_mass(add, true);
+                body.recompute_mass_properties_from_colliders(&ps.collider_set);
+
+                // 4) Verify: this should now reflect target (≈ colliders + add).
+                println!("MASS(after additional) = {}", body.mass());
+            }
+
+            if let Some(jump_height) = self.jump_heights.get_mut(parent_id) {
+                let v0 = (2.0 * GRAVITY.abs() * jump_height.desired).sqrt();
                 let J = glam::vec3(0.0, body.mass() * v0, 0.0);
 
                 jump_height.precalculated = Some(J.into()); 

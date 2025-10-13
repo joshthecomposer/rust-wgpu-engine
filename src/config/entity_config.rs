@@ -52,4 +52,6 @@ pub struct EntityTypeHelper {
     pub item_bones: ItemBones,
     pub aggro_range: f32,
     pub hitbox: HitboxShape,
+    #[serde(default)]
+    pub total_mass: Option<f32>,
 }

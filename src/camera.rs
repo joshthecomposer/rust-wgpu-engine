@@ -158,11 +158,15 @@ impl Camera {
         );
         match self.move_state {
             CameraState::Free | CameraState::Locked => {
-                let p = self.prev_pos.lerp(self.position, alpha);
-                let f = self.prev_forward.lerp(self.forward, alpha).normalize();
-                let r = f.cross(glam::Vec3::Y).normalize();
-                let u = r.cross(f).normalize();
-                self.view = glam::Mat4::look_at_rh(p, p + f, u);
+                let pos    = self.prev_pos.lerp(self.position, alpha);
+                let target = self.prev_target.lerp(self.target, alpha);
+                let up     = self.prev_up.lerp(self.up, alpha).normalize();
+                self.view  = glam::Mat4::look_at_rh(pos, target, up);
+                //let p = self.prev_pos.lerp(self.position, alpha);
+                //let f = self.prev_forward.lerp(self.forward, alpha).normalize();
+                //let r = f.cross(glam::Vec3::Y).normalize();
+                //let u = r.cross(f).normalize();
+                //self.view = glam::Mat4::look_at_rh(p, p + f, u);
             },
             CameraState::Third => {
                 let pos    = self.prev_pos.lerp(self.position, alpha);

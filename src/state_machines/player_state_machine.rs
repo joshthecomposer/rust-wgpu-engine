@@ -64,6 +64,16 @@ pub fn player_state_machine(
     // ==================================================================================
     // GUARDS
     // ==================================================================================
+    if let Some(grounded) = grounded {
+        if !grounded && controller.state != PlayerState::Freefalling {
+            player_non_combat_transition(controller, PlayerState::Freefalling, animator, true, rb);
+        }
+
+        if rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
+            rb.set_gravity_scale(3.0, true);
+        }
+    }
+
     if *health <= 0.0 {
         match controller.state {
             PlayerState::Dying | PlayerState::Dead => (),
@@ -111,7 +121,7 @@ pub fn player_state_machine(
                     break 'ns
                 }
 
-                if input.right_mouse_just_pressed() {
+                if input.right_mouse_is_down() {
                     player_non_combat_transition(controller, PlayerState::Block, animator, true, rb);
                     break 'ns
                 }
@@ -136,7 +146,7 @@ pub fn player_state_machine(
                     break 'ns
                 }
 
-                if input.right_mouse_just_pressed() {
+                if input.right_mouse_is_down() {
                     player_non_combat_transition(controller, PlayerState::Block, animator, false, rb);
                     break 'ns
                 }
@@ -149,14 +159,8 @@ pub fn player_state_machine(
             PlayerState::Jumping => {
                 controller.time_in_state += dt;
 
-                if rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
-                    player_non_combat_transition(controller, PlayerState::Freefalling, animator, false, rb);
-                    break 'ns
-                }
-
                 if let Some(grounded) = grounded { 
                     if grounded && controller.time_in_state >= 0.15 { 
-                        println!("grounded");
                         player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
                         break 'ns
                     }
@@ -192,6 +196,11 @@ pub fn player_state_machine(
                         break 'ns
                     }
                 }
+
+                if controller.time_in_state >= 2.0 {
+                    animator.set_next_animation(AnimationType::Freefall);
+                    break 'ns
+                }
             },
             PlayerState::Combat => {
                 controller.time_in_state += dt;
@@ -211,7 +220,9 @@ pub fn player_state_machine(
                             block_anim.do_hold = true;
                             break 'ns
                         }
-                    }
+                    } 
+
+                    break 'ns
                 }
 
                 block_anim.do_hold = false;
@@ -328,8 +339,8 @@ fn player_non_combat_transition(
         PlayerState::Jumping     => { AnimationType::Jump },
         PlayerState::Dashing     => AnimationType::DashF,
         PlayerState::Freefalling => {
-            rb.set_gravity_scale(3.0, true);
-
+            //rb.set_gravity_scale(3.0, true);
+            
             a.next_animation.clone()
         },
         PlayerState::Block       => AnimationType::Block,

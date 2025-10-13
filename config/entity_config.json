@@ -6,13 +6,11 @@
 			"scale_correction": [0.0135, 0.0135, 0.0135],
 			"mesh_path": "resources/models/animated/y_robot/y_robot_bc.txt", 
 			"bone_path":"resources/models/animated/y_robot/y_robot_bc.txt",
-			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
 			"hitbox": {
 				"shape": "Pill",
 				"r": 0.195,
 				"h": 2.16
 			},
-
 			"item_bones": {
 				"rh_name": "mixamorig:RightHand",
 				"lh_name": "mixamorig:LeftHand"
@@ -55,13 +53,12 @@
 			"scale_correction": [1.0, 1.0, 1.0],
 			"mesh_path": "resources/models/animated/trash_guy/trash_guy.txt", 
 			"bone_path": "resources/models/animated/trash_guy/trash_guy.txt",
-			"COMMENT": "hit_cyl refers to the inner cylinder of a pill in this case.",
 			"hitbox": {
 				"shape": "Pill",
 				"r": 0.25,
 				"h": 1.8
 			},
-
+			"total_mass": 83.0,
 			"item_bones": {
 				"rh_name": "Bone.029.L",
 				"lh_name": "Bone.029.R"
@@ -132,6 +129,7 @@
 			"scale_correction": [0.013, 0.013, 0.013],
 			"mesh_path": "resources/models/animated/moose/moosey.txt", 
 			"bone_path": "resources/models/animated/moose/moosey.txt",
+			"total_mass": 300.0,
 			"hitbox": {
 				"shape": "Pill",
 				"r": 0.5,
