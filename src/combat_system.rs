@@ -62,8 +62,6 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
 
                 if c1 == player_cyl_handle || c2 == player_cyl_handle { continue; }
 
-                println!("meme");
-
                 let other = if c1 == rh_w_col_handle { c2 } else { c1 };
                 
                 // Target id is the pill entity.
@@ -74,8 +72,6 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
 
                 let target_id = em.parents.get(target_id).unwrap();
 
-                println!("dream");
-
                 match em.factions.get(*target_id) {
                     Some(faction) => {
                         if *faction != Faction::Enemy {
@@ -84,8 +80,6 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                     },
                     None => { continue },
                 };
-
-                println!("beam");
 
                 // if *faction != Faction::Enemy { continue; }
 

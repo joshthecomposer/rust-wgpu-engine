@@ -9,7 +9,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{control::KinematicCharacterController, parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, HitboxShape, Inventory, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::PhysicsState, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::Terrain};
+use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::{self, PhysicsState}, some_data::GRAVITY, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::Terrain};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -51,7 +51,7 @@ pub struct EntityManager {
     pub healths: SparseSet<f32>,
     pub base_speeds: SparseSet<f32>,
     pub aggro_ranges: SparseSet<f32>,
-
+    pub jump_heights: SparseSet<JumpHeight>,
 }
 
 impl EntityManager {
@@ -97,7 +97,7 @@ impl EntityManager {
             healths: SparseSet::with_capacity(max_entities),
             base_speeds: SparseSet::with_capacity(max_entities),
             aggro_ranges: SparseSet::with_capacity(max_entities),
-
+            jump_heights: SparseSet::with_capacity(max_entities),
         }
     }
 
@@ -127,6 +127,7 @@ impl EntityManager {
                     weapons: None,
                     base_speed: None,
                     health: None,
+                    jump_height: None,
                 };
 
                 let weapon_archetype = ec.entity_types.get(&wi.entity_type).unwrap();
@@ -203,6 +204,14 @@ impl EntityManager {
 
         if let Some(health) = instance.health {
             self.healths.insert(parent_id, health);
+        }
+
+        if let Some(base_speed) = instance.base_speed {
+            self.base_speeds.insert(parent_id, base_speed);
+        }
+
+        if let Some(jump_height) = instance.jump_height {
+            self.jump_heights.insert(parent_id, JumpHeight { desired: jump_height, precalculated: None });
         }
 
         let transform = Transform {
@@ -375,6 +384,19 @@ impl EntityManager {
             body_handle,
             &mut ps.rigid_body_set,
         );
+
+        {
+            let body = ps.rigid_body_set.get_mut(body_handle).unwrap();
+
+            if let Some(jump_height) = self.jump_heights.get_mut(parent_id) {
+
+                let v0 = (2.0 * GRAVITY.abs() * h).sqrt();
+                let J = glam::vec3(0.0, body.mass() * v0, 0.0);
+
+                jump_height.precalculated = Some(J.into()); 
+            }
+        }
+
 
         let physics_handle = PhysicsHandle {
             rigid_body: body_handle,

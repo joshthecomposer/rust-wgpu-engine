@@ -24,8 +24,8 @@ pub fn player_state_machine(
     let yaw         = em.yaws.get(player_id).unwrap();
     let transform   = em.transforms.get(player_id).unwrap();
     let kb          = em.knockbacks.get_mut(player_id);
-    
 
+    let jump_height = em.jump_heights.get(player_id).unwrap();
 
     let player_cyl = ps.collider_set.get(ph.collider).unwrap();
 
@@ -101,6 +101,7 @@ pub fn player_state_machine(
                 }
 
                 if input.space_just_pressed() {
+                    rb.apply_impulse(jump_height.precalculated.unwrap(), true);
                     player_non_combat_transition(controller, PlayerState::Jumping, animator, false, rb);
                     break 'ns
                 }
@@ -125,6 +126,7 @@ pub fn player_state_machine(
                 }
 
                 if input.space_just_pressed() {
+                    rb.apply_impulse(jump_height.precalculated.unwrap(), true);
                     player_non_combat_transition(controller, PlayerState::Jumping, animator, true, rb);
                     break 'ns
                 }
@@ -293,10 +295,7 @@ fn player_non_combat_transition(
         // PlayerState from non-combat to combat
         PlayerState::Combat      => AnimationType::Slash,
         PlayerState::Running     => AnimationType::Run,
-        PlayerState::Jumping     => {
-            physics::jump_to_height(rb, 1.5, GRAVITY);
-            AnimationType::Jump
-        },
+        PlayerState::Jumping     => { AnimationType::Jump },
         PlayerState::Dashing     => AnimationType::DashF,
         PlayerState::Freefalling => {
             rb.set_gravity_scale(1.5, true);

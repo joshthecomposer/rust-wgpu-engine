@@ -2,7 +2,8 @@
 use std::{cell::Cell, fmt::{self, Display, Formatter}, ops::RangeInclusive, str::FromStr};
 
 use glam::{Mat4, Quat, Vec3};
-use rapier3d::prelude::{ColliderHandle, RigidBodyHandle};
+use nalgebra::RealField;
+use rapier3d::{math::Vector, prelude::{ColliderHandle, RigidBodyHandle}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -430,4 +431,12 @@ pub enum HitboxShape {
 pub enum EquipSlot {
     RHand,
     LHand,
+}
+
+#[derive(Clone, Debug)]
+pub struct JumpHeight {
+    pub desired: f32,
+    // The precalculated impulse. This is scary because if we add or 
+    // take away a collider we will have to recalc this
+    pub precalculated: Option<Vector<rapier3d::math::Real>>
 }

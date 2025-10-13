@@ -70,7 +70,9 @@ pub struct EntityInstance {
     #[serde(default)]
     pub base_speed: Option<f32>,
     #[serde(default)]
-    pub health: Option<f32>, // TODO: Make this optional
+    pub health: Option<f32>,
+    #[serde(default)]
+    pub jump_height: Option<f32>,
 }
 
 fn snap(v: f64, precision: u32) -> f64 {
