@@ -47,23 +47,6 @@ impl Game {
 
         let ui = GameUiContext::new();
 
-        let ids = world.ecs.entity_types
-            .iter()
-            .filter(|entry| {
-                *entry.value() == EntityType::TrashGuy 
-                    //&& world.ecs.factions.get(entry.key()) == Some(&Faction::Enemy)
-            })
-            .map(|e| {
-                e.key()
-            })
-            .collect::<Vec<usize>>();
-
-        for id in ids.iter() {
-            let animator = world.ecs.animators.get_mut(*id).unwrap();
-
-            animator.set_next_animation(AnimationType::Run);
-        }
-
         Self {
             platform,
             time,
