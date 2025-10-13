@@ -138,13 +138,16 @@ impl EntityManager {
                 );
                 
                 // create a local corrrection for weapons that need to be 90° perp to their socket
-                // match wi.entity_type {
-                //     EntityType::OrcSword | EntityType::DoubleAxe => {
-                //         self.local_corrections.insert(weapon_id, Transform {
-                //         })
-                //     }
-                //     _ => ()
-                // }
+                match wi.entity_type {
+                    EntityType::OrcSword | EntityType::DoubleAxe => {
+                        self.local_corrections.insert(weapon_id, Transform {
+                            position: glam::Vec3::splat(0.0),
+                            scale: glam::Vec3::splat(1.0),
+                            rotation: weapon_archetype.rot_correction,
+                        });
+                    }
+                    _ => ()
+                }
 
                 self.hitsets.insert(
                     weapon_id,
@@ -351,6 +354,7 @@ impl EntityManager {
         //    .enabled_rotations(true, true, true)
         //    .build();
 
+
         let capsule_total_height = h;
         let capsule_half_height = (capsule_total_height - 2.0 * r) / 2.0;
 
@@ -442,9 +446,10 @@ impl EntityManager {
 
         let iso: Isometry<f32> = (position, rotation).into();
 
-        let body = RigidBodyBuilder::fixed()
+        let mut body = RigidBodyBuilder::fixed()
             .position(iso)
             .build();
+
 
         let collider = ColliderBuilder::cylinder(h * 0.5, r)
             .active_collision_types(ActiveCollisionTypes::all())
@@ -456,6 +461,8 @@ impl EntityManager {
             body_handle,
             &mut ps.rigid_body_set,
         );
+        
+        // set body massA
 
         self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
             rigid_body: body_handle,
@@ -722,17 +729,6 @@ impl EntityManager {
                 self.owners.get(p.key()).is_none() 
                     && self.equip_slots.get(p.key()).is_none()
                     && *self.factions.get(p.key()).unwrap() == Faction::Gizmo
-            })       // Child, parent
-            .map(|p| (p.key(), *p.value()))
-            .collect()
-    }
-
-    pub fn get_active_weapon_gizmo_joins(&self) -> Vec<(usize, usize)> {
-        self.parents
-            .iter()
-            .filter(|p| {
-                self.owners.get(p.key()).is_some() 
-                    && self.equip_slots.get(p.key()).is_some()
             })       // Child, parent
             .map(|p| (p.key(), *p.value()))
             .collect()

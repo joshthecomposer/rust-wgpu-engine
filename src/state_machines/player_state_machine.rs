@@ -1,6 +1,6 @@
 use rapier3d::prelude::{ContactPair, RigidBody};
 
-use crate::{animation::{animation::Animator, animation_system}, camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, AttackState, CameraState, EmitterName, EntityType, Faction, PlayerController, PlayerState, SoundType, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{animation::{animation::Animator, animation_system}, camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, AttackState, CameraState, EmitterName, EntityType, Faction, PlayerController, PlayerState, SoundType, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::{self, PhysicsState}, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub fn player_state_machine(
     em: &mut EntityManager, 
@@ -294,9 +294,7 @@ fn player_non_combat_transition(
         PlayerState::Combat      => AnimationType::Slash,
         PlayerState::Running     => AnimationType::Run,
         PlayerState::Jumping     => {
-            // rb.set_gravity_scale(DECREASED_GRAVITY_SCALAR, true);
-            rb.apply_impulse((glam::Vec3::Y * 3.0).into(), true);
-
+            physics::jump_to_height(rb, 1.5, GRAVITY);
             AnimationType::Jump
         },
         PlayerState::Dashing     => AnimationType::DashF,

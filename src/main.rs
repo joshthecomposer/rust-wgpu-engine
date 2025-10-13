@@ -24,7 +24,7 @@ mod particles;
 //mod items;
 mod physics;
 mod util;
-// mod combat_system;
+mod combat_system;
 mod game;
 mod time;
 mod platform;

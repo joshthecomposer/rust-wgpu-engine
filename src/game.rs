@@ -8,7 +8,7 @@ use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
 use crate::ui::message_queue::MessageQueue;
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
-use crate::{movement_system, state_machines};
+use crate::{combat_system, movement_system, state_machines};
 use crate::physics::PhysicsState;
 use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
@@ -26,6 +26,7 @@ pub struct Game {
     sound: SoundManager,
     input: InputState,
     ui: GameUiContext,
+    paused: bool,
     // imgui: SpagImgui,
 }
 
@@ -55,6 +56,7 @@ impl Game {
             sound,
             input: InputState::new(),
             ui,
+            paused: false,
         }
     }
     
@@ -81,37 +83,38 @@ impl Game {
                     cam.prev_up      = cam.up;
                     cam.prev_target  = cam.target;
                 }
-
-                self.input.update();
-                self.platform.glfw.poll_events();
-                for (_, e) in glfw::flush_messages(&self.platform.events) {
-                    match e {
-                        glfw::WindowEvent::CursorPos(x, y) => {
-                            self.world.camera.process_mouse_input(&self.platform.window, &e);
-                            self.input.mouse_pos_current = glam::vec2(x as f32, y as f32);
+                // poll events and update input
+                {
+                    self.input.update();
+                    self.platform.glfw.poll_events();
+                    for (_, e) in glfw::flush_messages(&self.platform.events) {
+                        match e {
+                            glfw::WindowEvent::CursorPos(x, y) => {
+                                self.world.camera.process_mouse_input(&self.platform.window, &e);
+                                self.input.mouse_pos_current = glam::vec2(x as f32, y as f32);
+                            }
+                            glfw::WindowEvent::MouseButton(b, a, _) => {
+                                input::handle_mouse_input(b, a,
+                                    glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32),
+                                    &self.world.camera, &mut self.world.ecs, &mut self.input, &self.physics);
+                            }
+                            glfw::WindowEvent::Key(k, _, a, _) => {
+                                input::handle_keyboard_input(k, a, &mut self.input);
+                            }
+                            _ => {}
                         }
-                        glfw::WindowEvent::MouseButton(b, a, _) => {
-                            input::handle_mouse_input(b, a,
-                                glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32),
-                                &self.world.camera, &mut self.world.ecs, &mut self.input, &self.physics);
-                        }
-                        glfw::WindowEvent::Key(k, _, a, _) => {
-                            input::handle_keyboard_input(k, a, &mut self.input);
-                        }
-                        _ => {}
                     }
-                }
 
-                if self.input.just_pressed(glfw::Key::F) {
-                    self.world.camera.move_state = match self.world.camera.move_state {
-                        CameraState::Free  => CameraState::Third,
-                        CameraState::Third => CameraState::Locked,
-                        CameraState::Locked=> CameraState::Free,
-                    };
+                    if self.input.just_pressed(glfw::Key::F) {
+                        self.world.camera.move_state = match self.world.camera.move_state {
+                            CameraState::Free  => CameraState::Third,
+                            CameraState::Third => CameraState::Locked,
+                            CameraState::Locked=> CameraState::Free,
+                        };
+                    } 
                 }
 
                 let cam_basis = self.world.camera.basis_for_sim();
-
                 state_machine_system::update(
                     &mut self.world.ecs, 
                     self.time.fixed_dt, 
@@ -122,6 +125,10 @@ impl Game {
                     &self.world.camera
                 );
                 animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
+                combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics);
+                
+                Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
+
                 movement_system::update(
                     &mut self.world.ecs,
                     self.time.fixed_dt,
@@ -130,7 +137,9 @@ impl Game {
                     &mut self.physics,
                 );
 
-                self.physics.step();
+                {
+                    self.physics.step();
+                }
 
                 // post-physics pull RBs, handle events, snapshot current transforms
                 Self::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
@@ -229,6 +238,66 @@ impl Game {
         }
     }
 
+    fn push_weapon_kinematics_from_bones(em: &EntityManager, ps: &mut PhysicsState) {
+        for wid in em.get_active_weapon_ids() {
+            let parent = *em.owners.get(wid).unwrap();
+            let animator = em.animators.get(parent).unwrap();
+            let cur = animator.current_animation.clone();
+            let next = animator.next_animation.clone();
+            let blend = animator.blend_factor;
+
+            let pt = em.transforms.get(parent).unwrap();
+            let pm = glam::Mat4::from_scale_rotation_translation(pt.scale, pt.rotation, pt.position);
+            let skel = em.skellingtons.get(parent).unwrap();
+            let rh = em.item_bones.get(parent).unwrap().rh_name.clone();
+
+            let bone_m = if blend > 0.0 && cur != next {
+                let (a1, a2) = animator.animations.get_pair(&cur, &next).unwrap();
+                a1.get_raw_global_bone_transform_by_name_blended(&rh, skel, pm, a2, blend)
+            } else {
+                animator.animations.get(&cur).unwrap()
+                    .get_raw_global_bone_transform_by_name(&rh, skel, pm)
+            };
+
+            if let (Some(m), Some(ph)) = (bone_m, em.physics_handles.get(wid)) {
+                //let (_s, rot, pos) = m.to_scale_rotation_translation();
+
+                let corr = em.local_corrections
+                    .get(wid)
+                    .cloned()
+                    .unwrap_or(Transform {
+                        position: glam::Vec3::ZERO,
+                        rotation: glam::Quat::IDENTITY,
+                        scale:    glam::Vec3::ONE,
+                    });
+
+                let corr_m = glam::Mat4::from_scale_rotation_translation(
+                    corr.scale, corr.rotation, corr.position
+                );
+
+                // Apply correction in bone space
+                // (boneWorld * correctionLocal) -> final weapon world
+                let final_m = m * corr_m;
+
+                let (_, rot, pos) = final_m.to_scale_rotation_translation();
+
+                if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
+                    if rb.is_kinematic() {
+                        let iso = rapier3d::na::Isometry3::from_parts(
+                            rapier3d::na::Translation3::new(pos.x, pos.y, pos.z),
+                            rapier3d::na::UnitQuaternion::from_quaternion(
+                                rapier3d::na::Quaternion::new(rot.w, rot.x, rot.y, rot.z),
+                            ),
+                        );
+                        rb.set_next_kinematic_position(iso);
+                    }
+                }
+            }
+        }
+    }
+    
+    // This is purely for visual gizmos, has nothing to do with what is actually happening to
+    // physics
     fn propagate_children(em: &mut EntityManager) {
         let non_weapon_joins = em.get_non_weapon_gizmo_joins();
 
@@ -285,13 +354,32 @@ impl Game {
             };
 
             if let Some(raw_bone_transform) = maybe_bone_world_model_space {
-                let (_, rot, pos) = raw_bone_transform.to_scale_rotation_translation();
+                //let (_, rot, pos) = raw_bone_transform.to_scale_rotation_translation();
 
                 let weapon_trans = em.transforms.get_mut(*id).unwrap();
+                let corr = em.local_corrections
+                    .get(*id)
+                    .cloned()
+                    .unwrap_or(Transform {
+                        position: glam::Vec3::ZERO,
+                        rotation: glam::Quat::IDENTITY,
+                        scale:    glam::Vec3::ONE,
+                    });
+
+                let corr_m = glam::Mat4::from_scale_rotation_translation(
+                    corr.scale, corr.rotation, corr.position
+                );
+
+                // Apply correction in bone space
+                // (boneWorld * correctionLocal) -> final weapon world
+                let final_m = raw_bone_transform * corr_m;
+
+                let (_, rot, pos) = final_m.to_scale_rotation_translation();
 
                 weapon_trans.position = pos;
                 weapon_trans.rotation = rot;
-
+                
+                // sync the weapon's gizmo to it.
                 if let Some(weapon_gizmo) = em.parents.iter().find(|p| p.value() == id) {
                     let t = em.transforms.get_mut(weapon_gizmo.key()).unwrap();
 
