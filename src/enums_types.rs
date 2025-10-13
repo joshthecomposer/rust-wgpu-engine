@@ -229,6 +229,7 @@ pub enum PlayerState {
     Block,
 }
 
+#[derive(Debug)]
 pub struct PlayerController {
     pub state: PlayerState,
     pub attack_state: AttackState,

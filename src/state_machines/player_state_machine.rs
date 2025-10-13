@@ -36,7 +36,7 @@ pub fn player_state_machine(
    let m = rb.mass();
    let impulse = glam::vec3(dir.x * (4.0 * m), 0.0, dir.z * (4.0 * m));
 
-    let camera_is_detached = camera.move_state != CameraState::Third;
+    let camera_is_detached = camera.move_state == CameraState::Free;
 
     // CHECK GROUNDED
 
@@ -60,6 +60,10 @@ pub fn player_state_machine(
             None
         }
     };
+
+    
+    //player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
+    //return;
     
     // ==================================================================================
     // GUARDS
@@ -81,8 +85,11 @@ pub fn player_state_machine(
         }
     }
 
-    if camera_is_detached &&  controller.state != PlayerState::Idle {
-        player_non_combat_transition(controller, PlayerState::Idle, animator, false, rb);
+    if camera_is_detached {
+        if controller.state != PlayerState::Idle {
+            player_non_combat_transition(controller, PlayerState::Idle, animator, false, rb);
+        }
+
         return
     }
 

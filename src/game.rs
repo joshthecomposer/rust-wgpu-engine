@@ -100,6 +100,7 @@ impl Game {
                     cam.prev_up      = cam.up;
                     cam.prev_target  = cam.target;
                 }
+
                 // poll events and update input
                 {
                     self.input.update();

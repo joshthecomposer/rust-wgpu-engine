@@ -845,4 +845,21 @@ impl Renderer {
             scale:    curr.scale,
         }
     }
+
+//pub fn render_transform(em: &EntityManager, id: usize, alpha: f32) -> Transform {
+//    let curr = em.transforms.get(id).unwrap();
+//
+//    let is_physics_owned = em.physics_handles.get(id).is_some();
+//    if is_physics_owned {
+//        // physics drives curr; draw at curr to match bone time
+//        return curr.clone();
+//    }
+//
+//    let prev = em.prev_transforms.get(id).unwrap_or(curr);
+//    Transform {
+//        position: prev.position.lerp(curr.position, alpha),
+//        rotation: prev.rotation.slerp(curr.rotation, alpha),
+//        scale:    curr.scale,
+//    }
+//}
 }
