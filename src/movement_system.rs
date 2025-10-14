@@ -15,6 +15,10 @@ pub fn update(
     let player_keys = em.get_ids_for_faction(Faction::Player);
 
     handle_player_movement_rapier(input_state, em, player_keys, dt, cam_basis, ps);
+
+    let enemy_keys = em.get_ids_for_faction(Faction::Enemy);
+
+    handle_enemy_movement_rapier(enemy_keys, em, dt, ps);
 }
 
 fn handle_player_movement_rapier(
@@ -107,4 +111,107 @@ fn handle_player_movement_rapier(
     let smoothed = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
     rb.set_rotation(glam_to_nalgebra_quat(smoothed), true);
     rb.set_linvel(linvel, true);
+}
+
+fn handle_enemy_movement_rapier(
+    ids: Vec<usize>,
+    em: &mut EntityManager,
+    dt: f32,
+    ps: &mut PhysicsState,
+) {
+    for id in ids {
+
+        let kb_active = em.knockbacks.get_mut(id).map_or(false, |kb| {
+            kb.ttl -= dt;
+            kb.ttl > 0.0
+        });
+
+        if kb_active { continue; } else { em.knockbacks.remove(id); }
+
+        let Some(dest) = em.destinations.get(id) else { continue };
+
+        let (
+            Some(rotator),
+            Some(physics_handle),
+            Some(animator),
+            Some(ent_type),
+            Some(sim_controller),
+        ) = (
+            em.rotators.get_mut(id),
+            em.physics_handles.get(id),
+            em.animators.get_mut(id),
+            em.entity_types.get(id),
+            em.simstate_controllers.get(id),
+        ) else { continue };
+
+        let speed = match em.base_speeds.get(id) {
+            Some(speed) => *speed,
+            None => 1.5,
+        };
+
+
+        // TODO: Why god
+        if animator.next_animation == AnimationType::Death
+            || sim_controller.state == SimState::Dying 
+            || sim_controller.state == SimState::Dead { continue };
+
+        if animator.next_animation == AnimationType::Flinch { continue };
+
+        if sim_controller.state == SimState::Combat { continue };
+
+        em.v_effects.remove(id);
+
+        if *ent_type == EntityType::MooseMan { continue };
+
+        let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
+        let position = Vec3::from_slice(rb.translation().as_slice());
+        let direction = *dest - position;
+        let distance = direction.length();
+
+        if distance > 0.05 {
+            let move_dir = direction.normalize();
+            let velocity = move_dir * speed;
+
+            // Set velocity
+            let mut linvel = *rb.linvel();
+            linvel.x = velocity.x;
+            linvel.z = velocity.z;
+            rb.set_linvel(linvel, true);
+
+            // Set rotation
+            let angle = f32::atan2(move_dir.x, move_dir.z);
+            em.yaws.insert(id, angle);
+
+            let desired_rot = Quat::from_rotation_y(angle);
+
+            if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {
+                rotator.next_rot = desired_rot;
+            }
+
+            if rotator.next_rot != rotator.cur_rot {
+                rotator.blend_factor += dt / rotator.blend_time;
+                if rotator.blend_factor >= 1.0 {
+                    rotator.blend_factor = 0.0;
+                    rotator.cur_rot = rotator.next_rot;
+                }
+            }
+
+            let blended = rotator.cur_rot.slerp(rotator.next_rot, rotator.blend_factor);
+            rb.set_rotation(glam_to_nalgebra_quat(blended), true);
+
+        } else {
+            // Stop
+            let mut linvel = *rb.linvel();
+            linvel.x = 0.0;
+            linvel.z = 0.0;
+            rb.set_linvel(linvel, true);
+        }
+
+        // Sync Transform for rendering
+        if let Some(transform) = em.transforms.get_mut(id) {
+            let iso = rb.position();
+            transform.position = Vec3::from_slice(iso.translation.vector.as_slice());
+            transform.rotation = Quat::from_array(iso.rotation.coords.as_slice().try_into().unwrap());
+        }
+    }
 }
