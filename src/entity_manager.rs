@@ -821,7 +821,8 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
         //let mut terrain = Terrain::from_height_map("resources/textures/brushes/301B1.png");
         //let mut terrain = Terrain::from_height_map("resources/textures/solid-black-100-100.png");
         //let mut terrain = Terrain::from_height_map("resources/textures/brushes/NvF5e.jpg");
-        let mut terrain = Terrain::from_height_map("resources/textures/brushes/big_spot.jpeg");
+        //let mut terrain = Terrain::from_height_map("resources/textures/brushes/big_spot.jpeg");
+        let mut terrain = Terrain::from_height_map("resources/textures/brushes/2000.png");
 
         let model = terrain.into_opengl_model();
 
