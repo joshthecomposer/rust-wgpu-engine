@@ -91,7 +91,9 @@ impl Game {
                     for (_, e) in glfw::flush_messages(&self.platform.events) {
                         match e {
                             glfw::WindowEvent::CursorPos(x, y) => {
-                                self.world.camera.process_mouse_input(&self.platform.window, &e);
+                                if !self.paused {
+                                    self.world.camera.process_mouse_input(&self.platform.window, &e);
+                                }
                                 self.input.mouse_pos_current = glam::vec2(x as f32, y as f32);
                             }
                             glfw::WindowEvent::MouseButton(b, a, _) => {
@@ -101,6 +103,10 @@ impl Game {
                             }
                             glfw::WindowEvent::Key(k, _, a, _) => {
                                 input::handle_keyboard_input(k, a, &mut self.input);
+                                match (k,a) {
+                                    (glfw::Key::Escape, glfw::Action::Press) => self.paused = !self.paused,
+                                    _ => ()
+                                }
                             }
                             _ => {}
                         }
@@ -114,39 +120,42 @@ impl Game {
                         };
                     } 
                 }
-
+                
                 let cam_basis = self.world.camera.basis_for_sim();
-                state_machine_system::update(
-                    &mut self.world.ecs, 
-                    self.time.fixed_dt, 
-                    &mut self.world.particles,
-                    &self.input, 
-                    &mut self.physics, 
-                    &mut self.sound, 
-                    &self.world.camera
-                );
-                items::update(&mut self.world.ecs, &mut self.physics);
-                animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
-                combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics);
-                self.world.ecs.update(&mut self.sound, &mut self.physics);
-                
-                Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
-                
-                match self.world.camera.move_state {
-                    CameraState::Third | CameraState::Locked => {
-                        movement_system::update(
-                            &mut self.world.ecs,
-                            self.time.fixed_dt,
-                            &cam_basis,
-                            &self.input,
-                            &mut self.physics,
-                        );
-                    },
-                    _ => (),
-                }
 
-                {
-                    self.physics.step();
+                if !self.paused {
+                    state_machine_system::update(
+                        &mut self.world.ecs, 
+                        self.time.fixed_dt, 
+                        &mut self.world.particles,
+                        &self.input, 
+                        &mut self.physics, 
+                        &mut self.sound, 
+                        &self.world.camera
+                    );
+                    items::update(&mut self.world.ecs, &mut self.physics);
+                    animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
+                    combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics);
+                    self.world.ecs.update(&mut self.sound, &mut self.physics);
+
+                    Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
+
+                    match self.world.camera.move_state {
+                        CameraState::Third | CameraState::Locked => {
+                            movement_system::update(
+                                &mut self.world.ecs,
+                                self.time.fixed_dt,
+                                &cam_basis,
+                                &self.input,
+                                &mut self.physics,
+                            );
+                        },
+                        _ => (),
+                    }
+
+                    {
+                        self.physics.step();
+                    }
                 }
 
                 // post-physics pull RBs, handle events, snapshot current transforms
@@ -199,7 +208,7 @@ impl Game {
             ui_shader,
             font_shader,
             &mut MessageQueue::new(), 
-            false, 
+            self.paused, 
             self.platform.window.get_cursor_mode(), 
             &self.world.camera.move_state, 
             &self.input.keys_current, 
