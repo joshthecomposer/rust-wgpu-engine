@@ -401,7 +401,8 @@ pub struct Knockback {
 
 #[derive(Deserialize, Debug, Serialize, Hash, PartialEq, Eq)]
 pub enum EmitterName {
-    DesertDust,
+    DesertSlide,
+    DesertStep,
     DamageBlood,
     BodyPoof,
 }
@@ -409,7 +410,8 @@ pub enum EmitterName {
 impl Display for EmitterName {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            EmitterName::DesertDust => write!(f, "DesertDust"),
+            EmitterName::DesertSlide => write!(f, "DesertSlide"),
+            EmitterName::DesertStep => write!(f, "DesertStep"),
             EmitterName::DamageBlood => write!(f, "DamageBlood"),
             EmitterName::BodyPoof => write!(f, "BodyPoof"),
         }

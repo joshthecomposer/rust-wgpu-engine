@@ -11,7 +11,7 @@ use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::{combat_system, movement_system, state_machines};
 use crate::physics::PhysicsState;
 use crate::renderer::Renderer;
-use crate::sound::sound_manager::SoundManager;
+use crate::sound::sound_manager::{self, SoundManager};
 use crate::time::Time;
 use crate::platform::Platform;
 use crate::world::World;
@@ -164,6 +164,7 @@ impl Game {
 
     pub fn update(&mut self) {
         self.world.camera.update(&self.world.ecs, self.time.dt, &self.physics, self.time.alpha, &self.input, self.platform.fb_width as f32 / self.platform.fb_height as f32);
+        self.sound.update(&self.world.camera);
         self.world.lights.update(&self.time.dt);
         self.world.particles.update(self.time.dt);
     }
@@ -180,6 +181,7 @@ impl Game {
             true,
             &self.physics,
             self.time.alpha,
+            &mut self.world.particles,
         );
 
         self.world.particles.render(

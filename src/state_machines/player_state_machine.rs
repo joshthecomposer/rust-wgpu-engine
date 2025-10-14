@@ -178,7 +178,7 @@ pub fn player_state_machine(
 
                 if controller.time_in_state >= 0.05 {
                     controller.time_in_state = 0.0;
-                    particles.spawn_oneshot_emitter(EmitterName::DesertDust, player_pos);
+                    particles.spawn_oneshot_emitter(EmitterName::DesertSlide, player_pos);
                 }
 
                 let dash_anim = animator.animations.get(&AnimationType::DashF).unwrap();

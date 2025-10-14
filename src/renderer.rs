@@ -5,7 +5,7 @@ use gl::CULL_FACE;
 use glam::{vec3, vec4, Mat4, Vec3, Vec4};
 use image::GenericImageView;
 
-use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, EntityType, Faction, FboType, ShaderType, Transform, VaoType}, gl_call, grid::Grid, lights::Lights, physics::PhysicsState, shaders::Shader, some_data::{FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES}, sound::{fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR}, sound_manager::SoundManager}};
+use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, EmitterName, EntityType, Faction, FboType, ShaderType, Transform, VaoType}, gl_call, grid::Grid, lights::Lights, particles::ParticleSystem, physics::PhysicsState, shaders::Shader, some_data::{FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES}, sound::{fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR}, sound_manager::SoundManager}};
 
 pub struct DefaultTextures {
     pub white: u32,
@@ -263,6 +263,7 @@ impl Renderer {
         render_gizmos: bool,
         ps: &PhysicsState,
         alpha: f32,
+        particles: &mut ParticleSystem
     ) {
         // Non-animated models
         let foliage_ids = em.get_ids_for_type(EntityType::TreeFoliage);
@@ -331,9 +332,9 @@ impl Renderer {
         self.static_model_pass(camera, em, light_manager, active_weapons, ps, alpha);
 
         // Animated models
-        self.ani_model_pass(camera, em, light_manager, sound_manager, y_robot_ids, elapsed, ps, alpha);
-        self.ani_model_pass(camera, em, light_manager, sound_manager, trash_guy_ids, elapsed, ps, alpha);
-        self.ani_model_pass(camera, em, light_manager, sound_manager, moose_ids, elapsed, ps, alpha);
+        self.ani_model_pass(camera, em, light_manager, sound_manager, y_robot_ids, elapsed, ps, alpha, particles);
+        self.ani_model_pass(camera, em, light_manager, sound_manager, trash_guy_ids, elapsed, ps, alpha, particles);
+        self.ani_model_pass(camera, em, light_manager, sound_manager, moose_ids, elapsed, ps, alpha, particles);
     }
 
 
@@ -379,7 +380,7 @@ impl Renderer {
         id
     }
 
-    fn ani_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, sound_manager: &mut SoundManager, ids: Vec<usize>, elapsed: f32, ps: &PhysicsState, alpha: f32) {
+    fn ani_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, sound_manager: &mut SoundManager, ids: Vec<usize>, elapsed: f32, ps: &PhysicsState, alpha: f32, particles: &mut ParticleSystem) {
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
         shader.activate();
 
@@ -421,6 +422,7 @@ impl Renderer {
                 if animation.current_segment.get() == os.segment {
                     if !os.triggered.get() {
                         sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position, id);
+                        particles.spawn_oneshot_emitter(EmitterName::DesertStep, trans.position);
                         os.triggered.set(true);
                     }
                 } else {
