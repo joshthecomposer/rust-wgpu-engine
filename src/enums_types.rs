@@ -405,6 +405,7 @@ pub enum EmitterName {
     DesertStep,
     DamageBlood,
     BodyPoof,
+    DesertLand,
 }
 
 impl Display for EmitterName {
@@ -414,6 +415,7 @@ impl Display for EmitterName {
             EmitterName::DesertStep => write!(f, "DesertStep"),
             EmitterName::DamageBlood => write!(f, "DamageBlood"),
             EmitterName::BodyPoof => write!(f, "BodyPoof"),
+            EmitterName::DesertLand => write!(f, "DesertLand"),
         }
     }
 }

@@ -34,7 +34,7 @@ pub fn player_state_machine(
 
    let dir = glam::vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
    let m = rb.mass();
-   let impulse = glam::vec3(dir.x * (4.0 * m), 0.0, dir.z * (4.0 * m));
+   let impulse = glam::vec3(dir.x * (10.0 * m), 0.0, dir.z * (10.0 * m));
 
     let camera_is_detached = camera.move_state == CameraState::Free;
 
@@ -200,6 +200,7 @@ pub fn player_state_machine(
                     if grounded { 
                         rb.set_gravity_scale(1.0, true);
                         player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
+                        particles.spawn_oneshot_emitter(EmitterName::DesertLand, player_pos);
                         break 'ns
                     }
                 }

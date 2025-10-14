@@ -1,3 +1,4 @@
+# =============================================================================
 [one_shot_data.DamageBlood]
 name = "DamageBlood"
 angle_rand = [0.0, 6.2831855] # random range betwee value 0 and value 1, use the same value for no deviation
@@ -14,6 +15,8 @@ colors = [
 	[0.58, 0.1, 0.1, 1.0],
 ]
 particle_count = 8
+
+# =============================================================================
 
 [one_shot_data.DesertSlide]
 name = "DesertSlide"
@@ -36,6 +39,9 @@ colors = [
 particle_count = 3
 texture = "resources/textures/smoke.png"
 
+# =============================================================================
+
+
 [one_shot_data.DesertStep]
 name = "DesertStep"
 angle_rand = [0.0, 3.2831855]
@@ -57,6 +63,8 @@ colors = [
 particle_count = 4
 texture = "resources/textures/smoke.png"
 
+# =============================================================================
+
 [one_shot_data.BodyPoof]
 name = "BodyPoof"
 angle_rand = [0.0, 6.2831855] # random range betwee value 0 and value 1, use the same value for no deviation
@@ -74,4 +82,27 @@ colors = [
 	# [0.141, 0.396, 0.804, 0.4],
 ]
 particle_count = 3
+texture = "resources/textures/smoke.png"
+
+# =============================================================================
+
+[one_shot_data.DesertLand]
+name = "DesertLand"
+angle_rand = [0.0, 3.2831855]
+radius_rand = [0.1, 0.5]
+gravity = 0.0
+velocity = [
+	[0.0, 0.0],
+	[0.0, 2.0],
+	[0.0, 0.0]
+]
+particle_lifetime = [0.5, 1.5]
+particle_scale = [0.08, 0.2]
+colors = [
+	[0.38, 0.18, 0.0, 0.8],
+	[0.506, 0.325, 0.122, 0.8],
+	[0.427, 0.247, 0.051, 0.8],
+	[0.624, 0.416, 0.2, 0.8],
+]
+particle_count = 30
 texture = "resources/textures/smoke.png"
