@@ -6,7 +6,7 @@ use crate::enums_types::{AnimationType, CameraState, EntityType, Faction, Physic
 use crate::input::{self, InputState};
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
-use crate::ui::message_queue::MessageQueue;
+use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::{combat_system, items, movement_system, state_machines};
 use crate::physics::PhysicsState;
@@ -27,6 +27,7 @@ pub struct Game {
     input: InputState,
     ui: GameUiContext,
     paused: bool,
+    message_queue: MessageQueue,
     // imgui: SpagImgui,
 }
 
@@ -57,12 +58,23 @@ impl Game {
             input: InputState::new(),
             ui,
             paused: false,
+            message_queue: MessageQueue::new(),
         }
     }
     
     pub fn run(&mut self) {
         while !self.platform.window.should_close() {
             self.time.begin_frame(self.platform.glfw.get_time() as f32);
+
+            let desired_cursor_mode = if self.paused {
+                glfw::CursorMode::Normal
+            } else if self.world.camera.move_state == CameraState::Locked {
+                glfw::CursorMode::Normal
+            } else {
+                glfw::CursorMode::Disabled
+            };
+
+            self.platform.window.set_cursor_mode(desired_cursor_mode);
 
             while self.time.should_step() {
                 self.time.begin_fixed_step();
@@ -135,7 +147,7 @@ impl Game {
                     );
                     items::update(&mut self.world.ecs, &mut self.physics);
                     animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
-                    combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics);
+                    combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics, &mut self.world.particles);
                     self.world.ecs.update(&mut self.sound, &mut self.physics);
 
                     Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
@@ -200,21 +212,34 @@ impl Game {
             &self.world.camera,
         );
 
+        // Fix for mac scaled pixels garbage.
+        let (win_w, win_h) = self.platform.window.get_size();                 // logical points
+        let (fb_w,  fb_h)  = self.platform.window.get_framebuffer_size();     // physical pixels
+
+        let sx = fb_w as f32 / win_w as f32;
+        let sy = fb_h as f32 / win_h as f32;
+
+        let mouse_fb = glam::vec2(self.input.mouse_pos_current.x * sx, self.input.mouse_pos_current.y * sy);
+
         let (ui_shader, font_shader) = self.renderer.shaders.get_pair_mut(&ShaderType::GameUi, &ShaderType::Text).unwrap();
         do_ui(
             self.platform.fb_width as f32, 
             self.platform.fb_height as f32, 
-            self.input.mouse_pos_current, 
+            mouse_fb,
             ui_shader,
             font_shader,
-            &mut MessageQueue::new(), 
+            &mut self.message_queue,
             self.paused, 
             self.platform.window.get_cursor_mode(), 
             &self.world.camera.move_state, 
             &self.input.keys_current, 
             &mut self.ui, 
-            &mut false //render_gizmos
+            &mut false, //render_gizmos
+            &self.input,
         );
+        if self.message_queue.drain().contains(&UiMessage::WindowShouldClose) {
+            self.platform.window.set_should_close(true)
+        }
         self.platform.window.swap_buffers();
         self.platform.glfw.poll_events();
     }

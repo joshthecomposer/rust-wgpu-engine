@@ -1,17 +1,18 @@
 use glam::{vec3, Vec3};
 
-use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Effect, Faction, Knockback, PlayerState, SimState, VisualEffect}, physics::{self, PhysicsState}};
+use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackState, Effect, EmitterName, Faction, Knockback, PlayerState, SimState, VisualEffect}, particles::ParticleSystem, physics::{self, PhysicsState}};
 
 pub fn update(
     em: &mut EntityManager,
     dt: f32,
     ps: &mut PhysicsState,
+    px: &mut ParticleSystem,
 ) {
-    handle_player_to_enemy(em, ps);
+    handle_player_to_enemy(em, ps, px);
     //handle_enemy_to_player(em, ps);
 }
 
-fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
+fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particles: &mut ParticleSystem) {
     let attacking_player_ids = em.player_get_ids_for_state(PlayerState::Combat);
 
     for player_id in attacking_player_ids {
@@ -95,6 +96,8 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                             did_particles: false,
                         };
 
+                        let trans = em.transforms.get(*target_id).unwrap();
+
 
                         if sim_state.state != SimState::Blocking {
                             if let Some(h) = em.healths.get_mut(*target_id) { *h -= 50.0 };
@@ -105,6 +108,7 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                             // });
 
                             kb.flinch = true;
+
                         }
 
                         let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();

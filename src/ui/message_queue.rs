@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{vec_deque::Drain, VecDeque};
 
 #[derive(PartialEq)]
 pub enum UiMessage {
@@ -22,7 +22,7 @@ impl MessageQueue {
         self.queue.push_back(msg);
     }
 
-    pub fn drain(&mut self) {
-        self.queue.drain(..);
+    pub fn drain(&mut self) -> Vec<UiMessage> {
+        self.queue.drain(..).into_iter().collect()
     }
 }

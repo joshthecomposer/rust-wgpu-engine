@@ -818,7 +818,10 @@ pub fn glam_to_nalgebra_quat(q: Quat) -> UnitQuaternion<f32> {
 }
 
 pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut PhysicsState) {
-        let mut terrain = Terrain::from_height_map("resources/textures/brushes/301B1.png");
+        //let mut terrain = Terrain::from_height_map("resources/textures/brushes/301B1.png");
+        //let mut terrain = Terrain::from_height_map("resources/textures/solid-black-100-100.png");
+        //let mut terrain = Terrain::from_height_map("resources/textures/brushes/NvF5e.jpg");
+        let mut terrain = Terrain::from_height_map("resources/textures/brushes/big_spot.jpeg");
 
         let model = terrain.into_opengl_model();
 
@@ -859,6 +862,7 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
             .map(|chunk| [chunk[0], chunk[1], chunk[2]])
             .collect();
 
+        //let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
         let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
         // let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build();
 
