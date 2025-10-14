@@ -21,7 +21,7 @@ mod terrain;
 // mod deprecated;
 mod state_machines;
 mod particles;
-//mod items;
+mod items;
 mod physics;
 mod util;
 mod combat_system;

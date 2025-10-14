@@ -16,6 +16,7 @@ pub struct Time {
     // interpolation
     pub alpha: f32, // accumulator / fixed_dt (computed after fixed loop)
     pub did_step: bool,
+    pub steps_this_frame: u32,
 }
 
 impl Time {
@@ -30,6 +31,7 @@ impl Time {
             max_frame_dt: 0.25,
             alpha: 0.0,
             did_step: false,
+            steps_this_frame: 0,
         }
     }
 
@@ -39,12 +41,15 @@ impl Time {
         if frame_dt > self.max_frame_dt { frame_dt = self.max_frame_dt; }
         self.last = self.now;
 
+        frame_dt = frame_dt.clamp(0.0, self.fixed_dt * 4.0);
+
         self.dt = frame_dt;
         self.elapsed += frame_dt;
 
         self.accumulator += frame_dt;
 
         self.did_step = false;
+        self.steps_this_frame = 0;
     }
 
     pub fn should_step(&self) -> bool {
@@ -53,6 +58,7 @@ impl Time {
 
     pub fn begin_fixed_step(&mut self) {
         if !self.did_step { self.did_step = true; }
+        self.steps_this_frame += 1;
     }
 
     pub fn end_fixed_step(&mut self) {

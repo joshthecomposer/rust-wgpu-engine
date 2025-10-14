@@ -22,25 +22,16 @@ pub fn player_state_machine(
     let ph          = em.physics_handles.get(player_id).unwrap();
     let rb          = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
     let yaw         = em.yaws.get(player_id).unwrap();
-    let transform   = em.transforms.get(player_id).unwrap();
-    let kb          = em.knockbacks.get_mut(player_id);
 
     let jump_height = em.jump_heights.get(player_id).unwrap();
 
-    let player_cyl = ps.collider_set.get(ph.collider).unwrap();
-
-    let anim = animator.get_current_animation().unwrap();
-    let anim_type = &animator.current_animation;
-
    let dir = glam::vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
    let m = rb.mass();
-   let impulse = glam::vec3(dir.x * (10.0 * m), 0.0, dir.z * (10.0 * m));
+   let impulse = glam::vec3(dir.x * (15.0 * m), 0.0, dir.z * (15.0 * m));
 
     let camera_is_detached = camera.move_state == CameraState::Free;
 
     // CHECK GROUNDED
-
-
     let grounded = {
         if controller.state == PlayerState::Jumping || controller.state == PlayerState::Freefalling {
             let ground_id = em.entity_types.iter().find(|e| *e.value() == EntityType::Terrain).unwrap().key();
@@ -96,7 +87,6 @@ pub fn player_state_machine(
     // ==================================================================================
     // STATE_MACHINE
     // ==================================================================================
-    // Heirarchy of state checks:
     'ns: {
         match controller.state {
             PlayerState::Init => {
@@ -108,6 +98,7 @@ pub fn player_state_machine(
 
                 if input.wasd_is_down() {
                     player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
+                    sm.play_sound_3d(SoundType::Jump, &player_pos, player_id);
                     break 'ns
                 }
 
@@ -160,6 +151,7 @@ pub fn player_state_machine(
 
                 if !input.wasd_is_down() {
                     player_non_combat_transition(controller, PlayerState::Idle, animator, false, rb);
+                    sm.play_sound_3d(SoundType::Jump, &player_pos, player_id);
                     break 'ns
                 }
             },
@@ -169,6 +161,7 @@ pub fn player_state_machine(
                 if let Some(grounded) = grounded { 
                     if grounded && controller.time_in_state >= 0.15 { 
                         player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
+                        sm.play_sound_3d(SoundType::Jump, &player_pos, player_id);
                         break 'ns
                     }
                 }
@@ -201,6 +194,7 @@ pub fn player_state_machine(
                         rb.set_gravity_scale(1.0, true);
                         player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
                         particles.spawn_oneshot_emitter(EmitterName::DesertLand, player_pos);
+                        sm.play_sound_3d(SoundType::Land, &player_pos, player_id);
                         break 'ns
                     }
                 }

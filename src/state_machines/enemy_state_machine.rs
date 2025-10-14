@@ -31,18 +31,26 @@ pub fn enemy_sim_state_machine(
     let kb = em.knockbacks.get_mut(entity_id);
 
     let entity_cyl = ps.collider_set.get(ph.collider).unwrap();
-
-    let rh_weapon_id = em.active_items.get(entity_id).and_then(|aw| aw.right_hand);
-    let can_attack = animator.animations.get(&AnimationType::Slash).is_some() && rh_weapon_id.is_some();
     
-    let weapon_length = if can_attack && rh_weapon_id.is_some() {
-        em.parents
-        .iter()
-        .find(|p| p.value().parent_id == rh_weapon_id.unwrap() && em.cuboids.get(p.key()).is_some())
-        .and_then(|entry| em.cuboids.get(entry.key()).map(|hb| hb.h))
-        .unwrap()
-    } else {
-        0.0
+    let active_weapon_id = {
+        let active_weapon = em.owners.iter().find(|o| {
+            *o.value() == entity_id 
+            && em.equip_slots.iter().any(|e| e.key() == o.key())
+        });
+        if let Some(active_weapon) = active_weapon {
+            Some(active_weapon.key())
+        } else {
+            None
+        }
+    };
+
+
+    let can_attack = animator.animations.get(&AnimationType::Slash).is_some() && active_weapon_id.is_some();
+
+    let weapon_length = if let Some(awid) = active_weapon_id {
+        *em.model_heights.get(awid).unwrap()
+    } else { 
+        0.0 
     };
 
     let attack_length = weapon_length + entity_cyl.shape().as_capsule().unwrap().radius;
@@ -151,10 +159,10 @@ pub fn enemy_sim_state_machine(
                 controller.time_in_state += dt;
                 rb.set_enabled_rotations(true, true, true, true);
 
-                if let Some(rh_weapon_id) = rh_weapon_id {
-                    em.parents.remove(rh_weapon_id);
-                    em.active_items.remove(entity_id);
-                    em.inventories.remove(entity_id);
+                if let Some(active_weapon_id) = active_weapon_id {
+                    em.parents.remove(active_weapon_id);
+                    em.owners.remove(active_weapon_id);
+                    em.equip_slots.remove(active_weapon_id);
                 }
 
                 if controller.time_in_state >= 3.0 {
@@ -192,7 +200,7 @@ pub fn enemy_sim_state_machine(
                 // }
                 
                 // remove the hitbox parent
-                if let Some(hitbox_parent) = em.parents.iter().find(|p| p.value().parent_id == entity_id) {
+                if let Some(hitbox_parent) = em.parents.iter().find(|p| *p.value() == entity_id) {
                     em.entity_trashcan.push(hitbox_parent.key());
                 }
                 em.entity_trashcan.push(entity_id);
@@ -236,7 +244,7 @@ fn entity_combat_state_machine(
                     }
                 }
 
-                if a1.current_segment >= 16 {
+                if a1.current_segment.get() >= 16 {
                     if in_range {
                         entity_combat_transition(c, AttackState::Attack2, a, false);
                         break 'ns

@@ -53,6 +53,7 @@ pub struct EntityManager {
     pub aggro_ranges: SparseSet<f32>,
     pub jump_heights: SparseSet<JumpHeight>,
     pub total_masses: SparseSet<f32>,
+    pub model_heights: SparseSet<f32>,
 }
 
 impl EntityManager {
@@ -100,6 +101,7 @@ impl EntityManager {
             aggro_ranges: SparseSet::with_capacity(max_entities),
             jump_heights: SparseSet::with_capacity(max_entities),
             total_masses: SparseSet::with_capacity(max_entities),
+            model_heights: SparseSet::with_capacity(max_entities),
         }
     }
 
@@ -196,6 +198,17 @@ impl EntityManager {
                     attack_state: AttackState::Attack1,
                     time_in_state: 0.0,
                 });
+            },
+            Faction::Enemy => {
+                self.simstate_controllers.insert(parent_id, SimStateController { 
+                    state: SimState::Init, 
+                    attack_state: AttackState::Attack1, 
+                    time_in_state: 0.0,
+                    target_time: 0.0, 
+                });
+
+                self.destinations.insert(parent_id, position);
+                self.aggro_ranges.insert(parent_id, archetype.aggro_range);
             },
             _=> ()
         }
@@ -561,6 +574,7 @@ impl EntityManager {
         self.factions.insert(self.next_entity_id, Faction::Gizmo);
         self.entity_types.insert(self.next_entity_id, EntityType::Cuboid);
         self.parents.insert(self.next_entity_id, parent_id);
+        self.model_heights.insert(parent_id, size.y);
 
 
         self.transforms.insert(self.next_entity_id, Transform {
@@ -659,29 +673,42 @@ impl EntityManager {
     }
 
     pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
-        self.delete_entities(sm);
+        self.delete_entities(sm, ps);
     }
 
-   pub fn delete_entities(&mut self, sm: &mut SoundManager) {
+   pub fn delete_entities(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
        // TODO: Also clean up colliders from here.
-       for id in self.entity_trashcan.iter() {
-           // sm.cleanup_entity_sounds(*id);
-           self.transforms.remove(*id);
-           self.factions.remove(*id);
-           self.entity_types.remove(*id);
-           self.models.remove(*id);
-           self.animators.remove(*id);
-           self.skellingtons.remove(*id);
-           self.rotators.remove(*id);
-           self.simstate_controllers.remove(*id);
-           self.destinations.remove(*id);
-           self.parents.remove(*id);
-           self.v_effects.remove(*id);
-           self.impulse_applied.remove(*id);
-       }
+        for id in self.entity_trashcan.iter() {
+            // sm.cleanup_entity_sounds(*id);
+            self.transforms.remove(*id);
+            self.factions.remove(*id);
+            self.entity_types.remove(*id);
+            self.models.remove(*id);
+            self.animators.remove(*id);
+            self.skellingtons.remove(*id);
+            self.rotators.remove(*id);
+            self.simstate_controllers.remove(*id);
+            self.destinations.remove(*id);
+            self.parents.remove(*id);
+            self.v_effects.remove(*id);
+            self.impulse_applied.remove(*id);
+            if let Some(c2p) = self.collider_to_parent.iter().find(|e| *e.1 == *id) {
+                if let Some(ph) = self.physics_handles.get_mut(*c2p.1) {
+                    ps.rigid_body_set.remove(
+                        ph.rigid_body,
+                        &mut ps.island_manager,
+                        &mut ps.collider_set,
+                        &mut ps.impulse_joint_set,
+                        &mut ps.multibody_joint_set,
+                        false,
+                    );
+                }
+            }
+            self.physics_handles.remove(*id);
+        }
 
-       self.entity_trashcan.clear();
-   }
+        self.entity_trashcan.clear();
+    }
 
     pub fn get_ids_for_faction(&self, faction: Faction) -> Vec<usize> {
         let result: Vec<usize> = self.factions
@@ -752,6 +779,7 @@ impl EntityManager {
                 *w_type.value() == Faction::Item 
                     && self.owners.get(w_type.key()).is_none()
                     && self.parents.get(w_type.key()).is_none()
+                    && self.equip_slots.get(w_type.key()).is_none()
             })
             .map(|e| e.key())
             .collect::<Vec<usize>>()

@@ -14,7 +14,6 @@ pub fn update(
 fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
     let attacking_player_ids = em.player_get_ids_for_state(PlayerState::Combat);
 
-
     for player_id in attacking_player_ids {
         let yaw = em.yaws.get(player_id).unwrap();
         //let active_item = em.active_items.get(player_id).unwrap();
@@ -81,9 +80,9 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                     None => { continue },
                 };
 
-                // if *faction != Faction::Enemy { continue; }
+                //if *faction != Faction::Enemy { continue; }
 
-                //let sim_state = em.simstate_controllers.get(*target_id).unwrap();
+                let sim_state = em.simstate_controllers.get(*target_id).unwrap();
 
                 if !hitset.insert(other) { continue };
 
@@ -97,16 +96,16 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState) {
                         };
 
 
-                        //if sim_state.state != SimState::Blocking {
-                        //    if let Some(h) = em.healths.get_mut(*target_id) { *h -= 50.0 };
+                        if sim_state.state != SimState::Blocking {
+                            if let Some(h) = em.healths.get_mut(*target_id) { *h -= 50.0 };
 
-                        //    // em.v_effects.insert(target_id, VisualEffect {
-                        //    //     effect: Effect::Flashing,
-                        //    //     ttl: kb.ttl,
-                        //    // });
+                            // em.v_effects.insert(target_id, VisualEffect {
+                            //     effect: Effect::Flashing,
+                            //     ttl: kb.ttl,
+                            // });
 
-                        //    kb.flinch = true;
-                        //}
+                            kb.flinch = true;
+                        }
 
                         let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
                         physics::apply_delta_v(rb, dir, kb_distance);

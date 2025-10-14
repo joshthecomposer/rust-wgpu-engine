@@ -8,7 +8,7 @@ use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
 use crate::ui::message_queue::MessageQueue;
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
-use crate::{combat_system, movement_system, state_machines};
+use crate::{combat_system, items, movement_system, state_machines};
 use crate::physics::PhysicsState;
 use crate::renderer::Renderer;
 use crate::sound::sound_manager::{self, SoundManager};
@@ -125,8 +125,10 @@ impl Game {
                     &mut self.sound, 
                     &self.world.camera
                 );
+                items::update(&mut self.world.ecs, &mut self.physics);
                 animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
                 combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics);
+                self.world.ecs.update(&mut self.sound, &mut self.physics);
                 
                 Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
                 
