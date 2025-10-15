@@ -1,4 +1,5 @@
-use rapier3d::prelude::{ContactPair, RigidBody};
+use nalgebra::{point, vector};
+use rapier3d::prelude::{ColliderSet, ContactPair, InteractionGroups, QueryFilter, QueryPipeline, Ray, RigidBody, RigidBodySet};
 
 use crate::{animation::{animation::Animator, animation_system}, camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, AttackState, CameraState, EmitterName, EntityType, Faction, PlayerController, PlayerState, SoundType, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::{self, PhysicsState}, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
@@ -20,6 +21,17 @@ pub fn player_state_machine(
     let animator    = em.animators.get_mut(player_id).unwrap();
     let health      = em.healths.get(player_id).unwrap();
     let ph          = em.physics_handles.get(player_id).unwrap();
+
+    // CHECK GROUNDED
+    let grounded = is_grounded_ray(
+        ps.query_pipeline.as_ref().unwrap(),
+        &ps.collider_set,
+        &ps.rigid_body_set,
+        player_pos,
+        0.05,
+        0,
+    );
+
     let rb          = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
     let yaw         = em.yaws.get(player_id).unwrap();
 
@@ -30,28 +42,6 @@ pub fn player_state_machine(
    let impulse = glam::vec3(dir.x * (15.0 * m), 0.0, dir.z * (15.0 * m));
 
     let camera_is_detached = camera.move_state == CameraState::Free;
-
-    // CHECK GROUNDED
-    let grounded = {
-        if controller.state == PlayerState::Jumping || controller.state == PlayerState::Freefalling {
-            let ground_id = em.entity_types.iter().find(|e| *e.value() == EntityType::Terrain).unwrap().key();
-            let ground_ph = em.physics_handles.get(ground_id).unwrap();
-
-            let check = ps.narrow_phase.contact_pairs_with(ph.collider)
-                .find(|cp| {
-                    (
-                        (cp.collider1 == ph.collider && cp.collider2 == ground_ph.collider) ||
-                        (cp.collider2 == ph.collider && cp.collider1 == ground_ph.collider)
-                    )
-                    && cp.has_any_active_contact
-                }).is_some();
-
-            Some(check)
-        } else {
-            None
-        }
-    };
-
     
     //player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
     //return;
@@ -59,14 +49,12 @@ pub fn player_state_machine(
     // ==================================================================================
     // GUARDS
     // ==================================================================================
-    if let Some(grounded) = grounded {
-        if !grounded && controller.state != PlayerState::Freefalling {
-            player_non_combat_transition(controller, PlayerState::Freefalling, animator, true, rb);
-        }
-
+    if !grounded && controller.state != PlayerState::Freefalling {
         if rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
             rb.set_gravity_scale(3.0, true);
         }
+
+        player_non_combat_transition(controller, PlayerState::Freefalling, animator, true, rb);
     }
 
     if *health <= 0.0 {
@@ -158,12 +146,10 @@ pub fn player_state_machine(
             PlayerState::Jumping => {
                 controller.time_in_state += dt;
 
-                if let Some(grounded) = grounded { 
-                    if grounded && controller.time_in_state >= 0.15 { 
-                        player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
-                        sm.play_sound_3d(SoundType::Jump, &player_pos, player_id);
-                        break 'ns
-                    }
+                if grounded && controller.time_in_state >= 0.2 { 
+                    player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
+                    sm.play_sound_3d(SoundType::Jump, &player_pos, player_id);
+                    break 'ns
                 }
             },
             PlayerState::Dashing     => {
@@ -189,14 +175,12 @@ pub fn player_state_machine(
             PlayerState::Freefalling => {
                 controller.time_in_state += dt;
                 
-                if let Some(grounded) = grounded { 
-                    if grounded { 
-                        rb.set_gravity_scale(1.0, true);
-                        player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
-                        particles.spawn_oneshot_emitter(EmitterName::DesertLand, player_pos);
-                        sm.play_sound_3d(SoundType::Land, &player_pos, player_id);
-                        break 'ns
-                    }
+                if grounded { 
+                    rb.set_gravity_scale(1.0, true);
+                    player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
+                    particles.spawn_oneshot_emitter(EmitterName::DesertLand, player_pos);
+                    sm.play_sound_3d(SoundType::Land, &player_pos, player_id);
+                    break 'ns
                 }
 
                 if controller.time_in_state >= 2.0 {
@@ -359,4 +343,22 @@ fn player_non_combat_transition(
     } else {
         a.set_next_animation(anim);
     }
+}
+
+fn is_grounded_ray(
+    query: &QueryPipeline,
+    colliders: &ColliderSet,
+    bodies: &RigidBodySet,
+    origin: glam::Vec3,
+    max_dist: f32,
+    terrain_mask: u32, // pass 0 to not use this
+) -> bool {
+    let ray = Ray::new(point![origin.x, origin.y, origin.z], vector![0.0, -1.0, 0.0]);
+
+    let filter = QueryFilter::default().groups(InteractionGroups::new(u32::MAX.into(), u32::MAX.into())).into();
+    if let Some((handle, toi)) = query.cast_ray(&bodies, &colliders, &ray, max_dist, true, filter) {
+        // can add a slope limit here
+        return true;
+    }
+    false
 }

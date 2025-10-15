@@ -4,12 +4,12 @@ use core::f32;
 use std::collections::HashSet;
 
 use glam::{Mat4, Quat, Vec3};
-use nalgebra::{Point3, UnitQuaternion};
+use nalgebra::{Point3, UnitQuaternion, Vector3};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{control::KinematicCharacterController, parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::{self, PhysicsState}, some_data::GRAVITY, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::Terrain};
+use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::{self, PhysicsState}, some_data::GRAVITY, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -818,11 +818,15 @@ pub fn glam_to_nalgebra_quat(q: Quat) -> UnitQuaternion<f32> {
 }
 
 pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut PhysicsState) {
-        //let mut terrain = Terrain::from_height_map("resources/textures/brushes/301B1.png");
+        let path = "resources/textures/brushes/301B1.png";
+        let img = image::open(path).expect("Failed to load terrain image").to_luma8();
+        let (width, height) = img.dimensions();
+        let y_amplitude = 25.0;
+        let mut terrain = Terrain::from_height_map(y_amplitude, width, height, &img);
         //let mut terrain = Terrain::from_height_map("resources/textures/solid-black-100-100.png");
         //let mut terrain = Terrain::from_height_map("resources/textures/brushes/NvF5e.jpg");
         //let mut terrain = Terrain::from_height_map("resources/textures/brushes/big_spot.jpeg");
-        let mut terrain = Terrain::from_height_map("resources/textures/brushes/2000.png");
+        //let mut terrain = Terrain::from_height_map("resources/textures/brushes/2000.png");
 
         let model = terrain.into_opengl_model();
 
@@ -838,7 +842,7 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
 
         // Terrain collider
         let terrain_trans = Transform {
-            position: Vec3::new(0.0, -0.5, 0.0),
+            position: Vec3::new(0.0, 0.0, 0.0),
             rotation: Quat::IDENTITY,
             scale: Vec3::splat(1.0),
         };
@@ -848,36 +852,51 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
         entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
 
 
-        // Make a big static cube collider
         let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
-        let body = RigidBodyBuilder::fixed().position(iso).build();
+        let body = RigidBodyBuilder::fixed().position(iso)
+            .build();
 
         // Process vertices into arrays
-        let vertices: Vec<Point3<f32>> = model.vertices
-            .iter()
-            .map(|v| v.position.into())
-            .collect();
-        
-        let indices: Vec<[u32; 3]> = model.indices
-            .chunks(3)
-            .map(|chunk| [chunk[0], chunk[1], chunk[2]])
-            .collect();
+        //let vertices: Vec<Point3<f32>> = model.vertices
+        //    .iter()
+        //    .map(|v| v.position.into())
+        //    .collect();
+        //
+        //let indices: Vec<[u32; 3]> = model.indices
+        //    .chunks(3)
+        //    .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+        //    .collect();
+
+        //let (heights, nrows, ncols) = Terrain::heights_from_image(y_amplitude, &img, width, height);
+
 
         //let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
-        let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
-        // let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build();
+        //let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
+        //let terrain_collider = ColliderBuilder::heightfield(
+        //    heights, 
+        //    Vector3::new((ncols - 1) as f32, 1.0, (nrows - 1) as f32)
+        //).build();
+    // let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build();
 
         let body_handle = physics_state.rigid_body_set.insert(body);
-        let collider_handle = physics_state.collider_set.insert_with_parent(
-            terrain_collider,
-            body_handle,
-            &mut physics_state.rigid_body_set,
-        );
+        //let collider_handle = physics_state.collider_set.insert_with_parent(
+        //    terrain_collider,
+        //    body_handle,
+        //    &mut physics_state.rigid_body_set,
+        //);
+    terrain::insert_chunked_terrain_colliders(
+        &model,
+        width, height,
+        128, 128, // how big is each chunk
+        body_handle,
+        &mut physics_state.collider_set,
+        &mut physics_state.rigid_body_set,
+    );
 
-        entity_manager.physics_handles.insert(entity_manager.next_entity_id, PhysicsHandle {
-            rigid_body: body_handle,
-            collider: collider_handle,
-        });
+        //entity_manager.physics_handles.insert(entity_manager.next_entity_id, PhysicsHandle {
+        //    rigid_body: body_handle,
+        //    collider: collider_handle,
+        //});
 
         entity_manager.models.insert(entity_manager.next_entity_id, model);
 
