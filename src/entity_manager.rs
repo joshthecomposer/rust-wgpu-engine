@@ -9,7 +9,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::{control::KinematicCharacterController, parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
 
-use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::{self, PhysicsState}, some_data::GRAVITY, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
+use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -54,6 +54,7 @@ pub struct EntityManager {
     pub jump_heights: SparseSet<JumpHeight>,
     pub total_masses: SparseSet<f32>,
     pub model_heights: SparseSet<f32>,
+    pub grounded_states: SparseSet<GroundedState>,
 }
 
 impl EntityManager {
@@ -102,6 +103,7 @@ impl EntityManager {
             jump_heights: SparseSet::with_capacity(max_entities),
             total_masses: SparseSet::with_capacity(max_entities),
             model_heights: SparseSet::with_capacity(max_entities),
+            grounded_states: SparseSet::with_capacity(max_entities),
         }
     }
 
@@ -388,7 +390,7 @@ impl EntityManager {
 
         let offset = 0.039;
 
-        let collider = ColliderBuilder::capsule_y(capsule_half_height, r)
+        let builder = ColliderBuilder::capsule_y(capsule_half_height, r)
             // let collider = ColliderBuilder::cylinder(cyl.h * 0.5, cyl.r)
             .active_collision_types(ActiveCollisionTypes::all())
             // TODO: This is a hacky way to fix the fact that colliders are centered at half height
@@ -397,8 +399,14 @@ impl EntityManager {
             .restitution(0.0)
             .restitution_combine_rule(CoefficientCombineRule::Min)
             .friction(2.0)
-            .friction_combine_rule(CoefficientCombineRule::Max)
-            .build();
+            .collision_groups(InteractionGroups::new(GROUP_PLAYER.into(), u32::MAX.into()))
+            .friction_combine_rule(CoefficientCombineRule::Max);
+
+        let collider = if let Some(mass) = self.total_masses.get(parent_id) {
+            builder.mass(*mass).build()
+        } else {
+            builder.build()
+        };
 
         let body_handle = ps.rigid_body_set.insert(body);
 
@@ -408,36 +416,17 @@ impl EntityManager {
             &mut ps.rigid_body_set,
         );
 
-
+        // calculating the jump height based on mass
         {
             let body = ps.rigid_body_set.get_mut(body_handle).unwrap();
 
-            body.recompute_mass_properties_from_colliders(&ps.collider_set);
-
-            if let Some(total_mass) = self.total_masses.get(parent_id) {
-                let current = body.mass(); // effective mass from colliders
-                let add = (total_mass - current).max(0.0);
-
-                println!("MASS(before recompute) = {}", current);
-                println!("TARGET(total)          = {}", total_mass);
-                println!("ADDITIONAL to add      = {}", add);
-
-                // 3) Apply delta so effective total becomes ~target.
-                body.set_additional_mass(add, true);
-                body.recompute_mass_properties_from_colliders(&ps.collider_set);
-
-                // 4) Verify: this should now reflect target (≈ colliders + add).
-                println!("MASS(after additional) = {}", body.mass());
-            }
-
             if let Some(jump_height) = self.jump_heights.get_mut(parent_id) {
-                let v0 = (2.0 * GRAVITY.abs() * jump_height.desired).sqrt();
-                let J = glam::vec3(0.0, body.mass() * v0, 0.0);
+                let initial_velocity = (2.0 * GRAVITY.abs() * jump_height.desired).sqrt();
+                let impulse = glam::vec3(0.0, body.mass() * initial_velocity, 0.0);
 
-                jump_height.precalculated = Some(J.into()); 
+                jump_height.precalculated = Some(impulse.into()); 
             }
         }
-
 
         let physics_handle = PhysicsHandle {
             rigid_body: body_handle,
@@ -459,7 +448,7 @@ impl EntityManager {
             scale: Vec3::splat(1.0),
         });
         self.models.insert(collider_id, collider_model);
-        self.entity_types.insert(collider_id, EntityType::Cylinder);
+        self.entity_types.insert(collider_id, EntityType::Pill);
         self.factions.insert(collider_id, Faction::Gizmo);
         self.parents.insert(collider_id, parent_id);
         
@@ -470,6 +459,15 @@ impl EntityManager {
         }
 
         self.collider_to_parent.insert(collider_handle, collider_id);
+
+        self.grounded_states.insert(collider_id, GroundedState {
+            was_grouned: false,
+            is_grounded: false,
+            just_left: false,
+            just_landed: false,
+            ray_length_grounded: 0.25,
+            ray_length_airborn: 0.06,
+        });
 
         self.next_entity_id += 1;
     }

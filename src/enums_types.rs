@@ -83,6 +83,7 @@ pub enum EntityType {
     Cactus1,
     Cactus2,
     Rock1,
+    Pill,
 }
 
 impl Display for EntityType {
@@ -103,6 +104,7 @@ impl Display for EntityType {
             EntityType::Cactus1 => write!(f, "Cactus1"),
             EntityType::Cactus2 => write!(f, "Cactus2"),
             EntityType::Rock1 => write!(f, "Rock1"),
+            EntityType::Pill => write!(f, "Pill"),
         }
     }
 }
@@ -444,4 +446,14 @@ pub struct JumpHeight {
     // The precalculated impulse. This is scary because if we add or 
     // take away a collider we will have to recalc this
     pub precalculated: Option<Vector<rapier3d::math::Real>>
+}
+
+#[derive(Clone, Debug)]
+pub struct GroundedState {
+    pub was_grouned: bool,
+    pub is_grounded: bool,
+    pub just_left: bool,
+    pub just_landed: bool,
+    pub ray_length_grounded: f32,
+    pub ray_length_airborn: f32
 }

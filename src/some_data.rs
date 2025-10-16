@@ -207,3 +207,6 @@ pub const GRAVITY: f32 = 9.81;
 pub const DECREASED_GRAVITY_SCALAR: f32 = 0.5;
 
 pub const FREEFALL_DELAY: f32 = 0.35;
+
+pub const GROUP_TERRAIN: u32 = 0b0001;
+pub const GROUP_PLAYER: u32 = 0b0010;

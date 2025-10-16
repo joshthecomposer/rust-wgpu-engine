@@ -5,9 +5,9 @@ use glam::{vec2, vec3, vec4, Vec3, Vec4};
 use image::{GenericImageView, ImageBuffer, Luma};
 use imgui::sys::igSetWindowPosVec2;
 use nalgebra::Point3;
-use rapier3d::prelude::{Collider, ColliderBuilder, ColliderSet, RigidBodyHandle, RigidBodySet};
+use rapier3d::prelude::{Collider, ColliderBuilder, ColliderSet, InteractionGroups, RigidBodyHandle, RigidBodySet};
 
-use crate::{animation::animation::{texture_from_file, Model, Vertex}, enums_types::{TextureProfile, TextureType}, some_data::MAX_BONE_INFLUENCE};
+use crate::{animation::animation::{texture_from_file, Model, Vertex}, enums_types::{TextureProfile, TextureType}, some_data::{GROUP_TERRAIN, MAX_BONE_INFLUENCE}};
 
 pub struct Terrain {
     vertices: Vec<[f32; 3]>,
@@ -265,6 +265,7 @@ pub fn insert_chunked_terrain_colliders(
             // vertices are already in world space
             let col = ColliderBuilder::trimesh(local_vertices, local_indices)
                 .unwrap()
+                .collision_groups(InteractionGroups::new(GROUP_TERRAIN.into(), u32::MAX.into()))
                 .build();
             colliders.insert_with_parent(col, body_handle, bodies);
         }

@@ -21,19 +21,11 @@ pub fn player_state_machine(
     let animator    = em.animators.get_mut(player_id).unwrap();
     let health      = em.healths.get(player_id).unwrap();
     let ph          = em.physics_handles.get(player_id).unwrap();
-
-    // CHECK GROUNDED
-    let grounded = is_grounded_ray(
-        ps.query_pipeline.as_ref().unwrap(),
-        &ps.collider_set,
-        &ps.rigid_body_set,
-        player_pos,
-        0.05,
-        0,
-    );
-
     let rb          = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
     let yaw         = em.yaws.get(player_id).unwrap();
+
+    let cyl_id      = em.parents.iter().find(|e| *e.value() == player_id).unwrap().key();
+    let gs          = em.grounded_states.get(cyl_id).unwrap();
 
     let jump_height = em.jump_heights.get(player_id).unwrap();
 
@@ -49,13 +41,13 @@ pub fn player_state_machine(
     // ==================================================================================
     // GUARDS
     // ==================================================================================
-    if !grounded && controller.state != PlayerState::Freefalling {
-        if rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
-            rb.set_gravity_scale(3.0, true);
-        }
+    //if !gs.is_grounded && controller.state != PlayerState::Freefalling {
+    //    if rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
+    //        rb.set_gravity_scale(3.0, true);
+    //    }
 
-        player_non_combat_transition(controller, PlayerState::Freefalling, animator, true, rb);
-    }
+    //    player_non_combat_transition(controller, PlayerState::Freefalling, animator, true, rb);
+    //}
 
     if *health <= 0.0 {
         match controller.state {
@@ -146,11 +138,18 @@ pub fn player_state_machine(
             PlayerState::Jumping => {
                 controller.time_in_state += dt;
 
-                if grounded && controller.time_in_state >= 0.2 { 
+                if gs.just_landed && controller.time_in_state >= 0.2 { 
                     player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
-                    sm.play_sound_3d(SoundType::Jump, &player_pos, player_id);
+                    //sm.play_sound_3d(SoundType::Jump, &player_pos, player_id);
+                    particles.spawn_oneshot_emitter(EmitterName::DesertLand, player_pos);
+                    sm.play_sound_3d(SoundType::Land, &player_pos, player_id);
                     break 'ns
                 }
+
+                if !gs.is_grounded && rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON {
+                    player_non_combat_transition(controller, PlayerState::Freefalling, animator, false, rb);
+                    break 'ns
+                };
             },
             PlayerState::Dashing     => {
                 controller.time_in_state += dt;
@@ -175,7 +174,7 @@ pub fn player_state_machine(
             PlayerState::Freefalling => {
                 controller.time_in_state += dt;
                 
-                if grounded { 
+                if gs.just_landed { 
                     rb.set_gravity_scale(1.0, true);
                     player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
                     particles.spawn_oneshot_emitter(EmitterName::DesertLand, player_pos);
