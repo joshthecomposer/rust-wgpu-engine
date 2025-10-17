@@ -4,6 +4,7 @@ use crate::config::game_config::GameConfig;
 use crate::entity_manager::EntityManager;
 use crate::enums_types::{AnimationType, CameraState, EntityType, Faction, PhysicsHandle, ShaderType, Transform};
 use crate::input::{self, InputState};
+use crate::macros::DRAW_CALLS;
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
 use crate::ui::message_queue::{MessageQueue, UiMessage};
@@ -186,7 +187,12 @@ impl Game {
 
             self.update(); // Variable rate systems
             self.render(); // render uses time.alpha and interps
+
+            // unsafe { dbg!(DRAW_CALLS); }
+
+            // unsafe { DRAW_CALLS = 0; }
         }
+
     }
 
     pub fn update(&mut self) {
@@ -205,7 +211,6 @@ impl Game {
             self.platform.fb_width,
             self.platform.fb_height,
             self.time.elapsed,
-            true,
             &self.physics,
             self.time.alpha,
             &mut self.world.particles,
@@ -238,7 +243,7 @@ impl Game {
             &self.world.camera.move_state, 
             &self.input.keys_current, 
             &mut self.ui, 
-            &mut false, //render_gizmos
+            &mut self.renderer.render_gizmos,
             &self.input,
         );
         if self.message_queue.drain().contains(&UiMessage::WindowShouldClose) {

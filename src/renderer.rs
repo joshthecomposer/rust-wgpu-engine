@@ -22,6 +22,7 @@ pub struct Renderer {
     pub cubemap_texture: u32,
 
     pub shadow_debug: bool,
+    pub render_gizmos: bool,
 }
 
 impl Renderer {
@@ -248,6 +249,7 @@ impl Renderer {
 
             cubemap_texture,
             shadow_debug: false,
+            render_gizmos: false,
         }
     }
 
@@ -260,7 +262,6 @@ impl Renderer {
         fb_width: u32,
         fb_height: u32,
         elapsed: f32,
-        render_gizmos: bool,
         ps: &PhysicsState,
         alpha: f32,
         particles: &mut ParticleSystem
@@ -314,12 +315,17 @@ impl Renderer {
         // Render ECS things
         // =============================================================
         // Gizmo pass
-        if render_gizmos {
+        if self.render_gizmos {
             let gizmo_ids = em.get_ids_for_faction(Faction::Gizmo);
             self.gizmo_pass(camera, em, gizmo_ids, ps, alpha);
         }
 
         // Non-animated models
+        unsafe {
+            gl::Enable(gl::CULL_FACE);
+            gl::CullFace(gl::BACK);      // cull back faces
+            gl::FrontFace(gl::CCW);      // CCW = front, matches your mesh
+        }
         self.static_model_pass(camera, em, light_manager, foliage_ids, ps, alpha);
         self.static_model_pass(camera, em, light_manager, trunk_ids, ps, alpha);
         self.static_model_pass(camera, em, light_manager, stump_ids, ps, alpha);
@@ -335,6 +341,9 @@ impl Renderer {
         self.ani_model_pass(camera, em, light_manager, sound_manager, y_robot_ids, elapsed, ps, alpha, particles);
         self.ani_model_pass(camera, em, light_manager, sound_manager, trash_guy_ids, elapsed, ps, alpha, particles);
         self.ani_model_pass(camera, em, light_manager, sound_manager, moose_ids, elapsed, ps, alpha, particles);
+        unsafe {
+            gl::Disable(gl::CULL_FACE);
+        }
     }
 
 

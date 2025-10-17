@@ -161,8 +161,8 @@ pub const POINT_LIGHT_POSITIONS:[Vec3; 4] = [
     Vec3::new(0.0, 0.0, -3.0),
 ];
 
-pub const SHADOW_WIDTH:i32 = 10_000;
-pub const SHADOW_HEIGHT:i32 = 10_000;
+pub const SHADOW_WIDTH:i32 = 2560;
+pub const SHADOW_HEIGHT:i32 = 2560;
 
 
 pub const GROUND_PLANE:[f32; 36] = [

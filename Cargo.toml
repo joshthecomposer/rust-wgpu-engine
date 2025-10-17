@@ -22,5 +22,19 @@ toml = "0.8.22"
 nalgebra = { version = "0.33.2", features = [ "convert-glam029" ] }
 rapier3d = { version = "0.26.1", features = [ "simd-stable" ] }
 
-
 [build-dependencies]
+
+[profile.rwd] # release with debug
+inherits = "release"
+debug = true
+
+[profile.dev.package."rapier3d"]
+opt-level = 3
+[profile.dev.package."nalgebra"]
+opt-level = 3
+[profile.dev.package."parry3d"]
+opt-level = 3 
+
+[features]
+gl_debug = []
+track_draw_calls = []

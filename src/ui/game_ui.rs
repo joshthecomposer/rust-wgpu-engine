@@ -394,7 +394,7 @@ pub fn button(
             && mouse_pos.x <= x + w
             && mouse_pos.y <= y + h;
 
-        clicked = hovered && input.left_mouse_just_pressed();
+        clicked = hovered && input.mouse_just_released(glfw::MouseButton::Left);
     }
 
     final_color = if hovered { color_800 } else { color_900 };
