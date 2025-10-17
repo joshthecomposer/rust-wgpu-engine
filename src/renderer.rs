@@ -50,6 +50,7 @@ impl Renderer {
         model_shader.set_int("material.Emissive", 3);
         model_shader.set_int("material.Opacity",  4);
         model_shader.set_int("shadow_map",        7);
+        model_shader.set_int("skybox",           10);
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
         let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");
@@ -136,6 +137,7 @@ impl Renderer {
                 ));
             }
         }
+
 
         // =============================================================
         // Debug point light setup
@@ -402,6 +404,7 @@ impl Renderer {
             gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
             gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
             gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
+            gl::ActiveTexture(gl::TEXTURE10); gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
         }
 
         shader.set_bool("is_animated", true);
@@ -488,6 +491,7 @@ impl Renderer {
             shader.set_float("bias_scalar", light_manager.bias_scalar);
             shader.set_mat4_array("bone_transforms", &animation.current_pose);
             shader.set_vec3("view_position", camera.position);
+            shader.set_int("skybox", 10);
             model.draw(shader);
             shader.set_bool("selection_fresnel", false);
             shader.set_bool("flash_white", false);
@@ -509,8 +513,8 @@ impl Renderer {
             gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
             gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
 
-            gl::ActiveTexture(gl::TEXTURE7);
-            gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
+            gl::ActiveTexture(gl::TEXTURE7); gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
+            gl::ActiveTexture(gl::TEXTURE10); gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
         }
         // Alpha pass
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
@@ -534,6 +538,7 @@ impl Renderer {
             shader.set_dir_light("dir_light", &light_manager.dir_light);
             shader.set_float("bias_scalar", light_manager.bias_scalar);
             shader.set_vec3("view_position", camera.position);
+            shader.set_int("skybox", 10);
             unsafe {
                 // gl_call!(gl::ActiveTexture(gl::TEXTURE0));
                 // gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
@@ -565,6 +570,7 @@ impl Renderer {
             shader.set_dir_light("dir_light", &light_manager.dir_light);
             shader.set_float("bias_scalar", light_manager.bias_scalar);
             shader.set_vec3("view_position", camera.position);
+            shader.set_int("skybox", 10);
             unsafe {
                 // gl_call!(gl::ActiveTexture(gl::TEXTURE0));
                 // gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));

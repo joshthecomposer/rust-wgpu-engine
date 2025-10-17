@@ -101,6 +101,9 @@ struct DirLight {
 };
 uniform DirLight dir_light;
 
+
+uniform samplerCube skybox;
+
 uniform float bias_scalar;
 uniform vec3 view_position;
 uniform bool alpha_test_pass;
@@ -174,7 +177,9 @@ vec4 calculate_directional_light() {
     }
 
     // Lighting
-    vec3 ambient = vec3(dir_light.ambient);
+	vec3 flat_ambient = vec3(dir_light.ambient);
+	vec3 envAmbient = texture(skybox, normalize(Normal)).rgb;
+	vec3 ambient = mix(flat_ambient, envAmbient, 0.5);
     vec3 lightDir = normalize(dir_light.direction);
     vec3 norm = normalize(Normal);
     float dot_light_normal = dot(lightDir, norm);

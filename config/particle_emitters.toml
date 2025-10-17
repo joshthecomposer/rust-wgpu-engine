@@ -46,7 +46,7 @@ texture = "resources/textures/smoke.png"
 name = "DesertStep"
 angle_rand = [0.0, 3.2831855]
 radius_rand = [0.001, 0.001]
-gravity = 0.0
+gravity = -1.0
 velocity = [
 	[0.0, 0.0],
 	[0.0, 1.0],
@@ -90,7 +90,7 @@ texture = "resources/textures/smoke.png"
 name = "DesertLand"
 angle_rand = [0.0, 3.2831855]
 radius_rand = [0.1, 0.5]
-gravity = 0.0
+gravity = -1.0
 velocity = [
 	[0.0, 0.0],
 	[0.0, 2.0],

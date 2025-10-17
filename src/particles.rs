@@ -86,6 +86,13 @@ impl Emitter {
             let t = self.times_alive[i];
             let t_norm = (t / self.lifetimes[i]).clamp(0.0, 1.0);
 
+            self.alphas[i] = (0.9 - t_norm).clamp(0.0, 1.0);
+            
+            // grow over time
+            let growth = 1.0 + t_norm * 0.5;
+            let scale = self.scales[i] * growth;
+            let rotation = self.rotation_offsets[i] + self.rotation_speeds[i] * t;
+
             let view = camera.view;
             let view_rot = Mat3::from_cols(
                 view.x_axis.truncate(),
@@ -94,7 +101,8 @@ impl Emitter {
             );
             let inv_view_rot = view_rot.transpose();
             let model_rot = Mat4::from_mat3(inv_view_rot);
-            let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(self.scales[i]);
+            let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(scale);
+            //let model = Mat4::from_scale_rotation_translation(scale, , self.positions[i]);
 
             matrices.push(model);
         }
@@ -426,9 +434,16 @@ impl ParticleSystem {
 
                     // i += 1;
 
+                    let prev_t_norm = (emitter.times_alive[i] / emitter.lifetimes[i]).clamp(0.0, 1.0);
+                    emitter.times_alive[i] += dt;
+                    let t_norm = (emitter.times_alive[i] / emitter.lifetimes[i]).clamp(0.0, 1.0);
+
+                    //let ease_out_cubic = |u: f32| 1.0 - (1.0 - u).powf(3.0);
+                    //let delta = ease_out_cubic(t_norm) - ease_out_cubic(prev_t_norm);
+
                     emitter.velocities[i] += gravity * dt;
                     emitter.positions[i] += emitter.velocities[i] * dt;
-                    emitter.times_alive[i] += dt;
+                    //emitter.positions[i] += emitter.velocities[i] * dt;
                 i += 1;
                 }
             }

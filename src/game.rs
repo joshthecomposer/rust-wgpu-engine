@@ -7,6 +7,7 @@ use crate::input::{self, InputState};
 use crate::macros::DRAW_CALLS;
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
+use crate::ui::imgui::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::{combat_system, grounding_solver, items, movement_system, state_machines};
@@ -27,6 +28,7 @@ pub struct Game {
     sound: SoundManager,
     input: InputState,
     ui: GameUiContext,
+    imgui_manager: ImguiManager,
     paused: bool,
     message_queue: MessageQueue,
     // imgui: SpagImgui,
@@ -36,10 +38,11 @@ impl Game {
     pub fn new() -> Self {
         let config = GameConfig::load_from_file("config/game_config.json");
 
-        let platform = Platform::new("Spaghetti engine", 1920, 1080, false);
+        let mut platform = Platform::new("Spaghetti engine", 1920, 1080, false);
         let time = Time::new(60.0, platform.glfw.get_time() as f32);
         let mut physics = PhysicsState::new();
         let mut world = World::new();
+        let imgui_manager = ImguiManager::new(&mut platform.window);
 
         world.ecs.populate_entity_data(&mut physics);
 
@@ -58,6 +61,7 @@ impl Game {
             sound,
             input: InputState::new(),
             ui,
+            imgui_manager,
             paused: false,
             message_queue: MessageQueue::new(),
         }
@@ -102,6 +106,7 @@ impl Game {
                     self.input.update();
                     self.platform.glfw.poll_events();
                     for (_, e) in glfw::flush_messages(&self.platform.events) {
+                        self.imgui_manager.handle_imgui_event(&e);
                         match e {
                             glfw::WindowEvent::CursorPos(x, y) => {
                                 if !self.paused {
@@ -245,6 +250,17 @@ impl Game {
             &mut self.ui, 
             &mut self.renderer.render_gizmos,
             &self.input,
+        );
+        self.imgui_manager.draw(
+            &mut self.platform.window, 
+            self.platform.fb_width as f32, 
+            self.platform.fb_height as f32, 
+            self.time.dt, 
+            &mut self.world.lights, 
+            &mut self.renderer, 
+            &mut self.sound, 
+            &self.world.camera, 
+            &mut self.world.ecs,
         );
         if self.message_queue.drain().contains(&UiMessage::WindowShouldClose) {
             self.platform.window.set_should_close(true)

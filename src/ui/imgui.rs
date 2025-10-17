@@ -167,18 +167,18 @@ impl ImguiManager {
                                         continue;
                                     }
 
-                                    save_data.entities.push(
-                                        EntityInstance {
-                                            entity_type: e_type.value().clone(),
-                                            faction: faction.clone(),
-                                            position: trans.position.into(),
-                                            rotation: (trans.rotation).into(),
-                                            weapons: vec![],
-                                            // rotation: (Quat::IDENTITY).into(),
-                                            base_speed: em.base_speeds.get(e_type.key()).copied(),
-                                            health: *em.healths.get(e_type.key()).unwrap(),
-                                        }
-                                    );
+                                    //save_data.entities.push(
+                                    //    //EntityInstance {
+                                    //    //    entity_type: e_type.value().clone(),
+                                    //    //    faction: faction.clone(),
+                                    //    //    position: trans.position.into(),
+                                    //    //    rotation: (trans.rotation).into(),
+                                    //    //    weapons: vec![],
+                                    //    //    // rotation: (Quat::IDENTITY).into(),
+                                    //    //    base_speed: em.base_speeds.get(e_type.key()).copied(),
+                                    //    //    //health: *em.healths.get(e_type.key()).unwrap(),
+                                    //    //}
+                                    //);
                                 }
                             }
 
