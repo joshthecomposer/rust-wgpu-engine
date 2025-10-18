@@ -2,7 +2,7 @@
 use glam::{vec3, Mat4, Vec3};
 use glfw::{Action, Key, PWindow, WindowEvent};
 
-use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction, PlayerState}, input::InputState, physics::PhysicsState, renderer};
+use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction, PlayerState}, input::{mouse_ray_from_screen, InputState}, physics::PhysicsState, renderer};
 
 pub struct CamMoveBasis { pub fwd_flat: glam::Vec3, pub right_flat: glam::Vec3 }
 

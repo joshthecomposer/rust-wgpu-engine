@@ -5,7 +5,7 @@ use glfw::MouseButton;
 
 use rapier3d::{data::Index, prelude::*};
 
-use crate::{camera::{self, Camera}, entity_manager::EntityManager, enums_types::{AnimationType, Faction}, physics::PhysicsState};
+use crate::{camera::{self, Camera}, entity_manager::EntityManager, enums_types::{AnimationType, CameraState, Faction}, physics::PhysicsState};
 
 pub struct InputState {
     pub keys_current: HashSet<glfw::Key>,           // Held this frame
@@ -107,7 +107,7 @@ pub fn handle_keyboard_input(key: glfw::Key, action: glfw::Action, input_state: 
 pub fn handle_mouse_motion() {
 }
 
-pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &mut InputState, physics: &PhysicsState) {
+pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &mut InputState, physics: &mut PhysicsState) {
     let cursor_pos = input_state.mouse_pos_current;
     let pressed_keys = &input_state.keys_current;
     match action {
@@ -116,7 +116,12 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size
             if button == glfw::MouseButtonLeft {
 
                 if !pressed_keys.contains(&glfw::Key::LeftShift) {
-                    em.selected.clear();
+                    em.empty_selected_and_reset_bodies(physics);
+                }
+
+                if camera.move_state != CameraState::Locked {
+                    em.empty_selected_and_reset_bodies(physics);
+                    return;
                 }
 
                 let (ray_origin, ray_dir) = mouse_ray_from_screen(cursor_pos, screen_size, camera);
@@ -126,7 +131,7 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size
                 let colliders = &physics.collider_set;
                 let bodies = &physics.rigid_body_set;
 
-                let max_toi = 100.0;
+                let max_toi = 1000.0;
                 let solid = true;
 
                 if let Some((handle, _)) = query_pipeline.cast_ray(
@@ -137,9 +142,14 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size
                     solid,
                     InteractionGroups::all().into(),
                 ) {
-                    // if let Some(&entity_id) = em.collider_to_entity.get(&handle) {
-                    //     em.selected.push(entity_id);
-                    // }
+                    if let Some(&collider_entity) = em.collider_to_parent.get(&handle) {
+                        let root_entity = em.parents.get(collider_entity).unwrap();
+
+                        em.selected.push(*root_entity);
+                        let ph = em.physics_handles.get_mut(*root_entity).unwrap();
+                        let rb = physics.rigid_body_set.get_mut(ph.rigid_body).unwrap();
+                        rb.set_body_type(RigidBodyType::KinematicPositionBased, false);
+                    }
                 }
 
                 
@@ -150,7 +160,7 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size
    }
 }
 
-fn mouse_ray_from_screen(
+pub fn mouse_ray_from_screen(
     mouse_pos: Vec2,
     screen_size: Vec2,
     camera: &Camera,

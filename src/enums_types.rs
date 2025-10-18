@@ -3,7 +3,7 @@ use std::{cell::Cell, fmt::{self, Display, Formatter}, ops::RangeInclusive, str:
 
 use glam::{Mat4, Quat, Vec3};
 use nalgebra::RealField;
-use rapier3d::{math::Vector, prelude::{ColliderHandle, RigidBodyHandle}};
+use rapier3d::{math::Vector, prelude::{ColliderHandle, ColliderType, RigidBodyHandle, RigidBodyType}};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -320,6 +320,10 @@ pub struct Inventory {
 pub struct PhysicsHandle {
     pub rigid_body: RigidBodyHandle,
     pub collider: ColliderHandle,
+    
+    // for moving things around or temporarily changing them for impulses etc.
+    // we can set them to kinematic and then back to this when needed
+    pub og_rb_type: RigidBodyType,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]

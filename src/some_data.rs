@@ -86,14 +86,14 @@ pub const CUBE_POSITIONS: [Vec3; 10] = [
     Vec3::new(-1.3,  1.0 + 5.0, -1.5),  
 ];
 
-pub const FACES_CUBEMAP:[&str; 6] = [
-    "resources/textures/sky_box/Cartoon Base Skywave_Cam_2_Left+X.png",
-    "resources/textures/sky_box/Cartoon Base Skywave_Cam_3_Right-X.png",
-    "resources/textures/sky_box/Cartoon Base Skywave_Cam_4_Up+Y.png",
-    "resources/textures/sky_box/Cartoon Base Skywave_Cam_5_Down-Y.png",
-    "resources/textures/sky_box/Cartoon Base Skywave_Cam_0_Front+Z.png",
-    "resources/textures/sky_box/Cartoon Base Skywave_Cam_1_Back-Z.png",
-];
+//pub const FACES_CUBEMAP:[&str; 6] = [
+//    "resources/textures/sky_box/Cartoon Base Skywave_Cam_2_Left+X.png",
+//    "resources/textures/sky_box/Cartoon Base Skywave_Cam_3_Right-X.png",
+//    "resources/textures/sky_box/Cartoon Base Skywave_Cam_4_Up+Y.png",
+//    "resources/textures/sky_box/Cartoon Base Skywave_Cam_5_Down-Y.png",
+//    "resources/textures/sky_box/Cartoon Base Skywave_Cam_0_Front+Z.png",
+//    "resources/textures/sky_box/Cartoon Base Skywave_Cam_1_Back-Z.png",
+//];
 
 //pub const FACES_CUBEMAP:[&str; 6] = [
 //    "resources/textures/sky_box2/CosmicCoolCloudLeft.png",
@@ -121,6 +121,17 @@ pub const FACES_CUBEMAP:[&str; 6] = [
 //    "resources/textures/sky_box/Anime Night_Cam_0_Front+Z.png",
 //    "resources/textures/sky_box/Anime Night_Cam_1_Back-Z.png",
 //];
+
+pub const FACES_CUBEMAP:[&str; 6] = [
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_1_Right+X.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_3_Left-X.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_4_Top+Y.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_5_Down-Y.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_0_Front+Z.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_2_Back-Z.png"
+];
+
+
 
 pub const SKYBOX_VERTICES:[f32; 24] = [
 		-1.0, -1.0,  1.0,

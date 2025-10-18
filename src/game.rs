@@ -117,7 +117,7 @@ impl Game {
                             glfw::WindowEvent::MouseButton(b, a, _) => {
                                 input::handle_mouse_input(b, a,
                                     glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32),
-                                    &self.world.camera, &mut self.world.ecs, &mut self.input, &self.physics);
+                                    &self.world.camera, &mut self.world.ecs, &mut self.input, &mut self.physics);
                             }
                             glfw::WindowEvent::Key(k, _, a, _) => {
                                 input::handle_keyboard_input(k, a, &mut self.input);
@@ -161,6 +161,8 @@ impl Game {
                     self.world.ecs.update(&mut self.sound, &mut self.physics);
 
                     Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
+                    // this is mostly for when we select and move them
+                    Self::push_static_kinematics(&self.world.ecs, &mut self.physics);
 
                     match self.world.camera.move_state {
                         CameraState::Third | CameraState::Locked => {
@@ -261,6 +263,7 @@ impl Game {
             &mut self.sound, 
             &self.world.camera, 
             &mut self.world.ecs,
+            &mut self.physics,
         );
         if self.message_queue.drain().contains(&UiMessage::WindowShouldClose) {
             self.platform.window.set_should_close(true)
@@ -268,6 +271,7 @@ impl Game {
         self.platform.window.swap_buffers();
         self.platform.glfw.poll_events();
     }
+
 
     // PRIVATE //
 
@@ -362,6 +366,27 @@ impl Game {
                         rb.set_next_kinematic_position(iso);
                     }
                 }
+            }
+        }
+    }
+
+    fn push_static_kinematics(em: &EntityManager, ps: &mut PhysicsState) {
+        for id in em.selected.iter() {
+            if let Some(ph) = em.physics_handles.get(*id) {
+                let rb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
+
+                rb.wake_up(true);
+
+                let gizmo_entity = em.collider_to_parent.get(&ph.collider).unwrap();
+
+                let gt = em.transforms.get(*gizmo_entity).unwrap();
+
+                let iso = rapier3d::na::Isometry::from_parts(
+                    rapier3d::na::Translation3::new(gt.position.x, gt.position.y, gt.position.z),
+                    rapier3d::na::UnitQuaternion::from_quaternion(gt.rotation.into())
+                );
+
+                rb.set_next_kinematic_position(iso);
             }
         }
     }

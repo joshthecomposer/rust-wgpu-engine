@@ -2,7 +2,7 @@ use glam::{Mat4, Quat, Vec3};
 use glfw::{Action, MouseButton, PWindow, WindowEvent};
 use imgui::Drag;
 
-use crate::{animation::animation::Animator, camera::Camera, config::world_data::{EntityInstance, WorldData}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, lights::Lights, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{animation::animation::Animator, camera::Camera, config::world_data::{EntityInstance, WorldData}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, lights::Lights, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub struct ImguiManager {
     pub imgui: imgui::Context,
@@ -61,7 +61,7 @@ impl ImguiManager {
         }
     }
 
-    pub fn draw(&mut self, window: &mut PWindow, width: f32, height: f32, delta: f32, lm: &mut Lights, rdr: &mut Renderer, sm: &mut SoundManager, camera: &Camera, em: &mut EntityManager) {
+    pub fn draw(&mut self, window: &mut PWindow, width: f32, height: f32, delta: f32, lm: &mut Lights, rdr: &mut Renderer, sm: &mut SoundManager, camera: &Camera, em: &mut EntityManager, ps: &mut PhysicsState) {
         {
             let io = self.imgui.io_mut();
             io.display_size = [width, height];
@@ -188,7 +188,7 @@ impl ImguiManager {
                         ui.separator();
 
                         for i in em.selected.iter() {
-                            if let Some(trans) = em.transforms.get_mut(*i) {
+                            if let Some(trans) = em.transforms.get(*i) {
                                 ui.text(format!("Entity: {}, Type: {}", i, em.entity_types.get(*i).unwrap()));
 
                                 let mut position = [trans.position.x, trans.position.y, trans.position.z];
@@ -204,24 +204,27 @@ impl ImguiManager {
 
                                 // position
                                 if Drag::new("Position").speed(0.1).build_array(ui, &mut position) {
-                                    trans.position = Vec3::from(position);
+                                    let ph = em.physics_handles.get(*i).unwrap();
+                                    let gid = em.collider_to_parent.get(&ph.collider).unwrap();
+                                    let giz_trans = em.transforms.get_mut(*gid).unwrap();
+                                    giz_trans.position = Vec3::from(position);
                                 }
 
                                 //  scale
-                                if Drag::new("Scale").speed(0.001).build_array(ui, &mut scale) {
-                                    trans.scale = Vec3::splat(scale[0]);
-                                }
+                                //if Drag::new("Scale").speed(0.001).build_array(ui, &mut scale) {
+                                //    trans.scale = Vec3::splat(scale[0]);
+                                //}
 
                                 // rotation
-                                if Drag::new("Rotation").speed(0.5).build_array(ui, &mut rotation_deg) {
-                                    let (y, x, z) = (
-                                        rotation_deg[0].to_radians(),
-                                        rotation_deg[1].to_radians(),
-                                        rotation_deg[2].to_radians(),
-                                    );
-                                    trans.rotation = Quat::from_euler(glam::EulerRot::YXZ, y, x, z);
-                                }
-                            }
+                             //   if Drag::new("Rotation").speed(0.5).build_array(ui, &mut rotation_deg) {
+                             //       let (y, x, z) = (
+                             //           rotation_deg[0].to_radians(),
+                             //           rotation_deg[1].to_radians(),
+                             //           rotation_deg[2].to_radians(),
+                             //       );
+                             //       trans.rotation = Quat::from_euler(glam::EulerRot::YXZ, y, x, z);
+                             //   }
+                            }//
 
                             ui.separator();
                         }

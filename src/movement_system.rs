@@ -90,15 +90,10 @@ fn handle_player_movement_rapier(
         if rotator.blend_factor == 0.0 && rotator.cur_rot != desired_rot {
             rotator.next_rot = desired_rot;
         }
-
-        // AnimationType::Run
     } else {
         linvel.x = 0.0;
         linvel.z = 0.0;
-        // AnimationType::Idle
     };
-
-    // animator.next_animation = new_state;
 
     if rotator.next_rot != rotator.cur_rot {
         rotator.blend_factor += delta / rotator.blend_time;
