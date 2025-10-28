@@ -277,6 +277,7 @@ impl Renderer {
         let cacti = em.get_ids_for_type(EntityType::Cactus1);
         let cacti2 = em.get_ids_for_type(EntityType::Cactus2);
         let rocks = em.get_ids_for_type(EntityType::Rock1);
+        let bushes = em.get_ids_for_type(EntityType::BareBush1);
 
         let active_weapons = em.get_equipped_weapon_ids();
 
@@ -336,6 +337,7 @@ impl Renderer {
         self.static_model_pass(camera, em, light_manager, cacti, ps, alpha);
         self.static_model_pass(camera, em, light_manager, cacti2, ps, alpha);
         self.static_model_pass(camera, em, light_manager, rocks, ps, alpha);
+        self.static_model_pass(camera, em, light_manager, bushes, ps, alpha);
 
         self.static_model_pass(camera, em, light_manager, active_weapons, ps, alpha);
 
@@ -357,7 +359,10 @@ impl Renderer {
         let shader = self.shaders.get_mut(&ShaderType::Gizmo).unwrap();
         shader.activate();
         for id in ids {
-            let model = em.models.get(id).unwrap();
+            let model = match em.models.get(id) {
+                Some(model) => model,
+                None => continue,
+            };
             let trans = Self::render_transform(em, id, alpha);
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 

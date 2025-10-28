@@ -668,12 +668,16 @@ impl EntityManager {
             &mut ps.rigid_body_set,
         );
 
-        self.physics_handles.insert(self.next_entity_id, PhysicsHandle {
+        self.physics_handles.insert(parent_id, PhysicsHandle {
             rigid_body: body_handle,
             collider: collider_handle,
 
             og_rb_type: RigidBodyType::Fixed,
         });
+
+        self.collider_to_parent.insert(collider_handle, self.next_entity_id);
+        self.parents.insert(self.next_entity_id, parent_id);
+        self.factions.insert(self.next_entity_id, Faction::Gizmo);
 
         self.next_entity_id += 1;
     }
@@ -838,10 +842,12 @@ pub fn glam_to_nalgebra_quat(q: Quat) -> UnitQuaternion<f32> {
 
 pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut PhysicsState) {
         //let path = "resources/textures/brushes/301B1.png";
-        let path = "resources/textures/brushes/testing.png";
+        //let path = "resources/textures/brushes/testing.png";
+        //let path = "resources/textures/brushes/mountain.png";
+        let path = "resources/textures/brushes/blendertest.png";
         let img = image::open(path).expect("Failed to load terrain image").to_luma8();
         let (width, height) = img.dimensions();
-        let y_amplitude = 100.0;
+        let y_amplitude = 25.0;
         let mut terrain = Terrain::from_height_map(y_amplitude, width, height, &img);
         //let mut terrain = Terrain::from_height_map("resources/textures/solid-black-100-100.png");
         //let mut terrain = Terrain::from_height_map("resources/textures/brushes/NvF5e.jpg");

@@ -64,6 +64,13 @@ entity_type = "Rock1"
 faction = "Static"
 position = [-110.3714, -5.4, -100.8407]
 rotation = [0.0, 0.0, 0.0, 1.0]
+
+
+[[entities]]
+entity_type = "BareBush1"
+faction = "Static"
+position = [2.0, 5.0, 1.5]
+rotation = [0.0, 0.0, 0.0, 1.0]
 # 
 # [[entities]]
 # entity_type = "TreeFoliage"

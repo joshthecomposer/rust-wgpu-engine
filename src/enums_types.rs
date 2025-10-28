@@ -84,6 +84,7 @@ pub enum EntityType {
     Cactus2,
     Rock1,
     Pill,
+    BareBush1,
 }
 
 impl Display for EntityType {
@@ -105,6 +106,7 @@ impl Display for EntityType {
             EntityType::Cactus2 => write!(f, "Cactus2"),
             EntityType::Rock1 => write!(f, "Rock1"),
             EntityType::Pill => write!(f, "Pill"),
+            EntityType::BareBush1 => write!(f, "BareBush1"),
         }
     }
 }

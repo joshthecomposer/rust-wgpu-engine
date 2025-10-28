@@ -270,6 +270,20 @@
 				"rh_name": "",
 				"lh_name": ""
 			}
+		},
+		"BareBush1": {
+			"__note__": "use Quat::from_rotation_x()",
+			"rot_correction": [0.0, 0.0, 0.0, 1.0],
+			"scale_correction": [1.0, 1.0, 1.0],
+			"mesh_path": "resources/models/static/terrain/bare_bush1.txt", 
+			"hitbox": {
+				"shape": "Mesh"
+			},
+			"aggro_range": 0.0,
+			"item_bones": {
+				"rh_name": "",
+				"lh_name": ""
+			}
 		}
 	}
 }
