@@ -210,6 +210,8 @@ impl Game {
     }
 
     pub fn render(&mut self) {
+        // unsafe { gl::Enable(gl::FRAMEBUFFER_SRGB); }
+
         self.renderer.draw(
             &self.world.ecs, 
             &mut self.world.camera, 
@@ -223,10 +225,13 @@ impl Game {
             &mut self.world.particles,
         );
 
+
         self.world.particles.render(
             self.renderer.shaders.get_mut(&ShaderType::Particles).unwrap(),
             &self.world.camera,
         );
+
+        // unsafe { gl::Disable(gl::FRAMEBUFFER_SRGB); }
 
         // Fix for mac scaled pixels garbage.
         let (win_w, win_h) = self.platform.window.get_size();                 // logical points
@@ -268,6 +273,7 @@ impl Game {
         if self.message_queue.drain().contains(&UiMessage::WindowShouldClose) {
             self.platform.window.set_should_close(true)
         }
+
         self.platform.window.swap_buffers();
         self.platform.glfw.poll_events();
     }

@@ -12,7 +12,7 @@ impl Platform {
     pub fn new(title: &str, w: u32, h: u32, vsync: bool) -> Self {
         let mut glfw = glfw::init(glfw::fail_on_errors).expect("Failed to init glfw");
 
-        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 1)); // OpenGL 3.3
+        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 1)); // opengl version
         glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
         glfw.window_hint(glfw::WindowHint::Resizable(true));
 
@@ -39,6 +39,7 @@ impl Platform {
         let (fb_width, fb_height) = window.get_framebuffer_size();
 
         gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
+        
 
         Self {
             glfw,

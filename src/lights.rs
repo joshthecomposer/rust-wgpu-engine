@@ -98,7 +98,7 @@ impl DirLight {
             direction,
             view_pos,
 
-            ambient: Vec3::splat(0.5),
+            ambient: Vec3::splat(0.2),
             diffuse: WHITE,
             specular: WHITE,
 

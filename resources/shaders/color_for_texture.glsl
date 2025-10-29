@@ -179,7 +179,7 @@ vec4 calculate_directional_light() {
     // Lighting
 	vec3 flat_ambient = vec3(dir_light.ambient);
 	vec3 envAmbient = texture(skybox, normalize(Normal)).rgb;
-	vec3 ambient = mix(flat_ambient, envAmbient, 0.3);
+	vec3 ambient = mix(flat_ambient, envAmbient, 0.6);
     vec3 lightDir = normalize(dir_light.direction);
     vec3 norm = normalize(Normal);
     float dot_light_normal = dot(lightDir, norm);
@@ -227,5 +227,9 @@ vec4 calculate_directional_light() {
 
 
 void main() {
-    FragColor = calculate_directional_light();
+    vec4 lightedColor = calculate_directional_light();
+
+	vec3 gamma = pow(lightedColor.rgb, vec3(1.0/2.2));
+
+	FragColor = vec4(gamma, lightedColor.a);
 }

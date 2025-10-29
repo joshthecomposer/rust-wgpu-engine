@@ -66,5 +66,8 @@ void main() {
     vec3  outRGB = particle_color.rgb;  // pure tint color
 
     if (outA <= 0.001) discard;
-    FragColor = vec4(outRGB, outA);
+	
+	vec3 gamma = pow(outRGB.rgb, vec3(1.0/2.2));
+
+    FragColor = vec4(gamma, outA);
 }
