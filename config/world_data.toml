@@ -1,7 +1,7 @@
 [[entities]]
 entity_type = "TrashGuy"
 faction = "Player"
-position = [0.0, 5.0, 0.0]
+position = [0.0, 10.0, 0.0]
 rotation = [0.0, -0.9239, 0.0, 0.3827]
 weapons = ["DoubleAxe", "OrcSword"]
 base_speed = 7.0
@@ -11,7 +11,7 @@ health = 100_000.0
 [[entities]]
 entity_type = "TrashGuy"
 faction = "Enemy"
-position = [5.0, 5.0, 5.0]
+position = [5.0, 10.0, 5.0]
 rotation = [0.0, 0.8701, 0.0, 0.4929]
 weapons = ["OrcSword", "DoubleAxe"]
 base_speed = 5.5
@@ -20,7 +20,7 @@ health = 100.0
 [[entities]]
 entity_type = "TrashGuy"
 faction = "Enemy"
-position = [-5.0, 5.0, -5.0]
+position = [-5.0, 10.0, -5.0]
 rotation = [0.0, 0.8701, 0.0, 0.4929]
 weapons = ["OrcSword", "DoubleAxe"]
 base_speed = 5.5
@@ -43,7 +43,7 @@ health = 100.0
 [[entities]]
 entity_type = "MooseMan"
 faction = "Enemy"
-position = [-10.3714, 0.0, -10.8407]
+position = [-10.3714, 10.0, -10.8407]
 rotation = [0.0, 0.0, 0.0, 1.0]
 health = 100_000.0
 

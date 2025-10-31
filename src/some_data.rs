@@ -95,14 +95,14 @@ pub const CUBE_POSITIONS: [Vec3; 10] = [
 //    "resources/textures/sky_box/Cartoon Base Skywave_Cam_1_Back-Z.png",
 //];
 
-pub const FACES_CUBEMAP:[&str; 6] = [
-    "resources/textures/sky_box2/CosmicCoolCloudLeft.png",
-    "resources/textures/sky_box2/CosmicCoolCloudRight.png",
-    "resources/textures/sky_box2/CosmicCoolCloudTop.png",
-    "resources/textures/sky_box2/CosmicCoolCloudBottom.png",
-    "resources/textures/sky_box2/CosmicCoolCloudFront.png",
-    "resources/textures/sky_box2/CosmicCoolCloudBack.png",
-];
+//pub const FACES_CUBEMAP:[&str; 6] = [
+//    "resources/textures/sky_box2/CosmicCoolCloudLeft.png",
+//    "resources/textures/sky_box2/CosmicCoolCloudRight.png",
+//    "resources/textures/sky_box2/CosmicCoolCloudTop.png",
+//    "resources/textures/sky_box2/CosmicCoolCloudBottom.png",
+//    "resources/textures/sky_box2/CosmicCoolCloudFront.png",
+//    "resources/textures/sky_box2/CosmicCoolCloudBack.png",
+//];
 
 //pub const FACES_CUBEMAP:[&str; 6] = [
 //    "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_2_Left+X.png",
@@ -122,14 +122,14 @@ pub const FACES_CUBEMAP:[&str; 6] = [
 //    "resources/textures/sky_box/Anime Night_Cam_1_Back-Z.png",
 //];
 
-// pub const FACES_CUBEMAP:[&str; 6] = [
-//     "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_1_Right+X.png",
-//     "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_3_Left-X.png",
-//     "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_4_Top+Y.png",
-//     "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_5_Down-Y.png",
-//     "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_0_Front+Z.png",
-//     "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_2_Back-Z.png"
-// ];
+pub const FACES_CUBEMAP:[&str; 6] = [
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_1_Right+X.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_3_Left-X.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_4_Top+Y.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_5_Down-Y.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_0_Front+Z.png",
+    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_2_Back-Z.png"
+];
 
 
 
