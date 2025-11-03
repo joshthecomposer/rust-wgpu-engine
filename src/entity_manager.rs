@@ -215,8 +215,8 @@ impl EntityManager {
             _=> ()
         }
 
-        self.factions.insert(self.next_entity_id, instance.faction.clone());
-        self.entity_types.insert(self.next_entity_id, instance.entity_type.clone());
+        self.factions.insert(parent_id, instance.faction.clone());
+        self.entity_types.insert(parent_id, instance.entity_type.clone());
         self.yaws.insert(parent_id, 0.0);
 
         if let Some(health) = instance.health {
@@ -240,7 +240,7 @@ impl EntityManager {
             rotation,
             scale,
         };
-        self.transforms.insert(self.next_entity_id, transform.clone());
+        self.transforms.insert(parent_id, transform.clone());
 
         // CHECK FOR BONES
         let model = if let (Some(bone_path), Some(anim_props)) = (&archetype.bone_path, &archetype.animation_properties) {
@@ -370,9 +370,10 @@ impl EntityManager {
         parent_id: usize,
         ps: &mut PhysicsState,
     ) {
-        let cyl_pos = position;
+        let collider_id = self.next_entity_id;
+        let pill_pos = position;
         // === PHYSICS ===
-        let iso: Isometry<f32> = (cyl_pos, rotation).into();
+        let iso: Isometry<f32> = (pill_pos, rotation).into();
         let body = RigidBodyBuilder::dynamic()
             .ccd_enabled(true)
             .position(iso)
@@ -437,7 +438,7 @@ impl EntityManager {
 
         self.physics_handles.insert(parent_id, physics_handle);
 
-        let collider_id = self.next_entity_id;
+        
 
         let collider_model = Pill {
             r,
@@ -445,7 +446,7 @@ impl EntityManager {
         }.create_model(12, 5, offset);
 
         self.transforms.insert(collider_id, Transform {
-            position: cyl_pos,
+            position: pill_pos,
             rotation: Quat::IDENTITY,
             scale: Vec3::splat(1.0),
         });
