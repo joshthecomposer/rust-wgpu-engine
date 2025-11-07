@@ -17,6 +17,10 @@ weapons = ["OrcSword", "DoubleAxe"]
 base_speed = 5.5
 health = 100.0
 
+# =============================================================================
+# LOTTA GUYS
+# =============================================================================
+
 [[entities]]
 entity_type = "TrashGuy"
 faction = "Enemy"
@@ -25,6 +29,163 @@ rotation = [0.0, 0.8701, 0.0, 0.4929]
 weapons = ["OrcSword", "DoubleAxe"]
 base_speed = 5.5
 health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+[[entities]]
+entity_type = "TrashGuy"
+faction = "Enemy"
+position = [-5.0, 10.0, -5.0]
+rotation = [0.0, 0.8701, 0.0, 0.4929]
+weapons = ["OrcSword", "DoubleAxe"]
+base_speed = 5.5
+health = 100.0
+
+# =============================================================================
+# END LOTTA GUYS
+# =============================================================================
 
 # [[entities]]
 # entity_type = "YRobot"

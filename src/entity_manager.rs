@@ -687,11 +687,81 @@ impl EntityManager {
         self.delete_entities(sm, ps);
     }
 
-   pub fn delete_entities(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
-       // TODO: Also clean up colliders from here.
-        for id in self.entity_trashcan.iter() {
-            // sm.cleanup_entity_sounds(*id);
+    pub fn delete_entities(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
+        // Collect everything that must go to trash this tick, plus any attached gizmos
+        let mut to_delete: Vec<usize> = self.entity_trashcan.drain(..).collect();
+
+        // Also delete each entity's collider gizmo (if any)
+        for id in to_delete.clone() {
+            if let Some(ph) = self.physics_handles.get(id) {
+                if let Some(&gizmo_id) = self.collider_to_parent.get(&ph.collider) {
+                    to_delete.push(gizmo_id);
+                }
+            }
+
+            //// Also delete children listed under this parent
+            //if let Some(kids) = self.children.get(id) {
+            //    to_delete.extend(kids.iter().copied());
+            //}
+        }
+
+        // Dedup
+        to_delete.sort_unstable();
+        to_delete.dedup();
+
+        // 1) Physics teardown for every entity that owns a body/collider
+        for id in &to_delete {
+            if let Some(ph) = self.physics_handles.get(*id) {
+                // Remove body (and attached colliders) from Rapier
+                ps.rigid_body_set.remove(
+                    ph.rigid_body,
+                    &mut ps.island_manager,
+                    &mut ps.collider_set,
+                    &mut ps.impulse_joint_set,
+                    &mut ps.multibody_joint_set,
+                    false,
+                );
+
+                // Forget collider gizmo mapping if present
+                self.collider_to_parent.remove(&ph.collider);
+            }
+        }
+
+        // 2) Clean graph links pointing TO the deleted ids
+        // Remove `parents[child] = deleted_parent`
+        {
+            let doomed: std::collections::HashSet<usize> = to_delete.iter().copied().collect();
+            let orphans: Vec<usize> = self
+                .parents
+                .iter()
+                .filter_map(|p| if doomed.contains(p.value()) { Some(p.key()) } else { None })
+                .collect();
+            for c in orphans { self.parents.remove(c); }
+        }
+
+        // Remove child entries inside remaining parents’ children vecs
+        //for (_, kids) in self.children.iter_mut() {
+        //    kids.retain(|c| !to_delete.binary_search(c).is_ok());
+        //}
+
+        // Remove `parents[id]` (so their own parent no longer lists them)
+        for id in &to_delete {
+            if let Some(parent_of_id) = self.parents.remove(*id) {
+                if let Some(kids) = self.children.get_mut(parent_of_id) {
+                    kids.retain(|c| c != id);
+                }
+            }
+        }
+
+        // 3) Finally remove components for each doomed id (idempotent removes)
+        for id in &to_delete {
+            // sounds, selection, etc.
+            // sm.cleanup_entity_sounds(*id); // if you have it
+
+            self.selected.retain(|s| s != id);
+
             self.transforms.remove(*id);
+            self.prev_transforms.remove(*id);
             self.factions.remove(*id);
             self.entity_types.remove(*id);
             self.models.remove(*id);
@@ -701,8 +771,29 @@ impl EntityManager {
             self.simstate_controllers.remove(*id);
             self.destinations.remove(*id);
             self.parents.remove(*id);
+            self.children.remove(*id);
+            self.owners.remove(*id);
             self.v_effects.remove(*id);
             self.impulse_applied.remove(*id);
+            self.physics_handles.remove(*id);
+            self.hitsets.remove(*id);
+            self.yaws.remove(*id);
+            self.knockbacks.remove(*id);
+            self.healths.remove(*id);
+            self.base_speeds.remove(*id);
+            self.aggro_ranges.remove(*id);
+            self.jump_heights.remove(*id);
+            self.total_masses.remove(*id);
+            self.model_heights.remove(*id);
+            self.grounded_states.remove(*id);
+            self.local_corrections.remove(*id);
+        }
+    }
+
+    pub fn deprecated_delete_entities(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
+        // TODO: Also clean up colliders from here.
+        for id in self.entity_trashcan.iter() {
+            // Collider entitity
             if let Some(c2p) = self.collider_to_parent.iter().find(|e| *e.1 == *id) {
                 if let Some(ph) = self.physics_handles.get_mut(*c2p.1) {
                     ps.rigid_body_set.remove(
@@ -714,7 +805,40 @@ impl EntityManager {
                         false,
                     );
                 }
+
+                self.transforms.remove(*c2p.1);
+                self.factions.remove(*c2p.1);
+                self.entity_types.remove(*c2p.1);
+                self.models.remove(*c2p.1);
+                self.animators.remove(*c2p.1);
+                self.skellingtons.remove(*c2p.1);
+                self.rotators.remove(*c2p.1);
+                self.simstate_controllers.remove(*c2p.1);
+                self.destinations.remove(*c2p.1);
+                self.parents.remove(*c2p.1);
+                self.children.remove(*id);
+                self.owners.remove(*c2p.1);
+                self.v_effects.remove(*c2p.1);
+                self.impulse_applied.remove(*c2p.1);
+                self.physics_handles.remove(*c2p.1);
+
             }
+
+            // sm.cleanup_entity_sounds(*id);
+            self.transforms.remove(*id);
+            self.factions.remove(*id);
+            self.entity_types.remove(*id);
+            self.models.remove(*id);
+            self.animators.remove(*id);
+            self.skellingtons.remove(*id);
+            self.rotators.remove(*id);
+            self.simstate_controllers.remove(*id);
+            self.destinations.remove(*id);
+            self.parents.remove(*id);
+            self.children.remove(*id);
+            self.owners.remove(*id);
+            self.v_effects.remove(*id);
+            self.impulse_applied.remove(*id);
             self.physics_handles.remove(*id);
         }
 
@@ -788,9 +912,9 @@ impl EntityManager {
             .iter()
             .filter(|w_type| {
                 *w_type.value() == Faction::Item 
-                    && self.owners.get(w_type.key()).is_none()
-                    && self.parents.get(w_type.key()).is_none()
-                    && self.equip_slots.get(w_type.key()).is_none()
+                && self.owners.get(w_type.key()).is_none()
+                && self.parents.get(w_type.key()).is_none()
+                && self.equip_slots.get(w_type.key()).is_none()
             })
             .map(|e| e.key())
             .collect::<Vec<usize>>()
@@ -801,7 +925,7 @@ impl EntityManager {
             .iter()
             .filter(|entry| {
                 *entry.value() == Faction::Item
-                    && self.equip_slots.get(entry.key()).is_some()
+                && self.equip_slots.get(entry.key()).is_some()
             })
             .map(|e| e.key())
             .collect()
@@ -816,9 +940,9 @@ impl EntityManager {
             .iter()
             .filter(|p| {
                 self.owners.get(p.key()).is_none() 
-                    && self.equip_slots.get(p.key()).is_none()
-                    && *self.factions.get(p.key()).unwrap() == Faction::Gizmo
-            })       // Child, parent
+                && self.equip_slots.get(p.key()).is_none()
+                && *self.factions.get(p.key()).unwrap() == Faction::Gizmo
+            })       // Child,  parent
             .map(|p| (p.key(), *p.value()))
             .collect()
     }
@@ -842,75 +966,75 @@ pub fn glam_to_nalgebra_quat(q: Quat) -> UnitQuaternion<f32> {
 }
 
 pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut PhysicsState) {
-        //let path = "resources/textures/brushes/301B1.png";
-        //let path = "resources/textures/brushes/testing.png";
-        //let path = "resources/textures/brushes/mountain.png";
-        let path = "resources/textures/brushes/blendertest.png";
-        let img = image::open(path).expect("Failed to load terrain image").to_luma8();
-        let (width, height) = img.dimensions();
-        let y_amplitude = 25.0;
-        let mut terrain = Terrain::from_height_map(y_amplitude, width, height, &img);
-        //let mut terrain = Terrain::from_height_map("resources/textures/solid-black-100-100.png");
-        //let mut terrain = Terrain::from_height_map("resources/textures/brushes/NvF5e.jpg");
-        //let mut terrain = Terrain::from_height_map("resources/textures/brushes/big_spot.jpeg");
-        //let mut terrain = Terrain::from_height_map("resources/textures/brushes/2000.png");
+    //let path = "resources/textures/brushes/301B1.png";
+    //let path = "resources/textures/brushes/testing.png";
+    //let path = "resources/textures/brushes/mountain.png";
+    let path = "resources/textures/brushes/blendertest.png";
+    let img = image::open(path).expect("Failed to load terrain image").to_luma8();
+    let (width, height) = img.dimensions();
+    let y_amplitude = 25.0;
+    let mut terrain = Terrain::from_height_map(y_amplitude, width, height, &img);
+    //let mut terrain = Terrain::from_height_map("resources/textures/solid-black-100-100.png");
+    //let mut terrain = Terrain::from_height_map("resources/textures/brushes/NvF5e.jpg");
+    //let mut terrain = Terrain::from_height_map("resources/textures/brushes/big_spot.jpeg");
+    //let mut terrain = Terrain::from_height_map("resources/textures/brushes/2000.png");
 
-        let model = terrain.into_opengl_model();
+    let model = terrain.into_opengl_model();
 
-        let terrain_trans = Transform {
-            position: Vec3::splat(0.0),
-            rotation: Quat::IDENTITY,
-            scale: Vec3::splat(1.0),
-        };
+    let terrain_trans = Transform {
+        position: Vec3::splat(0.0),
+        rotation: Quat::IDENTITY,
+        scale: Vec3::splat(1.0),
+    };
 
-        entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone(), );
-        entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
-        entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
+    entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone(), );
+    entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
+    entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
 
-        // Terrain collider
-        let terrain_trans = Transform {
-            position: Vec3::new(0.0, 0.0, 0.0),
-            rotation: Quat::IDENTITY,
-            scale: Vec3::splat(1.0),
-        };
+    // Terrain collider
+    let terrain_trans = Transform {
+        position: Vec3::new(0.0, 0.0, 0.0),
+        rotation: Quat::IDENTITY,
+        scale: Vec3::splat(1.0),
+    };
 
-        entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
-        entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
-        entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
-
-
-        let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
-        let body = RigidBodyBuilder::fixed().position(iso)
-            .build();
-
-        // Process vertices into arrays
-        //let vertices: Vec<Point3<f32>> = model.vertices
-        //    .iter()
-        //    .map(|v| v.position.into())
-        //    .collect();
-        //
-        //let indices: Vec<[u32; 3]> = model.indices
-        //    .chunks(3)
-        //    .map(|chunk| [chunk[0], chunk[1], chunk[2]])
-        //    .collect();
-
-        //let (heights, nrows, ncols) = Terrain::heights_from_image(y_amplitude, &img, width, height);
+    entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
+    entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
+    entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
 
 
-        //let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
-        //let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
-        //let terrain_collider = ColliderBuilder::heightfield(
-        //    heights, 
-        //    Vector3::new((ncols - 1) as f32, 1.0, (nrows - 1) as f32)
-        //).build();
+    let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
+    let body = RigidBodyBuilder::fixed().position(iso)
+        .build();
+
+    // Process vertices into arrays
+    //let vertices: Vec<Point3<f32>> = model.vertices
+    //    .iter()
+    //    .map(|v| v.position.into())
+    //    .collect();
+    //
+    //let indices: Vec<[u32; 3]> = model.indices
+    //    .chunks(3)
+    //    .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+    //    .collect();
+
+    //let (heights, nrows, ncols) = Terrain::heights_from_image(y_amplitude, &img, width, height);
+
+
+    //let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
+    //let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
+    //let terrain_collider = ColliderBuilder::heightfield(
+    //    heights, 
+    //    Vector3::new((ncols - 1) as f32, 1.0, (nrows - 1) as f32)
+    //).build();
     // let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build();
 
-        let body_handle = physics_state.rigid_body_set.insert(body);
-        //let collider_handle = physics_state.collider_set.insert_with_parent(
-        //    terrain_collider,
-        //    body_handle,
-        //    &mut physics_state.rigid_body_set,
-        //);
+    let body_handle = physics_state.rigid_body_set.insert(body);
+    //let collider_handle = physics_state.collider_set.insert_with_parent(
+    //    terrain_collider,
+    //    body_handle,
+    //    &mut physics_state.rigid_body_set,
+    //);
     terrain::insert_chunked_terrain_colliders(
         &model,
         width, height,
@@ -920,12 +1044,12 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
         &mut physics_state.rigid_body_set,
     );
 
-        //entity_manager.physics_handles.insert(entity_manager.next_entity_id, PhysicsHandle {
-        //    rigid_body: body_handle,
-        //    collider: collider_handle,
-        //});
+    //entity_manager.physics_handles.insert(entity_manager.next_entity_id, PhysicsHandle {
+    //    rigid_body: body_handle,
+    //    collider: collider_handle,
+    //});
 
-        entity_manager.models.insert(entity_manager.next_entity_id, model);
+    entity_manager.models.insert(entity_manager.next_entity_id, model);
 
-        entity_manager.next_entity_id += 1;
+    entity_manager.next_entity_id += 1;
 }
