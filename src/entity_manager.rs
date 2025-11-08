@@ -167,6 +167,7 @@ impl EntityManager {
                         inv.insert(weapon_id);
                         self.inventories.insert(parent_id, inv);
                         self.is_equipped.remove(weapon_id);
+                        self.owners.insert(weapon_id, parent_id);
                     }
                 }
 
@@ -472,6 +473,8 @@ impl EntityManager {
             ray_length_grounded: 0.25,
             ray_length_airborn: 0.06,
         });
+
+        self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
     pub fn create_cylinder_hitbox(
@@ -699,9 +702,9 @@ impl EntityManager {
             
             // remove the ownership relation from the inventory item_bones
             if let Some(inv) = self.inventories.get(*id) {
-                inv.iter().map(|i| {
+                for i in inv.iter() {
                     self.owners.remove(*i);
-                });
+                }
             }
             self.inventories.remove(*id);
 
@@ -836,6 +839,24 @@ impl EntityManager {
             .collect::<Vec<usize>>()
     }
 
+    pub fn get_non_weapon_entities(&self) -> Vec<usize> {
+        self.factions
+            .iter()
+            .filter(|w_type| {
+                *w_type.value() != Faction::Item
+                //&& *w_type.value() != Faction::World
+            })
+            .map(|e| e.key())
+            .collect::<Vec<usize>>()
+    }
+
+    pub fn get_gizmo_ids(&self) -> Vec<usize> {
+        self.collider_gizmos
+            .iter()
+            .map(|e| e.key())
+            .collect::<Vec<usize>>()
+    }
+
     pub fn empty_selected_and_reset_bodies(&mut self, ps: &mut PhysicsState) {
         // TODO: We could create a struct that contains the rb handle and the entity
         for id in self.selected.iter() {
@@ -880,17 +901,7 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
     entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
 
-    // Terrain collider
-    let terrain_trans = Transform {
-        position: Vec3::new(0.0, 0.0, 0.0),
-        rotation: Quat::IDENTITY,
-        scale: Vec3::splat(1.0),
-    };
-
-    entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
-    entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
-    entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
-
+    entity_manager.collider_transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
 
     let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
     let body = RigidBodyBuilder::fixed().position(iso)

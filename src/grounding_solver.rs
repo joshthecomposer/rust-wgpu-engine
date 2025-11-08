@@ -2,20 +2,24 @@ use crate::{entity_manager::EntityManager, enums_types::EntityType, physics::Phy
 use rapier3d::prelude::*;
 
 pub fn grounding_solver(em: &mut EntityManager, ps: &PhysicsState) {
-    let ids = em.get_ids_for_type(EntityType::Pill);
+    let ids = vec![
+        em.get_ids_for_type(EntityType::TrashGuy),
+        em.get_ids_for_type(EntityType::MooseMan)
+    ]
+    .concat();
 
     for id in ids.iter() {
-        let ch = em.collider_to_parent.iter().find(|e| e.1 == id).unwrap().0;
+        let ph = em.physics_handles.get(*id).unwrap();
+        let ch = ph.collider;
+        let rb_handle = ph.rigid_body;
+
         let trans = em.transforms.get(*id).unwrap();
-        let collider = ps.collider_set.get(*ch).unwrap().shape().as_capsule().unwrap();
         let colliders = &ps.collider_set;
         let bodies = &ps.rigid_body_set;
         let query = ps.query_pipeline.as_ref().unwrap();
         //let r = collider.radius;
         let gs = em.grounded_states.get_mut(*id).unwrap();
         let position = trans.position;
-        let parent_id = em.parents.get(*id).unwrap();
-        let rb_handle = em.physics_handles.get(*parent_id).unwrap().rigid_body;
 
         let ray = Ray::new(point![position.x, position.y + 0.02, position.z], vector![0.0, -1.0, 0.0]);
 

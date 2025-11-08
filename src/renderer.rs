@@ -279,7 +279,7 @@ impl Renderer {
         let rocks = em.get_ids_for_type(EntityType::Rock1);
         let bushes = em.get_ids_for_type(EntityType::BareBush1);
 
-        let active_weapons = em.get_equipped_weapon_ids();
+        let active_weapons = em.get_active_weapon_ids();
 
         // Animated models
         let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);
@@ -319,7 +319,7 @@ impl Renderer {
         // =============================================================
         // Gizmo pass
         if self.render_gizmos {
-            let gizmo_ids = em.get_ids_for_faction(Faction::Gizmo);
+            let gizmo_ids = em.get_gizmo_ids();
             self.gizmo_pass(camera, em, gizmo_ids, ps, alpha);
         }
 
@@ -359,7 +359,7 @@ impl Renderer {
         let shader = self.shaders.get_mut(&ShaderType::Gizmo).unwrap();
         shader.activate();
         for id in ids {
-            let model = match em.models.get(id) {
+            let model = match em.collider_gizmos.get(id) {
                 Some(model) => model,
                 None => continue,
             };

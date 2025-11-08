@@ -205,7 +205,7 @@ impl ImguiManager {
                                 // position
                                 if Drag::new("Position").speed(0.1).build_array(ui, &mut position) {
                                     let ph = em.physics_handles.get(*i).unwrap();
-                                    let gid = em.collider_to_parent.get(&ph.collider).unwrap();
+                                    let gid = em.collider_to_entity.get(&ph.collider).unwrap();
                                     let giz_trans = em.transforms.get_mut(*gid).unwrap();
                                     giz_trans.position = Vec3::from(position);
                                 }
