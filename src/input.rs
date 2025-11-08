@@ -142,11 +142,9 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size
                     solid,
                     InteractionGroups::all().into(),
                 ) {
-                    if let Some(&collider_entity) = em.collider_to_parent.get(&handle) {
-                        let root_entity = em.parents.get(collider_entity).unwrap();
-
-                        em.selected.push(*root_entity);
-                        let ph = em.physics_handles.get_mut(*root_entity).unwrap();
+                    if let Some(&entity_id) = em.collider_to_entity.get(&handle) {
+                        em.selected.push(entity_id);
+                        let ph = em.physics_handles.get_mut(entity_id).unwrap();
                         let rb = physics.rigid_body_set.get_mut(ph.rigid_body).unwrap();
                         rb.set_body_type(RigidBodyType::KinematicPositionBased, false);
                     }

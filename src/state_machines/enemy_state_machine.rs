@@ -32,18 +32,10 @@ pub fn enemy_sim_state_machine(
 
     let entity_cyl = ps.collider_set.get(ph.collider).unwrap();
     
-    let active_weapon_id = {
-        let active_weapon = em.owners.iter().find(|o| {
-            *o.value() == entity_id 
-            && em.equip_slots.iter().any(|e| e.key() == o.key())
-        });
-        if let Some(active_weapon) = active_weapon {
-            Some(active_weapon.key())
-        } else {
-            None
-        }
+    let active_weapon_id = match em.active_items.get(entity_id) {
+        Some(id) => Some(id.right_hand.unwrap()),
+        None => None,
     };
-
 
     let can_attack = animator.animations.get(&AnimationType::Slash).is_some() && active_weapon_id.is_some();
 
@@ -160,9 +152,13 @@ pub fn enemy_sim_state_machine(
                 rb.set_enabled_rotations(true, true, true, true);
 
                 if let Some(active_weapon_id) = active_weapon_id {
-                    em.parents.remove(active_weapon_id);
                     em.owners.remove(active_weapon_id);
-                    em.equip_slots.remove(active_weapon_id);
+                    em.is_equipped.remove(active_weapon_id);
+                    em.active_items.remove(entity_id);
+
+                    if let Some(inv) = em.inventories.get_mut(entity_id) {
+                        inv.remove(&active_weapon_id);
+                    }
                 }
 
                 if controller.time_in_state >= 3.0 {
@@ -194,15 +190,7 @@ pub fn enemy_sim_state_machine(
                         particles.spawn_oneshot_emitter(EmitterName::BodyPoof, position);
                     }
                 }
-
-                // if let Some(rh_weapon_id) = rh_weapon_id {
-                //     em.parents.remove(rh_weapon_id);
-                // }
                 
-                // remove the hitbox parent
-                if let Some(hitbox_parent) = em.parents.iter().find(|p| *p.value() == entity_id) {
-                    em.entity_trashcan.push(hitbox_parent.key());
-                }
                 em.entity_trashcan.push(entity_id);
             },
             SimState::Dancing => {

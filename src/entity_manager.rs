@@ -17,19 +17,21 @@ pub struct EntityManager {
     pub prev_transforms: SparseSet<Transform>,
     // This is pretty much exclusively for weapons that need an additional 90° orientation for instance
     pub local_corrections: SparseSet<Transform>,
-    pub parents: SparseSet<usize>,
-    pub children: SparseSet<Vec<usize>>,
+    // The model for rendering the colldier. Otherwwise this is just managed in rapier3d
+    pub collider_gizmos: SparseSet<Model>,
+    pub collider_transforms: SparseSet<Transform>,
+    pub prev_collider_transforms: SparseSet<Transform>,
+    pub collider_to_entity: HashMap<ColliderHandle, usize>,
 
-    pub collider_to_parent: HashMap<ColliderHandle, usize>,
+    pub inventories: SparseSet<HashSet<usize>>,
+    pub active_items: SparseSet<ActiveItem>,
 
-    // The presense of this determines that it is equipped and where
-    // query the parent for further info
-    pub equip_slots: SparseSet<EquipSlot>,
-    // separate from the parent, this implies the inventory of the parent
+    // This is for a weapon to "know" that it is in an inventory, it's a little messy but we just
+    // have to be careful to remove them properly.
     pub owners: SparseSet<usize>,
+    pub is_equipped: SparseSet<bool>,
     // sockets for items to attach to, parent to a bone instead of the parent of the bone
     pub item_bones: SparseSet<ItemBones>,
-
     pub factions: SparseSet<Faction>,
     pub entity_types: SparseSet<EntityType>,
     pub models: SparseSet<Model>,
@@ -55,6 +57,7 @@ pub struct EntityManager {
     pub total_masses: SparseSet<f32>,
     pub model_heights: SparseSet<f32>,
     pub grounded_states: SparseSet<GroundedState>,
+
 }
 
 impl EntityManager {
@@ -63,19 +66,16 @@ impl EntityManager {
             next_entity_id: 0,
             transforms: SparseSet::with_capacity(max_entities),
             prev_transforms: SparseSet::with_capacity(max_entities),
-
             local_corrections: SparseSet::with_capacity(max_entities),
-
-            collider_to_parent: HashMap::new(),
-
-
-            parents: SparseSet::with_capacity(max_entities),
-            children: SparseSet::with_capacity(max_entities),
-            equip_slots: SparseSet::with_capacity(max_entities),
+            collider_gizmos: SparseSet::with_capacity(max_entities),
+            collider_transforms: SparseSet::with_capacity(max_entities),
+            prev_collider_transforms: SparseSet::with_capacity(max_entities),
+            collider_to_entity: HashMap::new(),
+            inventories: SparseSet::with_capacity(max_entities),
+            active_items: SparseSet::with_capacity(max_entities),
             owners: SparseSet::with_capacity(max_entities),
-
+            is_equipped: SparseSet::with_capacity(max_entities),
             item_bones: SparseSet::with_capacity(max_entities),
-
             factions: SparseSet::with_capacity(max_entities),
             entity_types: SparseSet::with_capacity(max_entities),
             models: SparseSet::with_capacity(max_entities),
@@ -85,11 +85,8 @@ impl EntityManager {
             impulse_applied: SparseSet::with_capacity(max_entities),
             player_controllers: SparseSet::with_capacity(max_entities),
             simstate_controllers: SparseSet::with_capacity(max_entities),
-
             destinations: SparseSet::with_capacity(max_entities),
-
             rng: ChaCha8Rng::seed_from_u64(1),
-
             selected: Vec::new(),
             v_effects: SparseSet::with_capacity(max_entities),
             entity_trashcan: Vec::new(),
@@ -161,23 +158,35 @@ impl EntityManager {
                     HashSet::new(),
                 );
 
-                self.parents.insert(weapon_id, parent_id);
-                self.owners.insert(weapon_id, parent_id);
-
-                let already_has = self.owners
-                    .iter()
-                    .filter(|o| *o.value() == parent_id)
-                    .any(|e| self.equip_slots.get(e.key()).is_some());
-
-                if !already_has {
-                    self.equip_slots.insert(weapon_id, EquipSlot::RHand);
+                match self.inventories.get_mut(parent_id) {
+                    Some(inv) => {
+                        inv.insert(weapon_id);
+                    },
+                    None => {
+                        let mut inv = HashSet::new();
+                        inv.insert(weapon_id);
+                        self.inventories.insert(parent_id, inv);
+                        self.is_equipped.remove(weapon_id);
+                        self.owners.insert(weapon_id, parent_id);
+                    }
                 }
 
-                if let Some(maybe_children) = self.children.get_mut(parent_id) {
-                    maybe_children.push(weapon_id);
-                } else {
-                    self.children.insert(parent_id, vec![weapon_id]);
+                match self.active_items.get_mut(parent_id) {
+                    Some(_) => (),
+                    None => {
+                        self.active_items.insert(parent_id, ActiveItem {
+                            right_hand: Some(weapon_id),
+                            left_hand: None,
+                        });
+
+                        if let Some(inv) = self.inventories.get_mut(parent_id) {
+                            inv.remove(&weapon_id);
+                        }
+
+                        self.is_equipped.insert(weapon_id, true);
+                    }
                 }
+
             }
         }
     }
@@ -370,7 +379,6 @@ impl EntityManager {
         parent_id: usize,
         ps: &mut PhysicsState,
     ) {
-        let collider_id = self.next_entity_id;
         let pill_pos = position;
         // === PHYSICS ===
         let iso: Isometry<f32> = (pill_pos, rotation).into();
@@ -445,25 +453,19 @@ impl EntityManager {
             h: capsule_total_height,
         }.create_model(12, 5, offset);
 
-        self.transforms.insert(collider_id, Transform {
+        self.collider_transforms.insert(parent_id, Transform {
             position: pill_pos,
             rotation: Quat::IDENTITY,
             scale: Vec3::splat(1.0),
         });
-        self.models.insert(collider_id, collider_model);
-        self.entity_types.insert(collider_id, EntityType::Pill);
-        self.factions.insert(collider_id, Faction::Gizmo);
-        self.parents.insert(collider_id, parent_id);
-        
-        if let Some(maybe_children) = self.children.get_mut(parent_id) {
-            maybe_children.push(collider_id);
-        } else {
-            self.children.insert(parent_id, vec![collider_id]);
-        }
+        self.prev_collider_transforms.insert(parent_id, Transform {
+            position: pill_pos,
+            rotation: Quat::IDENTITY,
+            scale: Vec3::splat(1.0),
+        });
+        self.collider_gizmos.insert(parent_id, collider_model);
 
-        self.collider_to_parent.insert(collider_handle, collider_id);
-
-        self.grounded_states.insert(collider_id, GroundedState {
+        self.grounded_states.insert(parent_id, GroundedState {
             was_grouned: false,
             is_grounded: false,
             just_left: false,
@@ -472,7 +474,7 @@ impl EntityManager {
             ray_length_airborn: 0.06,
         });
 
-        self.next_entity_id += 1;
+        self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
     pub fn create_cylinder_hitbox(
@@ -492,25 +494,21 @@ impl EntityManager {
 
         let cyl_mod = cyl.create_model(10);
 
-        self.models.insert(self.next_entity_id, cyl_mod);
-        self.factions.insert(self.next_entity_id, Faction::Gizmo);
-        self.entity_types.insert(self.next_entity_id, EntityType::Cylinder);
-        self.transforms.insert(self.next_entity_id, Transform {
+        self.collider_gizmos.insert(parent_id, cyl_mod);
+        self.collider_transforms.insert(parent_id, Transform {
+            position,
+            rotation: Quat::IDENTITY,
+            scale,
+        });
+        self.prev_collider_transforms.insert(parent_id, Transform {
             position,
             rotation: Quat::IDENTITY,
             scale,
         });
 
-        self.parents.insert(self.next_entity_id, parent_id);
-        if let Some(maybe_children) = self.children.get_mut(parent_id) {
-            maybe_children.push(self.next_entity_id);
-        } else {
-            self.children.insert(parent_id, vec![self.next_entity_id]);
-        }
-
         let iso: Isometry<f32> = (position, rotation).into();
 
-        let mut body = RigidBodyBuilder::fixed()
+        let body = RigidBodyBuilder::fixed()
             .position(iso)
             .build();
 
@@ -535,10 +533,7 @@ impl EntityManager {
             og_rb_type: RigidBodyType::Fixed,
         });
 
-        self.collider_to_parent.insert(collider_handle, self.next_entity_id);
-
-        self.next_entity_id += 1;
-
+        self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
     pub fn create_bounding_hitbox(
@@ -573,14 +568,16 @@ impl EntityManager {
 
         let cuboid_model = cuboid.create_model();
 
-        self.models.insert(self.next_entity_id, cuboid_model);
-        self.factions.insert(self.next_entity_id, Faction::Gizmo);
-        self.entity_types.insert(self.next_entity_id, EntityType::Cuboid);
-        self.parents.insert(self.next_entity_id, parent_id);
+        self.collider_gizmos.insert(parent_id, cuboid_model);
         self.model_heights.insert(parent_id, size.y);
 
 
-        self.transforms.insert(self.next_entity_id, Transform {
+        self.collider_transforms.insert(parent_id, Transform {
+            position: Vec3::ZERO,
+            rotation: Quat::IDENTITY,
+            scale,
+        });
+        self.prev_collider_transforms.insert(parent_id, Transform {
             position: Vec3::ZERO,
             rotation: Quat::IDENTITY,
             scale,
@@ -616,9 +613,7 @@ impl EntityManager {
             og_rb_type: RigidBodyType::KinematicPositionBased,
         });
 
-        self.collider_to_parent.insert(collider_handle, self.next_entity_id);
-
-        self.next_entity_id += 1;
+        self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
     pub fn create_mesh_based_hitbox(
@@ -642,11 +637,12 @@ impl EntityManager {
             .map(|chunk| [chunk[0], chunk[1], chunk[2]])
             .collect();
 
-        // let collider_shape = ColliderShape::trimesh(vertices, indices).unwrap();
-
-        // self.colliders.insert(self.next_entity_id, collider_shape);
-
-        self.transforms.insert(self.next_entity_id, Transform {
+        self.collider_transforms.insert(parent_id, Transform {
+            position,
+            rotation: Quat::IDENTITY,
+            scale,
+        });
+        self.prev_collider_transforms.insert(parent_id, Transform {
             position,
             rotation: Quat::IDENTITY,
             scale,
@@ -676,11 +672,7 @@ impl EntityManager {
             og_rb_type: RigidBodyType::Fixed,
         });
 
-        self.collider_to_parent.insert(collider_handle, self.next_entity_id);
-        self.parents.insert(self.next_entity_id, parent_id);
-        self.factions.insert(self.next_entity_id, Faction::Gizmo);
-
-        self.next_entity_id += 1;
+        self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
     pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
@@ -688,24 +680,9 @@ impl EntityManager {
     }
 
     pub fn delete_entities(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
-        // gather everything including gizmos etc.
-        let mut to_delete: Vec<usize> = self.entity_trashcan.drain(..).collect();
-
-        for id in to_delete.clone() {
-            if let Some(ph) = self.physics_handles.get(id) {
-                if let Some(&gizmo_id) = self.collider_to_parent.get(&ph.collider) {
-                    to_delete.push(gizmo_id);
-                }
-            }
-        }
-
-        to_delete.sort_unstable();
-        to_delete.dedup();
-
-        // remove physics stuff for every entity that has one
-        for id in &to_delete {
-            if let Some(ph) = self.physics_handles.get(*id) {
-                // this also removes the colliders attached to the rb
+        for id in &self.entity_trashcan {
+            if let Some(ph) = self.physics_handles.get_mut(*id) {
+                self.collider_to_entity.remove(&ph.collider);
                 ps.rigid_body_set.remove(
                     ph.rigid_body,
                     &mut ps.island_manager,
@@ -714,54 +691,58 @@ impl EntityManager {
                     &mut ps.multibody_joint_set,
                     true,
                 );
-
-                self.collider_to_parent.remove(&ph.collider);
             }
-        }
-
-        // 2) Clean graph links pointing TO the deleted ids
-        // Remove `parents[child] = deleted_parent`
-        {
-            let doomed: std::collections::HashSet<usize> = to_delete.iter().copied().collect();
-            let orphans: Vec<usize> = self
-                .parents
-                .iter()
-                .filter_map(|p| if doomed.contains(p.value()) { Some(p.key()) } else { None })
-                .collect();
-            for c in orphans { self.parents.remove(c); }
-        }
-
-        // Remove `parents[id]` (so their own parent no longer lists them)
-        for id in &to_delete {
-            if let Some(parent_of_id) = self.parents.remove(*id) {
-                if let Some(kids) = self.children.get_mut(parent_of_id) {
-                    kids.retain(|c| c != id);
-                }
-            }
-        }
-
-        // 3) Finally remove components for each doomed id (idempotent removes)
-        for id in &to_delete {
-            // sounds, selection, etc.
-            // sm.cleanup_entity_sounds(*id); // if you have it
-
-            self.selected.retain(|s| s != id);
 
             self.transforms.remove(*id);
             self.prev_transforms.remove(*id);
+            self.local_corrections.remove(*id);
+            self.collider_gizmos.remove(*id);
+            self.collider_transforms.remove(*id);
+            self.prev_collider_transforms.remove(*id);
+            
+            // remove the ownership relation from the inventory item_bones
+            if let Some(inv) = self.inventories.get(*id) {
+                for i in inv.iter() {
+                    self.owners.remove(*i);
+                }
+            }
+            self.inventories.remove(*id);
+
+            // find the active weapon to drop
+            if let Some(ai) = self.active_items.get(*id) {
+                match ai.right_hand {
+                    Some(rhid) => {
+                        self.owners.remove(rhid);
+                        self.is_equipped.remove(rhid);
+                    }
+                    None => (),
+                }
+                match ai.left_hand {
+                    Some(lhid) => {
+                        self.owners.remove(lhid);
+                        self.is_equipped.remove(lhid);
+                    }
+                    None => (),
+                }
+            }
+            self.active_items.remove(*id);
+
+            self.owners.remove(*id);
+            
+            // find the equipped flags to drop
+            self.is_equipped.remove(*id);
+
             self.factions.remove(*id);
             self.entity_types.remove(*id);
             self.models.remove(*id);
             self.animators.remove(*id);
             self.skellingtons.remove(*id);
             self.rotators.remove(*id);
+            self.impulse_applied.remove(*id);
+            self.player_controllers.remove(*id);
             self.simstate_controllers.remove(*id);
             self.destinations.remove(*id);
-            self.parents.remove(*id);
-            self.children.remove(*id);
-            self.owners.remove(*id);
             self.v_effects.remove(*id);
-            self.impulse_applied.remove(*id);
             self.physics_handles.remove(*id);
             self.hitsets.remove(*id);
             self.yaws.remove(*id);
@@ -773,60 +754,6 @@ impl EntityManager {
             self.total_masses.remove(*id);
             self.model_heights.remove(*id);
             self.grounded_states.remove(*id);
-            self.local_corrections.remove(*id);
-        }
-    }
-
-    pub fn deprecated_delete_entities(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
-        // TODO: Also clean up colliders from here.
-        for id in self.entity_trashcan.iter() {
-            // Collider entitity
-            if let Some(c2p) = self.collider_to_parent.iter().find(|e| *e.1 == *id) {
-                if let Some(ph) = self.physics_handles.get_mut(*c2p.1) {
-                    ps.rigid_body_set.remove(
-                        ph.rigid_body,
-                        &mut ps.island_manager,
-                        &mut ps.collider_set,
-                        &mut ps.impulse_joint_set,
-                        &mut ps.multibody_joint_set,
-                        false,
-                    );
-                }
-
-                self.transforms.remove(*c2p.1);
-                self.factions.remove(*c2p.1);
-                self.entity_types.remove(*c2p.1);
-                self.models.remove(*c2p.1);
-                self.animators.remove(*c2p.1);
-                self.skellingtons.remove(*c2p.1);
-                self.rotators.remove(*c2p.1);
-                self.simstate_controllers.remove(*c2p.1);
-                self.destinations.remove(*c2p.1);
-                self.parents.remove(*c2p.1);
-                self.children.remove(*id);
-                self.owners.remove(*c2p.1);
-                self.v_effects.remove(*c2p.1);
-                self.impulse_applied.remove(*c2p.1);
-                self.physics_handles.remove(*c2p.1);
-
-            }
-
-            // sm.cleanup_entity_sounds(*id);
-            self.transforms.remove(*id);
-            self.factions.remove(*id);
-            self.entity_types.remove(*id);
-            self.models.remove(*id);
-            self.animators.remove(*id);
-            self.skellingtons.remove(*id);
-            self.rotators.remove(*id);
-            self.simstate_controllers.remove(*id);
-            self.destinations.remove(*id);
-            self.parents.remove(*id);
-            self.children.remove(*id);
-            self.owners.remove(*id);
-            self.v_effects.remove(*id);
-            self.impulse_applied.remove(*id);
-            self.physics_handles.remove(*id);
         }
 
         self.entity_trashcan.clear();
@@ -900,38 +827,34 @@ impl EntityManager {
             .filter(|w_type| {
                 *w_type.value() == Faction::Item 
                 && self.owners.get(w_type.key()).is_none()
-                && self.parents.get(w_type.key()).is_none()
-                && self.equip_slots.get(w_type.key()).is_none()
             })
             .map(|e| e.key())
             .collect::<Vec<usize>>()
     }
 
     pub fn get_active_weapon_ids(&self) -> Vec<usize> {
+        self.is_equipped
+            .iter()
+            .map(|e| e.key())
+            .collect::<Vec<usize>>()
+    }
+
+    pub fn get_non_weapon_entities(&self) -> Vec<usize> {
         self.factions
             .iter()
-            .filter(|entry| {
-                *entry.value() == Faction::Item
-                && self.equip_slots.get(entry.key()).is_some()
+            .filter(|w_type| {
+                *w_type.value() != Faction::Item
+                //&& *w_type.value() != Faction::World
             })
             .map(|e| e.key())
-            .collect()
+            .collect::<Vec<usize>>()
     }
 
-    pub fn get_equipped_weapon_ids(&self) -> Vec<usize> {
-        self.equip_slots.iter().map(|e| e.key()).collect()
-    }
-
-    pub fn get_non_weapon_gizmo_joins(&self) -> Vec<(usize, usize)> {
-        self.parents
+    pub fn get_gizmo_ids(&self) -> Vec<usize> {
+        self.collider_gizmos
             .iter()
-            .filter(|p| {
-                self.owners.get(p.key()).is_none() 
-                && self.equip_slots.get(p.key()).is_none()
-                && *self.factions.get(p.key()).unwrap() == Faction::Gizmo
-            })       // Child,  parent
-            .map(|p| (p.key(), *p.value()))
-            .collect()
+            .map(|e| e.key())
+            .collect::<Vec<usize>>()
     }
 
     pub fn empty_selected_and_reset_bodies(&mut self, ps: &mut PhysicsState) {
@@ -978,17 +901,7 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
     entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
 
-    // Terrain collider
-    let terrain_trans = Transform {
-        position: Vec3::new(0.0, 0.0, 0.0),
-        rotation: Quat::IDENTITY,
-        scale: Vec3::splat(1.0),
-    };
-
-    entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
-    entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
-    entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
-
+    entity_manager.collider_transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
 
     let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
     let body = RigidBodyBuilder::fixed().position(iso)

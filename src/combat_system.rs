@@ -17,8 +17,7 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particl
 
     for player_id in attacking_player_ids {
         let yaw = em.yaws.get(player_id).unwrap();
-        //let active_item = em.active_items.get(player_id).unwrap();
-        let active_weapon_id = em.owners.iter().find(|o| *o.value() == player_id).unwrap().key();
+        let active_weapon_id = em.active_items.get(player_id).unwrap().right_hand.unwrap();
 
         let hitset = em.hitsets.get_mut(active_weapon_id).unwrap();
 
@@ -65,14 +64,12 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particl
                 let other = if c1 == rh_w_col_handle { c2 } else { c1 };
                 
                 // Target id is the pill entity.
-                let Some(&target_id) = em.collider_to_parent.get(&other) else {
+                let Some(&target_id) = em.collider_to_entity.get(&other) else {
                      eprintln!("[combat] collider {:?} has no entity; likely stale pair or missing insert", other);
                     continue;
                 };
 
-                let target_id = em.parents.get(target_id).unwrap();
-
-                match em.factions.get(*target_id) {
+                match em.factions.get(target_id) {
                     Some(faction) => {
                         if *faction != Faction::Enemy {
                             continue;
@@ -83,11 +80,11 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particl
 
                 //if *faction != Faction::Enemy { continue; }
 
-                let sim_state = em.simstate_controllers.get(*target_id).unwrap();
+                let sim_state = em.simstate_controllers.get(target_id).unwrap();
 
                 if !hitset.insert(other) { continue };
 
-                if let Some(ph) = em.physics_handles.get(*target_id) {
+                if let Some(ph) = em.physics_handles.get(target_id) {
                     if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
 
                         let mut kb = Knockback {
@@ -96,11 +93,11 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particl
                             did_particles: false,
                         };
 
-                        let trans = em.transforms.get(*target_id).unwrap();
+                        let trans = em.transforms.get(target_id).unwrap();
 
 
                         if sim_state.state != SimState::Blocking {
-                            if let Some(h) = em.healths.get_mut(*target_id) { *h -= 50.0 };
+                            if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
 
                             // em.v_effects.insert(target_id, VisualEffect {
                             //     effect: Effect::Flashing,
@@ -113,7 +110,7 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particl
 
                         let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
                         physics::apply_delta_v(rb, dir, kb_distance);
-                        em.knockbacks.insert(*target_id, kb);
+                        em.knockbacks.insert(target_id, kb);
                     }
                 }
             }
@@ -126,13 +123,11 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
 
     for entity_id in attacking_enemy_ids {
         let yaw = em.yaws.get(entity_id).unwrap();
-        let active_weapon_id = em.owners.iter().find(|o| *o.value() == entity_id).unwrap().key();
+        let active_weapon_id = em.active_items.get(entity_id).unwrap().right_hand.unwrap();
 
         let hitset = em.hitsets.get_mut(active_weapon_id).unwrap();
 
         let rh_w_col_handle = em.physics_handles.get(active_weapon_id).unwrap().collider;
-
-        let entity_cyl_handle = em.physics_handles.get(entity_id).unwrap().collider;
 
         let controller = em.simstate_controllers.get(entity_id).unwrap();
 
@@ -140,6 +135,8 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
             AttackState::Attack2 => 3.5,
             _=> 2.0 
         };
+
+        let entity_cyl_handle = em.physics_handles.get(entity_id).unwrap().collider;
 
         let slash = em.animators
             .get(entity_id)
@@ -170,14 +167,12 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
 
                 let other = if c1 == rh_w_col_handle { c2 } else { c1 };
 
-                let Some(&target_id) = em.collider_to_parent.get(&other) else {
+                let Some(&target_id) = em.collider_to_entity.get(&other) else {
                      eprintln!("[combat] collider {:?} has no entity; likely stale pair or missing insert", other);
                     continue;
                 };
 
-                let target_id = em.parents.get(target_id).unwrap();
-
-                match em.factions.get(*target_id) {
+                match em.factions.get(target_id) {
                     Some(faction) => {
                         if *faction != Faction::Player {
                             continue;
@@ -186,11 +181,11 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
                     None => { continue },
                 };
 
-                let player_state = em.player_controllers.get(*target_id).unwrap();
+                let player_state = em.player_controllers.get(target_id).unwrap();
 
                 if !hitset.insert(other) { continue };
 
-                if let Some(ph) = em.physics_handles.get(*target_id) {
+                if let Some(ph) = em.physics_handles.get(target_id) {
                     if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
                         let mut kb = Knockback {
                             ttl: 0.35,
@@ -198,7 +193,7 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
                             did_particles: false,
                         };
                         if player_state.state != PlayerState::Block {
-                            if let Some(h) = em.healths.get_mut(*target_id) { *h -= 50.0 };
+                            if let Some(h) = em.healths.get_mut(target_id) { *h -= 50.0 };
 
                             // em.v_effects.insert(target_id, VisualEffect {
                             //     effect: Effect::Flashing,
@@ -209,7 +204,7 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
                         }
                         let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
                         physics::apply_delta_v(rb, dir, kb_distance);
-                        em.knockbacks.insert(*target_id, kb);
+                        em.knockbacks.insert(target_id, kb);
                     }
                 }
             }

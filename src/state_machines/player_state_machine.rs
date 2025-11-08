@@ -24,8 +24,7 @@ pub fn player_state_machine(
     let rb          = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
     let yaw         = em.yaws.get(player_id).unwrap();
 
-    let cyl_id      = em.parents.iter().find(|e| *e.value() == player_id).unwrap().key();
-    let gs          = em.grounded_states.get(cyl_id).unwrap();
+    let gs          = em.grounded_states.get(player_id).unwrap();
 
     let jump_height = em.jump_heights.get(player_id).unwrap();
 

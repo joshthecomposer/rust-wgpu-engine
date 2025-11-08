@@ -383,9 +383,7 @@ impl Game {
 
                 rb.wake_up(true);
 
-                let gizmo_entity = em.collider_to_parent.get(&ph.collider).unwrap();
-
-                let gt = em.transforms.get(*gizmo_entity).unwrap();
+                let gt = em.collider_transforms.get(*id).unwrap();
 
                 let iso = rapier3d::na::Isometry::from_parts(
                     rapier3d::na::Translation3::new(gt.position.x, gt.position.y, gt.position.z),
@@ -400,10 +398,11 @@ impl Game {
     // This is purely for visual gizmos, has nothing to do with what is actually happening to
     // physics
     fn propagate_children(em: &mut EntityManager) {
-        let non_weapon_joins = em.get_non_weapon_gizmo_joins();
+        let non_weapon_ids = em.get_non_weapon_entities();
 
-        for (child_id, parent_id) in non_weapon_joins.iter() {
-            let (pt, ct) = em.transforms.get_pair_mut(*parent_id, *child_id).unwrap();
+        for entity_id in non_weapon_ids.iter() {
+            let pt = em.transforms.get(*entity_id).unwrap();
+            let ct = em.collider_transforms.get_mut(*entity_id).unwrap();
 
             ct.rotation = pt.rotation;
             ct.position = pt.position;
@@ -480,15 +479,11 @@ impl Game {
                 weapon_trans.position = pos;
                 weapon_trans.rotation = rot;
                 
-                // sync the weapon's gizmo to it.
-                if let Some(weapon_gizmo) = em.parents.iter().find(|p| p.value() == id) {
-                    let t = em.transforms.get_mut(weapon_gizmo.key()).unwrap();
+                let t = em.collider_transforms.get_mut(*id).unwrap();
 
-                    t.position = pos;
-                    t.rotation = rot;
-                }
+                t.position = pos;
+                t.rotation = rot;
             }
-
         }
     }
 }
