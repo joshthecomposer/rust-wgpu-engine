@@ -17,8 +17,7 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particl
 
     for player_id in attacking_player_ids {
         let yaw = em.yaws.get(player_id).unwrap();
-        //let active_item = em.active_items.get(player_id).unwrap();
-        let active_weapon_id = em.owners.iter().find(|o| *o.value() == player_id).unwrap().key();
+        let active_weapon_id = em.active_items.get(player_id).unwrap().right_hand.unwrap();
 
         let hitset = em.hitsets.get_mut(active_weapon_id).unwrap();
 
@@ -65,12 +64,10 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particl
                 let other = if c1 == rh_w_col_handle { c2 } else { c1 };
                 
                 // Target id is the pill entity.
-                let Some(&target_id) = em.collider_to_parent.get(&other) else {
+                let Some(&target_id) = em.physics_handles.get(&other) else {
                      eprintln!("[combat] collider {:?} has no entity; likely stale pair or missing insert", other);
                     continue;
                 };
-
-                let target_id = em.parents.get(target_id).unwrap();
 
                 match em.factions.get(*target_id) {
                     Some(faction) => {
