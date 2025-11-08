@@ -712,7 +712,7 @@ impl EntityManager {
                     &mut ps.collider_set,
                     &mut ps.impulse_joint_set,
                     &mut ps.multibody_joint_set,
-                    false,
+                    true,
                 );
 
                 self.collider_to_parent.remove(&ph.collider);
