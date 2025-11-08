@@ -688,31 +688,24 @@ impl EntityManager {
     }
 
     pub fn delete_entities(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
-        // Collect everything that must go to trash this tick, plus any attached gizmos
+        // gather everything including gizmos etc.
         let mut to_delete: Vec<usize> = self.entity_trashcan.drain(..).collect();
 
-        // Also delete each entity's collider gizmo (if any)
         for id in to_delete.clone() {
             if let Some(ph) = self.physics_handles.get(id) {
                 if let Some(&gizmo_id) = self.collider_to_parent.get(&ph.collider) {
                     to_delete.push(gizmo_id);
                 }
             }
-
-            //// Also delete children listed under this parent
-            //if let Some(kids) = self.children.get(id) {
-            //    to_delete.extend(kids.iter().copied());
-            //}
         }
 
-        // Dedup
         to_delete.sort_unstable();
         to_delete.dedup();
 
-        // 1) Physics teardown for every entity that owns a body/collider
+        // remove physics stuff for every entity that has one
         for id in &to_delete {
             if let Some(ph) = self.physics_handles.get(*id) {
-                // Remove body (and attached colliders) from Rapier
+                // this also removes the colliders attached to the rb
                 ps.rigid_body_set.remove(
                     ph.rigid_body,
                     &mut ps.island_manager,
@@ -722,7 +715,6 @@ impl EntityManager {
                     false,
                 );
 
-                // Forget collider gizmo mapping if present
                 self.collider_to_parent.remove(&ph.collider);
             }
         }
@@ -738,11 +730,6 @@ impl EntityManager {
                 .collect();
             for c in orphans { self.parents.remove(c); }
         }
-
-        // Remove child entries inside remaining parents’ children vecs
-        //for (_, kids) in self.children.iter_mut() {
-        //    kids.retain(|c| !to_delete.binary_search(c).is_ok());
-        //}
 
         // Remove `parents[id]` (so their own parent no longer lists them)
         for id in &to_delete {
