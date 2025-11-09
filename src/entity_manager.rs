@@ -7,7 +7,7 @@ use glam::{Mat4, Quat, Vec3};
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-use rapier3d::{control::KinematicCharacterController, parry::{shape::Capsule, utils::hashmap::HashMap}, prelude::*};
+use rapier3d::{parry::utils::hashmap::HashMap, prelude::*};
 
 use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
 
