@@ -184,6 +184,8 @@ impl Game {
 
                 // post-physics pull RBs, handle events, snapshot current transforms
                 Self::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
+                
+                #[cfg(debug_assertions)]
                 Self::propagate_children(&mut self.world.ecs);
 
 
