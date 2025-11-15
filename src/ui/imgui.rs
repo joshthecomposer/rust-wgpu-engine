@@ -275,11 +275,11 @@ impl ImguiManager {
                         ui.text(f);
                     }
 
-                    ui.separator();
-                    ui.text("Entity Types:");
-                    for (k, _v) in em.entity_type_register.iter() {
-                        ui.text(k);
-                    }
+                    //ui.separator();
+                    //ui.text("Entity Types:");
+                    //for (k, _v) in em.entity_type_register.iter() {
+                    //    ui.text(k);
+                    //}
                 });
 
             // UI IS DROPPED HERE (frame ended)
