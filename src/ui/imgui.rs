@@ -150,9 +150,9 @@ impl ImguiManager {
                             };
 
                             for e_type in em.entity_types.iter() {
-                                match *e_type.value() {
-                                    EntityType::Terrain => { continue; }
-                                    EntityType::OrcSword => { continue; }
+                                match e_type.value().as_str() {
+                                    "Terrain" => { continue; }
+                                    "OrcSword" => { continue; }
                                     _ => ()
                                 }
 

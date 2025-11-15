@@ -13,7 +13,7 @@ pub struct ItemBones {
 
 #[derive(Deserialize, Debug)]
 pub struct EntityConfig {
-    pub entity_types: HashMap<EntityType, EntityTypeHelper>
+    pub entity_types: HashMap<String, EntityTypeHelper>
 }
 
 impl EntityConfig {

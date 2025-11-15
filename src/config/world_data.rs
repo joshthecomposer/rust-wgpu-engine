@@ -61,12 +61,12 @@ impl WorldData {
 // =============================================================
 #[derive(Deserialize, Debug, Serialize)]
 pub struct EntityInstance {
-    pub entity_type: EntityType,
+    pub entity_type: String,
     pub faction: Faction,
     pub position: Vec3,
     pub rotation: Quat,
     #[serde(default)]
-    pub weapons: Option<Vec<EntityType>>,
+    pub weapons: Option<Vec<String>>,
     #[serde(default)]
     pub base_speed: Option<f32>,
     #[serde(default)]

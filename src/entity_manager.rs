@@ -1,13 +1,13 @@
 #![allow(clippy::too_many_arguments)]
 
 use core::f32;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use glam::{Mat4, Quat, Vec3};
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
-use rapier3d::{parry::utils::hashmap::HashMap, prelude::*};
+use rapier3d::prelude::*;
 
 use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
 
@@ -33,7 +33,7 @@ pub struct EntityManager {
     // sockets for items to attach to, parent to a bone instead of the parent of the bone
     pub item_bones: SparseSet<ItemBones>,
     pub factions: SparseSet<Faction>,
-    pub entity_types: SparseSet<EntityType>,
+    pub entity_types: SparseSet<String>,
     pub models: SparseSet<Model>,
     pub animators: SparseSet<Animator>,
     pub skellingtons: SparseSet<Bone>,
@@ -57,6 +57,8 @@ pub struct EntityManager {
     pub total_masses: SparseSet<f32>,
     pub model_heights: SparseSet<f32>,
     pub grounded_states: SparseSet<GroundedState>,
+
+    pub entity_type_register: HashMap<String, EntityTypeHelper>,
 
 }
 
@@ -101,24 +103,24 @@ impl EntityManager {
             total_masses: SparseSet::with_capacity(max_entities),
             model_heights: SparseSet::with_capacity(max_entities),
             grounded_states: SparseSet::with_capacity(max_entities),
+            
+            // TODO: Probably just return the entity_types here instead of accessing them like this
+            entity_type_register: EntityConfig::load_from_file("config/entity_config.json").entity_types,
         }
     }
 
     pub fn populate_entity_data(&mut self, ps: &mut PhysicsState) {
-        let ec = EntityConfig::load_from_file("config/entity_config.json");
         let wd = WorldData::load_from_file("config/world_data.toml");
 
         for instance in wd.entities.iter() {
-            let archetype = ec.entity_types.get(&instance.entity_type).unwrap();
-
-            let parent_id = self.create_entity(archetype, instance, ps);
-            self.populate_inventory(parent_id, &instance, &ec, ps);
+            let parent_id = self.create_entity(instance, ps);
+            self.populate_inventory(parent_id, &instance, ps);
         }
 
         load_terrain(self, ps);
     }
 
-    pub fn populate_inventory(&mut self, parent_id: usize, instance: &EntityInstance, ec: &EntityConfig, ps: &mut PhysicsState) {
+    pub fn populate_inventory(&mut self, parent_id: usize, instance: &EntityInstance, ps: &mut PhysicsState) {
         if let Some(weapons_list) = &instance.weapons {
             for weapon in weapons_list.iter() {
 
@@ -133,26 +135,11 @@ impl EntityManager {
                     jump_height: None,
                 };
 
-                let weapon_archetype = ec.entity_types.get(&wi.entity_type).unwrap();
-
                 let weapon_id = self.create_entity(
-                    weapon_archetype,
                     &wi, 
                     ps,
                 );
                 
-                // create a local corrrection for weapons that need to be 90° perp to their socket
-                match wi.entity_type {
-                    EntityType::OrcSword | EntityType::DoubleAxe => {
-                        self.local_corrections.insert(weapon_id, Transform {
-                            position: glam::Vec3::splat(0.0),
-                            scale: glam::Vec3::splat(1.0),
-                            rotation: weapon_archetype.rot_correction,
-                        });
-                    }
-                    _ => ()
-                }
-
                 self.hitsets.insert(
                     weapon_id,
                     HashSet::new(),
@@ -193,11 +180,12 @@ impl EntityManager {
 
     pub fn create_entity(
         &mut self, 
-        archetype: &EntityTypeHelper, 
         instance: &EntityInstance, 
         ps: &mut PhysicsState,
     ) -> usize {
         let parent_id = self.next_entity_id;
+
+        let archetype = self.entity_type_register.get(&instance.entity_type).unwrap();
         let position = instance.position;
         let rotation = instance.rotation;
         let scale    = archetype.scale_correction;
@@ -317,6 +305,12 @@ impl EntityManager {
         self.factions.insert(parent_id, instance.faction.clone());
         self.entity_types.insert(parent_id, instance.entity_type.clone());
         self.item_bones.insert(parent_id, archetype.item_bones.clone());
+
+        self.local_corrections.insert(parent_id, Transform {
+            position: glam::Vec3::splat(0.0),
+            scale: glam::Vec3::splat(1.0),
+            rotation: archetype.rot_correction,
+        });
         
         self.next_entity_id += 1;
 
@@ -774,11 +768,11 @@ impl EntityManager {
         result
     }
 
-    pub fn get_ids_for_type(&self, entity_type: EntityType) -> Vec<usize> {
+    pub fn get_ids_for_type(&self, entity_type: &str) -> Vec<usize> {
         let result: Vec<usize> = self.entity_types
             .iter()
             .filter_map(|f|
-                if *f.value() == entity_type {
+                if f.value() == entity_type {
                     Some(f.key())
                 } else {
                     None
@@ -899,7 +893,7 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
 
     entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone(), );
     entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
-    entity_manager.entity_types.insert(entity_manager.next_entity_id, EntityType::Terrain);
+    entity_manager.entity_types.insert(entity_manager.next_entity_id, "Terrain".to_string());
 
     entity_manager.collider_transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
 
