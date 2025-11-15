@@ -248,18 +248,22 @@ impl ImguiManager {
 
                         let string = format!("x: {:.3}, y: {:.3}, z: {:.3}", player_trans.position.x, player_trans.position.y, player_trans.position.z);
                         ui.label_text("Player World Position", string);
-
                     };
 
                     ui.separator();
                     ui.text("Factions:");
-
                     for f in em.faction_register.iter() {
                         ui.text(f);
                     }
+
+                    ui.separator();
+                    ui.text("Entity Types:");
+                    for (k, _v) in em.entity_type_register.iter() {
+                        ui.text(k);
+                    }
                 });
 
-        // UI IS DROPPED HERE (frame ended)
+            // UI IS DROPPED HERE (frame ended)
         }
 
         let draw_data = self.imgui.render();
