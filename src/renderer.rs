@@ -263,33 +263,21 @@ impl Renderer {
         sound_manager: &mut SoundManager,
         fb_width: u32,
         fb_height: u32,
-        elapsed: f32,
+        _elapsed: f32, // TODO: This is for the flashing white 
         ps: &PhysicsState,
         alpha: f32,
         particles: &mut ParticleSystem
     ) {
-        let active_weapons = em.get_active_weapon_ids();
-
         self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha);
-
         if self.shadow_debug {
             return;
         }
-
         self.skybox_pass(camera, fb_width, fb_height);
-
         if self.render_gizmos {
             let gizmo_ids = em.get_gizmo_ids();
             self.gizmo_pass(camera, em, gizmo_ids, ps, alpha);
         }
-
-        unsafe {
-        }
-
         self.model_pass(camera, em, light_manager, ps, alpha, particles, sound_manager);
-
-        unsafe {
-        }
     }
 
 
