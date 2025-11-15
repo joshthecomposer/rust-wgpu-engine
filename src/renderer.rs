@@ -268,57 +268,27 @@ impl Renderer {
         alpha: f32,
         particles: &mut ParticleSystem
     ) {
-
         let active_weapons = em.get_active_weapon_ids();
 
-
-        let non_animated_ids = em.entity_types.iter()
-            .filter(|e| {
-                em.skellingtons.get(e.key()).is_none()
-            })
-            .map(|e| e.key())
-            .collect::<Vec<usize>>();
-
-        let animated_ids = em.entity_types.iter()
-            .filter(|e| {
-                em.skellingtons.get(e.key()).is_some()
-            })
-            .map(|e| e.key())
-            .collect::<Vec<usize>>();
-
-
-        self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha, animated_ids, non_animated_ids);
+        self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha);
 
         if self.shadow_debug {
             return;
         }
 
-        // =============================================================
-        // Render OOP-esque things
-        // =============================================================
-        // shadow pass must come first or you're gonna have a bad time
         self.skybox_pass(camera, fb_width, fb_height);
-        // self.grid_pass(grid, camera, light_manager);
-        
-        // =============================================================
-        // Render ECS things
-        // =============================================================
-        // Gizmo pass
+
         if self.render_gizmos {
             let gizmo_ids = em.get_gizmo_ids();
             self.gizmo_pass(camera, em, gizmo_ids, ps, alpha);
         }
 
         unsafe {
-            gl::Enable(gl::CULL_FACE);
-            gl::CullFace(gl::BACK);      // cull back faces
-            gl::FrontFace(gl::CCW);      // CCW = front mesh
         }
 
         self.model_pass(camera, em, light_manager, ps, alpha, particles, sound_manager);
 
         unsafe {
-            gl::Disable(gl::CULL_FACE);
         }
     }
 
@@ -380,8 +350,11 @@ impl Renderer {
     ) {
         unsafe {
             gl_call!(gl::Enable(gl::DEPTH_TEST));
-            gl_call!(gl::DepthMask(gl::TRUE)); // Allow writing to depth buffer
+            gl_call!(gl::DepthMask(gl::TRUE));
             gl_call!(gl::Disable(gl::BLEND));
+            gl::Enable(gl::CULL_FACE);
+            gl::CullFace(gl::BACK);
+            gl::FrontFace(gl::CCW);
 
             // Set default textures for models that don't have one
             gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
@@ -465,6 +438,7 @@ impl Renderer {
 
         unsafe {
             gl_call!(gl::Disable(gl::BLEND));
+            gl::Disable(gl::CULL_FACE);
             gl_call!(gl::DepthMask(gl::TRUE));
         }
 
@@ -536,7 +510,7 @@ impl Renderer {
         }
     }
 
-    fn shadow_pass(&mut self, em: &EntityManager, camera: &mut Camera, light_manager: &Lights, fb_width: u32, fb_height: u32, ps: &PhysicsState, alpha: f32, animated_ids: Vec<usize>, non_animated_ids: Vec<usize>) {
+    fn shadow_pass(&mut self, em: &EntityManager, camera: &mut Camera, light_manager: &Lights, fb_width: u32, fb_height: u32, ps: &PhysicsState, alpha: f32) {
         let shader = self.shaders.get_mut(&ShaderType::Depth).unwrap();
         let near_plane = light_manager.near;
         let far_plane = light_manager.far;
@@ -571,7 +545,7 @@ impl Renderer {
             gl_call!(gl::Enable(CULL_FACE));
             //gl_call!(gl::CullFace(gl::BACK));
             gl::CullFace(gl::FRONT);
-            self.render_sample_depth(em, ps, alpha, animated_ids, non_animated_ids);
+            self.render_sample_depth(em, ps, alpha);
             gl_call!(gl::CullFace(gl::BACK)); 
             gl_call!(gl::Disable(CULL_FACE));
             // End render
@@ -595,30 +569,40 @@ impl Renderer {
         }
     }
 
-    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32, animated_ids: Vec<usize>, non_animated_ids: Vec<usize>) {
-        let depth_shader = self.shaders.get(&ShaderType::Depth).unwrap();
-        depth_shader.activate();
+    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32) {
+        let shader = self.shaders.get(&ShaderType::Depth).unwrap();
+        shader.activate();
 
-        depth_shader.set_bool("is_animated", false);
-        for id in non_animated_ids {
-            let check = em.factions.get(id).unwrap();
+        for id in em.entity_types.iter() {
+            let check = em.factions.get(id.key()).unwrap();
 
-            //  if !active_weapon_ids.contains(&model.key()) && check == &Faction::Item {
-            //      continue;
-            //  }
-            // TODO:: Get rid of this. see above...
+            // TODO: Get rid of this?
             if check == &Faction::Gizmo {
                 continue;
             }
-            let model = em.models.get(id).unwrap();
-            let trans = Self::render_transform(em, id, alpha);
+
+            match em.animators.get(id.key()) {
+                Some(animator) => {
+                    let animation = animator.get_current_animation().unwrap();
+                    shader.set_bool("is_animated", true);
+                    shader.set_mat4_array("bone_transforms", &animation.current_pose);
+
+                },
+                _ => {
+                    shader.set_bool("is_animated", false);
+                },
+            }
+
+
+            let model = em.models.get(id.key()).unwrap();
+            let trans = Self::render_transform(em, id.key(), alpha);
             //let trans = em.transforms.get(model.key()).unwrap();
 
             let model_model = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
             unsafe {
                 gl::BindVertexArray(model.vao);
             }
-            depth_shader.set_mat4("model", model_model);
+            shader.set_mat4("model", model_model);
             unsafe {
                 gl_call!(gl::DrawElements(
                     gl::TRIANGLES, 
@@ -630,37 +614,6 @@ impl Renderer {
                 gl_call!(gl::BindVertexArray(0));
             }
         }
-
-        depth_shader.set_bool("is_animated", true);
-
-        for id in animated_ids {
-            if let Some(animator) = em.animators.get(id) {
-                let animation = animator.get_current_animation().unwrap();
-
-                let trans = Self::render_transform(em, id, alpha);
-                let model = em.models.get(id).unwrap();
-
-                depth_shader.set_mat4_array("bone_transforms", &animation.current_pose);
-
-                let mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
-                unsafe {
-                    gl::BindVertexArray(model.vao);
-                }
-                depth_shader.set_mat4("model", mat);
-
-                unsafe {
-                    gl_call!(gl::DrawElements(
-                        gl::TRIANGLES, 
-                        model.indices.len() as i32, 
-                        gl::UNSIGNED_INT, 
-                        std::ptr::null(),
-                    ));
-
-                    gl_call!(gl::BindVertexArray(0));
-                }
-            }
-        }
-
     }
 
     fn debug_light_pass(&mut self, camera: &mut Camera) {
@@ -744,21 +697,5 @@ impl Renderer {
             scale:    curr.scale,
         }
     }
-
-    //pub fn render_transform(em: &EntityManager, id: usize, alpha: f32) -> Transform {
-    //    let curr = em.transforms.get(id).unwrap();
-    //
-    //    let is_physics_owned = em.physics_handles.get(id).is_some();
-    //    if is_physics_owned {
-    //        // physics drives curr; draw at curr to match bone time
-    //        return curr.clone();
-    //    }
-    //
-    //    let prev = em.prev_transforms.get(id).unwrap_or(curr);
-    //    Transform {
-    //        position: prev.position.lerp(curr.position, alpha),
-    //        rotation: prev.rotation.slerp(curr.rotation, alpha),
-    //        scale:    curr.scale,
-    //    }
-    //}
 }
+
