@@ -395,10 +395,18 @@ impl Renderer {
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
         shader.activate();
         
-        // simple loop to set alpha test pass and then not alpha test pass
-        // whatya gonna do about it nerd?
-        for i in 0..=1 {
-            shader.set_bool("alpha_test_pass", i > 0);
+        for &is_alpha_pass in &[false, true] {
+            shader.set_bool("alpha_test_pass", is_alpha_pass);
+            
+            // Hoist stuff
+            shader.set_mat4("projection", camera.projection);
+            shader.set_mat4("view", camera.view);
+            shader.set_mat4("light_space_mat", camera.light_space);
+            shader.set_dir_light("dir_light", &light_manager.dir_light);
+            shader.set_float("bias_scalar", light_manager.bias_scalar);
+            shader.set_vec3("view_position", camera.position);
+            shader.set_int("skybox", 10);
+
             for id in em.entity_types.iter() {
                 let is_selected = em.selected.contains(&id.key());
                 shader.set_bool("selection_fresnel", is_selected);
@@ -444,13 +452,6 @@ impl Renderer {
                 }
 
                 shader.set_mat4("model", m_mat);
-                shader.set_mat4("projection", camera.projection);
-                shader.set_mat4("view", camera.view);
-                shader.set_mat4("light_space_mat", camera.light_space);
-                shader.set_dir_light("dir_light", &light_manager.dir_light);
-                shader.set_float("bias_scalar", light_manager.bias_scalar);
-                shader.set_vec3("view_position", camera.position);
-                shader.set_int("skybox", 10);
                 unsafe {
                     // gl_call!(gl::ActiveTexture(gl::TEXTURE0));
                     // gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
