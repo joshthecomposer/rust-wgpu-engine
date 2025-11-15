@@ -263,91 +263,21 @@ impl Renderer {
         sound_manager: &mut SoundManager,
         fb_width: u32,
         fb_height: u32,
-        elapsed: f32,
+        _elapsed: f32, // TODO: This is for the flashing white 
         ps: &PhysicsState,
         alpha: f32,
         particles: &mut ParticleSystem
     ) {
-        // Non-animated models
-        let foliage_ids = em.get_ids_for_type(EntityType::TreeFoliage);
-        let trunk_ids = em.get_ids_for_type(EntityType::TreeTrunk);
-        let stump_ids = em.get_ids_for_type(EntityType::Stump);
-        let terrain_ids = em.get_ids_for_type(EntityType::Terrain);
-        let orphaned_weapons = em.get_all_orphaned_weapon_ids();
-        let cacti = em.get_ids_for_type(EntityType::Cactus1);
-        let cacti2 = em.get_ids_for_type(EntityType::Cactus2);
-        let rocks = em.get_ids_for_type(EntityType::Rock1);
-        let bushes = em.get_ids_for_type(EntityType::BareBush1);
-
-        let active_weapons = em.get_active_weapon_ids();
-
-        // Animated models
-        let y_robot_ids = em.get_ids_for_type(EntityType::YRobot);
-        let trash_guy_ids = em.get_ids_for_type(EntityType::TrashGuy);
-        let moose_ids = em.get_ids_for_type(EntityType::MooseMan);
-
-        let non_animated_ids = em.entity_types.iter()
-            .filter(|e| {
-                em.skellingtons.get(e.key()).is_none()
-            })
-            .map(|e| e.key())
-            .collect::<Vec<usize>>();
-
-        let animated_ids = em.entity_types.iter()
-            .filter(|e| {
-                em.skellingtons.get(e.key()).is_some()
-            })
-            .map(|e| e.key())
-            .collect::<Vec<usize>>();
-
-
-        self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha, animated_ids, non_animated_ids);
-
+        self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha);
         if self.shadow_debug {
             return;
         }
-
-        // =============================================================
-        // Render OOP-esque things
-        // =============================================================
-        // shadow pass must come first or you're gonna have a bad time
         self.skybox_pass(camera, fb_width, fb_height);
-        // self.grid_pass(grid, camera, light_manager);
-        
-        // =============================================================
-        // Render ECS things
-        // =============================================================
-        // Gizmo pass
         if self.render_gizmos {
             let gizmo_ids = em.get_gizmo_ids();
             self.gizmo_pass(camera, em, gizmo_ids, ps, alpha);
         }
-
-        // Non-animated models
-        unsafe {
-            gl::Enable(gl::CULL_FACE);
-            gl::CullFace(gl::BACK);      // cull back faces
-            gl::FrontFace(gl::CCW);      // CCW = front, matches your mesh
-        }
-        self.static_model_pass(camera, em, light_manager, foliage_ids, ps, alpha);
-        self.static_model_pass(camera, em, light_manager, trunk_ids, ps, alpha);
-        self.static_model_pass(camera, em, light_manager, stump_ids, ps, alpha);
-        self.static_model_pass(camera, em, light_manager, terrain_ids, ps, alpha);
-        self.static_model_pass(camera, em, light_manager, orphaned_weapons, ps, alpha);
-        self.static_model_pass(camera, em, light_manager, cacti, ps, alpha);
-        self.static_model_pass(camera, em, light_manager, cacti2, ps, alpha);
-        self.static_model_pass(camera, em, light_manager, rocks, ps, alpha);
-        self.static_model_pass(camera, em, light_manager, bushes, ps, alpha);
-
-        self.static_model_pass(camera, em, light_manager, active_weapons, ps, alpha);
-
-        // Animated models
-        self.ani_model_pass(camera, em, light_manager, sound_manager, y_robot_ids, elapsed, ps, alpha, particles);
-        self.ani_model_pass(camera, em, light_manager, sound_manager, trash_guy_ids, elapsed, ps, alpha, particles);
-        self.ani_model_pass(camera, em, light_manager, sound_manager, moose_ids, elapsed, ps, alpha, particles);
-        unsafe {
-            gl::Disable(gl::CULL_FACE);
-        }
+        self.model_pass(camera, em, light_manager, ps, alpha, particles, sound_manager);
     }
 
 
@@ -396,121 +326,23 @@ impl Renderer {
         id
     }
 
-    fn ani_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, sound_manager: &mut SoundManager, ids: Vec<usize>, elapsed: f32, ps: &PhysicsState, alpha: f32, particles: &mut ParticleSystem) {
-        let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
-        shader.activate();
-
-        unsafe {
-            gl::ActiveTexture(gl::TEXTURE7);
-            gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
-                
-            // Set default textures for models that don't have one
-            gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
-            gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
-            gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
-            gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
-            gl::ActiveTexture(gl::TEXTURE10); gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
-        }
-
-        shader.set_bool("is_animated", true);
-        shader.set_bool("alpha_test_pass", false);
-        shader.set_float("elapsed", elapsed);
-        shader.set_bool("do_reg_fresnel", false);
-        for id in ids {
-
-            if let Some(v_effect) = em.v_effects.get(id) {
-                if v_effect.ttl > 0.0 {
-                    shader.set_bool("flash_white", true);
-                }
-            }
-
-            let is_selected = em.selected.contains(&id);
-            shader.set_bool("selection_fresnel", is_selected);
-
-            let model = em.models.get(id).unwrap();
-            let trans = Self::render_transform(em, id, alpha);
-
-            let animator = em.animators.get(id).unwrap();
-            let animation = animator.get_current_animation().unwrap();
-
-            // TODO: OneShot and FrameActivation are almost the same thing. I could likely
-            // destructure this and use FrameActivation for both.
-            for os in animation.one_shots.iter() {
-                if animation.current_segment.get() == os.segment {
-                    if !os.triggered.get() {
-                        sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position, id);
-                        particles.spawn_oneshot_emitter(EmitterName::DesertStep, trans.position);
-                        os.triggered.set(true);
-                    }
-                } else {
-                    os.triggered.set(false);
-                }
-            }
-            
-            if let Some(fa) = &animation.hurtbox_activation {
-                if fa.segment_range.contains(&animation.current_segment.get()) { 
-                    if !fa.triggered.get() {
-                        fa.triggered.set(true);
-                    }
-                } else {
-                    fa.triggered.set(false);
-                }
-            }
-            
-            // TODO: Why are we updating sounds in the renderer? I get that it's probably because 
-            // we are already accessing the animation, but likely the cost tradeoff is fine as
-            // fetching the animation is constant time I believe. one thing is that if we render
-            // and update sound at the same time the sound is probably less likely to have latency.
-            for cs in animation.continuous_sounds.iter() {
-                if !cs.playing.get() {
-                    sound_manager.play_sound_3d(cs.sound_type.clone(), &trans.position, id);
-                    cs.playing.set(true);
-                } else if let Some(insts) = sound_manager.active_3d_sounds.get_mut(&id) {
-                    for inst in insts.iter_mut() {
-                        let attributes = FMOD_3D_ATTRIBUTES {
-                            position: SoundManager::opengl_to_fmod(trans.position),
-                            velocity: FMOD_VECTOR { x: 0.0, y: 0.0, z: 0.0 },
-                            forward: FMOD_VECTOR { x: 0.0, y: 0.0, z: 1.0 },
-                            up: FMOD_VECTOR { x: 0.0, y: 1.0, z: 0.0 }
-                        };
-
-                        unsafe {
-                            let result = FMOD_Studio_EventInstance_Set3DAttributes(*inst, &attributes);
-
-                            if result != 0 {
-                                eprintln!("Failed to update 3D sound position: {}", result);
-                            }
-                        }
-                    }
-                }
-            }
-
-
-            let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
-
-            shader.set_mat4("model", m_mat);
-            shader.set_mat4("projection", camera.projection);
-            shader.set_mat4("view", camera.view);
-            shader.set_mat4("light_space_mat", camera.light_space);
-            shader.set_dir_light("dir_light", &light_manager.dir_light);
-            shader.set_float("bias_scalar", light_manager.bias_scalar);
-            shader.set_mat4_array("bone_transforms", &animation.current_pose);
-            shader.set_vec3("view_position", camera.position);
-            shader.set_int("skybox", 10);
-            model.draw(shader);
-            shader.set_bool("selection_fresnel", false);
-            shader.set_bool("flash_white", false);
-        }
-        shader.set_bool("do_reg_fresnel", false);
-    }
-
-
-    fn static_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, ids: Vec<usize>, ps: &PhysicsState, alpha: f32) {
+    fn model_pass(
+        &mut self, camera: 
+        &mut Camera, 
+        em: &EntityManager, 
+        light_manager: &Lights, 
+        ps: &PhysicsState, 
+        alpha: f32,
+        particles: &mut ParticleSystem,
+        sound_manager: &mut SoundManager,
+    ) {
         unsafe {
             gl_call!(gl::Enable(gl::DEPTH_TEST));
-            gl_call!(gl::DepthMask(gl::TRUE)); // Allow writing to depth buffer
+            gl_call!(gl::DepthMask(gl::TRUE));
             gl_call!(gl::Disable(gl::BLEND));
-
+            gl::Enable(gl::CULL_FACE);
+            gl::CullFace(gl::BACK);
+            gl::FrontFace(gl::CCW);
 
             // Set default textures for models that don't have one
             gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
@@ -521,22 +353,13 @@ impl Renderer {
             gl::ActiveTexture(gl::TEXTURE7); gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
             gl::ActiveTexture(gl::TEXTURE10); gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
         }
-        // Alpha pass
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
         shader.activate();
-        shader.set_bool("is_animated", false);
-        shader.set_bool("alpha_test_pass", true);
-        shader.set_bool("do_fresnel", false);
-        for id in ids.iter() {
-            let is_selected = em.selected.contains(&id);
-            shader.set_bool("selection_fresnel", is_selected);
-
-            let model = em.models.get(*id).unwrap();
-            let trans = Self::render_transform(em, *id, alpha);
-            // let trans = em.transforms.get(*id).unwrap();
-            let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
-
-            shader.set_mat4("model", m_mat);
+        
+        for &is_alpha_pass in &[false, true] {
+            shader.set_bool("alpha_test_pass", is_alpha_pass);
+            
+            // Hoist stuff
             shader.set_mat4("projection", camera.projection);
             shader.set_mat4("view", camera.view);
             shader.set_mat4("light_space_mat", camera.light_space);
@@ -544,50 +367,66 @@ impl Renderer {
             shader.set_float("bias_scalar", light_manager.bias_scalar);
             shader.set_vec3("view_position", camera.position);
             shader.set_int("skybox", 10);
-            unsafe {
-                // gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-                // gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-                // shader.set_int("shadow_map", 0);
-                model.draw(shader);
-                gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+
+            for id in em.entity_types.iter() {
+                let is_selected = em.selected.contains(&id.key());
+                shader.set_bool("selection_fresnel", is_selected);
+
+                let model = em.models.get(id.key()).unwrap();
+                let trans = Self::render_transform(em, id.key(), alpha);
+                let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
+
+                match em.animators.get(id.key()) {
+                    Some(animator) => {
+                        let animation = animator.get_current_animation().unwrap();
+
+                        for os in animation.one_shots.iter() {
+                            if animation.current_segment.get() == os.segment {
+                                if !os.triggered.get() {
+                                    sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position, id.key());
+                                    particles.spawn_oneshot_emitter(EmitterName::DesertStep, trans.position);
+                                    os.triggered.set(true);
+                                }
+                            } else {
+                                os.triggered.set(false);
+                            }
+                        }
+
+                        if let Some(fa) = &animation.hurtbox_activation {
+                            if fa.segment_range.contains(&animation.current_segment.get()) { 
+                                if !fa.triggered.get() {
+                                    fa.triggered.set(true);
+                                }
+                            } else {
+                                fa.triggered.set(false);
+                            }
+                        }
+
+
+                        shader.set_bool("is_animated", true);
+                        shader.set_mat4_array("bone_transforms", &animation.current_pose);
+
+                    },
+                    _ => {
+                        shader.set_bool("is_animated", false);
+                    },
+                }
+
+                shader.set_mat4("model", m_mat);
+                unsafe {
+                    // gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+                    // gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
+                    // shader.set_int("shadow_map", 0);
+                    model.draw(shader);
+                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+                }
+                shader.set_bool("selection_fresnel", false);
             }
-            shader.set_bool("selection_fresnel", false);
-        }
-
-        unsafe {
-            gl_call!(gl::Enable(gl::BLEND));
-            gl_call!(gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
-            gl_call!(gl::DepthMask(gl::FALSE));
-        }
-        shader.set_bool("alpha_test_pass", false);
-        for id in ids {
-            let is_selected = em.selected.contains(&id);
-            shader.set_bool("selection_fresnel", is_selected);
-
-            let model = em.models.get(id).unwrap();
-            let trans = Self::render_transform(em, id, alpha);
-            let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
-
-            shader.set_mat4("model", m_mat);
-            shader.set_mat4("projection", camera.projection);
-            shader.set_mat4("view", camera.view);
-            shader.set_mat4("light_space_mat", camera.light_space);
-            shader.set_dir_light("dir_light", &light_manager.dir_light);
-            shader.set_float("bias_scalar", light_manager.bias_scalar);
-            shader.set_vec3("view_position", camera.position);
-            shader.set_int("skybox", 10);
-            unsafe {
-                // gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-                // gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-                // shader.set_int("shadow_map", 0);
-                model.draw(shader);
-                gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            }
-            shader.set_bool("selection_fresnel", false);
         }
 
         unsafe {
             gl_call!(gl::Disable(gl::BLEND));
+            gl::Disable(gl::CULL_FACE);
             gl_call!(gl::DepthMask(gl::TRUE));
         }
 
@@ -659,7 +498,7 @@ impl Renderer {
         }
     }
 
-    fn shadow_pass(&mut self, em: &EntityManager, camera: &mut Camera, light_manager: &Lights, fb_width: u32, fb_height: u32, ps: &PhysicsState, alpha: f32, animated_ids: Vec<usize>, non_animated_ids: Vec<usize>) {
+    fn shadow_pass(&mut self, em: &EntityManager, camera: &mut Camera, light_manager: &Lights, fb_width: u32, fb_height: u32, ps: &PhysicsState, alpha: f32) {
         let shader = self.shaders.get_mut(&ShaderType::Depth).unwrap();
         let near_plane = light_manager.near;
         let far_plane = light_manager.far;
@@ -694,7 +533,7 @@ impl Renderer {
             gl_call!(gl::Enable(CULL_FACE));
             //gl_call!(gl::CullFace(gl::BACK));
             gl::CullFace(gl::FRONT);
-            self.render_sample_depth(em, ps, alpha, animated_ids, non_animated_ids);
+            self.render_sample_depth(em, ps, alpha);
             gl_call!(gl::CullFace(gl::BACK)); 
             gl_call!(gl::Disable(CULL_FACE));
             // End render
@@ -718,30 +557,40 @@ impl Renderer {
         }
     }
 
-    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32, animated_ids: Vec<usize>, non_animated_ids: Vec<usize>) {
-        let depth_shader = self.shaders.get(&ShaderType::Depth).unwrap();
-        depth_shader.activate();
+    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32) {
+        let shader = self.shaders.get(&ShaderType::Depth).unwrap();
+        shader.activate();
 
-        depth_shader.set_bool("is_animated", false);
-        for id in non_animated_ids {
-            let check = em.factions.get(id).unwrap();
+        for id in em.entity_types.iter() {
+            let check = em.factions.get(id.key()).unwrap();
 
-           //  if !active_weapon_ids.contains(&model.key()) && check == &Faction::Item {
-           //      continue;
-           //  }
-            // TODO:: Get rid of this. see above...
+            // TODO: Get rid of this?
             if check == &Faction::Gizmo {
                 continue;
             }
-            let model = em.models.get(id).unwrap();
-            let trans = Self::render_transform(em, id, alpha);
+
+            match em.animators.get(id.key()) {
+                Some(animator) => {
+                    let animation = animator.get_current_animation().unwrap();
+                    shader.set_bool("is_animated", true);
+                    shader.set_mat4_array("bone_transforms", &animation.current_pose);
+
+                },
+                _ => {
+                    shader.set_bool("is_animated", false);
+                },
+            }
+
+
+            let model = em.models.get(id.key()).unwrap();
+            let trans = Self::render_transform(em, id.key(), alpha);
             //let trans = em.transforms.get(model.key()).unwrap();
 
             let model_model = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
             unsafe {
                 gl::BindVertexArray(model.vao);
             }
-            depth_shader.set_mat4("model", model_model);
+            shader.set_mat4("model", model_model);
             unsafe {
                 gl_call!(gl::DrawElements(
                     gl::TRIANGLES, 
@@ -753,37 +602,6 @@ impl Renderer {
                 gl_call!(gl::BindVertexArray(0));
             }
         }
-
-        depth_shader.set_bool("is_animated", true);
-
-        for id in animated_ids {
-            if let Some(animator) = em.animators.get(id) {
-                let animation = animator.get_current_animation().unwrap();
-
-                let trans = Self::render_transform(em, id, alpha);
-                let model = em.models.get(id).unwrap();
-
-                depth_shader.set_mat4_array("bone_transforms", &animation.current_pose);
-
-                let mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
-                unsafe {
-                    gl::BindVertexArray(model.vao);
-                }
-                depth_shader.set_mat4("model", mat);
-
-                unsafe {
-                    gl_call!(gl::DrawElements(
-                        gl::TRIANGLES, 
-                        model.indices.len() as i32, 
-                        gl::UNSIGNED_INT, 
-                        std::ptr::null(),
-                    ));
-
-                    gl_call!(gl::BindVertexArray(0));
-                }
-            }
-        }
-
     }
 
     fn debug_light_pass(&mut self, camera: &mut Camera) {
@@ -816,11 +634,11 @@ impl Renderer {
             // Positions      // Texture Coords
             -1.0,  1.0, 0.0,  0.0, 1.0,
             -1.0, -1.0, 0.0,  0.0, 0.0,
-             1.0, -1.0, 0.0,  1.0, 0.0,
+            1.0, -1.0, 0.0,  1.0, 0.0,
 
             -1.0,  1.0, 0.0,  0.0, 1.0,
-             1.0, -1.0, 0.0,  1.0, 0.0,
-             1.0,  1.0, 0.0,  1.0, 1.0
+            1.0, -1.0, 0.0,  1.0, 0.0,
+            1.0,  1.0, 0.0,  1.0, 1.0
         ];
 
         unsafe {
@@ -867,21 +685,5 @@ impl Renderer {
             scale:    curr.scale,
         }
     }
-
-//pub fn render_transform(em: &EntityManager, id: usize, alpha: f32) -> Transform {
-//    let curr = em.transforms.get(id).unwrap();
-//
-//    let is_physics_owned = em.physics_handles.get(id).is_some();
-//    if is_physics_owned {
-//        // physics drives curr; draw at curr to match bone time
-//        return curr.clone();
-//    }
-//
-//    let prev = em.prev_transforms.get(id).unwrap_or(curr);
-//    Transform {
-//        position: prev.position.lerp(curr.position, alpha),
-//        rotation: prev.rotation.slerp(curr.rotation, alpha),
-//        scale:    curr.scale,
-//    }
-//}
 }
+

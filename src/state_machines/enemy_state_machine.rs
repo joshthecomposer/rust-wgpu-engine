@@ -75,7 +75,7 @@ pub fn enemy_sim_state_machine(
     'ns: {
         match controller.state {
             SimState::Init => {
-                if *entity_type == EntityType::MooseMan {
+                if entity_type == "MooseMan" {
                     entity_non_combat_transition(controller, SimState::Dancing, animator, false);
                     break 'ns;
                 }

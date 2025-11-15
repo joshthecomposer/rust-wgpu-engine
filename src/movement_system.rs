@@ -156,7 +156,7 @@ fn handle_enemy_movement_rapier(
 
         em.v_effects.remove(id);
 
-        if *ent_type == EntityType::MooseMan { continue };
+        if *ent_type == "MooseMan" { continue };
 
         let rb = ps.rigid_body_set.get_mut(physics_handle.rigid_body).unwrap();
         let position = Vec3::from_slice(rb.translation().as_slice());
