@@ -10,11 +10,11 @@ pub fn update(
     camera: &Camera,
 ) {
     // COMMON DATA BETWEEN MACHINES
-    let player_id = em.factions.iter().find(|e| *e.value() == Faction::Player).unwrap().key();
+    let player_id = em.factions.iter().find(|e| *e.value() == "Player").unwrap().key();
     player_state_machine(em, dt, input, ps, sm, particles, camera);
         
     // TODO: gather entity IDs once somewhere and use for the entire game loop?
-    let enemy_ids = em.factions.iter().filter(|e| *e.value() == Faction::Enemy).map(|e| e.key()).collect::<Vec<usize>>();
+    let enemy_ids = em.factions.iter().filter(|e| *e.value() == "Enemy").map(|e| e.key()).collect::<Vec<usize>>();
     for id in enemy_ids.iter() {
         enemy_sim_state_machine(*id, em, dt, particles, ps, input, player_id);
     }

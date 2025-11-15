@@ -1,0 +1,44 @@
+{
+	"entities": [
+		{
+			"entity_type": "TrashGuy",
+			"faction": "Player",
+			"position": [0.0, 10.0, 0.0],
+			"rotation": [0.0, -0.9239, 0.0, 0.3827],
+			"weapons": [
+				{
+					"entity_type": "DoubleAxe",
+					"faction": "Item",
+					"position": [0.0, 0.0, 0.0],
+					"rotation": [0.0, 0.0, 0.0, 0.1]
+				}
+			],
+			"base_speed": 7.0,
+			"jump_height": 1.5,
+			"health": 100000.0
+		},
+		{
+			"entity_type": "TrashGuy",
+			"faction": "Enemy",
+			"position": [0.0, 15.0, 20.0],
+			"rotation": [0.0, -0.9239, 0.0, 0.3827],
+			"weapons": [
+				{
+					"entity_type": "OrcSword",
+					"faction": "Item",
+					"position": [0.0, 0.0, 0.0],
+					"rotation": [0.0, 0.0, 0.0, 0.1]
+				},
+				{
+					"entity_type": "DoubleAxe",
+					"faction": "Item",
+					"position": [0.0, 0.0, 0.0],
+					"rotation": [0.0, 0.0, 0.0, 0.1]
+				}
+			],
+			"base_speed": 5.5,
+			"jump_height": 1.5,
+			"health": 100.0
+		}
+	]
+}

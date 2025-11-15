@@ -32,7 +32,7 @@ pub struct EntityManager {
     pub is_equipped: SparseSet<bool>,
     // sockets for items to attach to, parent to a bone instead of the parent of the bone
     pub item_bones: SparseSet<ItemBones>,
-    pub factions: SparseSet<Faction>,
+    pub factions: SparseSet<String>,
     pub entity_types: SparseSet<String>,
     pub models: SparseSet<Model>,
     pub animators: SparseSet<Animator>,
@@ -59,6 +59,7 @@ pub struct EntityManager {
     pub grounded_states: SparseSet<GroundedState>,
 
     pub entity_type_register: HashMap<String, EntityTypeHelper>,
+    pub faction_register: HashSet<String>,
 
 }
 
@@ -106,11 +107,12 @@ impl EntityManager {
             
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json").entity_types,
+            faction_register: HashSet::new(),
         }
     }
 
     pub fn populate_entity_data(&mut self, ps: &mut PhysicsState) {
-        let wd = WorldData::load_from_file("config/world_data.toml");
+        let wd = WorldData::load_from_file("config/world_data.json");
 
         for instance in wd.entities.iter() {
             let parent_id = self.create_entity(instance, ps);
@@ -123,20 +125,8 @@ impl EntityManager {
     pub fn populate_inventory(&mut self, parent_id: usize, instance: &EntityInstance, ps: &mut PhysicsState) {
         if let Some(weapons_list) = &instance.weapons {
             for weapon in weapons_list.iter() {
-
-                let wi = EntityInstance {
-                    entity_type: weapon.clone(),
-                    faction: Faction::Item,
-                    position: Vec3::splat(0.0),
-                    rotation: Quat::IDENTITY,
-                    weapons: None,
-                    base_speed: None,
-                    health: None,
-                    jump_height: None,
-                };
-
                 let weapon_id = self.create_entity(
-                    &wi, 
+                    weapon, 
                     ps,
                 );
                 
@@ -190,15 +180,15 @@ impl EntityManager {
         let rotation = instance.rotation;
         let scale    = archetype.scale_correction;
 
-        match instance.faction {
-            Faction::Player => {
+        match instance.faction.as_str() {
+            "Player" => {
                 self.player_controllers.insert(parent_id, PlayerController {
                     state: PlayerState::Init,
                     attack_state: AttackState::Attack1,
                     time_in_state: 0.0,
                 });
             },
-            Faction::Enemy => {
+            "Enemy" => {
                 self.simstate_controllers.insert(parent_id, SimStateController { 
                     state: SimState::Init, 
                     attack_state: AttackState::Attack1, 
@@ -213,6 +203,7 @@ impl EntityManager {
         }
 
         self.factions.insert(parent_id, instance.faction.clone());
+        self.faction_register.insert(instance.faction.clone());
         self.entity_types.insert(parent_id, instance.entity_type.clone());
         self.yaws.insert(parent_id, 0.0);
 
@@ -753,7 +744,7 @@ impl EntityManager {
         self.entity_trashcan.clear();
     }
 
-    pub fn get_ids_for_faction(&self, faction: Faction) -> Vec<usize> {
+    pub fn get_ids_for_faction(&self, faction: &str) -> Vec<usize> {
         let result: Vec<usize> = self.factions
             .iter()
             .filter_map(|f|
@@ -819,7 +810,7 @@ impl EntityManager {
         self.factions
             .iter()
             .filter(|w_type| {
-                *w_type.value() == Faction::Item 
+                *w_type.value() == "Item"
                 && self.owners.get(w_type.key()).is_none()
             })
             .map(|e| e.key())
@@ -837,7 +828,7 @@ impl EntityManager {
         self.factions
             .iter()
             .filter(|w_type| {
-                *w_type.value() != Faction::Item
+                *w_type.value() != "Item"
                 //&& *w_type.value() != Faction::World
             })
             .map(|e| e.key())
@@ -892,7 +883,9 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     };
 
     entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone(), );
-    entity_manager.factions.insert(entity_manager.next_entity_id, Faction::World);
+    //TODO: load this dynamically potentially
+    entity_manager.factions.insert(entity_manager.next_entity_id, "World".to_string());
+    entity_manager.faction_register.insert("World".to_string());
     entity_manager.entity_types.insert(entity_manager.next_entity_id, "Terrain".to_string());
 
     entity_manager.collider_transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());

@@ -464,7 +464,7 @@ impl Renderer {
         }
     }
 
-    fn skybox_pass(&mut self, camera: &mut Camera, fb_width: u32, fb_height: u32) {
+    fn skybox_pass(&mut self, camera: &mut Camera, _fb_width: u32, _fb_height: u32) {
         unsafe {
             let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
             if status != gl::FRAMEBUFFER_COMPLETE {
@@ -562,13 +562,6 @@ impl Renderer {
         shader.activate();
 
         for id in em.entity_types.iter() {
-            let check = em.factions.get(id.key()).unwrap();
-
-            // TODO: Get rid of this?
-            if check == &Faction::Gizmo {
-                continue;
-            }
-
             match em.animators.get(id.key()) {
                 Some(animator) => {
                     let animation = animator.get_current_animation().unwrap();

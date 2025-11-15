@@ -115,7 +115,7 @@ impl Camera {
                 self.target = self.position + self.forward;
             }
             CameraState::Third => {
-                if let Some(player_key) = _em.factions.iter().find(|e| e.value() == &Faction::Player) {
+                if let Some(player_key) = _em.factions.iter().find(|e| e.value() == "Player") {
 
                     let player_transform = _em.transforms.get(player_key.key()).unwrap();
 

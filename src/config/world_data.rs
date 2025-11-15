@@ -16,13 +16,13 @@ impl WorldData {
         println!("loading world data from {}", &file_name);
         let config_str = read_to_string(file_name).unwrap();
 
-        toml::from_str(&config_str).expect("The world_data file was missing or malformed")
+        serde_json::from_str(&config_str).expect("The world_data file was missing or malformed")
     }
 
     pub fn write_to_file(&self, file_name: &str) {
         println!("writing world data to {}", &file_name);
 
-        let toml_str = toml::to_string_pretty(self).expect("Failed to deserialize world data");
+        let toml_str = serde_json::to_string_pretty(self).expect("Failed to deserialize world data");
         write(file_name, toml_str).expect("Failed to write world data");
     }
 
@@ -62,11 +62,11 @@ impl WorldData {
 #[derive(Deserialize, Debug, Serialize)]
 pub struct EntityInstance {
     pub entity_type: String,
-    pub faction: Faction,
+    pub faction: String,
     pub position: Vec3,
     pub rotation: Quat,
     #[serde(default)]
-    pub weapons: Option<Vec<String>>,
+    pub weapons: Option<Vec<EntityInstance>>,
     #[serde(default)]
     pub base_speed: Option<f32>,
     #[serde(default)]
