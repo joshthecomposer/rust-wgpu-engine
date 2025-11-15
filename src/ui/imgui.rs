@@ -163,7 +163,7 @@ impl ImguiManager {
                                     em.factions.get(e_type.key()),
                                     em.transforms.get(e_type.key()),
                                 ) {
-                                    if *faction == Faction::Gizmo {
+                                    if *faction == "Gizmo" {
                                         continue;
                                     }
 
@@ -230,7 +230,6 @@ impl ImguiManager {
                         }
 
                     });
-
             }
 
             ui.window("Some Info")
@@ -243,7 +242,7 @@ impl ImguiManager {
                     let string = format!("x: {:.3}, y: {:.3}, z: {:.3}", camera.forward.x, camera.forward.y, camera.forward.z);
                     ui.label_text("Camera Forward", string);
 
-                    if let Some(player_entry) = em.factions.iter().find(|f| f.value() == &Faction::Player) {
+                    if let Some(player_entry) = em.factions.iter().find(|f| f.value() == "Player") {
                         let player_key = player_entry.key();
                         let player_trans = em.transforms.get(player_key).unwrap();
 
@@ -252,11 +251,15 @@ impl ImguiManager {
 
                     };
 
+                    ui.separator();
+                    ui.text("Factions:");
 
-
+                    for f in em.faction_register.iter() {
+                        ui.text(f);
+                    }
                 });
 
-            // UI IS DROPPED HERE (frame ended)
+        // UI IS DROPPED HERE (frame ended)
         }
 
         let draw_data = self.imgui.render();

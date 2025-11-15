@@ -71,7 +71,7 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particl
 
                 match em.factions.get(target_id) {
                     Some(faction) => {
-                        if *faction != Faction::Enemy {
+                        if *faction != "Enemy" {
                             continue;
                         }
                     },
@@ -174,7 +174,7 @@ fn handle_enemy_to_player(em: &mut EntityManager, ps: &mut PhysicsState) {
 
                 match em.factions.get(target_id) {
                     Some(faction) => {
-                        if *faction != Faction::Player {
+                        if *faction != "Player" {
                             continue;
                         }
                     },

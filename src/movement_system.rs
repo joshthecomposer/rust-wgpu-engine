@@ -12,11 +12,11 @@ pub fn update(
     input_state: &InputState, 
     ps: &mut PhysicsState
 ) {
-    let player_keys = em.get_ids_for_faction(Faction::Player);
+    let player_keys = em.get_ids_for_faction("Player");
 
     handle_player_movement_rapier(input_state, em, player_keys, dt, cam_basis, ps);
 
-    let enemy_keys = em.get_ids_for_faction(Faction::Enemy);
+    let enemy_keys = em.get_ids_for_faction("Enemy");
 
     handle_enemy_movement_rapier(enemy_keys, em, dt, ps);
 }
