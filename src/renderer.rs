@@ -315,7 +315,7 @@ impl Renderer {
             gl::FrontFace(gl::CCW);      // CCW = front mesh
         }
 
-        self.static_model_pass(camera, em, light_manager, ps, alpha, particles, sound_manager);
+        self.model_pass(camera, em, light_manager, ps, alpha, particles, sound_manager);
 
         unsafe {
             gl::Disable(gl::CULL_FACE);
@@ -368,116 +368,7 @@ impl Renderer {
         id
     }
 
-    fn ani_model_pass(&mut self, camera: &mut Camera, em: &EntityManager, light_manager: &Lights, sound_manager: &mut SoundManager, ids: Vec<usize>, elapsed: f32, ps: &PhysicsState, alpha: f32, particles: &mut ParticleSystem) {
-        let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
-        shader.activate();
-
-        unsafe {
-            gl::ActiveTexture(gl::TEXTURE7);
-            gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
-                
-            // Set default textures for models that don't have one
-            gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
-            gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
-            gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
-            gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
-            gl::ActiveTexture(gl::TEXTURE10); gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
-        }
-
-        shader.set_bool("is_animated", true);
-        shader.set_bool("alpha_test_pass", false);
-        shader.set_float("elapsed", elapsed);
-        shader.set_bool("do_reg_fresnel", false);
-        for id in ids {
-
-            if let Some(v_effect) = em.v_effects.get(id) {
-                if v_effect.ttl > 0.0 {
-                    shader.set_bool("flash_white", true);
-                }
-            }
-
-            let is_selected = em.selected.contains(&id);
-            shader.set_bool("selection_fresnel", is_selected);
-
-            let model = em.models.get(id).unwrap();
-            let trans = Self::render_transform(em, id, alpha);
-
-            let animator = em.animators.get(id).unwrap();
-            let animation = animator.get_current_animation().unwrap();
-
-            // TODO: OneShot and FrameActivation are almost the same thing. I could likely
-            // destructure this and use FrameActivation for both.
-            for os in animation.one_shots.iter() {
-                if animation.current_segment.get() == os.segment {
-                    if !os.triggered.get() {
-                        sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position, id);
-                        particles.spawn_oneshot_emitter(EmitterName::DesertStep, trans.position);
-                        os.triggered.set(true);
-                    }
-                } else {
-                    os.triggered.set(false);
-                }
-            }
-            
-            if let Some(fa) = &animation.hurtbox_activation {
-                if fa.segment_range.contains(&animation.current_segment.get()) { 
-                    if !fa.triggered.get() {
-                        fa.triggered.set(true);
-                    }
-                } else {
-                    fa.triggered.set(false);
-                }
-            }
-            
-            // TODO: Why are we updating sounds in the renderer? I get that it's probably because 
-            // we are already accessing the animation, but likely the cost tradeoff is fine as
-            // fetching the animation is constant time I believe. one thing is that if we render
-            // and update sound at the same time the sound is probably less likely to have latency.
-            for cs in animation.continuous_sounds.iter() {
-                if !cs.playing.get() {
-                    sound_manager.play_sound_3d(cs.sound_type.clone(), &trans.position, id);
-                    cs.playing.set(true);
-                } else if let Some(insts) = sound_manager.active_3d_sounds.get_mut(&id) {
-                    for inst in insts.iter_mut() {
-                        let attributes = FMOD_3D_ATTRIBUTES {
-                            position: SoundManager::opengl_to_fmod(trans.position),
-                            velocity: FMOD_VECTOR { x: 0.0, y: 0.0, z: 0.0 },
-                            forward: FMOD_VECTOR { x: 0.0, y: 0.0, z: 1.0 },
-                            up: FMOD_VECTOR { x: 0.0, y: 1.0, z: 0.0 }
-                        };
-
-                        unsafe {
-                            let result = FMOD_Studio_EventInstance_Set3DAttributes(*inst, &attributes);
-
-                            if result != 0 {
-                                eprintln!("Failed to update 3D sound position: {}", result);
-                            }
-                        }
-                    }
-                }
-            }
-
-
-            let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
-
-            shader.set_mat4("model", m_mat);
-            shader.set_mat4("projection", camera.projection);
-            shader.set_mat4("view", camera.view);
-            shader.set_mat4("light_space_mat", camera.light_space);
-            shader.set_dir_light("dir_light", &light_manager.dir_light);
-            shader.set_float("bias_scalar", light_manager.bias_scalar);
-            shader.set_mat4_array("bone_transforms", &animation.current_pose);
-            shader.set_vec3("view_position", camera.position);
-            shader.set_int("skybox", 10);
-            model.draw(shader);
-            shader.set_bool("selection_fresnel", false);
-            shader.set_bool("flash_white", false);
-        }
-        shader.set_bool("do_reg_fresnel", false);
-    }
-
-
-    fn static_model_pass(
+    fn model_pass(
         &mut self, camera: 
         &mut Camera, 
         em: &EntityManager, 
@@ -492,7 +383,6 @@ impl Renderer {
             gl_call!(gl::DepthMask(gl::TRUE)); // Allow writing to depth buffer
             gl_call!(gl::Disable(gl::BLEND));
 
-
             // Set default textures for models that don't have one
             gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
             gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
@@ -502,16 +392,14 @@ impl Renderer {
             gl::ActiveTexture(gl::TEXTURE7); gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
             gl::ActiveTexture(gl::TEXTURE10); gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
         }
-        // Alpha pass
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
         shader.activate();
         
-        // TODO: hacky way to set alpha test pass
+        // simple loop to set alpha test pass and then not alpha test pass
+        // whatya gonna do about it nerd?
         for i in 0..=1 {
             shader.set_bool("alpha_test_pass", i > 0);
             for id in em.entity_types.iter() {
-
-
                 let is_selected = em.selected.contains(&id.key());
                 shader.set_bool("selection_fresnel", is_selected);
 
