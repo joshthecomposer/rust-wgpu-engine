@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use glam::{Mat4, Quat, Vec3};
 use glfw::{Action, MouseButton, PWindow, WindowEvent};
 use imgui::Drag;
@@ -145,7 +147,7 @@ impl ImguiManager {
                     .position([50.0, 250.0], imgui::Condition::FirstUseEver)
                     .build(|| {
                         if ui.button("Save Entity State") {
-                            let mut save_data = WorldData {
+                            let save_data = WorldData {
                                 entities: vec![]
                             };
 
@@ -249,6 +251,23 @@ impl ImguiManager {
                         let string = format!("x: {:.3}, y: {:.3}, z: {:.3}", player_trans.position.x, player_trans.position.y, player_trans.position.z);
                         ui.label_text("Player World Position", string);
                     };
+
+                    if ui.selectable("Entity Types") {
+                    };
+
+                    let mut selected_idx: usize = 0;
+
+                    let items: Vec<&str> = em.entity_types
+                        .iter()
+                        .map(|e| e.value().as_str())
+                        .collect();
+
+                    ui.combo(
+                        "Entity Types", 
+                        &mut selected_idx,
+                        &items,
+                        |s| Cow::Borrowed(*s)
+                    );
 
                     ui.separator();
                     ui.text("Factions:");

@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use gl::ActiveTexture;
 use glam::{vec2, vec3, vec4, Vec3, Vec4};
 use image::{GenericImageView, ImageBuffer, Luma};
-use imgui::sys::igSetWindowPosVec2;
 use nalgebra::Point3;
 use rapier3d::prelude::{Collider, ColliderBuilder, ColliderSet, InteractionGroups, RigidBodyHandle, RigidBodySet};
 
