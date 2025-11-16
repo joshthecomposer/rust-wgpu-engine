@@ -9,6 +9,8 @@ use crate::{animation::animation::Animator, camera::Camera, config::world_data::
 pub struct ImguiManager {
     pub imgui: imgui::Context,
     pub renderer: imgui_opengl_renderer::Renderer,
+    pub test: usize,
+    pub create_mode: bool
 }
 
 impl ImguiManager {
@@ -21,6 +23,8 @@ impl ImguiManager {
         Self {
             imgui,
             renderer,
+            test: 0,
+            create_mode: false,
         }
     }
 
@@ -232,6 +236,29 @@ impl ImguiManager {
                         }
 
                     });
+
+                ui.window("Placing Entities")
+                    .size([500.0, 200.0], imgui::Condition::FirstUseEver)
+                    .position([550.0, 250.0], imgui::Condition::FirstUseEver)
+                    .build(|| {
+
+                    let items: Vec<&str> = em.entity_type_register
+                        .keys()
+                        .map(|k| k.as_str())
+                        .collect();
+
+                        ui.combo(
+                            "Entity Types", 
+                            &mut self.test,
+                            &items,
+                            |s| Cow::Borrowed(*s)
+                        );
+
+                        if ui.checkbox("Create Mode", &mut self.create_mode) {
+                            println!("Clicked Create Mode");
+                        }
+
+                    });
             }
 
             ui.window("Some Info")
@@ -251,23 +278,6 @@ impl ImguiManager {
                         let string = format!("x: {:.3}, y: {:.3}, z: {:.3}", player_trans.position.x, player_trans.position.y, player_trans.position.z);
                         ui.label_text("Player World Position", string);
                     };
-
-                    if ui.selectable("Entity Types") {
-                    };
-
-                    let mut selected_idx: usize = 0;
-
-                    let items: Vec<&str> = em.entity_types
-                        .iter()
-                        .map(|e| e.value().as_str())
-                        .collect();
-
-                    ui.combo(
-                        "Entity Types", 
-                        &mut selected_idx,
-                        &items,
-                        |s| Cow::Borrowed(*s)
-                    );
 
                     ui.separator();
                     ui.text("Factions:");
