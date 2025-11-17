@@ -5,7 +5,7 @@ use glfw::MouseButton;
 
 use rapier3d::{data::Index, prelude::*};
 
-use crate::{camera::{self, Camera}, entity_manager::EntityManager, enums_types::{AnimationType, CameraState, Faction}, physics::PhysicsState};
+use crate::{camera::{self, Camera}, entity_manager::EntityManager, enums_types::{AnimationType, CameraState, Faction}, physics::PhysicsState, some_data::GROUP_TERRAIN};
 
 pub struct InputState {
     pub keys_current: HashSet<glfw::Key>,           // Held this frame
@@ -15,6 +15,8 @@ pub struct InputState {
     pub mouse_previous: HashSet<glfw::MouseButton>, // held last frame
 
     pub mouse_pos_current: Vec2,
+
+    pub ray_just_hit: Vec3,
 }
 
 impl InputState {
@@ -27,6 +29,8 @@ impl InputState {
             mouse_previous: HashSet::new(),
 
             mouse_pos_current: Vec2::splat(0.0),
+
+            ray_just_hit: Vec3::splat(0.0),
         }
     }
 
@@ -134,7 +138,7 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size
                 let max_toi = 1000.0;
                 let solid = true;
 
-                if let Some((handle, _)) = query_pipeline.cast_ray(
+                if let Some((handle, toi)) = query_pipeline.cast_ray(
                     bodies,
                     colliders,
                     &ray,
@@ -147,10 +151,19 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size
                         let ph = em.physics_handles.get_mut(entity_id).unwrap();
                         let rb = physics.rigid_body_set.get_mut(ph.rigid_body).unwrap();
                         rb.set_body_type(RigidBodyType::KinematicPositionBased, false);
+                        return
+                    }
+
+                    let collider = physics.collider_set.get(handle).unwrap();
+                    let groups = collider.collision_groups();
+
+                    if groups.memberships & GROUP_TERRAIN.into() != 0.into() {
+                        let hit_point = ray.point_at(toi);
+                        input_state.ray_just_hit = hit_point.into();
+                        println!("HIT THE TERRAIN AT: {:?}", hit_point);
+                        return;
                     }
                 }
-
-                
             }
         },
         glfw::Action::Release => { input_state.mouse_current.remove(&button); },

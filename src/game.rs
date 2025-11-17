@@ -105,17 +105,30 @@ impl Game {
                     self.platform.glfw.poll_events();
                     for (_, e) in glfw::flush_messages(&self.platform.events) {
                         self.imgui_manager.handle_imgui_event(&e);
+
+                        let io = self.imgui_manager.imgui.io();
+
                         match e {
                             glfw::WindowEvent::CursorPos(x, y) => {
-                                if !self.paused {
-                                    self.world.camera.process_mouse_input(&self.platform.window, &e);
+                                if !io.want_capture_mouse {
+                                    if !self.paused {
+                                        self.world.camera.process_mouse_input(&self.platform.window, &e);
+                                    }
+                                    self.input.mouse_pos_current = glam::vec2(x as f32, y as f32);
                                 }
-                                self.input.mouse_pos_current = glam::vec2(x as f32, y as f32);
                             }
                             glfw::WindowEvent::MouseButton(b, a, _) => {
-                                input::handle_mouse_input(b, a,
-                                    glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32),
-                                    &self.world.camera, &mut self.world.ecs, &mut self.input, &mut self.physics);
+                                if !io.want_capture_mouse {
+                                    input::handle_mouse_input(
+                                        b,
+                                        a,
+                                        glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32),
+                                        &self.world.camera,
+                                        &mut self.world.ecs,
+                                        &mut self.input,
+                                        &mut self.physics,
+                                    );
+                                }
                             }
                             glfw::WindowEvent::Key(k, _, a, _) => {
                                 input::handle_keyboard_input(k, a, &mut self.input);
@@ -239,6 +252,7 @@ impl Game {
         let mouse_fb = glam::vec2(self.input.mouse_pos_current.x * sx, self.input.mouse_pos_current.y * sy);
 
         let (ui_shader, font_shader) = self.renderer.shaders.get_pair_mut(&ShaderType::GameUi, &ShaderType::Text).unwrap();
+
         do_ui(
             self.platform.fb_width as f32, 
             self.platform.fb_height as f32, 
@@ -254,6 +268,7 @@ impl Game {
             &mut self.renderer.render_gizmos,
             &self.input,
         );
+
         self.imgui_manager.draw(
             &mut self.platform.window, 
             self.platform.fb_width as f32, 
@@ -265,6 +280,7 @@ impl Game {
             &self.world.camera, 
             &mut self.world.ecs,
             &mut self.physics,
+            &mut self.input,
         );
         if self.message_queue.drain().contains(&UiMessage::WindowShouldClose) {
             self.platform.window.set_should_close(true)
