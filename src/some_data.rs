@@ -221,3 +221,4 @@ pub const FREEFALL_DELAY: f32 = 0.35;
 
 pub const GROUP_TERRAIN: u32 = 0b0001;
 pub const GROUP_PLAYER: u32 = 0b0010;
+

@@ -10,8 +10,10 @@ pub struct ImguiManager {
     pub imgui: imgui::Context,
     pub renderer: imgui_opengl_renderer::Renderer,
     pub entity_type_index: usize,
+    pub weapon_type_index: usize,
     pub faction_index: usize,
     pub create_mode: bool,
+    pub include_weapon: bool,
 }
 
 impl ImguiManager {
@@ -25,8 +27,10 @@ impl ImguiManager {
             imgui,
             renderer,
             entity_type_index: 0,
+            weapon_type_index: 0,
             faction_index: 0,
             create_mode: false,
+            include_weapon: false,
         }
     }
 
@@ -228,23 +232,54 @@ impl ImguiManager {
                             |s| Cow::Borrowed(*s),
                         );
 
+                        ui.combo(
+                            "Weapon",
+                            &mut self.weapon_type_index,
+                            &types,
+                            |s| Cow::Borrowed(*s),
+                        );
+
+                        if ui.checkbox("Include Weapon", &mut self.include_weapon) {
+                            println!("Clicked Create Mode");
+                        }
+
                         let selected_type = types[self.entity_type_index];
                         let selected_faction = factions[self.faction_index];
 
-                        if self.create_mode {
-                            em.create_entity(
-                                &EntityInstance {
-                                    entity_type: selected_type.to_string(),
-                                    faction: selected_faction.to_string(),
-                                    position: input.ray_just_hit,
+                        let weapons = if self.include_weapon {
+                            Some(vec![
+                                EntityInstance {
+                                    entity_type: types[self.weapon_type_index].to_string(),
+                                    faction: "Item".to_string(),
+                                    position: Vec3::splat(0.0),
                                     rotation: Quat::IDENTITY,
+                                    base_speed: None,
+                                    jump_height: None,
+                                    health: None,
                                     weapons: None,
-                                    base_speed: Some(4.5),
-                                    jump_height: Some(1.0),
-                                    health: Some(100.0),
-                                },
+                                }
+                            ])
+                        } else {
+                            None
+                        };
+
+                        if self.create_mode {
+                            let instance = EntityInstance {
+                                entity_type: selected_type.to_string(),
+                                faction: selected_faction.to_string(),
+                                position: input.ray_just_hit,
+                                rotation: Quat::IDENTITY,
+                                weapons,
+                                base_speed: Some(4.5),
+                                jump_height: Some(1.0),
+                                health: Some(100.0),
+                            };
+
+                            let parent_id = em.create_entity(
+                                &instance,
                                 ps,
                             );
+                            em.populate_inventory(parent_id, &instance, ps);
 
                             self.create_mode = false;
                         }
