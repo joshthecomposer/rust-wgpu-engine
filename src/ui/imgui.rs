@@ -182,7 +182,7 @@ impl ImguiManager {
                         }
 
                         for i in em.selected.iter() {
-                            if let Some(trans) = em.transforms.get(*i) {
+                            if let Some(trans) = em.collider_transforms.get_mut(*i) {
                                 ui.text(format!(
                                     "Entity: {}, Type: {}",
                                     i,
@@ -190,23 +190,11 @@ impl ImguiManager {
                                 ));
 
                                 let mut position = [trans.position.x, trans.position.y, trans.position.z];
-                                let mut _scale = [trans.scale.x];
-
-                                // convert quat to euler angle degrees
-                                let euler_degrees = trans.rotation.to_euler(glam::EulerRot::YXZ);
-                                let mut _rotation_deg = [
-                                    euler_degrees.0.to_degrees(),
-                                    euler_degrees.1.to_degrees(),
-                                    euler_degrees.2.to_degrees(),
-                                ];
 
                                 // position
-                                if Drag::new("Position").speed(0.1).build_array(ui, &mut position) {
-                                    let ph = em.physics_handles.get(*i).unwrap();
-                                    let gid = em.collider_to_entity.get(&ph.collider).unwrap();
-                                    let giz_trans = em.transforms.get_mut(*gid).unwrap();
-                                    giz_trans.position = Vec3::from(position);
-                                }
+                                if Drag::new("Position").speed(0.1).build_array(ui, &mut position) {};
+                                
+                                trans.position = Vec3::from(position);
 
                                 // scale / rotation commented out as before
                             }

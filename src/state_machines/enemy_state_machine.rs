@@ -65,7 +65,7 @@ pub fn enemy_sim_state_machine(
     // STATE_MACHINE
     // ==================================================================================
     // Early return to create dying state:
-    if *health <= 0.0 {
+    if *health <= 0.0 && entity_type != "MooseMan" {
         match controller.state {
             SimState::Dying | SimState::Dead => (),
             _ => return entity_non_combat_transition(controller, SimState::Dying, animator, false),
