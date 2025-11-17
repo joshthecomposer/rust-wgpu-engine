@@ -9,7 +9,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::prelude::*;
 
-use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
+use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, input::InputState, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -660,7 +660,12 @@ impl EntityManager {
         self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
-    pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
+    pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState, input: &mut InputState) {
+        if input.just_pressed(glfw::Key::Delete) {
+            for i in self.selected.iter() {
+                self.entity_trashcan.push(*i);
+            }
+        }
         self.delete_entities(sm, ps);
     }
 
@@ -845,10 +850,11 @@ impl EntityManager {
     pub fn empty_selected_and_reset_bodies(&mut self, ps: &mut PhysicsState) {
         // TODO: We could create a struct that contains the rb handle and the entity
         for id in self.selected.iter() {
-            let ph = self.physics_handles.get(*id).unwrap();
-            let rb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
+            if let Some(ph) = self.physics_handles.get(*id) {
+                let rb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
 
-            rb.set_body_type(ph.og_rb_type, false);
+                rb.set_body_type(ph.og_rb_type, false);
+            }
         }
 
         self.selected.clear();
