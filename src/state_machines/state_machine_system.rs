@@ -11,6 +11,7 @@ pub fn update(
 ) {
     // COMMON DATA BETWEEN MACHINES
     let player_id = em.factions.iter().find(|e| *e.value() == "Player").unwrap().key();
+
     player_state_machine(em, dt, input, ps, sm, particles, camera);
         
     // TODO: gather entity IDs once somewhere and use for the entire game loop?

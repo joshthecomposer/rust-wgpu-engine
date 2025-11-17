@@ -29,7 +29,9 @@ fn handle_player_movement_rapier(
     cam_basis: &CamMoveBasis,
     ps: &mut PhysicsState,
 ) {
-    let player_key = *player_keys.first().unwrap();
+    let Some(check_key) = player_keys.first() else { return };
+    let player_key = *check_key;
+
     let animator = em.animators.get_mut(player_key).unwrap();
     let player_state = em.player_controllers.get(player_key).unwrap();
     let speed = em.base_speeds.get(player_key).unwrap();
