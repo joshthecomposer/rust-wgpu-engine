@@ -2,9 +2,9 @@ use std::borrow::Cow;
 
 use glam::{Mat4, Quat, Vec3};
 use glfw::{Action, MouseButton, PWindow, WindowEvent};
-use imgui::Drag;
+use imgui::{sys::{ImGuiKey, ImGuiKey_Backspace}, Drag, Io};
 
-use crate::{animation::animation::Animator, camera::Camera, config::world_data::{EntityInstance, WorldData}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{animation::animation::Animator, camera::Camera, config::{entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub struct ImguiManager {
     pub imgui: imgui::Context,
@@ -14,6 +14,9 @@ pub struct ImguiManager {
     pub faction_index: usize,
     pub create_mode: bool,
     pub include_weapon: bool,
+
+    pub entity_type_buf: String,
+    pub new_archetype: UiEntityTypeHelper
 }
 
 impl ImguiManager {
@@ -31,6 +34,9 @@ impl ImguiManager {
             faction_index: 0,
             create_mode: false,
             include_weapon: false,
+
+            entity_type_buf: String::new(),
+            new_archetype: UiEntityTypeHelper::default(),
         }
     }
 
@@ -63,9 +69,13 @@ impl ImguiManager {
             }
             // Key press/release
             WindowEvent::Key(_key, _, action, _mods) => {
-                let _pressed = action != Action::Release;
-                // If i want to track ImGui’s internal key map, we can do:
-                // io.keys_down[imgui_key_index] = pressed;
+                let pressed = action != Action::Release;
+                match _key {
+
+                    // this is where we map keys from glfw to imgui if the keys don't work
+                    glfw::Key::Backspace => io.add_key_event(imgui::Key::Backspace, pressed),
+                    _ => {}
+                }
             }
 
             _ => {}
@@ -88,6 +98,7 @@ impl ImguiManager {
                     .position([0.0, 0.0], imgui::Condition::FirstUseEver)
                     .build(|| {
                         // ===================== Lights =====================
+                        ui.separator();
                         ui.text("Controls for Various Lights");
                         ui.separator();
 
@@ -124,6 +135,7 @@ impl ImguiManager {
                         lm.dir_light.view_pos.z = lm.dir_light.direction.z * lm.dir_light.distance;
 
                         // ===================== Sound =====================
+                        ui.separator();
                         ui.text("Controls Fmod Sounds");
                         ui.separator();
 
@@ -140,6 +152,7 @@ impl ImguiManager {
                         }
 
                         // ===================== Entity Editing =====================
+                        ui.separator();
                         ui.text("Entity Editing");
                         ui.separator();
 
@@ -169,6 +182,7 @@ impl ImguiManager {
                         }
 
                         // ===================== Placing Entities =====================
+                        ui.separator();
                         ui.text("Placing Entities");
                         ui.separator();
 
@@ -250,6 +264,31 @@ impl ImguiManager {
                         if ui.checkbox("Create Mode", &mut self.create_mode) {
                             println!("Clicked Create Mode");
                         }
+
+                        // ===================== Create A New Entity Type =====================
+                        ui.separator();
+                        ui.text("Create a new Entity Type");
+                        ui.separator();
+
+                        ui.input_text("Entity Type", &mut self.entity_type_buf)
+                            .build();
+
+                        
+                        if Drag::new("Rot Correction").speed(0.1).build_array(ui, &mut self.new_archetype.rot_correction) {};
+
+                        if Drag::new("Scale Correction").speed(0.1).build_array(ui, &mut self.new_archetype.scale_correction) {};
+
+                        ui.input_text("Model Data Path", &mut self.new_archetype.mesh_path)
+                            .build();
+
+                        ui.input_text("Texture Path", &mut self.new_archetype.texture_path)
+                            .build();
+
+                        ui.input_float("Aggro Range", &mut self.new_archetype.aggro_range)
+                            .build();
+
+                        ui.input_text("Hitbox type", &mut self.new_archetype.hitbox)
+                            .build();
                     });
             }
         }

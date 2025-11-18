@@ -208,7 +208,10 @@ impl EntityManager {
                 });
 
                 self.destinations.insert(parent_id, position);
-                self.aggro_ranges.insert(parent_id, archetype.aggro_range);
+
+                if let Some(ar) = archetype.aggro_range {
+                    self.aggro_ranges.insert(parent_id, ar);
+                }
             },
             _=> ()
         }
@@ -306,7 +309,10 @@ impl EntityManager {
         self.prev_transforms.insert(parent_id, transform);
         self.factions.insert(parent_id, instance.faction.clone());
         self.entity_types.insert(parent_id, instance.entity_type.clone());
-        self.item_bones.insert(parent_id, archetype.item_bones.clone());
+
+        if let Some(ib) = &archetype.item_bones {
+            self.item_bones.insert(parent_id, ib.clone());
+        }
 
         self.local_corrections.insert(parent_id, Transform {
             position: glam::Vec3::splat(0.0),
