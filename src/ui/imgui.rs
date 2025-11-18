@@ -12,11 +12,11 @@ pub struct ImguiManager {
     pub entity_type_index: usize,
     pub weapon_type_index: usize,
     pub faction_index: usize,
+    pub hitbox_type_index: usize,
     pub create_mode: bool,
     pub include_weapon: bool,
 
-    pub entity_type_buf: String,
-    pub new_archetype: UiEntityTypeHelper
+    pub new_archetype: UiEntityTypeHelper,
 }
 
 impl ImguiManager {
@@ -31,11 +31,11 @@ impl ImguiManager {
             renderer,
             entity_type_index: 0,
             weapon_type_index: 0,
+            hitbox_type_index: 0,
             faction_index: 0,
             create_mode: false,
             include_weapon: false,
 
-            entity_type_buf: String::new(),
             new_archetype: UiEntityTypeHelper::default(),
         }
     }
@@ -270,9 +270,8 @@ impl ImguiManager {
                         ui.text("Create a new Entity Type");
                         ui.separator();
 
-                        ui.input_text("Entity Type", &mut self.entity_type_buf)
+                        ui.input_text("Entity Type", &mut self.new_archetype.entity_type)
                             .build();
-
                         
                         if Drag::new("Rot Correction").speed(0.1).build_array(ui, &mut self.new_archetype.rot_correction) {};
 
@@ -287,8 +286,68 @@ impl ImguiManager {
                         ui.input_float("Aggro Range", &mut self.new_archetype.aggro_range)
                             .build();
 
-                        ui.input_text("Hitbox type", &mut self.new_archetype.hitbox)
+                        ui.input_float("Total Mass", &mut self.new_archetype.total_mass)
                             .build();
+
+                        let types: Vec<&str> = vec!["Cylinder", "Pill", "BoxDim", "Sphere", "Mesh", "BoundingBox"];
+
+                        ui.combo(
+                            "Hitbox Types",
+                            &mut self.hitbox_type_index,
+                            &types,
+                            |s| Cow::Borrowed(*s),
+                        );
+
+
+                        match types[self.hitbox_type_index] {
+                            "Cylinder" | "Pill" => {
+                                self.new_archetype.hx = 0.0;
+                                self.new_archetype.hy = 0.0;
+                                self.new_archetype.hz = 0.0;
+
+                                ui.input_float("HB Radius", &mut self.new_archetype.r)
+                                    .build();
+
+                                ui.input_float("HB Height", &mut self.new_archetype.h)
+                                    .build();
+                            },
+                            "BoxDim" => {
+                                self.new_archetype.r = 0.0;
+                                self.new_archetype.h = 0.0;
+
+                                ui.input_float("Half X", &mut self.new_archetype.hx)
+                                    .build();
+
+                                ui.input_float("Half Y", &mut self.new_archetype.hy)
+                                    .build();
+
+                                ui.input_float("Half Z", &mut self.new_archetype.hz)
+                                    .build();
+                            },
+                            "Sphere" => {
+                                self.new_archetype.h = 0.0;
+                                self.new_archetype.hx = 0.0;
+                                self.new_archetype.hy = 0.0;
+                                self.new_archetype.hz = 0.0;
+
+                                ui.input_float("HB Radius", &mut self.new_archetype.r)
+                                    .build();
+                            },
+                            "Mesh" | "BoundingBox" => {
+                                self.new_archetype.r = 0.0;
+                                self.new_archetype.h = 0.0;
+                                self.new_archetype.hx = 0.0;
+                                self.new_archetype.hy = 0.0;
+                                self.new_archetype.hz = 0.0;
+                            },
+                            _=> {},
+                        }
+
+                        self.new_archetype.hitbox = types[self.hitbox_type_index].to_string();
+
+                        if ui.button("Save New Entity Type") {
+                            em.register_new_entity_type(&self.new_archetype);
+                        }
                     });
             }
         }

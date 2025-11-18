@@ -3,13 +3,14 @@
 use core::f32;
 use std::collections::{HashMap, HashSet};
 
+use gl::ActiveShaderProgram;
 use glam::{Mat4, Quat, Vec3};
 use nalgebra::{Point3, UnitQuaternion, Vector3};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::prelude::*;
 
-use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, input::InputState, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
+use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AnimationType, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, input::InputState, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -958,6 +959,113 @@ impl EntityManager {
             return Some(wlist);
         }
         None
+    }
+
+    pub fn register_new_entity_type(&mut self, data: &UiEntityTypeHelper) {
+        if data.entity_type.is_empty() {
+            eprintln!("[Error] Entity Type is blank");
+            return;
+        }
+
+        if self.entity_type_register.contains_key(&data.entity_type) {
+            eprintln!("[Error] Cannot register this entity type, it would overwrite an existing one.");
+            return;
+        }
+
+        let mut etype = EntityTypeHelper::default();
+
+        // Get the mesh data just for the memes.
+        let file_data = match std::fs::read_to_string(&data.mesh_path) {
+            Ok(data) => data,
+            Err(_) => {
+                println!("Failed to open mesh file: {}", data.mesh_path);
+                return;
+            },
+        };
+        
+
+        match file_data.contains("ANIMATION_DATA") {
+            true => { 
+                println!("FOUND ANIMATION DATA");
+                etype.bone_path = Some(data.mesh_path.clone()) 
+            },
+            false => { etype.bone_path = None },
+        }
+
+        if etype.bone_path.is_some() {
+            let mut lines = file_data.lines();
+            let mut anim_props = vec![];
+            while let Some(line) = lines.next() {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                
+                if parts.is_empty() { continue; }
+
+                match parts[0] {
+                    "ANIMATION_DATA" => {
+                    },
+                    "ANIMATION_NAME:" => {
+                        match parts[1].trim() {
+                            "Idle" => { anim_props.push(AnimationPropHelper { 
+                                name: AnimationType::Idle,
+                                one_shots: HashMap::new(),
+                                continuous_sounds: vec![],
+                                hurtbox_activation: vec![],
+                                hold_frame: None,
+                            })},
+                            _ => {},
+                        }
+                    }
+                    _=> (),
+                }
+            }
+
+            if anim_props.len() > 0 {
+                etype.animation_properties = Some(anim_props);
+            }
+        }
+
+        etype.mesh_path = data.mesh_path.clone();
+        etype.rot_correction = Quat::from_array(data.rot_correction);
+        etype.scale_correction = data.scale_correction.into();
+
+        if data.aggro_range > 0.0 {
+            etype.aggro_range = Some(data.aggro_range);
+        }
+
+        if data.total_mass > 0.0 {
+            etype.total_mass = Some(data.total_mass);
+        }
+
+        match data.hitbox.as_str() {
+            "Cylinder" => {
+                etype.hitbox = HitboxShape::Cylinder { r: data.r, h: data.h };
+            },
+            "Pill"  => {
+                etype.hitbox = HitboxShape::Pill { r: data.r, h: data.h };
+            },
+            "BoundingBox" => {
+                etype.hitbox = HitboxShape::BoundingBox;
+            },
+            "Mesh" => {
+                etype.hitbox = HitboxShape::Mesh;
+            },
+            "Sphere" => {
+                etype.hitbox = HitboxShape::Sphere { r: data.r };
+            },
+            "BoxDim" => {
+                etype.hitbox = HitboxShape::BoxDim { hx: data.hx, hy: data.hy, hz: data.hz }
+            },
+            _ => etype.hitbox = HitboxShape::Mesh,
+        }
+        
+        self.entity_type_register.insert(data.entity_type.clone(), etype);
+        let ec = EntityConfig {
+            entity_types: self.entity_type_register.clone(),
+        };
+        ec.write_to_file("config/entity_config.json");
+    }
+
+    fn serialize_entity_types(&self) {
     }
 }
 
