@@ -157,7 +157,7 @@ pub fn enemy_sim_state_machine(
                     em.active_items.remove(entity_id);
 
                     if let Some(inv) = em.inventories.get_mut(entity_id) {
-                        inv.remove(&active_weapon_id);
+                        inv.retain(|v| *v != active_weapon_id);
                     }
                 }
 

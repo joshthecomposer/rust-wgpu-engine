@@ -370,6 +370,9 @@ impl Renderer {
 
             for id in em.entity_types.iter() {
                 let is_selected = em.selected.contains(&id.key());
+                if em.is_equipped.get(id.key()).is_none() && em.owners.get(id.key()).is_some() {
+                    continue;
+                }
                 shader.set_bool("selection_fresnel", is_selected);
 
                 let model = em.models.get(id.key()).unwrap();
@@ -562,6 +565,9 @@ impl Renderer {
         shader.activate();
 
         for id in em.entity_types.iter() {
+            if em.is_equipped.get(id.key()).is_none() && em.owners.get(id.key()).is_some() {
+                continue;
+            }
             match em.animators.get(id.key()) {
                 Some(animator) => {
                     let animation = animator.get_current_animation().unwrap();

@@ -23,7 +23,7 @@ pub struct EntityManager {
     pub prev_collider_transforms: SparseSet<Transform>,
     pub collider_to_entity: HashMap<ColliderHandle, usize>,
 
-    pub inventories: SparseSet<HashSet<usize>>,
+    pub inventories: SparseSet<Vec<usize>>,
     pub active_items: SparseSet<ActiveItem>,
 
     // This is for a weapon to "know" that it is in an inventory, it's a little messy but we just
@@ -139,16 +139,17 @@ impl EntityManager {
                     HashSet::new(),
                 );
 
+                self.owners.insert(weapon_id, parent_id);
+
                 match self.inventories.get_mut(parent_id) {
                     Some(inv) => {
-                        inv.insert(weapon_id);
+                        if !inv.contains(&weapon_id) {
+                            inv.push(weapon_id);
+                        }
                     },
                     None => {
-                        let mut inv = HashSet::new();
-                        inv.insert(weapon_id);
+                        let inv = vec![weapon_id];
                         self.inventories.insert(parent_id, inv);
-                        self.is_equipped.remove(weapon_id);
-                        self.owners.insert(weapon_id, parent_id);
                     }
                 }
 
@@ -161,7 +162,7 @@ impl EntityManager {
                         });
 
                         if let Some(inv) = self.inventories.get_mut(parent_id) {
-                            inv.remove(&weapon_id);
+                            inv.retain(|v| *v != weapon_id);
                         }
 
                         self.is_equipped.insert(weapon_id, true);
@@ -832,6 +833,18 @@ impl EntityManager {
             .collect::<Vec<usize>>()
     }
 
+    pub fn get_all_unequipped_owned_ids(&self) -> Vec<usize> {
+        self.factions
+            .iter()
+            .filter(|w_type| {
+                *w_type.value() == "Item"
+                && self.owners.get(w_type.key()).is_some()
+                && self.is_equipped.get(w_type.key()).is_none()
+            })
+            .map(|e| e.key())
+            .collect::<Vec<usize>>()
+    }
+
     pub fn get_active_weapon_ids(&self) -> Vec<usize> {
         self.is_equipped
             .iter()
@@ -915,11 +928,11 @@ impl EntityManager {
 
             if let Some(aa) = self.active_items.get(id) {
                 if let Some(lh) = aa.left_hand {
-                    idlist.insert(lh);
+                    idlist.push(lh);
                 }
 
                 if let Some(rh) = aa.right_hand {
-                    idlist.insert(rh);
+                    idlist.push(rh);
                 }
             }
 
