@@ -440,6 +440,24 @@ pub enum HitboxShape {
     BoundingBox, // Dynamically generated box around the mesh
 }
 
+pub struct ParseHitboxShapeError;
+
+impl FromStr for HitboxShape {
+    type Err = ParseHitboxShapeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Cylinder"    | "cylinder"    => Ok(HitboxShape::Cylinder { r: 0.5, h: 1.0 }),
+            "Pill"        | "pill"        => Ok(HitboxShape::Pill { r: 0.5, h: 1.0 }),
+            "BoxDim"      | "boxdim"      => Ok(HitboxShape::BoxDim { hx: 0.5, hy: 0.5, hz: 0.5 }),
+            "Sphere"      | "sphere"      => Ok(HitboxShape::Sphere { r: 0.5 }),
+            "Mesh"        | "mesh"        => Ok(HitboxShape::Mesh),
+            "BoundingBox" | "boundingbox" => Ok(HitboxShape::BoundingBox),
+            _ => Err(ParseHitboxShapeError),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Deserialize, Hash, Eq, Serialize)]
 pub enum EquipSlot {
     RHand,

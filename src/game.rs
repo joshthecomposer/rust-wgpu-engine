@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use glfw::Context;
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
@@ -110,6 +112,21 @@ impl Game {
                         let io = self.imgui_manager.imgui.io();
 
                         match e {
+                            glfw::WindowEvent::FileDrop(paths) => {
+                                for path in paths {
+
+                                    match path.extension().and_then(|ext| ext.to_str()) {
+                                        Some("txt") => {
+                                            self.imgui_manager.new_archetype.mesh_path = path.to_string_lossy().into_owned();
+                                        },
+                                        Some("png") | Some("jpg") | Some("jpeg") => {
+                                            self.imgui_manager.new_archetype.texture_path = path.to_string_lossy().into_owned();
+                                        },
+                                        Some(_) => {},
+                                        None => {},
+                                    }
+                                }
+                            },
                             glfw::WindowEvent::CursorPos(x, y) => {
                                 if !io.want_capture_mouse {
                                     if !self.paused {
@@ -132,10 +149,12 @@ impl Game {
                                 }
                             }
                             glfw::WindowEvent::Key(k, _, a, _) => {
-                                input::handle_keyboard_input(k, a, &mut self.input);
-                                match (k,a) {
-                                    (glfw::Key::Escape, glfw::Action::Press) => self.paused = !self.paused,
-                                    _ => ()
+                                if !io.want_capture_keyboard {
+                                    input::handle_keyboard_input(k, a, &mut self.input);
+                                    match (k,a) {
+                                        (glfw::Key::Escape, glfw::Action::Press) => self.paused = !self.paused,
+                                        _ => ()
+                                    }
                                 }
                             }
                             _ => {}

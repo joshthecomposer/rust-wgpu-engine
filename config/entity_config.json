@@ -158,11 +158,6 @@
 			"mesh_path": "resources/models/static/trees/001_tree_foliage_model.txt", 
 			"hitbox": {
 				"shape": "BoundingBox"
-			},
-			"aggro_range": 0.0,
-			"item_bones": {
-				"rh_name": "",
-				"lh_name": ""
 			}
 		},
 		"TreeTrunk": {
@@ -174,11 +169,6 @@
 				"shape": "Cylinder",
 				"r": 0.1,
 				"h": 3.0
-			},
-			"aggro_range": 0.0,
-			"item_bones": {
-				"rh_name": "",
-				"lh_name": ""
 			}
 		},
 		"Stump": {
@@ -190,11 +180,6 @@
 				"shape": "Mesh",
 				"r": 0.1,
 				"h": 3.0
-			},
-			"aggro_range": 0.0,
-			"item_bones": {
-				"rh_name": "",
-				"lh_name": ""
 			}
 		},
 		"OrcSword": {
@@ -204,11 +189,6 @@
 			"mesh_path": "resources/models/static/weapons/001_orc_sword_bc.txt", 
 			"hitbox": {
 				"shape": "BoundingBox"
-			},
-			"aggro_range": 0.0,
-			"item_bones": {
-				"rh_name": "",
-				"lh_name": ""
 			}
 		},
 		"DoubleAxe": {
@@ -218,11 +198,6 @@
 			"mesh_path": "resources/models/static/weapons/swords/001_double_axe_new.txt", 
 			"hitbox": {
 				"shape": "BoundingBox"
-			},
-			"aggro_range": 0.0,
-			"item_bones": {
-				"rh_name": "",
-				"lh_name": ""
 			}
 		},
 		"Cactus1": {
@@ -234,11 +209,6 @@
 				"shape": "Cylinder",
 				"r": 0.1,
 				"h": 3.0
-			},
-			"aggro_range": 0.0,
-			"item_bones": {
-				"rh_name": "",
-				"lh_name": ""
 			}
 		},
 		"Cactus2": {
@@ -250,11 +220,6 @@
 				"shape": "Cylinder",
 				"r": 0.1,
 				"h": 3.0
-			},
-			"aggro_range": 0.0,
-			"item_bones": {
-				"rh_name": "",
-				"lh_name": ""
 			}
 		},
 		"Rock1": {
@@ -264,11 +229,6 @@
 			"mesh_path": "resources/models/static/terrain/rocks/rock1.txt", 
 			"hitbox": {
 				"shape": "Mesh"
-			},
-			"aggro_range": 0.0,
-			"item_bones": {
-				"rh_name": "",
-				"lh_name": ""
 			}
 		},
 		"BareBush1": {
@@ -278,11 +238,6 @@
 			"mesh_path": "resources/models/static/terrain/bare_bush1.txt", 
 			"hitbox": {
 				"shape": "Mesh"
-			},
-			"aggro_range": 0.0,
-			"item_bones": {
-				"rh_name": "",
-				"lh_name": ""
 			}
 		}
 	}
