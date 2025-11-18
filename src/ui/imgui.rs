@@ -64,9 +64,8 @@ impl ImguiManager {
             // Key press/release
             WindowEvent::Key(_key, _, action, _mods) => {
                 let _pressed = action != Action::Release;
-                // If you want to track ImGui’s internal key map, do something like:
+                // If i want to track ImGui’s internal key map, we can do:
                 // io.keys_down[imgui_key_index] = pressed;
-                // or handle advanced shortcuts, etc.
             }
 
             _ => {}

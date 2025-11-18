@@ -69,6 +69,8 @@ impl Game {
         while !self.platform.window.should_close() {
             self.time.begin_frame(self.platform.glfw.get_time() as f32);
 
+            self.platform.glfw.poll_events();
+
             let desired_cursor_mode = if self.paused {
                 glfw::CursorMode::Normal
             } else if self.world.camera.move_state == CameraState::Locked {
@@ -102,7 +104,6 @@ impl Game {
                 // poll events and update input
                 {
                     self.input.update();
-                    self.platform.glfw.poll_events();
                     for (_, e) in glfw::flush_messages(&self.platform.events) {
                         self.imgui_manager.handle_imgui_event(&e);
 
@@ -260,13 +261,12 @@ impl Game {
             ui_shader,
             font_shader,
             &mut self.message_queue,
-            self.paused, 
+            &mut self.paused, 
             self.platform.window.get_cursor_mode(), 
             &self.world.camera.move_state, 
-            &self.input.keys_current, 
             &mut self.ui, 
             &mut self.renderer.render_gizmos,
-            &self.input,
+            &mut self.input,
         );
 
         self.imgui_manager.draw(
@@ -287,7 +287,7 @@ impl Game {
         }
 
         self.platform.window.swap_buffers();
-        self.platform.glfw.poll_events();
+        //self.platform.glfw.poll_events();
     }
 
 

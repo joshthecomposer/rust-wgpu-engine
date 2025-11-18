@@ -35,6 +35,7 @@ pub struct GameUiContext {
     pub tex_cache: TextureCache,
 
     pub font_manager: FontManager,
+    pub want_capture_mouse: bool,
 }
 
 impl GameUiContext {
@@ -74,6 +75,7 @@ impl GameUiContext {
             quad_vertices: vec![0.0; 54],
             tex_cache: TextureCache::new(),
             font_manager,
+            want_capture_mouse: false,
         }
     }
 }
@@ -89,12 +91,12 @@ pub struct Rect {
     pub texture_id: Option<u32>,
 }
 
-pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, font_shader: &Shader, mq: &mut MessageQueue, paused: bool, cm: CursorMode, cs: &CameraState, pk: &HashSet<glfw::Key>, ui_ctx: &mut GameUiContext, render_gizmos: &mut bool, input: &InputState) {
+pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, font_shader: &Shader, mq: &mut MessageQueue, paused: &mut bool, cm: CursorMode, cs: &CameraState, ui_ctx: &mut GameUiContext, render_gizmos: &mut bool, input: &mut InputState) {
     let mut rects = vec![];
     // =============================================================
     // PAUSE PANEL
     // =============================================================
-    if paused {
+    if *paused {
         let mut w = fb_width  * 0.25;
         let h = fb_height * 0.45;
 
@@ -120,17 +122,17 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
         let gap = 15.0; // Pixels
 
         y -= gap;
-        if button("Quit Game", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, pk, None, input) {
+        if button("Quit Game", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, None, input) {
             mq.send(UiMessage::WindowShouldClose);
         }
 
         y -= button_h + gap;
-        if button("Placeholder 2", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, pk, None, input) {
+        if button("Placeholder 2", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, None, input) {
             println!("PH2 clicked");
         }
 
         y -= button_h + gap;
-        if button("Gizmo Rendering", x, y, w, button_h, mouse_pos, mq, &mut rects, cm,pk, None, input) {
+        if button("Gizmo Rendering", x, y, w, button_h, mouse_pos, mq, &mut rects, cm,None, input) {
             *render_gizmos = !*render_gizmos;
         }
 
@@ -139,8 +141,9 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
         let ex = (main_container.x + main_container.w) - (exit_size + gap);
         let ey = main_container.y + gap;
 
-        if button("X", ex, ey, exit_size, exit_size, mouse_pos, mq, &mut rects, cm, pk, None, input) {
-            mq.send(UiMessage::PauseToggle);
+        if button("X", ex, ey, exit_size, exit_size, mouse_pos, mq, &mut rects, cm, None, input) {
+            //mq.send(UiMessage::PauseToggle);
+            *paused = false;
         }
     }
 
@@ -188,7 +191,6 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
                         mq, 
                         &mut rects, 
                         cm, 
-                        pk,
                         Some(
                             ui_ctx.tex_cache.get_or_load("resources/textures/guy.png")
                         ),
@@ -208,7 +210,6 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
                         mq, 
                         &mut rects, 
                         cm, 
-                        pk,
                         Some(
                             ui_ctx.tex_cache.get_or_load("resources/textures/tree.png")
                         ),
@@ -228,7 +229,6 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
                         mq, 
                         &mut rects, 
                         cm, 
-                        pk,
                         Some(
                             ui_ctx.tex_cache.get_or_load("resources/textures/moose.png")
                         ),
@@ -248,7 +248,6 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
                         mq, 
                         &mut rects, 
                         cm, 
-                        pk,
                         None,
                         input,
                     ) {
@@ -357,9 +356,8 @@ pub fn button(
     mq: &mut MessageQueue,
     rects: &mut Vec<Rect>,
     cm: CursorMode,
-    pk: &HashSet<glfw::Key>,
     texture_id: Option<u32>,
-    input: &InputState
+    input: &mut InputState
 ) -> bool {
     use glfw::Key::*;
 
@@ -384,7 +382,7 @@ pub fn button(
     };
 
     if let Some(key) = num_check {
-        if pk.contains(&key) {
+        if input.keys_current.contains(&key) {
             hovered = true;
             clicked = true;
         }
@@ -394,7 +392,9 @@ pub fn button(
             && mouse_pos.x <= x + w
             && mouse_pos.y <= y + h;
 
-        clicked = hovered && input.mouse_just_released(glfw::MouseButton::Left);
+        clicked = hovered && input.left_mouse_just_pressed();
+
+        if clicked { input.mouse_current.remove(&glfw::MouseButton::Left); }
     }
 
     final_color = if hovered { color_800 } else { color_900 };
