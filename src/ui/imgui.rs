@@ -157,13 +157,15 @@ impl ImguiManager {
                                 ));
 
                                 let mut position = [trans.position.x, trans.position.y, trans.position.z];
+                                let mut rotation = [trans.rotation.x, trans.rotation.y, trans.rotation.z, trans.rotation.w];
 
                                 // position
                                 if Drag::new("Position").speed(0.1).build_array(ui, &mut position) {};
-                                
                                 trans.position = Vec3::from(position);
 
-                                // scale / rotation commented out as before
+                                // rotation
+                                if Drag::new("Rotation").speed(0.1).build_array(ui, &mut rotation) {};
+                                trans.rotation = Quat::from_slice(&rotation);
                             }
                         }
 
