@@ -284,11 +284,11 @@ fn reset_combat (
     c: &mut SimStateController, 
     a: &mut Animator,
 ) {
-    let (a1, a2) = a.animations.get_pair_mut(&AnimationType::Slash, &AnimationType::Slash2).unwrap();
-
-    c.attack_state = AttackState::Attack1;
-    a1.current_time = 0.0;
-    a2.current_time = 0.0;
+    if let Some((a1, a2)) = a.animations.get_pair_mut(&AnimationType::Slash, &AnimationType::Slash2) {
+        c.attack_state = AttackState::Attack1;
+        a1.current_time = 0.0;
+        a2.current_time = 0.0;
+    }
 }
 
 fn entity_non_combat_transition(

@@ -247,7 +247,7 @@ pub enum AttackState {
     Attack3,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize, Serialize)]
 pub enum AnimationType {
     Run,
     Idle,
@@ -328,7 +328,7 @@ pub struct PhysicsHandle {
     pub og_rb_type: RigidBodyType,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize, Serialize)]
 pub enum SoundType {
     Footstep,
     MooseHuff,
