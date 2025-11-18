@@ -6,7 +6,7 @@ use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
 
 use crate::enums_types::{EntityType, Faction};
 
-#[derive(Deserialize, Debug, Serialize)]
+#[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct WorldData {
     pub entities: Vec<EntityInstance>,
 }
@@ -22,44 +22,17 @@ impl WorldData {
     pub fn write_to_file(&self, file_name: &str) {
         println!("writing world data to {}", &file_name);
 
-        let toml_str = serde_json::to_string_pretty(self).expect("Failed to deserialize world data");
-        write(file_name, toml_str).expect("Failed to write world data");
-    }
+        let json_string = serde_json::to_string_pretty(self).expect("Failed to serialize world data");
+        write(file_name, json_string).expect("Failed to write world data");
 
-    pub fn write_readable_world_data(&self, path: &str) {
-        // let mut root = Table::new();
-        // let mut entities_array = Vec::new();
-
-        // for entity in &self.entities {
-        //     let mut ent = Table::new();
-        //     ent.insert("entity_type".into(), Value::String(entity.entity_type.to_string()));
-        //     ent.insert("faction".into(), Value::String(entity.faction.to_string()));
-
-        //     let pos_array: Array = entity.position
-        //         .iter()
-        //         .map(|f| Value::Float(snap(*f as f64, 4)))  // 4 decimals
-        //         .collect();
-        //     ent.insert("position".into(), Value::Array(pos_array));
-
-        //     let rot_array: Array = entity.rotation
-        //         .iter()
-        //         .map(|f| Value::Float(snap(*f as f64, 4)))  // 4 decimals
-        //         .collect();
-        //     ent.insert("rotation".into(), Value::Array(rot_array));
-
-        //     entities_array.push(Value::Table(ent));
-        // }
-
-        // root.insert("entities".into(), Value::Array(entities_array));
-        // let toml_str = toml::to_string(&Value::Table(root)).unwrap();
-        // write(path, toml_str).unwrap();
+        println!("Completed writing world data to {}", &file_name);
     }
 }
 
 // =============================================================
 // Helpers
 // =============================================================
-#[derive(Deserialize, Debug, Serialize)]
+#[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct EntityInstance {
     pub entity_type: String,
     pub faction: String,

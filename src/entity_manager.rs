@@ -61,10 +61,13 @@ pub struct EntityManager {
     pub entity_type_register: HashMap<String, EntityTypeHelper>,
     pub faction_register: HashSet<String>,
 
+    pub serializable_world_data: WorldData,
 }
 
 impl EntityManager {
     pub fn new(max_entities: usize) -> Self {
+        let wd = WorldData::load_from_file("config/world_data.json");
+
         Self {
             next_entity_id: 0,
             transforms: SparseSet::with_capacity(max_entities),
@@ -108,13 +111,14 @@ impl EntityManager {
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json").entity_types,
             faction_register: HashSet::new(),
+            serializable_world_data: wd,
         }
     }
 
     pub fn populate_entity_data(&mut self, ps: &mut PhysicsState) {
-        let wd = WorldData::load_from_file("config/world_data.json");
+        let data = self.serializable_world_data.clone();
 
-        for instance in wd.entities.iter() {
+        for instance in data.entities.iter() {
             let parent_id = self.create_entity(instance, ps);
             self.populate_inventory(parent_id, &instance, ps);
         }
@@ -175,7 +179,13 @@ impl EntityManager {
     ) -> usize {
         let parent_id = self.next_entity_id;
 
-        let archetype = self.entity_type_register.get(&instance.entity_type).unwrap();
+        let archetype = match self.entity_type_register.get(&instance.entity_type) {
+            Some(a) => a,
+            None => {
+                dbg!(&instance.entity_type);
+                panic!();
+            }
+        };
         let position = instance.position;
         let rotation = instance.rotation;
         let scale    = archetype.scale_correction;
@@ -860,6 +870,76 @@ impl EntityManager {
         self.selected.clear();
     }
 
+    pub fn serialize_entity_data(&self) {
+        let mut wd = WorldData { entities: vec![] };
+
+        for etype in self.entity_types.iter() {
+            if etype.value() == "Terrain" { continue; }
+
+            let id = etype.key();
+
+            match self.owners.get(id) {
+                Some(_) => continue,
+                None => (),
+            }
+
+            let weapons = self.resolve_weapons(id);
+
+            let faction = self.factions.get(id).unwrap().clone();
+
+            let jump_height = match self.jump_heights.get(id) {
+                Some(jh) => Some(jh.desired),
+                _=> None,
+            };
+            let instance = EntityInstance {
+                entity_type: etype.value().clone(),
+                faction,
+                position: self.transforms.get(id).unwrap().position,
+                rotation: self.transforms.get(id).unwrap().rotation,
+                weapons,
+                base_speed: self.base_speeds.get(id).copied(),
+                jump_height,
+                health: self.healths.get(id).copied(),
+            };
+
+            wd.entities.push(instance);
+        }
+
+        wd.write_to_file("config/world_data.json");
+    }
+
+    pub fn resolve_weapons(&self, id: usize) -> Option<Vec<EntityInstance>> {
+        if let Some(inv) = self.inventories.get(id) {
+            let mut idlist = inv.clone();
+            let mut wlist = vec![];
+
+            if let Some(aa) = self.active_items.get(id) {
+                if let Some(lh) = aa.left_hand {
+                    idlist.insert(lh);
+                }
+
+                if let Some(rh) = aa.right_hand {
+                    idlist.insert(rh);
+                }
+            }
+
+            for w in idlist.iter() {
+                wlist.push(EntityInstance {
+                    entity_type: self.entity_types.get(*w).unwrap().clone(),
+                    faction: self.factions.get(*w).unwrap().clone(),
+                    position: Vec3::splat(0.0),
+                    rotation: Quat::IDENTITY,
+                    weapons: None,
+                    base_speed: None, 
+                    jump_height: None,
+                    health: None,
+                });
+            }
+
+            return Some(wlist);
+        }
+        None
+    }
 }
 
 pub fn glam_to_nalgebra_quat(q: Quat) -> UnitQuaternion<f32> {

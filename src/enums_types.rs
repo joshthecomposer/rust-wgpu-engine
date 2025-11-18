@@ -446,7 +446,7 @@ pub enum EquipSlot {
     LHand,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct JumpHeight {
     pub desired: f32,
     // The precalculated impulse. This is scary because if we add or 

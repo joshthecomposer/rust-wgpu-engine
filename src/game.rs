@@ -294,7 +294,6 @@ impl Game {
     // PRIVATE //
 
     fn sync_transforms_from_physics(em: &mut EntityManager, ps: &PhysicsState) {
-        // Collect first to avoid holding borrows to sets while mutating em.transforms
         let mut updates: Vec<(usize, glam::Vec3, glam::Quat)> = Vec::with_capacity(em.physics_handles.len());
 
         for ph in em.physics_handles.iter() {
@@ -302,9 +301,8 @@ impl Game {
             let PhysicsHandle { rigid_body, .. } = *ph.value();
 
             if let Some(rb) = ps.rigid_body_set.get(rigid_body) {
-                let iso = rb.position(); // Isometry<f32>
+                let iso = rb.position();
                 let pos = glam::Vec3::from_slice(iso.translation.vector.as_slice());
-                // nalgebra stores a UnitQuaternion; take .coords (x,y,z,w)
                 let rot = {
                     let c = iso.rotation.coords;
                     glam::Quat::from_xyzw(c.x, c.y, c.z, c.w)
@@ -395,7 +393,7 @@ impl Game {
 
                 rb.wake_up(true);
 
-                let gt = em.collider_transforms.get(*id).unwrap();
+                let gt = em.transforms.get(*id).unwrap();
 
                 let iso = rapier3d::na::Isometry::from_parts(
                     rapier3d::na::Translation3::new(gt.position.x, gt.position.y, gt.position.z),

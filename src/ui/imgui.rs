@@ -145,48 +145,11 @@ impl ImguiManager {
                         ui.separator();
 
                         if ui.button("Save Entity State") {
-                            let mut save_data = WorldData {
-                                entities: vec![],
-                            };
-
-                            for e_type in em.entity_types.iter() {
-                                match e_type.value().as_str() {
-                                    "Terrain" => { continue; }
-                                    "OrcSword" => { continue; }
-                                    _ => {}
-                                }
-
-                                if let (
-                                    Some(faction),
-                                    Some(trans),
-                                ) = (
-                                    em.factions.get(e_type.key()),
-                                    em.transforms.get(e_type.key()),
-                                ) {
-                                    if *faction == "Gizmo" {
-                                        continue;
-                                    }
-
-                                    // save_data.entities.push(
-                                    //     EntityInstance {
-                                    //         entity_type: e_type.value().clone(),
-                                    //         faction: faction.clone(),
-                                    //         position: trans.position.into(),
-                                    //         rotation: (trans.rotation).into(),
-                                    //         weapons: vec![],
-                                    //         base_speed: em.base_speeds.get(e_type.key()).copied(),
-                                    //         jump_height: Some(1.0),
-                                    //         health: Some(100.0),
-                                    //     }
-                                    // );
-                                }
-                            }
-
-                            save_data.write_readable_world_data("config/world_data.toml");
+                            em.serialize_entity_data();
                         }
 
                         for i in em.selected.iter() {
-                            if let Some(trans) = em.collider_transforms.get_mut(*i) {
+                            if let Some(trans) = em.transforms.get_mut(*i) {
                                 ui.text(format!(
                                     "Entity: {}, Type: {}",
                                     i,
@@ -280,7 +243,6 @@ impl ImguiManager {
                                 ps,
                             );
                             em.populate_inventory(parent_id, &instance, ps);
-
                             self.create_mode = false;
                         }
 
