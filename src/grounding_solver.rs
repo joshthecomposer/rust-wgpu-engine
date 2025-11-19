@@ -4,7 +4,7 @@ use rapier3d::prelude::*;
 pub fn grounding_solver(em: &mut EntityManager, ps: &PhysicsState) {
     let ids = vec![
         em.get_ids_for_type("TrashGuy"),
-        em.get_ids_for_type("MooseMan")
+        em.get_ids_for_type("MooseMan"),
     ]
     .concat();
 

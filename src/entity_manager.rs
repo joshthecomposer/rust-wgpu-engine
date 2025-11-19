@@ -10,7 +10,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::prelude::*;
 
-use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AnimationType, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, input::InputState, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
+use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper}, factions_config::FactionsConfig, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AnimationType, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, input::InputState, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -113,7 +113,7 @@ impl EntityManager {
             
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json").entity_types,
-            faction_register: HashSet::new(),
+            faction_register: FactionsConfig::load_from_file("config/factions_config.json").factions,
             serializable_world_data: wd,
         }
     }
@@ -1133,7 +1133,16 @@ impl EntityManager {
         ec.write_to_file("config/entity_config.json");
     }
 
-    fn serialize_entity_types(&self) {
+    pub fn register_new_faction(&mut self, faction: &str) {
+        self.faction_register.insert(faction.to_string());
+    }
+
+    pub fn serialize_faction_register(&self) {
+        let cfg = FactionsConfig {
+            factions: self.faction_register.clone(),
+        };
+
+        cfg.write_to_file("config/factions_config.json");
     }
 }
 
