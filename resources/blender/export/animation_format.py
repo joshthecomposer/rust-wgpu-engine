@@ -1,6 +1,9 @@
 import bpy
 import mathutils
 from bpy_extras.io_utils import axis_conversion
+from pathlib import Path
+import os
+import shutil
 
 # ---------- Helpers ----------
 C_LEGACY = mathutils.Matrix((
@@ -133,7 +136,7 @@ def write_skeleton_and_anims(f, armature, mesh_obj):
 # =========================
 # Mesh Export
 # =========================
-def write_mesh(f, mesh_obj, bone_index_of):
+def write_mesh(f, mesh_obj, bone_index_of, diffuse_texture):
     C = axis_conversion(from_forward='-Y', from_up='Z', to_forward='-Z', to_up='Y').to_4x4()
 
     deps = bpy.context.evaluated_depsgraph_get()
@@ -197,7 +200,7 @@ def write_mesh(f, mesh_obj, bone_index_of):
 
         f.write("\nMESH_DATA ##############################\n")
         f.write(f"TEXTURE_PROFILE: DecalCrisp\n")
-        f.write(f"TEXTURE_DIFFUSE: trashbot_diff.png\n")
+        f.write(f"TEXTURE_DIFFUSE: {diffuse_texture}\n")
         f.write(f"MESH_NAME: {mesh_obj.name}\n")
         f.write(f"VERTEX_COUNT: {len(unique)}\n")
         for (p, n, uv, col, weights) in unique:
@@ -221,7 +224,7 @@ def write_mesh(f, mesh_obj, bone_index_of):
         # Free evaluated mesh
         mesh_eval.to_mesh_clear()
 
-def export_game_data(filepath):
+def export_game_data(filepath, diffuse_texture):
     _, _, _, _ = conv_mats()
     cur = bpy.context.scene.frame_current
     try:
@@ -241,10 +244,23 @@ def export_game_data(filepath):
 
             # ✅ freeze pose for mesh export
             bpy.context.scene.frame_set(0)
-            write_mesh(f, mesh, bone_index_of)
+            write_mesh(f, mesh, bone_index_of, diffuse_texture)
 
         print(f"Exported data to {filepath}")
     finally:
         bpy.context.scene.frame_set(cur)
-             
-export_game_data("E:/Software_Dev/rust/rust-opengl-engine/resources/models/animated/newnewnewnew.txt")
+        
+def move_texture_file(diffuse_texture_path, parent_dir):
+    shutil.copy(diffuse_texture_path, parent_dir)
+        
+
+diffuse_texture_path = Path(r"E:\Software_Dev\rust\rust-opengl-engine\resources\textures\ai_slop\dark_wood.png")
+mesh_output_path = Path(r"C:\Users\jdwis\OneDrive\Desktop\Output\tube.txt")
+output_parent_dir = mesh_output_path.parent
+os.makedirs(output_parent_dir, exist_ok=True)
+
+diffuse_texture = "dark_wood.png"
+diffuse_texture_path = Path(r"E:\Software_Dev\rust\rust-opengl-engine\resources\textures\ai_slop\dark_wood.png")
+
+move_texture_file(diffuse_texture_path, output_parent_dir)
+export_game_data(mesh_output_path, diffuse_texture)

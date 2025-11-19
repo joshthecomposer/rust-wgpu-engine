@@ -138,6 +138,218 @@
       },
       "total_mass": 300.0
     },
+    "DoubleAxe": {
+      "rot_correction": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/weapons/swords/001_double_axe_new.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "BoundingBox"
+      },
+      "total_mass": null
+    },
+    "SphereRock": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/SphereRock/mesh.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Mesh"
+      },
+      "total_mass": null
+    },
+    "Cactus2": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/plants/cactus2.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Cylinder",
+        "r": 0.1,
+        "h": 3.0
+      },
+      "total_mass": null
+    },
+    "OrcSword": {
+      "rot_correction": [
+        0.5,
+        -0.5,
+        0.5,
+        0.5
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/weapons/001_orc_sword_bc.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "BoundingBox"
+      },
+      "total_mass": null
+    },
+    "Stump": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/stump/001_stump.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Mesh"
+      },
+      "total_mass": null
+    },
+    "TubeGuy": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/animated/TubeGuy/mesh.txt",
+      "bone_path": "resources/models/animated/TubeGuy/mesh.txt",
+      "animation_properties": [
+        {
+          "name": "Idle",
+          "one_shots": {},
+          "continuous_sounds": [],
+          "hurtbox_activation": [],
+          "hold_frame": null
+        }
+      ],
+      "item_bones": null,
+      "aggro_range": 5.0,
+      "hitbox": {
+        "shape": "Pill",
+        "r": 0.5,
+        "h": 2.0
+      },
+      "total_mass": 12.0
+    },
+    "TreeFoliage": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/trees/001_tree_foliage_model.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "BoundingBox"
+      },
+      "total_mass": null
+    },
+    "BareBush1": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/terrain/bare_bush1.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Mesh"
+      },
+      "total_mass": null
+    },
+    "TreeTrunk": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/trees/001_tree_trunk_model.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Cylinder",
+        "r": 0.1,
+        "h": 3.0
+      },
+      "total_mass": null
+    },
     "YRobot": {
       "rot_correction": [
         0.0,
@@ -202,74 +414,6 @@
       },
       "total_mass": null
     },
-    "TreeFoliage": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/trees/001_tree_foliage_model.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "BoundingBox"
-      },
-      "total_mass": null
-    },
-    "TreeTrunk": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/trees/001_tree_trunk_model.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Cylinder",
-        "r": 0.1,
-        "h": 3.0
-      },
-      "total_mass": null
-    },
-    "DoubleAxe": {
-      "rot_correction": [
-        -0.5,
-        0.5,
-        0.5,
-        0.5
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/weapons/swords/001_double_axe_new.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "BoundingBox"
-      },
-      "total_mass": null
-    },
     "Cactus1": {
       "rot_correction": [
         0.0,
@@ -313,128 +457,6 @@
       "aggro_range": null,
       "hitbox": {
         "shape": "Mesh"
-      },
-      "total_mass": null
-    },
-    "Stump": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/stump/001_stump.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Mesh"
-      },
-      "total_mass": null
-    },
-    "Cactus2": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/plants/cactus2.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Cylinder",
-        "r": 0.1,
-        "h": 3.0
-      },
-      "total_mass": null
-    },
-    "BareBush1": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/terrain/bare_bush1.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Mesh"
-      },
-      "total_mass": null
-    },
-    "TubeGuy": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "C:\\Users\\jdwis\\OneDrive\\Desktop\\Output\\tube.txt",
-      "bone_path": "C:\\Users\\jdwis\\OneDrive\\Desktop\\Output\\tube.txt",
-      "animation_properties": [
-        {
-          "name": "Idle",
-          "one_shots": {},
-          "continuous_sounds": [],
-          "hurtbox_activation": [],
-          "hold_frame": null
-        }
-      ],
-      "item_bones": null,
-      "aggro_range": 5.0,
-      "hitbox": {
-        "shape": "Pill",
-        "r": 0.5,
-        "h": 2.0
-      },
-      "total_mass": 12.0
-    },
-    "OrcSword": {
-      "rot_correction": [
-        0.5,
-        -0.5,
-        0.5,
-        0.5
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/weapons/001_orc_sword_bc.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "BoundingBox"
       },
       "total_mass": null
     }

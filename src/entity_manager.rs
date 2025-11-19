@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use core::f32;
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, path::Path};
 
 use gl::ActiveShaderProgram;
 use glam::{Mat4, Quat, Vec3};
@@ -974,6 +974,12 @@ impl EntityManager {
 
         let mut etype = EntityTypeHelper::default();
 
+        let texture_path = Path::new(&data.texture_path);
+        let mesh_path = Path::new(&data.mesh_path);
+        let texture_file_name = texture_path.file_name().unwrap().to_str().unwrap();
+
+        let base_path = Path::new("resources/models/");
+
         // Get the mesh data just for the memes.
         let file_data = match std::fs::read_to_string(&data.mesh_path) {
             Ok(data) => data,
@@ -986,10 +992,30 @@ impl EntityManager {
 
         match file_data.contains("ANIMATION_DATA") {
             true => { 
-                println!("FOUND ANIMATION DATA");
-                etype.bone_path = Some(data.mesh_path.clone()) 
+                let new_mesh_path = base_path.join(&format!("animated/{}/mesh.txt", &data.entity_type));
+                let new_texture_path = base_path.join(&format!("animated/{}/{}", &data.entity_type, &texture_file_name));
+                std::fs::create_dir_all(&new_mesh_path.parent().unwrap());
+                std::fs::create_dir_all(&new_texture_path.parent().unwrap());
+
+                std::fs::copy(mesh_path, &new_mesh_path);
+                std::fs::copy(texture_path, new_texture_path);
+
+                etype.bone_path = Some(new_mesh_path.clone().to_string_lossy().to_string());
+                etype.mesh_path = new_mesh_path.clone().to_string_lossy().to_string();
             },
-            false => { etype.bone_path = None },
+            false => { 
+                let new_mesh_path = base_path.join(&format!("static/{}/mesh.txt", &data.entity_type));
+                let new_texture_path = base_path.join(&format!("static/{}/{}", &data.entity_type, &texture_file_name));
+
+                std::fs::create_dir_all(&new_mesh_path.parent().unwrap());
+                std::fs::create_dir_all(&new_texture_path.parent().unwrap());
+
+                std::fs::copy(mesh_path, &new_mesh_path);
+                std::fs::copy(texture_path, new_texture_path);
+
+                etype.bone_path = None;
+                etype.mesh_path = new_mesh_path.clone().to_string_lossy().to_string();
+            },
         }
 
         if etype.bone_path.is_some() {
@@ -1024,7 +1050,6 @@ impl EntityManager {
             }
         }
 
-        etype.mesh_path = data.mesh_path.clone();
         etype.rot_correction = Quat::from_array(data.rot_correction);
         etype.scale_correction = data.scale_correction.into();
 

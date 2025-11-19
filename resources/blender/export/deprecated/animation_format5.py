@@ -3,6 +3,7 @@ import os
 import mathutils
 import math
 from bpy_extras.io_utils import axis_conversion
+import shutil
 
 def convert_y_up(matrix):
     """Convert Blender’s Z-up coordinate system to OpenGL’s Y-up system."""
@@ -31,7 +32,7 @@ def convert_y_up_quaternion(blender_quaternion):
 
     return q_new
 
-def export_mesh_with_indices(filepath):
+def export_mesh_with_indices(filepath, diffuse_texture):
     with open(filepath, "w") as f:
         meshes = [obj for obj in bpy.context.selected_objects if obj.type == 'MESH']
         if not meshes:
@@ -41,7 +42,7 @@ def export_mesh_with_indices(filepath):
         for mesh in meshes:
             mesh_data = mesh.data
             f.write(f"MESH_NAME: {mesh.name}\n")
-            f.write(f"TEXTURE_DIFFUSE: stonetex.png\n")
+            f.write(f"TEXTURE_DIFFUSE: {diffuse_texture}\n")
 
             # Parse base colors from Principled BSDF nodes in materials
             material_colors = []
@@ -136,7 +137,16 @@ def export_mesh_with_indices(filepath):
                 if i + 2 < len(indices):
                     f.write(f"{indices[i]} {indices[i+1]} {indices[i+2]} ")
             f.write("\n\n")
+            
+def move_texture_file(diffuse_texture_path, parent_dir):
+    shutil.copy(diffuse_texture_path, parent_dir)
 
-mesh_output = os.path.expanduser("E:/Software_Dev/rust/rust-opengl-engine/resources/models/static/terrain/rocks/rock1.txt")
+diffuse_texture_path = Path(r"E:\Software_Dev\rust\rust-opengl-engine\resources\models\static\terrain\rocks\stonetex.png")
+mesh_output_path = Path(r"C:\Users\jdwis\OneDrive\Desktop\Output\tube.txt")
+output_parent_dir = mesh_output_path.parent
+os.makedirs(output_parent_dir, exist_ok=True)
+diffuse_texture = "stonetex.png"
+diffuse_texture_path = Path(r"C:\Users\jdwis\OneDrive\Desktop\Output\sphere_rock.txt")
+move_texture_file(diffuse_texture_path, output_parent_dir)
 
-export_mesh_with_indices(mesh_output)
+export_mesh_with_indices(mesh_output_path, diffuse_texture)
