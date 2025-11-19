@@ -18,6 +18,7 @@ pub struct ImguiManager {
     pub remove_entity_type_idx: usize,
 
     pub new_archetype: UiEntityTypeHelper,
+    pub new_faction: String,
 }
 
 impl ImguiManager {
@@ -39,6 +40,7 @@ impl ImguiManager {
             remove_entity_type_idx: 0,
 
             new_archetype: UiEntityTypeHelper::default(),
+            new_faction: String::new(),
         }
     }
 
@@ -106,9 +108,9 @@ impl ImguiManager {
                             .map(|k| k.clone())
                             .collect();
 
-                        let factions: Vec<&str> = em.faction_register
+                        let mut factions: Vec<String> = em.faction_register
                             .iter()
-                            .map(|k| k.as_str())
+                            .cloned()
                             .collect();
 
                         let hb_types: Vec<&str> = vec!["Cylinder", "Pill", "BoxDim", "Sphere", "Mesh", "BoundingBox"];
@@ -198,6 +200,23 @@ impl ImguiManager {
                         }
 
                         // ===================== Placing Entities =====================
+
+                        {
+                            ui.separator();
+                            ui.text("Create A New Faction");
+                            ui.separator();
+
+                            ui.input_text("New Faction Name", &mut self.new_faction)
+                                .build();
+
+                            if ui.button("Save Faction") {
+                                em.register_new_faction(&self.new_faction);
+                                em.serialize_faction_register();
+                                factions.push(self.new_faction.to_string());
+                            }
+                        }
+
+                        // ===================== Placing Entities =====================
                         ui.separator();
                         ui.text("Placing Entities");
                         ui.separator();
@@ -213,7 +232,7 @@ impl ImguiManager {
                             "Factions",
                             &mut self.faction_index,
                             &factions,
-                            |s| Cow::Borrowed(*s),
+                            |s| Cow::Borrowed(&s),
                         );
 
                         ui.combo(
@@ -228,7 +247,7 @@ impl ImguiManager {
                         }
 
                         let selected_type = &entity_types[self.entity_type_index];
-                        let selected_faction = factions[self.faction_index];
+                        let selected_faction = &factions[self.faction_index];
 
                         let weapons = if self.include_weapon {
                             Some(vec![

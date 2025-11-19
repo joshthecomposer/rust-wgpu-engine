@@ -1,0 +1,9 @@
+{
+  "factions": [
+    "FriendlyNpc",
+    "Enemy",
+    "Item",
+    "World",
+    "Player"
+  ]
+}
