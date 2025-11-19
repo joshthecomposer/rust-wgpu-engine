@@ -241,6 +241,7 @@ impl ImguiManager {
                                     jump_height: None,
                                     health: None,
                                     weapons: None,
+                                    cleanup_timer: None,
                                 }
                             ])
                         } else {
@@ -257,6 +258,7 @@ impl ImguiManager {
                                 base_speed: Some(4.5),
                                 jump_height: Some(1.0),
                                 health: Some(100.0),
+                                cleanup_timer: None,
                             };
 
                             let parent_id = em.create_entity(

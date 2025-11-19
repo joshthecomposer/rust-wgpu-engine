@@ -58,6 +58,7 @@ pub struct EntityManager {
     pub total_masses: SparseSet<f32>,
     pub model_heights: SparseSet<f32>,
     pub grounded_states: SparseSet<GroundedState>,
+    pub cleanup_timer: SparseSet<f32>,
 
     pub entity_type_register: HashMap<String, EntityTypeHelper>,
     pub faction_register: HashSet<String>,
@@ -108,6 +109,7 @@ impl EntityManager {
             total_masses: SparseSet::with_capacity(max_entities),
             model_heights: SparseSet::with_capacity(max_entities),
             grounded_states: SparseSet::with_capacity(max_entities),
+            cleanup_timer: SparseSet::with_capacity(max_entities),
             
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json").entity_types,
@@ -236,6 +238,10 @@ impl EntityManager {
 
         if let Some(total_mass) = archetype.total_mass {
             self.total_masses.insert(parent_id, total_mass);
+        }
+
+        if let Some(cleanup) = instance.cleanup_timer {
+            self.cleanup_timer.insert(parent_id, cleanup);
         }
 
         let transform = Transform {
@@ -678,7 +684,14 @@ impl EntityManager {
         self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
-    pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState, input: &mut InputState) {
+    pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState, input: &mut InputState, dt: f32) {
+        for o in self.cleanup_timer.iter_mut() {
+            o.value += dt;
+
+            if o.value >= 300.0 { // seconds
+                self.entity_trashcan.push(o.key());
+            }
+        }
         if input.just_pressed(glfw::Key::Delete) {
             for i in self.selected.iter() {
                 self.entity_trashcan.push(*i);
@@ -712,6 +725,7 @@ impl EntityManager {
             if let Some(inv) = self.inventories.get(*id) {
                 for i in inv.iter() {
                     self.owners.remove(*i);
+                    self.cleanup_timer.insert(*i, 0.0);
                 }
             }
             self.inventories.remove(*id);
@@ -722,6 +736,7 @@ impl EntityManager {
                     Some(rhid) => {
                         self.owners.remove(rhid);
                         self.is_equipped.remove(rhid);
+                        self.cleanup_timer.insert(rhid, 0.0);
                     }
                     None => (),
                 }
@@ -729,6 +744,7 @@ impl EntityManager {
                     Some(lhid) => {
                         self.owners.remove(lhid);
                         self.is_equipped.remove(lhid);
+                        self.cleanup_timer.insert(lhid, 0.0);
                     }
                     None => (),
                 }
@@ -762,6 +778,7 @@ impl EntityManager {
             self.total_masses.remove(*id);
             self.model_heights.remove(*id);
             self.grounded_states.remove(*id);
+            self.cleanup_timer.remove(*id);
         }
 
         self.entity_trashcan.clear();
@@ -911,6 +928,7 @@ impl EntityManager {
                 Some(jh) => Some(jh.desired),
                 _=> None,
             };
+
             let instance = EntityInstance {
                 entity_type: etype.value().clone(),
                 faction,
@@ -920,6 +938,7 @@ impl EntityManager {
                 base_speed: self.base_speeds.get(id).copied(),
                 jump_height,
                 health: self.healths.get(id).copied(),
+                cleanup_timer: self.cleanup_timer.get(id).copied(),
             };
 
             wd.entities.push(instance);
@@ -953,6 +972,7 @@ impl EntityManager {
                     base_speed: None, 
                     jump_height: None,
                     health: None,
+                    cleanup_timer: None,
                 });
             }
 

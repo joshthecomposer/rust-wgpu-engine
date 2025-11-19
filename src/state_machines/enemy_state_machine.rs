@@ -155,6 +155,7 @@ pub fn enemy_sim_state_machine(
                     em.owners.remove(active_weapon_id);
                     em.is_equipped.remove(active_weapon_id);
                     em.active_items.remove(entity_id);
+                    em.cleanup_timer.insert(active_weapon_id, 0.0);
 
                     if let Some(inv) = em.inventories.get_mut(entity_id) {
                         inv.retain(|v| *v != active_weapon_id);
