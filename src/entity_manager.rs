@@ -1,7 +1,7 @@
-#![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_arguments, unused_must_use)]
 
 use core::f32;
-use std::{collections::{HashMap, HashSet}, path::Path};
+use std::{collections::{HashMap, HashSet}, path::Path, time::UNIX_EPOCH};
 
 use gl::ActiveShaderProgram;
 use glam::{Mat4, Quat, Vec3};
@@ -959,6 +959,29 @@ impl EntityManager {
             return Some(wlist);
         }
         None
+    }
+
+    pub fn remove_entity_type_definition(&mut self, entity_type: &str) {
+        let now = std::time::SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        match std::fs::copy("config/entity_config.json", format!("config/archive/entity_config/{}_entity_config.json", now)) {
+            Ok(_) => (),
+            Err(e) => panic!("Failure: {}", e),
+        }
+        let mut ids = self.get_ids_for_type(entity_type);
+
+        self.entity_trashcan.append(&mut ids);
+
+        self.entity_type_register.remove(entity_type);
+
+        let ec = EntityConfig {
+            entity_types: self.entity_type_register.clone(),
+        };
+
+        ec.write_to_file(&format!("config/entity_config.json"));
     }
 
     pub fn register_new_entity_type(&mut self, data: &UiEntityTypeHelper) {

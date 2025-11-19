@@ -24,28 +24,6 @@
       },
       "total_mass": null
     },
-    "SphereRock": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/SphereRock/mesh.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Mesh"
-      },
-      "total_mass": 12.0
-    },
     "Rock1": {
       "rot_correction": [
         0.0,
@@ -408,7 +386,7 @@
         }
       ],
       "item_bones": null,
-      "aggro_range": 1.0,
+      "aggro_range": 5.0,
       "hitbox": {
         "shape": "Pill",
         "r": 0.5,

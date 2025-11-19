@@ -4,15 +4,15 @@
       "entity_type": "TrashGuy",
       "faction": "Player",
       "position": [
-        11.809681,
-        5.0845757,
-        18.933287
+        19.181595,
+        4.109185,
+        16.582605
       ],
       "rotation": [
         0.0,
-        0.7760464,
+        -0.98277444,
         0.0,
-        0.63067585
+        0.184809
       ],
       "weapons": [
         {
@@ -55,7 +55,7 @@
         }
       ],
       "base_speed": 7.0,
-      "health": 100000.0,
+      "health": 99900.0,
       "jump_height": 1.5
     },
     {
@@ -63,7 +63,7 @@
       "faction": "Item",
       "position": [
         0.0,
-        -331234.1,
+        -2625612.0,
         0.0
       ],
       "rotation": [
@@ -100,7 +100,7 @@
       "entity_type": "MooseMan",
       "faction": "Enemy",
       "position": [
-        12.789672,
+        12.789676,
         3.8218074,
         9.014895
       ],
@@ -176,15 +176,15 @@
       "entity_type": "DoubleAxe",
       "faction": "Item",
       "position": [
-        22.834612,
-        2.7056885,
-        8.606268
+        22.834583,
+        2.7056932,
+        8.606253
       ],
       "rotation": [
-        -0.68579173,
-        -0.7115689,
-        0.06030052,
-        -0.14043911
+        -0.6857999,
+        -0.7115625,
+        0.06031263,
+        -0.14042665
       ],
       "weapons": null,
       "base_speed": 4.5,
@@ -195,15 +195,15 @@
       "entity_type": "OrcSword",
       "faction": "Item",
       "position": [
-        9.637528,
-        5.611036,
-        21.605915
+        9.637544,
+        5.6110387,
+        21.605928
       ],
       "rotation": [
-        -0.46892565,
-        -0.3279959,
-        -0.49295163,
-        -0.65538234
+        -0.4688807,
+        -0.3280409,
+        -0.49284562,
+        -0.6554717
       ],
       "weapons": null,
       "base_speed": 4.5,
@@ -211,277 +211,118 @@
       "jump_height": 1.0
     },
     {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
+      "entity_type": "OrcSword",
+      "faction": "Item",
       "position": [
-        41.584496,
-        -1.0700917,
-        62.70265
+        20.492992,
+        2.429878,
+        86.45631
+      ],
+      "rotation": [
+        0.50481504,
+        -0.6126279,
+        0.47160745,
+        -0.3839728
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": null,
+      "jump_height": null
+    },
+    {
+      "entity_type": "OrcSword",
+      "faction": "Item",
+      "position": [
+        42.068047,
+        -1.00544,
+        58.419785
+      ],
+      "rotation": [
+        0.57594377,
+        0.5758854,
+        -0.4102858,
+        -0.41025633
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": null,
+      "jump_height": null
+    },
+    {
+      "entity_type": "Cactus1",
+      "faction": "World",
+      "position": [
+        64.78309,
+        -2.893,
+        45.983414
       ],
       "rotation": [
         0.0,
-        -0.94584894,
         0.0,
-        0.32460707
+        0.0,
+        1.0
       ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null
-        }
-      ],
+      "weapons": null,
       "base_speed": 4.5,
       "health": 100.0,
       "jump_height": 1.0
     },
     {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
+      "entity_type": "OrcSword",
+      "faction": "Item",
       "position": [
-        43.61746,
-        -1.1285882,
-        72.82368
+        52.092655,
+        -1.7803487,
+        58.01999
       ],
       "rotation": [
-        0.0,
-        -0.75019926,
-        0.0,
-        0.66121185
+        -0.14666498,
+        -0.062431272,
+        -0.6428081,
+        -0.7492593
       ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null
-        }
-      ],
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0
+      "weapons": null,
+      "base_speed": null,
+      "health": null,
+      "jump_height": null
     },
     {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
+      "entity_type": "OrcSword",
+      "faction": "Item",
       "position": [
-        45.65449,
-        -1.1525605,
-        88.38565
+        48.625957,
+        -1.4749496,
+        86.43179
       ],
       "rotation": [
-        0.0,
-        -0.9415687,
-        0.0,
-        0.33682105
+        0.6435907,
+        -0.7185538,
+        0.23728381,
+        -0.11475104
       ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null
-        }
-      ],
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0
+      "weapons": null,
+      "base_speed": null,
+      "health": null,
+      "jump_height": null
     },
     {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
+      "entity_type": "OrcSword",
+      "faction": "Item",
       "position": [
-        16.18708,
-        3.0551589,
-        51.75117
+        8.101216,
+        3.7710319,
+        100.83561
       ],
       "rotation": [
-        0.0,
-        -0.99311507,
-        0.0,
-        0.11714308
+        -0.7346907,
+        -0.5597382,
+        0.2386973,
+        0.29991034
       ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null
-        }
-      ],
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0
-    },
-    {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
-      "position": [
-        32.28171,
-        0.17877519,
-        79.16175
-      ],
-      "rotation": [
-        0.0,
-        0.9736651,
-        0.0,
-        0.22798303
-      ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null
-        }
-      ],
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0
-    },
-    {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
-      "position": [
-        30.358,
-        0.34006023,
-        72.313904
-      ],
-      "rotation": [
-        0.0,
-        0.85384023,
-        0.0,
-        0.5205352
-      ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null
-        }
-      ],
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0
-    },
-    {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
-      "position": [
-        25.024166,
-        1.0317131,
-        77.96684
-      ],
-      "rotation": [
-        0.0,
-        -0.74735254,
-        0.0,
-        0.6644277
-      ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null
-        }
-      ],
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0
+      "weapons": null,
+      "base_speed": null,
+      "health": null,
+      "jump_height": null
     },
     {
       "entity_type": "Cactus1",
@@ -503,12 +344,400 @@
       "jump_height": 1.0
     },
     {
+      "entity_type": "OrcSword",
+      "faction": "Item",
+      "position": [
+        76.69497,
+        -3.552156,
+        128.45595
+      ],
+      "rotation": [
+        0.6491817,
+        -0.72021073,
+        0.15023598,
+        -0.19310285
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": null,
+      "jump_height": null
+    },
+    {
+      "entity_type": "OrcSword",
+      "faction": "Item",
+      "position": [
+        78.77188,
+        -1.7431647,
+        26.7529
+      ],
+      "rotation": [
+        -0.5783655,
+        -0.4814467,
+        -0.46882665,
+        -0.4624976
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": null,
+      "jump_height": null
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        38.193394,
+        1.224906,
+        36.17476
+      ],
+      "rotation": [
+        0.0,
+        0.8719085,
+        0.0,
+        0.48966885
+      ],
+      "weapons": [
+        {
+          "entity_type": "DoubleAxe",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null
+        }
+      ],
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        74.90278,
+        -4.0763454,
+        59.984913
+      ],
+      "rotation": [
+        0.0,
+        0.8500374,
+        0.0,
+        0.5267224
+      ],
+      "weapons": [
+        {
+          "entity_type": "DoubleAxe",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null
+        }
+      ],
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        48.67104,
+        -1.300669,
+        45.10846
+      ],
+      "rotation": [
+        0.0,
+        -0.6548695,
+        0.0,
+        0.755742
+      ],
+      "weapons": [
+        {
+          "entity_type": "DoubleAxe",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null
+        }
+      ],
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        68.51802,
+        -3.0409267,
+        71.58757
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": [
+        {
+          "entity_type": "DoubleAxe",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null
+        }
+      ],
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        37.617096,
+        -0.34521413,
+        55.351032
+      ],
+      "rotation": [
+        0.0,
+        -0.59440297,
+        0.0,
+        0.8041673
+      ],
+      "weapons": [
+        {
+          "entity_type": "OrcSword",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null
+        }
+      ],
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        71.80559,
+        -3.3808243,
+        66.01503
+      ],
+      "rotation": [
+        0.0,
+        -0.5956987,
+        0.0,
+        0.80320793
+      ],
+      "weapons": [
+        {
+          "entity_type": "OrcSword",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null
+        }
+      ],
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        81.23914,
+        -3.187411,
+        93.28294
+      ],
+      "rotation": [
+        0.0,
+        -0.945504,
+        0.0,
+        0.3256104
+      ],
+      "weapons": [
+        {
+          "entity_type": "OrcSword",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null
+        }
+      ],
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        22.485447,
+        2.7361782,
+        39.813885
+      ],
+      "rotation": [
+        0.0,
+        0.99731654,
+        0.0,
+        0.07320967
+      ],
+      "weapons": [
+        {
+          "entity_type": "OrcSword",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null
+        }
+      ],
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
       "entity_type": "TubeGuy",
       "faction": "Enemy",
       "position": [
-        90.29815,
-        -3.5095747,
-        41.700703
+        27.092415,
+        3.2672653,
+        31.118528
+      ],
+      "rotation": [
+        0.0,
+        -0.7650094,
+        0.0,
+        0.6440191
+      ],
+      "weapons": null,
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
+      "entity_type": "TubeGuy",
+      "faction": "Enemy",
+      "position": [
+        54.41017,
+        -2.0377312,
+        75.08826
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": null,
+      "base_speed": 4.5,
+      "health": 100.0,
+      "jump_height": 1.0
+    },
+    {
+      "entity_type": "SphereRock",
+      "faction": "World",
+      "position": [
+        95.572426,
+        -4.955,
+        72.99782
       ],
       "rotation": [
         0.0,
