@@ -15,6 +15,7 @@ pub struct ImguiManager {
     pub hitbox_type_index: usize,
     pub create_mode: bool,
     pub include_weapon: bool,
+    pub remove_entity_type_idx: usize,
 
     pub new_archetype: UiEntityTypeHelper,
 }
@@ -35,6 +36,7 @@ impl ImguiManager {
             faction_index: 0,
             create_mode: false,
             include_weapon: false,
+            remove_entity_type_idx: 0,
 
             new_archetype: UiEntityTypeHelper::default(),
         }
@@ -90,6 +92,7 @@ impl ImguiManager {
         }
 
         {
+
             // BUILD WINDOWS
             let ui = self.imgui.frame();
             if camera.move_state == CameraState::Locked {
@@ -97,6 +100,19 @@ impl ImguiManager {
                     .size([500.0, 800.0], imgui::Condition::FirstUseEver)
                     .position([0.0, 0.0], imgui::Condition::FirstUseEver)
                     .build(|| {
+                        // Hoist the vars!
+                        let mut entity_types: Vec<String> = em.entity_type_register
+                            .keys()
+                            .map(|k| k.clone())
+                            .collect();
+
+                        let factions: Vec<&str> = em.faction_register
+                            .iter()
+                            .map(|k| k.as_str())
+                            .collect();
+
+                        let hb_types: Vec<&str> = vec!["Cylinder", "Pill", "BoxDim", "Sphere", "Mesh", "BoundingBox"];
+
                         // ===================== Lights =====================
                         ui.separator();
                         ui.text("Controls for Various Lights");
@@ -186,22 +202,12 @@ impl ImguiManager {
                         ui.text("Placing Entities");
                         ui.separator();
 
-                        let types: Vec<&str> = em.entity_type_register
-                            .keys()
-                            .map(|k| k.as_str())
-                            .collect();
-
                         ui.combo(
                             "Entity Types",
                             &mut self.entity_type_index,
-                            &types,
-                            |s| Cow::Borrowed(*s),
+                            &entity_types,
+                            |s| Cow::Borrowed(&s),
                         );
-
-                        let factions: Vec<&str> = em.faction_register
-                            .iter()
-                            .map(|k| k.as_str())
-                            .collect();
 
                         ui.combo(
                             "Factions",
@@ -213,21 +219,21 @@ impl ImguiManager {
                         ui.combo(
                             "Weapon",
                             &mut self.weapon_type_index,
-                            &types,
-                            |s| Cow::Borrowed(*s),
+                            &entity_types,
+                            |s| Cow::Borrowed(&s),
                         );
 
                         if ui.checkbox("Include Weapon", &mut self.include_weapon) {
                             println!("Clicked Create Mode");
                         }
 
-                        let selected_type = types[self.entity_type_index];
+                        let selected_type = &entity_types[self.entity_type_index];
                         let selected_faction = factions[self.faction_index];
 
                         let weapons = if self.include_weapon {
                             Some(vec![
                                 EntityInstance {
-                                    entity_type: types[self.weapon_type_index].to_string(),
+                                    entity_type: entity_types[self.weapon_type_index].clone(),
                                     faction: "Item".to_string(),
                                     position: Vec3::splat(0.0),
                                     rotation: Quat::IDENTITY,
@@ -289,17 +295,16 @@ impl ImguiManager {
                         ui.input_float("Total Mass", &mut self.new_archetype.total_mass)
                             .build();
 
-                        let types: Vec<&str> = vec!["Cylinder", "Pill", "BoxDim", "Sphere", "Mesh", "BoundingBox"];
 
                         ui.combo(
                             "Hitbox Types",
                             &mut self.hitbox_type_index,
-                            &types,
+                            &hb_types,
                             |s| Cow::Borrowed(*s),
                         );
 
 
-                        match types[self.hitbox_type_index] {
+                        match hb_types[self.hitbox_type_index] {
                             "Cylinder" | "Pill" => {
                                 self.new_archetype.hx = 0.0;
                                 self.new_archetype.hy = 0.0;
@@ -343,10 +348,26 @@ impl ImguiManager {
                             _=> {},
                         }
 
-                        self.new_archetype.hitbox = types[self.hitbox_type_index].to_string();
+                        self.new_archetype.hitbox = hb_types[self.hitbox_type_index].to_string();
 
                         if ui.button("Save New Entity Type") {
                             em.register_new_entity_type(&self.new_archetype);
+                        }
+
+                        ui.separator();
+                        ui.text("Remove an Entity Type");
+                        ui.separator();
+
+                        ui.combo(
+                            "Delete a type",
+                            &mut self.remove_entity_type_idx,
+                            &entity_types,
+                            |s| Cow::Borrowed(&s),
+                        );
+
+                        if ui.button("Delete") {
+                            em.remove_entity_type_definition(&entity_types[self.remove_entity_type_idx]);
+                            entity_types.remove(self.remove_entity_type_idx);
                         }
                     });
             }

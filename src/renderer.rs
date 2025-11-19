@@ -395,6 +395,13 @@ impl Renderer {
                             }
                         }
 
+                        for cs in animation.continuous_sounds.iter() {
+                            if !cs.playing.get() {
+                                sound_manager.play_sound_3d(cs.sound_type.clone(), &trans.position, id.key());
+                                cs.playing.set(true);
+                            }
+                        }
+
                         if let Some(fa) = &animation.hurtbox_activation {
                             if fa.segment_range.contains(&animation.current_segment.get()) { 
                                 if !fa.triggered.get() {
