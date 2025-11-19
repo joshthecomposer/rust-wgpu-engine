@@ -4,7 +4,7 @@ use glam::{Vec2, Vec4};
 use glfw::CursorMode;
 use image::GenericImageView;
 
-use crate::{enums_types::CameraState, gl_call, input::InputState, shaders::Shader};
+use crate::{entity_manager::EntityManager, enums_types::CameraState, gl_call, input::InputState, shaders::Shader};
 
 use super::{color::hex_to_vec4, font::FontManager, message_queue::{MessageQueue, UiMessage}};
 
@@ -91,7 +91,7 @@ pub struct Rect {
     pub texture_id: Option<u32>,
 }
 
-pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, font_shader: &Shader, mq: &mut MessageQueue, paused: &mut bool, cm: CursorMode, cs: &CameraState, ui_ctx: &mut GameUiContext, render_gizmos: &mut bool, input: &mut InputState) {
+pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, font_shader: &Shader, mq: &mut MessageQueue, paused: &mut bool, cm: CursorMode, cs: &CameraState, ui_ctx: &mut GameUiContext, render_gizmos: &mut bool, input: &mut InputState, em: &mut EntityManager) {
     let mut rects = vec![];
     // =============================================================
     // PAUSE PANEL
@@ -127,8 +127,13 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
         }
 
         y -= button_h + gap;
-        if button("Placeholder 2", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, None, input) {
-            println!("PH2 clicked");
+        if button("Save Player Data", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, None, input) {
+            em.serialize_entity_data("config/player_data.json");
+        }
+
+        y -= button_h + gap;
+        if button("Reload World Data", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, None, input) {
+            mq.send(UiMessage::ReloadWorldData);
         }
 
         y -= button_h + gap;

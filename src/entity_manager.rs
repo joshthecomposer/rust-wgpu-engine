@@ -779,6 +779,8 @@ impl EntityManager {
             self.model_heights.remove(*id);
             self.grounded_states.remove(*id);
             self.cleanup_timer.remove(*id);
+
+            sm.cleanup_entity_sounds(*id);
         }
 
         self.entity_trashcan.clear();
@@ -907,7 +909,7 @@ impl EntityManager {
         self.selected.clear();
     }
 
-    pub fn serialize_entity_data(&self) {
+    pub fn serialize_entity_data(&self, file_name: &str) {
         let mut wd = WorldData { entities: vec![] };
 
         for etype in self.entity_types.iter() {
@@ -944,7 +946,7 @@ impl EntityManager {
             wd.entities.push(instance);
         }
 
-        wd.write_to_file("config/world_data.json");
+        wd.write_to_file(file_name);
     }
 
     pub fn resolve_weapons(&self, id: usize) -> Option<Vec<EntityInstance>> {

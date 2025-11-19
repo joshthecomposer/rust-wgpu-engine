@@ -175,7 +175,7 @@ impl ImguiManager {
                         ui.separator();
 
                         if ui.button("Save Entity State") {
-                            em.serialize_entity_data();
+                            em.serialize_entity_data("config/world_data.json");
                         }
 
                         for i in em.selected.iter() {
@@ -390,6 +390,7 @@ impl ImguiManager {
                             em.remove_entity_type_definition(&entity_types[self.remove_entity_type_idx]);
                             entity_types.remove(self.remove_entity_type_idx);
                         }
+
                     });
             }
         }

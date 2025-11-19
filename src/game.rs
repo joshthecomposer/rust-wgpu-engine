@@ -4,7 +4,7 @@ use glfw::Context;
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
 use crate::entity_manager::EntityManager;
-use crate::enums_types::{CameraState, PhysicsHandle, ShaderType, Transform};
+use crate::enums_types::{CameraState, PhysicsHandle, ShaderType, SoundType, Transform};
 use crate::input::{self, InputState};
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
@@ -236,6 +236,40 @@ impl Game {
         self.sound.update(&self.world.camera);
         self.world.lights.update(&self.time.dt);
         self.world.particles.update(self.time.dt);
+
+        let msgs = self.message_queue.drain();
+
+        if msgs.contains(&UiMessage::WindowShouldClose) {
+            self.platform.window.set_should_close(true);
+        }
+
+        if msgs.contains(&UiMessage::ReloadWorldData) {
+            let mut world = World::new();
+            let mut physics = PhysicsState::new();
+
+            world.ecs.populate_entity_data(&mut physics);
+            
+            // Cleanup 3d sounds
+            {
+                let keys: Vec<usize> = self.sound.active_3d_sounds.keys().cloned().collect();
+
+                for id in keys  {
+                    self.sound.cleanup_entity_sounds(id);
+                }
+            }
+
+            // Cleanup 2d sounds
+            {
+                let sounds: Vec<SoundType> = self.sound.active_sounds.keys().cloned().collect();
+
+                for sound in sounds  {
+                    self.sound.stop_sound(&sound);
+                }
+            }
+
+            self.world = world;
+            self.physics = physics;
+        }
     }
 
     pub fn render(&mut self) {
@@ -286,6 +320,7 @@ impl Game {
             &mut self.ui, 
             &mut self.renderer.render_gizmos,
             &mut self.input,
+            &mut self.world.ecs,
         );
 
         self.imgui_manager.draw(
@@ -301,9 +336,6 @@ impl Game {
             &mut self.physics,
             &mut self.input,
         );
-        if self.message_queue.drain().contains(&UiMessage::WindowShouldClose) {
-            self.platform.window.set_should_close(true)
-        }
 
         self.platform.window.swap_buffers();
         //self.platform.glfw.poll_events();

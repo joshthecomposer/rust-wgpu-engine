@@ -5,6 +5,7 @@ pub enum UiMessage {
     LeftMouseClicked,
     WindowShouldClose,
     PauseToggle,
+    ReloadWorldData,
 }
 
 pub struct MessageQueue {
