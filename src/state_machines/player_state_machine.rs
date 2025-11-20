@@ -15,7 +15,11 @@ pub fn player_state_machine(
     // ==================================================================================
     // BLACKBOARD DATA
     // ==================================================================================
-    let player_id   = em.factions.iter().find(|f| *f.value() == "Player").unwrap().key();
+    let player_id = match em.factions.iter().find(|f| *f.value() == "Player") {
+        Some(e) => e.key(),
+        None => return,
+    };
+
     let controller  = em.player_controllers.get_mut(player_id).unwrap();
     let player_pos  = em.transforms.get(player_id).unwrap().position;
     let animator    = em.animators.get_mut(player_id).unwrap();
