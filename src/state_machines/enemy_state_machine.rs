@@ -10,23 +10,38 @@ pub fn enemy_sim_state_machine(
     particles: &mut ParticleSystem,
     ps: &mut PhysicsState,
     input: &InputState,
-    player_id: usize,
 ) {
     // ==================================================================================
     // BLACKBOARD DATA
     // ==================================================================================
     let controller  = em.simstate_controllers.get_mut(entity_id).unwrap();
-    let player_pos  = em.transforms.get(player_id).unwrap().position;
-    let entity_pos  = em.transforms.get(entity_id).unwrap().position;
     let animator    = em.animators.get_mut(entity_id).unwrap();
+    let entity_pos  = em.transforms.get(entity_id).unwrap().position;
     let destination = em.destinations.get_mut(entity_id).unwrap();
+    let entity_type = em.entity_types.get(entity_id).unwrap();
+        
+    let player_id = match em.factions.iter().find(|f| *f.value() == "Player") {
+        Some(e) => Some(e.key()),
+        None => None,
+    };
+
+    if player_id.is_none() {
+        if entity_type == "MooseMan" {
+            return;
+        };
+        entity_non_combat_transition(controller, SimState::Waiting, animator, true);
+        *destination = entity_pos;
+        return;
+    };
+
+
     let health      = em.healths.get(entity_id).unwrap();
     let ph          = em.physics_handles.get(entity_id).unwrap();
     let rb          = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
     let yaw         = em.yaws.get(entity_id).unwrap();
-    let entity_type = em.entity_types.get(entity_id).unwrap();
     let aggro_range = em.aggro_ranges.get(entity_id).unwrap();
     let transform   = em.transforms.get(entity_id).unwrap();
+    let player_pos  = em.transforms.get(player_id.unwrap()).unwrap().position;
 
     let kb = em.knockbacks.get_mut(entity_id);
 

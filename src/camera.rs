@@ -134,7 +134,7 @@ impl Camera {
                     self.target = self.desired_target;
 
                     self.forward = (self.target - self.position).normalize();
-                }
+                } 
             }
             CameraState::Locked => {
                 self.target = self.locked_target;

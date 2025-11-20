@@ -162,8 +162,16 @@ impl Game {
                     }
 
                     if self.input.just_pressed(glfw::Key::F) {
+                        let maybe_player_id = self.world.ecs.factions.iter().find(|e| *e.value() == "Player");
+
                         self.world.camera.move_state = match self.world.camera.move_state {
-                            CameraState::Free  => CameraState::Third,
+                            CameraState::Free  => {
+                                if maybe_player_id.is_none() {
+                                    CameraState::Locked
+                                } else {
+                                    CameraState::Third
+                                }
+                            },
                             CameraState::Third => CameraState::Locked,
                             CameraState::Locked=> CameraState::Free,
                         };
