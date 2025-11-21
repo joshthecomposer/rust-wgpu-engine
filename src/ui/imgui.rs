@@ -19,6 +19,7 @@ pub struct ImguiManager {
 
     pub new_archetype: UiEntityTypeHelper,
     pub new_faction: String,
+    pub base_speed: f32,
 }
 
 impl ImguiManager {
@@ -41,6 +42,7 @@ impl ImguiManager {
 
             new_archetype: UiEntityTypeHelper::default(),
             new_faction: String::new(),
+            base_speed: 0.0,
         }
     }
 
@@ -199,7 +201,7 @@ impl ImguiManager {
                             }
                         }
 
-                        // ===================== Placing Entities =====================
+                        // ===================== Creating a Faction =====================
 
                         {
                             ui.separator();
@@ -249,6 +251,9 @@ impl ImguiManager {
                         let selected_type = &entity_types[self.entity_type_index];
                         let selected_faction = &factions[self.faction_index];
 
+                        ui.input_float("Base Speed", &mut self.base_speed)
+                            .build();
+
                         let weapons = if self.include_weapon {
                             Some(vec![
                                 EntityInstance {
@@ -266,6 +271,12 @@ impl ImguiManager {
                         } else {
                             None
                         };
+                        
+                        let speed = if self.base_speed <= 0.0 {
+                            None
+                        } else {
+                            Some(self.base_speed)
+                        };
 
                         if self.create_mode {
                             let instance = EntityInstance {
@@ -274,7 +285,7 @@ impl ImguiManager {
                                 position: input.ray_just_hit,
                                 rotation: Quat::IDENTITY,
                                 weapons,
-                                base_speed: Some(4.5),
+                                base_speed: speed,
                                 jump_height: Some(1.0),
                                 health: Some(100.0),
                                 cleanup_timer: None,

@@ -1,44 +1,45 @@
 {
   "entities": [
     {
-      "entity_type": "DoubleAxe",
-      "faction": "Item",
+      "entity_type": "TrashGuy",
+      "faction": "Player",
       "position": [
-        91.27954,
-        -1.6489488,
-        -8.503975
-      ],
-      "rotation": [
-        0.31100857,
-        0.2753557,
-        0.6235581,
-        0.66229016
-      ],
-      "weapons": null,
-      "base_speed": null,
-      "health": null,
-      "jump_height": null,
-      "cleanup_timer": 198.49565
-    },
-    {
-      "entity_type": "OrcSword",
-      "faction": "Item",
-      "position": [
-        0.0,
-        -97000.64,
-        0.0
+        28.08722,
+        3.2706547,
+        16.94664
       ],
       "rotation": [
         0.0,
+        0.15298587,
         0.0,
-        0.0,
-        1.0
+        0.9882284
       ],
-      "weapons": null,
-      "base_speed": null,
-      "health": null,
-      "jump_height": null,
-      "cleanup_timer": 198.49565
+      "weapons": [
+        {
+          "entity_type": "OrcSword",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null,
+          "cleanup_timer": null
+        }
+      ],
+      "base_speed": 6.5,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
     },
     {
       "entity_type": "BareBush1",
@@ -165,9 +166,9 @@
       "entity_type": "TubeGuy",
       "faction": "Enemy",
       "position": [
-        27.09243,
-        3.2672696,
-        31.118544
+        27.092432,
+        3.2672682,
+        31.118546
       ],
       "rotation": [
         0.0,
@@ -265,15 +266,15 @@
       "entity_type": "OrcSword",
       "faction": "Item",
       "position": [
-        78.7719,
-        -1.7431494,
-        26.7529
+        78.77189,
+        -1.743166,
+        26.752895
       ],
       "rotation": [
-        -0.57841617,
-        -0.48139814,
-        -0.46878004,
-        -0.46253192
+        -0.5784156,
+        -0.48140392,
+        -0.46877682,
+        -0.46253
       ],
       "weapons": null,
       "base_speed": null,
@@ -285,15 +286,15 @@
       "entity_type": "TrashGuy",
       "faction": "Enemy",
       "position": [
-        71.80559,
-        -3.3808243,
-        66.01503
+        51.714245,
+        -1.9011575,
+        69.386856
       ],
       "rotation": [
         0.0,
-        -0.5956987,
+        -0.51226956,
         0.0,
-        0.80320793
+        0.85882473
       ],
       "weapons": [
         {
@@ -326,21 +327,21 @@
       "entity_type": "DoubleAxe",
       "faction": "Item",
       "position": [
-        99.10565,
-        -3.654079,
-        41.307236
+        99.10567,
+        -3.653961,
+        41.307243
       ],
       "rotation": [
-        0.17806065,
-        0.24193563,
-        -0.66464853,
-        -0.6841081
+        0.17793596,
+        0.24207312,
+        -0.6647654,
+        -0.6839783
       ],
       "weapons": null,
       "base_speed": null,
       "health": null,
       "jump_height": null,
-      "cleanup_timer": 7.0167036
+      "cleanup_timer": 197.01268
     },
     {
       "entity_type": "TrashGuy",
@@ -384,65 +385,24 @@
       "cleanup_timer": null
     },
     {
-      "entity_type": "OrcSword",
+      "entity_type": "DoubleAxe",
       "faction": "Item",
       "position": [
-        85.22311,
-        -2.966208,
-        36.158306
+        78.53721,
+        -2.1961331,
+        32.462486
       ],
       "rotation": [
-        0.5568679,
-        0.5567613,
-        0.43587425,
-        0.43580794
+        0.68143666,
+        -0.7035116,
+        -0.17626224,
+        0.09821996
       ],
       "weapons": null,
       "base_speed": null,
       "health": null,
       "jump_height": null,
-      "cleanup_timer": 122.37833
-    },
-    {
-      "entity_type": "TrashGuy",
-      "faction": "Player",
-      "position": [
-        84.483505,
-        -2.9395015,
-        36.644176
-      ],
-      "rotation": [
-        0.0,
-        -0.5395057,
-        0.0,
-        0.84198195
-      ],
-      "weapons": [
-        {
-          "entity_type": "DoubleAxe",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null,
-          "cleanup_timer": null
-        }
-      ],
-      "base_speed": 4.5,
-      "health": 50.0,
-      "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": 175.03471
     }
   ]
 }
