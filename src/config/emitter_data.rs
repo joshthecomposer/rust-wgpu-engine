@@ -13,7 +13,7 @@ use crate::{enums_types::{EmitterName, EntityType, Faction}, gl_call};
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct EmitterData {
-    pub one_shot_data: HashMap<EmitterName, EmitterBlackboard>,
+    pub one_shot_data: HashMap<String, EmitterBlackboard>,
 }
 
 impl EmitterData {
@@ -27,7 +27,7 @@ impl EmitterData {
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct EmitterBlackboard {
-    pub name: EmitterName,
+    pub name: String,
     pub angle_rand: Vec2,
     pub radius_rand: Vec2,
     pub gravity: f32,

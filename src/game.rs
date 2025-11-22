@@ -8,7 +8,7 @@ use crate::enums_types::{CameraState, PhysicsHandle, ShaderType, SoundType, Tran
 use crate::input::{self, InputState};
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
-use crate::ui::imgui::ImguiManager;
+use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::{combat_system, grounding_solver, items, movement_system};
@@ -117,10 +117,10 @@ impl Game {
 
                                     match path.extension().and_then(|ext| ext.to_str()) {
                                         Some("txt") => {
-                                            self.imgui_manager.new_archetype.mesh_path = path.to_string_lossy().into_owned();
+                                            self.imgui_manager.entity_editor.new_archetype.mesh_path = path.to_string_lossy().into_owned();
                                         },
                                         Some("png") | Some("jpg") | Some("jpeg") => {
-                                            self.imgui_manager.new_archetype.texture_path = path.to_string_lossy().into_owned();
+                                            self.imgui_manager.entity_editor.new_archetype.texture_path = path.to_string_lossy().into_owned();
                                         },
                                         Some(_) => {},
                                         None => {},
@@ -343,6 +343,7 @@ impl Game {
             &mut self.world.ecs,
             &mut self.physics,
             &mut self.input,
+            &mut self.world.particles,
         );
 
         self.platform.window.swap_buffers();

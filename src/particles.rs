@@ -279,12 +279,12 @@ impl ParticleSystem {
 
     pub fn spawn_oneshot_emitter(
         &mut self, 
-        emitter_name: EmitterName,
+        emitter_name: &str,
         origin: Vec3,
     ) {
         let mut rng = rng();
 
-        let ed = match self.emitter_data.one_shot_data.get(&emitter_name) {
+        let ed = match self.emitter_data.one_shot_data.get(emitter_name) {
             Some(ed) => ed,
             None     => { 
                 eprintln!("WARNING: no emitter found for type {}", emitter_name);

@@ -387,7 +387,7 @@ impl Renderer {
                             if animation.current_segment.get() == os.segment {
                                 if !os.triggered.get() {
                                     sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position, id.key());
-                                    particles.spawn_oneshot_emitter(EmitterName::DesertStep, trans.position);
+                                    particles.spawn_oneshot_emitter("DesertStep", trans.position);
                                     os.triggered.set(true);
                                 }
                             } else {

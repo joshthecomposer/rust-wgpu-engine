@@ -156,7 +156,7 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
     // LOWER RIGHT BOX
     // =============================================================
     // Main panel w/h
-    if *cs == CameraState::Locked {
+    if *cs == CameraState::Third {
         let mut w = fb_width * 0.75;
         let h = 100.0;
         let gap = 10.0;

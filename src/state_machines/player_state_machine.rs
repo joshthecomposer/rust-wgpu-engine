@@ -144,7 +144,7 @@ pub fn player_state_machine(
                 if gs.just_landed && controller.time_in_state >= 0.2 { 
                     player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
                     //sm.play_sound_3d(SoundType::Jump, &player_pos, player_id);
-                    particles.spawn_oneshot_emitter(EmitterName::DesertLand, player_pos);
+                    particles.spawn_oneshot_emitter("DesertLand", player_pos);
                     sm.play_sound_3d(SoundType::Land, &player_pos, player_id);
                     break 'ns
                 }
@@ -159,7 +159,7 @@ pub fn player_state_machine(
 
                 if controller.time_in_state >= 0.05 {
                     controller.time_in_state = 0.0;
-                    particles.spawn_oneshot_emitter(EmitterName::DesertSlide, player_pos);
+                    particles.spawn_oneshot_emitter("DesertSlide", player_pos);
                 }
 
                 let dash_anim = animator.animations.get(&AnimationType::DashF).unwrap();
@@ -180,7 +180,7 @@ pub fn player_state_machine(
                 if gs.just_landed { 
                     rb.set_gravity_scale(1.0, true);
                     player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
-                    particles.spawn_oneshot_emitter(EmitterName::DesertLand, player_pos);
+                    particles.spawn_oneshot_emitter("DesertLand", player_pos);
                     sm.play_sound_3d(SoundType::Land, &player_pos, player_id);
                     break 'ns
                 }
