@@ -26,6 +26,7 @@ impl EmitterData {
 }
 
 #[derive(Deserialize, Debug, Serialize, Default)]
+#[serde(default)]
 pub struct EmitterBlackboard {
     pub name: String,
     pub angle_rand: Vec2,
@@ -36,14 +37,22 @@ pub struct EmitterBlackboard {
     pub particle_scale: Vec2,
     pub particle_count: usize,
     pub colors: Vec<Vec4>,
+
     #[serde(default, deserialize_with = "load_texture")]
     pub texture: Option<u32>,
-    #[serde(default)]
     pub radial_speed: Vec2,
-    #[serde(default)]
     pub up_speed: Vec2,
-    #[serde(default)]
     pub jitter: Vec2,
+
+    pub base_alpha: Vec2,
+    pub alpha_multiplier: f32,
+    pub alpha_power: f32,
+
+    pub base_scale: Vec2,
+    pub scale_multiplier: f32,
+    pub scale_power: f32,
+
+    pub direction: Vec3,
 }
 
 fn load_texture<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
@@ -108,4 +117,14 @@ pub struct UiEmitterBlackboard {
     pub radial_speed: [f32; 2],
     pub up_speed: [f32; 2],
     pub jitter: [f32; 2],
+    
+    pub base_alpha: [f32; 2], // start alpha
+    pub alpha_multiplier: f32, // where we end up
+    pub alpha_power: f32, // Curve shape 1.0 is linear
+    
+    pub base_scale: [f32; 2],
+    pub scale_multiplier: f32, // Where we end up in the lifetime
+    pub scale_power: f32, // curve shape 1.0 is linear
+
+    pub direction: [f32; 3]
 }

@@ -11,7 +11,6 @@ pub struct Emitter {
     pub times_alive: Vec<f32>,
     pub lifetimes: Vec<f32>,
     pub velocities: Vec<Vec3>,
-    pub scales: Vec<Vec3>,
     pub rotation_speeds: Vec<f32>,
     pub rotation_offsets: Vec<f32>,
 
@@ -24,11 +23,20 @@ pub struct Emitter {
     pub origin: Vec3,
     pub texture: Option<u32>,
     pub instance_vbo: u32,
-    pub alphas: Vec<f32>,
     pub alpha_vbo: u32,
     pub color_vbo: u32,
     pub colors: Vec<Vec4>,
     pub gravity: f32,
+
+    pub alphas: Vec<f32>,
+    pub base_alphas: Vec<f32>,
+    pub end_alphas: Vec<f32>,
+    pub alpha_powers: Vec<f32>,
+    
+    pub scales: Vec<f32>,
+    pub base_scales: Vec<f32>,
+    pub end_scales: Vec<f32>,
+    pub scale_powers: Vec<f32>,
 }
 
 impl Emitter {
@@ -46,7 +54,6 @@ impl Emitter {
             times_alive: vec![],
             lifetimes: vec![],
             velocities: vec![],
-            scales: vec![],
 
             rotation_speeds: vec![],
             rotation_offsets: vec![],
@@ -59,11 +66,20 @@ impl Emitter {
             origin: Vec3::splat(1.0),
             texture: None,
             instance_vbo,
-            alphas: vec![],
             alpha_vbo,
             color_vbo,
             colors: vec![],
             gravity: 0.0,
+
+            alpha_powers: vec![], // Curve shape
+            alphas: vec![], // Current
+            base_alphas: vec![], // beginning
+            end_alphas: vec![], // end goal
+
+            scale_powers: vec![],
+            scales: vec![],
+            base_scales: vec![],
+            end_scales: vec![],
         }
     }
 
@@ -73,8 +89,6 @@ impl Emitter {
             gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
             gl_call!(gl::DepthMask(gl::FALSE));
         }
-
-        // TODO: add growth back in for smoke based ones
 
         shader.activate();
 
@@ -86,11 +100,26 @@ impl Emitter {
             let t = self.times_alive[i];
             let t_norm = (t / self.lifetimes[i]).clamp(0.0, 1.0);
 
-            self.alphas[i] = (0.9 - t_norm).clamp(0.0, 1.0);
-            
-            // grow over time
-            let growth = 1.0 + t_norm * 0.5;
-            let scale = self.scales[i] * growth;
+            // ====================================================
+            // ALPHA OVER TIME
+            // ====================================================
+            let alpha_t = t_norm.powf(self.alpha_powers[i]);
+            let start_alpha = self.base_alphas[i];
+            let end_alpha = self.end_alphas[i];
+
+            let a = start_alpha + (end_alpha - start_alpha) * alpha_t;
+            self.alphas[i] = a.clamp(0.0, 1.0);
+           // self.alphas[i] = 1.0;
+
+            // ====================================================
+            // GROWTH OVER TIME
+            // ====================================================
+            let scale_t = t_norm.powf(self.scale_powers[i]);
+            let start_factor = self.base_scales[i];
+            let end_factor   = self.end_scales[i];
+            let factor = start_factor + (end_factor - start_factor) * scale_t;
+            let scale = self.scales[i] * factor;
+
             let rotation = self.rotation_offsets[i] + self.rotation_speeds[i] * t;
 
             let view = camera.view;
@@ -101,7 +130,7 @@ impl Emitter {
             );
             let inv_view_rot = view_rot.transpose();
             let model_rot = Mat4::from_mat3(inv_view_rot);
-            let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(scale);
+            let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(Vec3::splat(scale));
             //let model = Mat4::from_scale_rotation_translation(scale, , self.positions[i]);
 
             matrices.push(model);
@@ -290,6 +319,16 @@ impl ParticleSystem {
         emitter.origin = origin;
         emitter.gravity = ed.gravity;
 
+        let mut local_up = Vec3::Y;
+
+        let desired_dir = if ed.direction.length_squared() > 0.0 {
+            ed.direction.normalize()
+        } else {
+            Vec3::Y // fallback so we don't get NaNs
+        };
+
+        let rot = Quat::from_rotation_arc(local_up, desired_dir);
+
         for _ in 0..ed.particle_count {
             let angle = if ed.angle_rand.x >= ed.angle_rand.y {
                 ed.angle_rand.x
@@ -302,12 +341,13 @@ impl ParticleSystem {
                 rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
             };
 
-            let x = radius * angle.cos();
-            let z = radius * angle.sin();
 
-            let position = origin + vec3(x, 0.0, z);
+            let local_offset = vec3(radius * angle.cos(), 0.0, radius * angle.sin());
 
-            let dir = (position - origin).normalize_or_zero();
+            let world_offset = rot * local_offset;
+            let position = origin + world_offset;
+
+            let local_dir = local_offset.normalize_or_zero();
 
             let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
                 ed.radial_speed.x
@@ -328,13 +368,18 @@ impl ParticleSystem {
             };
 
             let jitter_dir = {
-                let angle = rng.random_range(0.0..std::f32::consts::TAU);
-                vec3(angle.cos(), 0.0, angle.sin())
+                let a = rng.random_range(0.0..std::f32::consts::TAU);
+                vec3(a.cos(), 0.0, a.sin())
             };
+            let jitter_local = jitter_dir * jitter_amount;
 
-            let jitter = jitter_dir * jitter_amount;
+            let local_velocity =
+            local_dir * radial_speed +
+            Vec3::Y * up_speed +
+            jitter_local;
 
-            let velocity = dir * radial_speed + Vec3::new(0.0, up_speed, 0.0) + jitter;
+            // Rotate velocity into world space
+            let velocity = rot * local_velocity;
 
             let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
                 ed.particle_lifetime.x
@@ -342,10 +387,16 @@ impl ParticleSystem {
                 rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
             };
 
-            let scale = if ed.particle_scale.x >= ed.particle_scale.y {
-                Vec3::splat(ed.particle_scale.x)
+            let scale = if ed.base_scale.x >= ed.base_scale.y {
+                ed.base_scale.x
             } else {
-                Vec3::splat(rng.random_range(ed.particle_scale.x..=ed.particle_scale.y))
+                rng.random_range(ed.base_scale.x..=ed.base_scale.y)
+            };
+
+            let alpha = if ed.base_alpha.x >= ed.base_alpha.y {
+                ed.base_alpha.x
+            } else {
+                rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
             };
 
             // color randomization
@@ -359,11 +410,19 @@ impl ParticleSystem {
             emitter.velocities.push(velocity);
             emitter.colors.push(color);
             emitter.lifetimes.push(lifetime);
-            emitter.scales.push(scale);
             emitter.times_alive.push(0.0);
             emitter.rotation_speeds.push(0.0);
             emitter.rotation_offsets.push(0.0);
-            emitter.alphas.push(1.0);
+
+            emitter.alphas.push(alpha);
+            emitter.base_alphas.push(alpha);
+            emitter.end_alphas.push(alpha * ed.alpha_multiplier);
+            emitter.alpha_powers.push(ed.alpha_power);
+
+            emitter.scales.push(scale);
+            emitter.base_scales.push(scale);
+            emitter.end_scales.push(scale * ed.scale_multiplier);
+            emitter.scale_powers.push(ed.scale_power);
         }
 
         emitter.count = ed.particle_count;
@@ -424,11 +483,19 @@ impl ParticleSystem {
             emitter.velocities.push(velocity);
             emitter.colors.push(color);
             emitter.lifetimes.push(lifetime);
-            emitter.scales.push(scale);
             emitter.times_alive.push(0.0);
             emitter.rotation_speeds.push(0.0);
             emitter.rotation_offsets.push(0.0);
+
             emitter.alphas.push(1.0);
+            emitter.alpha_powers.push(1.0);
+            emitter.base_alphas.push(1.0);
+            emitter.end_alphas.push(0.0);
+
+            emitter.scales.push(scale.x);
+            emitter.base_scales.push(scale.x);
+            emitter.end_scales.push(scale.x * 1.01);
+            emitter.scale_powers.push(1.0);
         }
 
         emitter.count = ed.particle_count;
@@ -575,7 +642,7 @@ impl ParticleSystem {
             emitter.positions[i] = position;
             emitter.velocities[i] = velocity;
             emitter.lifetimes[i] = lifetime;
-            emitter.scales[i] = scale;
+            emitter.scales[i] = scale.x;
             emitter.times_alive[i] = 0.0;
             emitter.rotation_speeds[i] = rotation_speed;
             emitter.rotation_offsets[i] = rotation_offset;
@@ -584,7 +651,7 @@ impl ParticleSystem {
             emitter.positions.push(position);
             emitter.velocities.push(velocity);
             emitter.lifetimes.push(lifetime);
-            emitter.scales.push(scale);
+            emitter.scales.push(scale.x);
             emitter.times_alive.push(0.0);
             emitter.rotation_speeds.push(rotation_speed);
             emitter.rotation_offsets.push(rotation_offset);

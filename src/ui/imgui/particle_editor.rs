@@ -62,6 +62,7 @@ impl ParticleEditor {
                 }
 
                 if Drag::new("Emitter Position").speed(0.1).build_array(ui, &mut self.new_pos) {};
+                if Drag::new("Emitter Direction").speed(0.1).build_array(ui, &mut self.new_emitter.direction) {};
 
                 ui.input_text("Emitter Name", &mut self.new_emitter.name)
                     .build();
@@ -69,19 +70,18 @@ impl ParticleEditor {
                 if Drag::new("Angle Range").speed(0.1).build_array(ui, &mut self.new_emitter.angle_rand) {};
                 if Drag::new("Radius Range").speed(0.1).build_array(ui, &mut self.new_emitter.radius_rand) {};
                 if Drag::new("Jitter").speed(0.1).build_array(ui, &mut self.new_emitter.jitter) {};
-
-                ui.input_float("Gravity", &mut self.new_emitter.gravity)
-                    .build();
+                
+                if Drag::new("Gravity").speed(0.1).build(ui, &mut self.new_emitter.gravity) {};
 
                 if Drag::new("Radial Speed").speed(0.1).build_array(ui, &mut self.new_emitter.radial_speed) {};
                 if Drag::new("Upward Speed").speed(0.1).build_array(ui, &mut self.new_emitter.up_speed) {};
                 if Drag::new("Particle Lifetime").speed(0.1).build_array(ui, &mut self.new_emitter.particle_lifetime) {};
-                if Drag::new("Particle Scale").speed(0.1).build_array(ui, &mut self.new_emitter.particle_scale) {};
+                //if Drag::new("Particle Scale").speed(0.001).build_array(ui, &mut self.new_emitter.particle_scale) {};
 
                 ui.input_int("Particle Count", &mut self.new_emitter.particle_count)
                     .build();
 
-                if Drag::new("Particle Color").speed(0.1).build_array(ui, &mut self.current_color) {};
+                if Drag::new("Particle Color").speed(0.01).build_array(ui, &mut self.current_color) {};
 
                 if ui.button("Add color") {
                     self.new_emitter.colors.push(self.current_color.clone());
@@ -113,6 +113,14 @@ impl ParticleEditor {
                     self.new_emitter.colors.remove(self.clr_idx);
                 };
 
+                if Drag::new("Start Alpha").speed(0.01).build_array(ui, &mut self.new_emitter.base_alpha) {};
+                if Drag::new("Alpha Multiplier").speed(0.01).build(ui, &mut self.new_emitter.alpha_multiplier) {};
+                ui.slider("Alpha Curve (1.0 is linear)", 0.0, 1.0, &mut self.new_emitter.alpha_power);
+
+                if Drag::new("Start Scale").speed(0.001).build_array(ui, &mut self.new_emitter.base_scale) {};
+                if Drag::new("Scale Multiplier").speed(0.001).build(ui, &mut self.new_emitter.scale_multiplier) {};
+                ui.slider("Scale Curve (1.0 is linear)", 0.0, 1.0, &mut self.new_emitter.scale_power);
+
                 ui.checkbox("Render Emitter", &mut self.render_emitter);
 
                 if self.render_emitter && self.timer >= 1.0 {
@@ -140,6 +148,16 @@ impl ParticleEditor {
                         radial_speed: self.new_emitter.radial_speed.into(),
                         up_speed: self.new_emitter.up_speed.into(),
                         jitter: self.new_emitter.jitter.into(),
+
+                        base_alpha: self.new_emitter.base_alpha.into(),
+                        alpha_multiplier: self.new_emitter.alpha_multiplier,
+                        alpha_power: self.new_emitter.alpha_power,
+
+                        base_scale: self.new_emitter.base_scale.into(),
+                        scale_multiplier: self.new_emitter.scale_multiplier,
+                        scale_power: self.new_emitter.scale_power,
+
+                        direction: self.new_emitter.direction.into(),
                     };
 
                     particles.spawn_oneshot_editor_emitter(payload, self.new_pos.into());
@@ -160,7 +178,7 @@ impl Default for ParticleEditor {
 
             em_idx: 0,
             new_pos: [0.0, 0.0, 0.0],
-            current_color: [0.0, 0.0, 0.0, 0.0],
+            current_color: [1.0, 1.0, 1.0, 1.0],
             clr_idx: 0,
             render_emitter: false,
             timer: 0.0,
