@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{collections::HashMap, fmt::Display, fs::{read_to_string, write}, hash::Hash};
+use std::{collections::{HashMap, HashSet}, fmt::Display, fs::{read_to_string, write}, hash::Hash};
 use glam::{Quat, Vec2, Vec3, Vec4};
 use image::{GenericImageView, Rgba};
 use russimp::Color4D;
@@ -37,9 +37,10 @@ pub struct EmitterBlackboard {
     pub particle_scale: Vec2,
     pub particle_count: usize,
     pub colors: Vec<Vec4>,
-
-    #[serde(default, deserialize_with = "load_texture")]
-    pub texture: Option<u32>,
+    #[serde(default)]
+    pub texture_path: Option<String>,
+    #[serde(default)]
+    pub texture_idx: Option<u32>,
     pub radial_speed: Vec2,
     pub up_speed: Vec2,
     pub jitter: Vec2,
@@ -113,7 +114,7 @@ pub struct UiEmitterBlackboard {
     pub particle_scale: [f32; 2],
     pub particle_count: i32,
     pub colors: Vec<[f32; 4]>,
-    pub texture: usize,
+    pub texture_path: String,
     pub radial_speed: [f32; 2],
     pub up_speed: [f32; 2],
     pub jitter: [f32; 2],

@@ -121,6 +121,7 @@ impl Game {
                                         },
                                         Some("png") | Some("jpg") | Some("jpeg") => {
                                             self.imgui_manager.entity_editor.new_archetype.texture_path = path.to_string_lossy().into_owned();
+                                            self.imgui_manager.particle_editor.new_emitter.texture_path = path.to_string_lossy().into_owned();
                                         },
                                         Some(_) => {},
                                         None => {},

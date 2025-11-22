@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use gl::SampleMaski;
 use glam::{vec3, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 use image::{GenericImageView, Rgba};
@@ -253,6 +255,7 @@ pub struct ParticleSystem {
     pub emitters: Vec<Emitter>,
     pub vao: u32,
     pub emitter_data: EmitterData,
+    pub registered_textures: HashMap<String, u32>,
 }
 
 impl ParticleSystem {
@@ -297,13 +300,63 @@ impl ParticleSystem {
             gl_call!(gl::BindVertexArray(0));
         }
 
-        let emitter_data = EmitterData::load_from_file(ed_file);
+        let mut emitter_data = EmitterData::load_from_file(ed_file);
+
+        let mut registered_textures = HashMap::new();
+
+        for (k, v) in &mut emitter_data.one_shot_data {
+            if let Some(path) = &v.texture_path {
+                let tex = Self::load_texture(&path);
+                registered_textures.insert(path.clone(), tex);
+                v.texture_idx = Some(tex);
+            }
+        }
 
         Self {
             emitters: Vec::new(),
             vao,
             emitter_data,
+            registered_textures,
         }
+    }
+
+
+    fn load_texture(path: &str) -> u32 {
+        let mut tex = 0;
+
+        println!("FOUND TEXTURE {}", &path);
+
+        unsafe {
+            gl_call!(gl::GenTextures(1, &mut tex));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
+            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32));
+            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
+            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
+            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
+
+            let img = match image::open(path) {
+                Ok(img) => img,
+                _ => panic!("error opening smoke texture"),
+            };
+
+            let (img_width, img_height) = img.dimensions();
+            let rgba = img.to_rgba8();
+            let raw = rgba.as_raw();
+
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA8 as i32,
+                img_width as i32,
+                img_height as i32,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                raw.as_ptr().cast(),
+            ));
+        }
+
+        tex
     }
 
     pub fn spawn_oneshot_editor_emitter(
@@ -314,7 +367,18 @@ impl ParticleSystem {
         let mut rng = rng();
         let mut emitter = Emitter::new();
 
-        emitter.texture = ed.texture;
+        emitter.texture = match ed.texture_path {
+            Some(path) => {
+                if let Some(tex) = self.registered_textures.get(&path) {
+                    Some(*tex)
+                } else {
+                    let tex = Self::load_texture(&path);
+                    self.registered_textures.insert(path, tex);
+                    Some(tex)
+                }
+            },
+            None => None,
+        };
 
         emitter.origin = origin;
         emitter.gravity = ed.gravity;
@@ -447,7 +511,7 @@ impl ParticleSystem {
 
         let mut emitter = Emitter::new();
 
-        emitter.texture = ed.texture;
+        emitter.texture = ed.texture_idx;
 
         emitter.origin = origin;
         emitter.gravity = ed.gravity;
@@ -479,6 +543,18 @@ impl ParticleSystem {
                 ed.colors[0]
             };
 
+            let scale = if ed.base_scale.x >= ed.base_scale.y {
+                ed.base_scale.x
+            } else {
+                rng.random_range(ed.base_scale.x..=ed.base_scale.y)
+            };
+
+            let alpha = if ed.base_alpha.x >= ed.base_alpha.y {
+                ed.base_alpha.x
+            } else {
+                rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
+            };
+
             emitter.positions.push(position);
             emitter.velocities.push(velocity);
             emitter.colors.push(color);
@@ -487,15 +563,15 @@ impl ParticleSystem {
             emitter.rotation_speeds.push(0.0);
             emitter.rotation_offsets.push(0.0);
 
-            emitter.alphas.push(1.0);
-            emitter.alpha_powers.push(1.0);
-            emitter.base_alphas.push(1.0);
-            emitter.end_alphas.push(0.0);
+            emitter.alphas.push(alpha);
+            emitter.alpha_powers.push(ed.alpha_power);
+            emitter.base_alphas.push(alpha);
+            emitter.end_alphas.push(ed.alpha_multiplier);
 
-            emitter.scales.push(scale.x);
-            emitter.base_scales.push(scale.x);
-            emitter.end_scales.push(scale.x * 1.01);
-            emitter.scale_powers.push(1.0);
+            emitter.scales.push(scale);
+            emitter.base_scales.push(scale);
+            emitter.end_scales.push(scale * ed.scale_multiplier);
+            emitter.scale_powers.push(ed.scale_power);
         }
 
         emitter.count = ed.particle_count;

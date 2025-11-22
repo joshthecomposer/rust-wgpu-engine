@@ -7,7 +7,7 @@ use imgui::{sys::{ImGuiKey, ImGuiKey_Backspace}, Drag, Io, Ui};
 use crate::{animation::animation::Animator, camera::Camera, config::{emitter_data::{EmitterBlackboard, UiEmitterBlackboard}, entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, particles::ParticleSystem, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub struct ParticleEditor {
-    new_emitter: UiEmitterBlackboard,
+    pub new_emitter: UiEmitterBlackboard,
 
     em_idx: usize,
     new_pos: [f32; 3],
@@ -113,6 +113,9 @@ impl ParticleEditor {
                     self.new_emitter.colors.remove(self.clr_idx);
                 };
 
+                ui.input_text("Texture Path", &mut self.new_emitter.texture_path)
+                    .build();
+
                 if Drag::new("Start Alpha").speed(0.01).build_array(ui, &mut self.new_emitter.base_alpha) {};
                 if Drag::new("Alpha Multiplier").speed(0.01).build(ui, &mut self.new_emitter.alpha_multiplier) {};
                 ui.slider("Alpha Curve (1.0 is linear)", 0.0, 1.0, &mut self.new_emitter.alpha_power);
@@ -130,6 +133,12 @@ impl ParticleEditor {
                         vec![ self.current_color.into() ]
                     };
 
+                    let texture_path = if self.new_emitter.texture_path.is_empty() {
+                        None
+                    } else {
+                        Some(self.new_emitter.texture_path.clone())
+                    };
+
                     let payload = EmitterBlackboard {
                         name: self.new_emitter.name.clone(),
                         angle_rand: self.new_emitter.angle_rand.into(),
@@ -144,7 +153,8 @@ impl ParticleEditor {
                         particle_scale: self.new_emitter.particle_scale.into(),
                         particle_count: self.new_emitter.particle_count as usize,
                         colors: final_colors,
-                        texture: None,
+                        texture_path: texture_path,
+                        texture_idx: None,
                         radial_speed: self.new_emitter.radial_speed.into(),
                         up_speed: self.new_emitter.up_speed.into(),
                         jitter: self.new_emitter.jitter.into(),
