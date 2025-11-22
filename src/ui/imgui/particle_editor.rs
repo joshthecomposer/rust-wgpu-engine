@@ -4,23 +4,17 @@ use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use glfw::{Action, MouseButton, PWindow, WindowEvent};
 use imgui::{sys::{ImGuiKey, ImGuiKey_Backspace}, Drag, Io, Ui};
 
-use crate::{animation::animation::Animator, camera::Camera, config::{entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, particles::ParticleSystem, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{animation::animation::Animator, camera::Camera, config::{emitter_data::{EmitterBlackboard, UiEmitterBlackboard}, entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, particles::ParticleSystem, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
 pub struct ParticleEditor {
-    emitter_type: String,
-    // random ranges between two floats, use the same value for no deviation
-    angle_rand: Vec2,
-    radius_rand: Vec2,
-    gravity: f32,
-    velocity: Vec<Vec2>, // random values for each
-    particle_lifetime: Vec2,
-    particle_scale: Vec2,
-    colors: Vec<Vec4>,
-    particle_count: u32,
-    texture: Option<u32>,
+    new_emitter: UiEmitterBlackboard,
 
     em_idx: usize,
-    new_pos: Vec3,
+    new_pos: [f32; 3],
+    current_color: [f32; 4],
+    clr_idx: usize,
+    render_emitter: bool,
+    timer: f32,
 }
 
 impl ParticleEditor {
@@ -35,6 +29,7 @@ impl ParticleEditor {
         input:  &mut InputState,
         size: &[f32; 2],
         particles: &mut ParticleSystem,
+        dt: f32,
     ) {
         ui.window("Particle Editor")
             .size([500.0, size[1]], imgui::Condition::FirstUseEver)
@@ -62,15 +57,91 @@ impl ParticleEditor {
                 ui.separator();
                 
                 if input.ray_just_hit {
-                    self.new_pos = input.ray_pos;
+                    self.new_pos = input.ray_pos.into();
                     input.ray_just_hit = false;
                 }
 
-                let mut arr = self.new_pos.to_array();
+                if Drag::new("Emitter Position").speed(0.1).build_array(ui, &mut self.new_pos) {};
 
-                if Drag::new("Emitter Position").speed(0.1).build_array(ui, &mut arr) {
-                    self.new_pos = Vec3::from_array(arr);
+                ui.input_text("Emitter Name", &mut self.new_emitter.name)
+                    .build();
+
+                if Drag::new("Angle Range Position").speed(0.1).build_array(ui, &mut self.new_emitter.angle_rand) {};
+                if Drag::new("Radius Range").speed(0.1).build_array(ui, &mut self.new_emitter.radius_rand) {};
+
+                ui.input_float("Gravity", &mut self.new_emitter.gravity)
+                    .build();
+
+                if Drag::new("Velocity Range X").speed(0.1).build_array(ui, &mut self.new_emitter.velocity_x) {};
+                if Drag::new("Velocity Range Y").speed(0.1).build_array(ui, &mut self.new_emitter.velocity_y) {};
+                if Drag::new("Velocity Range Z").speed(0.1).build_array(ui, &mut self.new_emitter.velocity_z) {};
+
+                if Drag::new("Particle Lifetime").speed(0.1).build_array(ui, &mut self.new_emitter.particle_lifetime) {};
+                if Drag::new("Particle Scale").speed(0.1).build_array(ui, &mut self.new_emitter.particle_scale) {};
+
+                ui.input_int("Particle Count", &mut self.new_emitter.particle_count)
+                    .build();
+
+                if Drag::new("Particle Color").speed(0.1).build_array(ui, &mut self.current_color) {};
+
+                if ui.button("Add color") {
+                    self.new_emitter.colors.push(self.current_color.clone());
                 };
+                let new = self.current_color;
+                ui.color_button(
+                    "##new color preview",
+                    [new[0], new[1], new[2], new[3]],
+                );
+
+                ui.combo(
+                    "Colors",
+                    &mut self.clr_idx,
+                    &self.new_emitter.colors,
+                    |c| {
+                        let label = format!("{:.2}, {:.2}, {:.2}, {:.2}", c[0], c[1], c[2], c[3]);
+                        Cow::Owned(label)
+                    },
+                );
+                
+                if let Some(color) = self.new_emitter.colors.get(self.clr_idx) {
+                    ui.color_button(
+                        "##selected_color",
+                        [color[0], color[1], color[2], color[3]],
+                    );
+                }
+
+                if ui.button("Remove Color") {
+                    self.new_emitter.colors.remove(self.clr_idx);
+                };
+
+                ui.checkbox("Render Emitter", &mut self.render_emitter);
+
+                if self.render_emitter && self.timer >= 1.0 {
+                    let final_colors: Vec<Vec4> = self.new_emitter.colors.iter().map(|arr| Vec4::from_array(*arr)).collect();
+
+                    let payload = EmitterBlackboard {
+                        name: self.new_emitter.name.clone(),
+                        angle_rand: self.new_emitter.angle_rand.into(),
+                        radius_rand: Vec2::from_array(self.new_emitter.radius_rand),
+                        gravity: self.new_emitter.gravity,
+                        velocity: vec![
+                            Vec2::from_array(self.new_emitter.velocity_x),
+                            Vec2::from_array(self.new_emitter.velocity_y),
+                            Vec2::from_array(self.new_emitter.velocity_z),
+                        ],
+                        particle_lifetime: self.new_emitter.particle_lifetime.into(),
+                        particle_scale: self.new_emitter.particle_scale.into(),
+                        particle_count: self.new_emitter.particle_count as usize,
+                        colors: final_colors,
+                        texture: None,
+                    };
+
+                    particles.spawn_oneshot_editor_emitter(payload, self.new_pos.into());
+
+                    self.timer -= self.timer;
+                }
+
+                self.timer += dt;
 
             });
     }
@@ -79,25 +150,14 @@ impl ParticleEditor {
 impl Default for ParticleEditor {
     fn default() -> Self {
         Self {
-            emitter_type: String::new(),
-            angle_rand: Vec2::ZERO,
-            radius_rand: Vec2::ZERO,
-            gravity: -9.8,
-            velocity: vec![
-                Vec2::ZERO,
-                Vec2::new(0.0, 1.0),
-                Vec2::ZERO
-            ],
-            particle_lifetime: Vec2::ZERO,
-            particle_scale: Vec2::ZERO,
-            colors: vec![
-                Vec4::ONE
-            ],
-            particle_count: 1,
-            texture: None,
+            new_emitter: UiEmitterBlackboard::default(),
 
             em_idx: 0,
-            new_pos: Vec3::ZERO,
+            new_pos: [0.0, 0.0, 0.0],
+            current_color: [0.0, 0.0, 0.0, 0.0],
+            clr_idx: 0,
+            render_emitter: false,
+            timer: 0.0,
         }
     }
 }

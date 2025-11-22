@@ -25,7 +25,7 @@ impl EmitterData {
     }
 }
 
-#[derive(Deserialize, Debug, Serialize)]
+#[derive(Deserialize, Debug, Serialize, Default)]
 pub struct EmitterBlackboard {
     pub name: String,
     pub angle_rand: Vec2,
@@ -83,4 +83,20 @@ where
         ));
     }
     Ok(Some(tex))
+}
+
+#[derive(Deserialize, Debug, Serialize, Default)]
+pub struct UiEmitterBlackboard {
+    pub name: String,
+    pub angle_rand: [f32; 2],
+    pub radius_rand: [f32; 2],
+    pub gravity: f32,
+    pub velocity_x: [f32; 2],
+    pub velocity_y: [f32; 2],
+    pub velocity_z: [f32; 2],
+    pub particle_lifetime: [f32; 2],
+    pub particle_scale: [f32; 2],
+    pub particle_count: i32,
+    pub colors: Vec<[f32; 4]>,
+    pub texture: usize,
 }

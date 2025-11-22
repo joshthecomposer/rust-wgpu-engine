@@ -4,7 +4,7 @@ use image::{GenericImageView, Rgba};
 use rand::{rng, Rng};
 use rapier3d::parry::utils::hashmap::HashMap;
 
-use crate::{camera::Camera, config::emitter_data::EmitterData, enums_types::EmitterName, gl_call, lights::Lights, shaders::Shader};
+use crate::{camera::Camera, config::emitter_data::{EmitterBlackboard, EmitterData, UiEmitterBlackboard}, enums_types::EmitterName, gl_call, lights::Lights, shaders::Shader};
 
 pub struct Emitter {
     pub positions: Vec<Vec3>,
@@ -275,6 +275,62 @@ impl ParticleSystem {
             vao,
             emitter_data,
         }
+    }
+
+    pub fn spawn_oneshot_editor_emitter(
+        &mut self, 
+        ed: EmitterBlackboard,
+        origin: Vec3,
+    ) {
+        let mut rng = rng();
+        let mut emitter = Emitter::new();
+
+        emitter.texture = ed.texture;
+
+        emitter.origin = origin;
+        emitter.gravity = ed.gravity;
+
+        for _ in 0..ed.particle_count {
+            let angle = rng.random_range(0.0..std::f32::consts::TAU);
+            let radius = if ed.radius_rand.x == ed.radius_rand.y {
+                ed.radius_rand.x
+            } else { 
+                rng.random_range(ed.radius_rand.x..ed.radius_rand.y)
+            };
+
+            let x = radius * angle.cos();
+            let z = radius * angle.sin();
+
+            let position = origin + vec3(x, 0.0, z);
+
+            let outward = vec3(x, 0.0, z).normalize();
+            let upward = vec3(0.0, rng.random_range(0.0..2.0), 0.0);
+            let velocity = (outward + upward).normalize() * rng.random_range(1.0..3.0);
+
+            let lifetime = rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y);
+            let scale = Vec3::splat(rng.random_range(ed.particle_scale.x..=ed.particle_scale.y));
+
+            // color randomization
+            let color = if ed.colors.len() > 1 {
+                ed.colors[rng.random_range(0..ed.colors.len())]
+            } else {
+                ed.colors[0]
+            };
+
+            emitter.positions.push(position);
+            emitter.velocities.push(velocity);
+            emitter.colors.push(color);
+            emitter.lifetimes.push(lifetime);
+            emitter.scales.push(scale);
+            emitter.times_alive.push(0.0);
+            emitter.rotation_speeds.push(0.0);
+            emitter.rotation_offsets.push(0.0);
+            emitter.alphas.push(1.0);
+        }
+
+        emitter.count = ed.particle_count;
+        // emitter.colors = ed.colors.clone();
+        self.emitters.push(emitter);
     }
 
     pub fn spawn_oneshot_emitter(

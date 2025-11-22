@@ -109,7 +109,7 @@ impl ImguiManager {
             // BUILD WINDOWS
             if camera.move_state == CameraState::Locked {
                 self.entity_editor.draw(ui, em, ps, rdr, lm, sm, input, &[width, height]);
-                self.particle_editor.draw(ui, em, ps, rdr, lm, sm, input, &[width, height], particles);
+                self.particle_editor.draw(ui, em, ps, rdr, lm, sm, input, &[width, height], particles, delta);
             }
         }
 
