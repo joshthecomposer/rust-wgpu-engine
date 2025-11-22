@@ -38,6 +38,12 @@ pub struct EmitterBlackboard {
     pub colors: Vec<Vec4>,
     #[serde(default, deserialize_with = "load_texture")]
     pub texture: Option<u32>,
+    #[serde(default)]
+    pub radial_speed: Vec2,
+    #[serde(default)]
+    pub up_speed: Vec2,
+    #[serde(default)]
+    pub jitter: Vec2,
 }
 
 fn load_texture<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
@@ -99,4 +105,7 @@ pub struct UiEmitterBlackboard {
     pub particle_count: i32,
     pub colors: Vec<[f32; 4]>,
     pub texture: usize,
+    pub radial_speed: [f32; 2],
+    pub up_speed: [f32; 2],
+    pub jitter: [f32; 2],
 }

@@ -291,11 +291,15 @@ impl ParticleSystem {
         emitter.gravity = ed.gravity;
 
         for _ in 0..ed.particle_count {
-            let angle = rng.random_range(0.0..std::f32::consts::TAU);
-            let radius = if ed.radius_rand.x == ed.radius_rand.y {
+            let angle = if ed.angle_rand.x >= ed.angle_rand.y {
+                ed.angle_rand.x
+            } else {
+                rng.random_range(ed.angle_rand.x..=ed.angle_rand.y)
+            };
+            let radius = if ed.radius_rand.x >= ed.radius_rand.y {
                 ed.radius_rand.x
             } else { 
-                rng.random_range(ed.radius_rand.x..ed.radius_rand.y)
+                rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
             };
 
             let x = radius * angle.cos();
@@ -303,12 +307,46 @@ impl ParticleSystem {
 
             let position = origin + vec3(x, 0.0, z);
 
-            let outward = vec3(x, 0.0, z).normalize();
-            let upward = vec3(0.0, rng.random_range(0.0..2.0), 0.0);
-            let velocity = (outward + upward).normalize() * rng.random_range(1.0..3.0);
+            let dir = (position - origin).normalize_or_zero();
 
-            let lifetime = rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y);
-            let scale = Vec3::splat(rng.random_range(ed.particle_scale.x..=ed.particle_scale.y));
+            let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
+                ed.radial_speed.x
+            } else {
+                rng.random_range(ed.radial_speed.x..=ed.radial_speed.y)
+            };
+
+            let up_speed = if ed.up_speed.x >= ed.up_speed.y {
+                ed.up_speed.x
+            } else {
+                rng.random_range(ed.up_speed.x..=ed.up_speed.y)
+            };
+
+            let jitter_amount = if ed.jitter.x >= ed.jitter.y {
+                ed.jitter.x
+            } else {
+                rng.random_range(ed.jitter.x..=ed.jitter.y)
+            };
+
+            let jitter_dir = {
+                let angle = rng.random_range(0.0..std::f32::consts::TAU);
+                vec3(angle.cos(), 0.0, angle.sin())
+            };
+
+            let jitter = jitter_dir * jitter_amount;
+
+            let velocity = dir * radial_speed + Vec3::new(0.0, up_speed, 0.0) + jitter;
+
+            let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
+                ed.particle_lifetime.x
+            } else {
+                rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
+            };
+
+            let scale = if ed.particle_scale.x >= ed.particle_scale.y {
+                Vec3::splat(ed.particle_scale.x)
+            } else {
+                Vec3::splat(rng.random_range(ed.particle_scale.x..=ed.particle_scale.y))
+            };
 
             // color randomization
             let color = if ed.colors.len() > 1 {

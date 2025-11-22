@@ -66,16 +66,15 @@ impl ParticleEditor {
                 ui.input_text("Emitter Name", &mut self.new_emitter.name)
                     .build();
 
-                if Drag::new("Angle Range Position").speed(0.1).build_array(ui, &mut self.new_emitter.angle_rand) {};
+                if Drag::new("Angle Range").speed(0.1).build_array(ui, &mut self.new_emitter.angle_rand) {};
                 if Drag::new("Radius Range").speed(0.1).build_array(ui, &mut self.new_emitter.radius_rand) {};
+                if Drag::new("Jitter").speed(0.1).build_array(ui, &mut self.new_emitter.jitter) {};
 
                 ui.input_float("Gravity", &mut self.new_emitter.gravity)
                     .build();
 
-                if Drag::new("Velocity Range X").speed(0.1).build_array(ui, &mut self.new_emitter.velocity_x) {};
-                if Drag::new("Velocity Range Y").speed(0.1).build_array(ui, &mut self.new_emitter.velocity_y) {};
-                if Drag::new("Velocity Range Z").speed(0.1).build_array(ui, &mut self.new_emitter.velocity_z) {};
-
+                if Drag::new("Radial Speed").speed(0.1).build_array(ui, &mut self.new_emitter.radial_speed) {};
+                if Drag::new("Upward Speed").speed(0.1).build_array(ui, &mut self.new_emitter.up_speed) {};
                 if Drag::new("Particle Lifetime").speed(0.1).build_array(ui, &mut self.new_emitter.particle_lifetime) {};
                 if Drag::new("Particle Scale").speed(0.1).build_array(ui, &mut self.new_emitter.particle_scale) {};
 
@@ -117,7 +116,11 @@ impl ParticleEditor {
                 ui.checkbox("Render Emitter", &mut self.render_emitter);
 
                 if self.render_emitter && self.timer >= 1.0 {
-                    let final_colors: Vec<Vec4> = self.new_emitter.colors.iter().map(|arr| Vec4::from_array(*arr)).collect();
+                    let final_colors: Vec<Vec4> = if self.new_emitter.colors.len() > 0 {
+                        self.new_emitter.colors.iter().map(|arr| Vec4::from_array(*arr)).collect()
+                    } else {
+                        vec![ self.current_color.into() ]
+                    };
 
                     let payload = EmitterBlackboard {
                         name: self.new_emitter.name.clone(),
@@ -134,6 +137,9 @@ impl ParticleEditor {
                         particle_count: self.new_emitter.particle_count as usize,
                         colors: final_colors,
                         texture: None,
+                        radial_speed: self.new_emitter.radial_speed.into(),
+                        up_speed: self.new_emitter.up_speed.into(),
+                        jitter: self.new_emitter.jitter.into(),
                     };
 
                     particles.spawn_oneshot_editor_emitter(payload, self.new_pos.into());
