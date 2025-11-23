@@ -503,49 +503,98 @@ impl ParticleSystem {
         &mut self, 
         emitter_name: &str,
         origin: Vec3,
+        direction: Option<Vec3>,
     ) {
         let mut rng = rng();
+        let mut emitter = Emitter::new();
 
         let ed = match self.emitter_data.one_shot_data.get(emitter_name) {
             Some(ed) => ed,
-            None     => { 
-                eprintln!("WARNING: no emitter found for type {}", emitter_name);
-                return;
-            }
+            None => panic!("Could not find emitter type of {}", emitter_name),
         };
 
-        let mut emitter = Emitter::new();
-
-        emitter.texture = ed.texture_idx;
+        emitter.texture = match &ed.texture_path {
+            Some(path) => {
+                if let Some(tex) = self.registered_textures.get(path) {
+                    Some(*tex)
+                } else {
+                    let tex = Self::load_texture(&path);
+                    self.registered_textures.insert(path.to_string(), tex);
+                    Some(tex)
+                }
+            },
+            None => None,
+        };
 
         emitter.origin = origin;
         emitter.gravity = ed.gravity;
 
+        let local_up = Vec3::Y;
+
+        let desired_dir = if let Some(d) = direction {
+            println!("YEP");
+            d.normalize()
+        } else {
+            Vec3::Y
+        };
+
+        let rot = Quat::from_rotation_arc(local_up, desired_dir);
+
         for _ in 0..ed.particle_count {
-            let angle = rng.random_range(0.0..std::f32::consts::TAU);
-            let radius = if ed.radius_rand.x == ed.radius_rand.y {
+            let angle = if ed.angle_rand.x >= ed.angle_rand.y {
+                ed.angle_rand.x
+            } else {
+                rng.random_range(ed.angle_rand.x..=ed.angle_rand.y)
+            };
+            let radius = if ed.radius_rand.x >= ed.radius_rand.y {
                 ed.radius_rand.x
             } else { 
-                rng.random_range(ed.radius_rand.x..ed.radius_rand.y)
+                rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
             };
 
-            let x = radius * angle.cos();
-            let z = radius * angle.sin();
+            let local_offset = vec3(radius * angle.cos(), 0.0, radius * angle.sin());
 
-            let position = origin + vec3(x, 0.0, z);
+            let world_offset = rot * local_offset;
+            let position = origin + world_offset;
 
-            let outward = vec3(x, 0.0, z).normalize();
-            let upward = vec3(0.0, rng.random_range(0.0..2.0), 0.0);
-            let velocity = (outward + upward).normalize() * rng.random_range(1.0..3.0);
+            let local_dir = local_offset.normalize_or_zero();
 
-            let lifetime = rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y);
-            let scale = Vec3::splat(rng.random_range(ed.particle_scale.x..=ed.particle_scale.y));
-
-            // color randomization
-            let color = if ed.colors.len() > 1 {
-                ed.colors[rng.random_range(0..ed.colors.len())]
+            let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
+                ed.radial_speed.x
             } else {
-                ed.colors[0]
+                rng.random_range(ed.radial_speed.x..=ed.radial_speed.y)
+            };
+
+            let up_speed = if ed.up_speed.x >= ed.up_speed.y {
+                ed.up_speed.x
+            } else {
+                rng.random_range(ed.up_speed.x..=ed.up_speed.y)
+            };
+
+            let jitter_amount = if ed.jitter.x >= ed.jitter.y {
+                ed.jitter.x
+            } else {
+                rng.random_range(ed.jitter.x..=ed.jitter.y)
+            };
+
+            let jitter_dir = {
+                let a = rng.random_range(0.0..std::f32::consts::TAU);
+                vec3(a.cos(), 0.0, a.sin())
+            };
+            let jitter_local = jitter_dir * jitter_amount;
+
+            let local_velocity =
+            local_dir * radial_speed +
+            Vec3::Y * up_speed +
+            jitter_local;
+
+            // Rotate velocity into world space
+            let velocity = rot * local_velocity;
+
+            let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
+                ed.particle_lifetime.x
+            } else {
+                rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
             };
 
             let scale = if ed.base_scale.x >= ed.base_scale.y {
@@ -560,6 +609,13 @@ impl ParticleSystem {
                 rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
             };
 
+            // color randomization
+            let color = if ed.colors.len() > 1 {
+                ed.colors[rng.random_range(0..ed.colors.len())]
+            } else {
+                ed.colors[0]
+            };
+
             emitter.positions.push(position);
             emitter.velocities.push(velocity);
             emitter.colors.push(color);
@@ -569,19 +625,21 @@ impl ParticleSystem {
             emitter.rotation_offsets.push(0.0);
 
             emitter.alphas.push(alpha);
-            emitter.alpha_powers.push(ed.alpha_power);
             emitter.base_alphas.push(alpha);
-            emitter.end_alphas.push(ed.alpha_multiplier);
+            emitter.end_alphas.push(alpha * ed.alpha_multiplier);
+            emitter.alpha_powers.push(ed.alpha_power);
 
             emitter.scales.push(scale);
             emitter.base_scales.push(scale);
             emitter.end_scales.push(scale * ed.scale_multiplier);
             emitter.scale_powers.push(ed.scale_power);
+            emitter.texture_has_alpha = ed.texture_has_alpha; 
         }
 
         emitter.count = ed.particle_count;
         // emitter.colors = ed.colors.clone();
         self.emitters.push(emitter);
+
     }
 
     pub fn spawn_continuous_emitter(&mut self, pps: usize, origin: Vec3, emit_type: &str, texture_path: Option<&str>) {

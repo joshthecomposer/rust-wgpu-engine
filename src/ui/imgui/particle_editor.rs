@@ -218,8 +218,12 @@ impl ParticleEditor {
                 if ui.button("Save ") {
                     for payload in self.payloads.iter() {
                         if !payload.name.is_empty() {
-                            particles.emitter_data.one_shot_data.insert(payload.name.clone(), payload.clone());
-                            particles.emitter_data.write_to_file("config/particle_emitters.toml");
+                            if !emitter_types.contains(&payload.name) {
+                                particles.emitter_data.one_shot_data.insert(payload.name.clone(), payload.clone());
+                                particles.emitter_data.write_to_file("config/particle_emitters.toml");
+                            } else {
+                                eprintln!("[Warning] emitter not saved, name was already taken.");
+                            }
                         }
                     }
                 };

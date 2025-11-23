@@ -203,7 +203,7 @@ pub fn enemy_sim_state_machine(
                         let position = bone_world_space.w_axis.truncate();
 
                         // You can randomize velocity or make it static for now
-                        particles.spawn_oneshot_emitter("BodyPoof", position);
+                        particles.spawn_oneshot_emitter("BodyPoof", position, None);
                     }
                 }
                 
