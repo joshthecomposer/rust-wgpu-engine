@@ -1,117 +1,411 @@
-[one_shot_data.DamageBlood]
-name = "DamageBlood"
-angle_rand = [0.0, 6.2831855] # random range betwee value 0 and value 1, use the same value for no deviation
-radius_rand = [0.01, 0.01] # random range betwee value 0 and value 1, use the same value for no deviation
-gravity = -9.8 # positive makes it float, negative falls
+[one_shot_data.DesertLand]
+name = "DesertLand"
+angle_rand = [
+    0.0,
+    3.2831854820251465,
+]
+radius_rand = [
+    0.10000000149011612,
+    0.5,
+]
+gravity = -1.0
 velocity = [
-	[0.0, 0.0],
-	[0.0, 2.0],
-	[0.0, 0.0]
+    [
+    0.0,
+    0.0,
+],
+    [
+    0.0,
+    2.0,
+],
+    [
+    0.0,
+    0.0,
+],
 ]
-particle_lifetime = [0.35, 1.0]
-particle_scale = [0.005, 0.01]
+particle_lifetime = [
+    0.5,
+    1.5,
+]
+particle_scale = [
+    0.07999999821186066,
+    0.20000000298023224,
+]
+particle_count = 30
 colors = [
-	[0.58, 0.1, 0.1, 1.0],
+    [
+    0.3799999952316284,
+    0.18000000715255737,
+    0.0,
+    0.800000011920929,
+],
+    [
+    0.5059999823570251,
+    0.32499998807907104,
+    0.12200000137090683,
+    0.800000011920929,
+],
+    [
+    0.4269999861717224,
+    0.24699999392032623,
+    0.050999999046325684,
+    0.800000011920929,
+],
+    [
+    0.6240000128746033,
+    0.41600000858306885,
+    0.20000000298023224,
+    0.800000011920929,
+],
 ]
-particle_count = 8
-
-# =============================================================================
+radial_speed = [
+    0.0,
+    0.0,
+]
+up_speed = [
+    0.0,
+    0.0,
+]
+jitter = [
+    0.0,
+    0.0,
+]
+base_alpha = [
+    0.0,
+    0.0,
+]
+alpha_multiplier = 0.0
+alpha_power = 0.0
+base_scale = [
+    0.0,
+    0.0,
+]
+scale_multiplier = 0.0
+scale_power = 0.0
+direction = [
+    0.0,
+    0.0,
+    0.0,
+]
 
 [one_shot_data.DesertSlide]
 name = "DesertSlide"
-angle_rand = [0.0, 6.2831855]
-radius_rand = [0.01, 0.01]
+angle_rand = [
+    0.0,
+    6.2831854820251465,
+]
+radius_rand = [
+    0.009999999776482582,
+    0.009999999776482582,
+]
 gravity = 0.0
 velocity = [
-	[0.0, 0.0],
-	[0.0, 2.0],
-	[0.0, 0.0]
+    [
+    0.0,
+    0.0,
+],
+    [
+    0.0,
+    2.0,
+],
+    [
+    0.0,
+    0.0,
+],
 ]
-particle_lifetime = [0.23, 0.5]
-particle_scale = [0.08, 0.2]
-colors = [
-	[0.38, 0.18, 0.0, 0.8],
-	[0.506, 0.325, 0.122, 0.8],
-	[0.427, 0.247, 0.051, 0.8],
-	[0.624, 0.416, 0.2, 0.8],
+particle_lifetime = [
+    0.23000000417232513,
+    0.5,
+]
+particle_scale = [
+    0.07999999821186066,
+    0.20000000298023224,
 ]
 particle_count = 3
-texture = "resources/textures/smoke.png"
+colors = [
+    [
+    0.3799999952316284,
+    0.18000000715255737,
+    0.0,
+    0.800000011920929,
+],
+    [
+    0.5059999823570251,
+    0.32499998807907104,
+    0.12200000137090683,
+    0.800000011920929,
+],
+    [
+    0.4269999861717224,
+    0.24699999392032623,
+    0.050999999046325684,
+    0.800000011920929,
+],
+    [
+    0.6240000128746033,
+    0.41600000858306885,
+    0.20000000298023224,
+    0.800000011920929,
+],
+]
+radial_speed = [
+    0.0,
+    0.0,
+]
+up_speed = [
+    0.0,
+    0.0,
+]
+jitter = [
+    0.0,
+    0.0,
+]
+base_alpha = [
+    0.0,
+    0.0,
+]
+alpha_multiplier = 0.0
+alpha_power = 0.0
+base_scale = [
+    0.0,
+    0.0,
+]
+scale_multiplier = 0.0
+scale_power = 0.0
+direction = [
+    0.0,
+    0.0,
+    0.0,
+]
 
-# =============================================================================
-
+[one_shot_data.DamageBlood]
+name = "DamageBlood"
+angle_rand = [
+    0.0,
+    6.2831854820251465,
+]
+radius_rand = [
+    0.009999999776482582,
+    0.009999999776482582,
+]
+gravity = -9.800000190734863
+velocity = [
+    [
+    0.0,
+    0.0,
+],
+    [
+    0.0,
+    2.0,
+],
+    [
+    0.0,
+    0.0,
+],
+]
+particle_lifetime = [
+    0.3499999940395355,
+    1.0,
+]
+particle_scale = [
+    0.004999999888241291,
+    0.009999999776482582,
+]
+particle_count = 8
+colors = [[
+    0.5799999833106995,
+    0.10000000149011612,
+    0.10000000149011612,
+    1.0,
+]]
+radial_speed = [
+    0.0,
+    0.0,
+]
+up_speed = [
+    0.0,
+    0.0,
+]
+jitter = [
+    0.0,
+    0.0,
+]
+base_alpha = [
+    0.0,
+    0.0,
+]
+alpha_multiplier = 0.0
+alpha_power = 0.0
+base_scale = [
+    0.0,
+    0.0,
+]
+scale_multiplier = 0.0
+scale_power = 0.0
+direction = [
+    0.0,
+    0.0,
+    0.0,
+]
 
 [one_shot_data.DesertStep]
 name = "DesertStep"
-angle_rand = [0.0, 6.2831855]
-radius_rand = [0.001, 0.001]
+angle_rand = [
+    0.0,
+    6.2831854820251465,
+]
+radius_rand = [
+    0.0010000000474974513,
+    0.0010000000474974513,
+]
 gravity = -1.0
 velocity = [
-	[0.0, 0.0],
-	[0.0, 1.0],
-	[0.0, 0.0]
+    [
+    0.0,
+    0.0,
+],
+    [
+    0.0,
+    1.0,
+],
+    [
+    0.0,
+    0.0,
+],
 ]
-particle_lifetime = [0.5, 0.9]
-particle_scale = [0.08, 0.2]
-colors = [
-	[0.38, 0.18, 0.0, 0.8],
-	[0.506, 0.325, 0.122, 0.8],
-	[0.427, 0.247, 0.051, 0.8],
-	[0.624, 0.416, 0.2, 0.8],
+particle_lifetime = [
+    0.5,
+    0.8999999761581421,
+]
+particle_scale = [
+    0.07999999821186066,
+    0.20000000298023224,
 ]
 particle_count = 5
+colors = [
+    [
+    0.3799999952316284,
+    0.18000000715255737,
+    0.0,
+    0.800000011920929,
+],
+    [
+    0.5059999823570251,
+    0.32499998807907104,
+    0.12200000137090683,
+    0.800000011920929,
+],
+    [
+    0.4269999861717224,
+    0.24699999392032623,
+    0.050999999046325684,
+    0.800000011920929,
+],
+    [
+    0.6240000128746033,
+    0.41600000858306885,
+    0.20000000298023224,
+    0.800000011920929,
+],
+]
 texture_path = "resources/textures/smoke.png"
-radial_speed = [0.0, 0.0]
-up_speed = [0.0, 1.0]
-jitter = [0.01, 0.05]
-base_alpha = [0.8, 0.8]
+texture_idx = 1
+radial_speed = [
+    0.0,
+    0.0,
+]
+up_speed = [
+    0.0,
+    1.0,
+]
+jitter = [
+    0.009999999776482582,
+    0.05000000074505806,
+]
+base_alpha = [
+    0.800000011920929,
+    0.800000011920929,
+]
 alpha_multiplier = 0.5
 alpha_power = 1.0
-base_scale = [0.05, 0.8]
+base_scale = [
+    0.05000000074505806,
+    0.800000011920929,
+]
 scale_multiplier = 1.0
 scale_power = 1.0
-direction = [0.0, 1.0, 0.0]
-
-# =============================================================================
+direction = [
+    0.0,
+    1.0,
+    0.0,
+]
 
 [one_shot_data.BodyPoof]
 name = "BodyPoof"
-angle_rand = [0.0, 6.2831855] # random range betwee value 0 and value 1, use the same value for no deviation
-radius_rand = [0.01, 0.01] # random range betwee value 0 and value 1, use the same value for no deviation
-gravity = 0.0 # positive makes it float, negative falls
-velocity = [
-	[0.0, 0.0],
-	[0.0, 2.0],
-	[0.0, 0.0]
+angle_rand = [
+    0.0,
+    6.2831854820251465,
 ]
-particle_lifetime = [0.25, 0.5]
-particle_scale = [0.08, 0.2]
-colors = [
-	[0.498, 0.498, 0.498, 0.7],
-	# [0.141, 0.396, 0.804, 0.4],
+radius_rand = [
+    0.009999999776482582,
+    0.009999999776482582,
+]
+gravity = 0.0
+velocity = [
+    [
+    0.0,
+    0.0,
+],
+    [
+    0.0,
+    2.0,
+],
+    [
+    0.0,
+    0.0,
+],
+]
+particle_lifetime = [
+    0.25,
+    0.5,
+]
+particle_scale = [
+    0.07999999821186066,
+    0.20000000298023224,
 ]
 particle_count = 3
-texture = "resources/textures/smoke.png"
-
-# =============================================================================
-
-[one_shot_data.DesertLand]
-name = "DesertLand"
-angle_rand = [0.0, 3.2831855]
-radius_rand = [0.1, 0.5]
-gravity = -1.0
-velocity = [
-	[0.0, 0.0],
-	[0.0, 2.0],
-	[0.0, 0.0]
+colors = [[
+    0.49799999594688416,
+    0.49799999594688416,
+    0.49799999594688416,
+    0.699999988079071,
+]]
+radial_speed = [
+    0.0,
+    0.0,
 ]
-particle_lifetime = [0.5, 1.5]
-particle_scale = [0.08, 0.2]
-colors = [
-	[0.38, 0.18, 0.0, 0.8],
-	[0.506, 0.325, 0.122, 0.8],
-	[0.427, 0.247, 0.051, 0.8],
-	[0.624, 0.416, 0.2, 0.8],
+up_speed = [
+    0.0,
+    0.0,
 ]
-particle_count = 30
-texture = "resources/textures/smoke.png"
+jitter = [
+    0.0,
+    0.0,
+]
+base_alpha = [
+    0.0,
+    0.0,
+]
+alpha_multiplier = 0.0
+alpha_power = 0.0
+base_scale = [
+    0.0,
+    0.0,
+]
+scale_multiplier = 0.0
+scale_power = 0.0
+direction = [
+    0.0,
+    0.0,
+    0.0,
+]

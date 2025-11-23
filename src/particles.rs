@@ -24,6 +24,7 @@ pub struct Emitter {
     pub emit_accumulator: f32,
     pub origin: Vec3,
     pub texture: Option<u32>,
+    pub texture_has_alpha: bool,
     pub instance_vbo: u32,
     pub alpha_vbo: u32,
     pub color_vbo: u32,
@@ -39,6 +40,7 @@ pub struct Emitter {
     pub base_scales: Vec<f32>,
     pub end_scales: Vec<f32>,
     pub scale_powers: Vec<f32>,
+
 }
 
 impl Emitter {
@@ -67,6 +69,7 @@ impl Emitter {
             emit_accumulator: 0.0,
             origin: Vec3::splat(1.0),
             texture: None,
+            texture_has_alpha: true,
             instance_vbo,
             alpha_vbo,
             color_vbo,
@@ -173,6 +176,7 @@ impl Emitter {
                 gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
             }
             shader.set_int("texture1", 0);
+            shader.set_bool("texture_has_alpha", self.texture_has_alpha);
         }
 
         unsafe {
@@ -361,19 +365,19 @@ impl ParticleSystem {
 
     pub fn spawn_oneshot_editor_emitter(
         &mut self, 
-        ed: EmitterBlackboard,
+        ed: &EmitterBlackboard,
         origin: Vec3,
     ) {
         let mut rng = rng();
         let mut emitter = Emitter::new();
 
-        emitter.texture = match ed.texture_path {
+        emitter.texture = match &ed.texture_path {
             Some(path) => {
-                if let Some(tex) = self.registered_textures.get(&path) {
+                if let Some(tex) = self.registered_textures.get(path) {
                     Some(*tex)
                 } else {
                     let tex = Self::load_texture(&path);
-                    self.registered_textures.insert(path, tex);
+                    self.registered_textures.insert(path.to_string(), tex);
                     Some(tex)
                 }
             },
@@ -487,6 +491,7 @@ impl ParticleSystem {
             emitter.base_scales.push(scale);
             emitter.end_scales.push(scale * ed.scale_multiplier);
             emitter.scale_powers.push(ed.scale_power);
+            emitter.texture_has_alpha = ed.texture_has_alpha; 
         }
 
         emitter.count = ed.particle_count;

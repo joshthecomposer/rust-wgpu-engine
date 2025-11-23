@@ -23,9 +23,18 @@ impl EmitterData {
 
         toml::from_str(&config_str).expect("The EmitterData file was missing or malformed")
     }
+
+    pub fn write_to_file(&self, file_name: &str) {
+        println!("writing emitter data to {}", &file_name);
+
+        let toml_string = toml::to_string_pretty(self).expect("Failed to serialize emitter data");
+        write(file_name, toml_string).expect("Failed to write emitter data");
+
+        println!("Completed writing emitter data to {}", &file_name);
+    }
 }
 
-#[derive(Deserialize, Debug, Serialize, Default)]
+#[derive(Deserialize, Debug, Serialize, Default, Clone)]
 #[serde(default)]
 pub struct EmitterBlackboard {
     pub name: String,
@@ -41,6 +50,7 @@ pub struct EmitterBlackboard {
     pub texture_path: Option<String>,
     #[serde(default)]
     pub texture_idx: Option<u32>,
+    pub texture_has_alpha: bool,
     pub radial_speed: Vec2,
     pub up_speed: Vec2,
     pub jitter: Vec2,
@@ -101,7 +111,7 @@ where
     Ok(Some(tex))
 }
 
-#[derive(Deserialize, Debug, Serialize, Default)]
+#[derive(Deserialize, Debug, Serialize)]
 pub struct UiEmitterBlackboard {
     pub name: String,
     pub angle_rand: [f32; 2],
@@ -111,10 +121,12 @@ pub struct UiEmitterBlackboard {
     pub velocity_y: [f32; 2],
     pub velocity_z: [f32; 2],
     pub particle_lifetime: [f32; 2],
+    // TODO: THis field isn't needed any longer
     pub particle_scale: [f32; 2],
     pub particle_count: i32,
     pub colors: Vec<[f32; 4]>,
     pub texture_path: String,
+    pub texture_has_alpha: bool,
     pub radial_speed: [f32; 2],
     pub up_speed: [f32; 2],
     pub jitter: [f32; 2],
@@ -128,4 +140,37 @@ pub struct UiEmitterBlackboard {
     pub scale_power: f32, // curve shape 1.0 is linear
 
     pub direction: [f32; 3]
+}
+
+impl Default for UiEmitterBlackboard {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            angle_rand: [0.0, std::f32::consts::TAU],
+            radius_rand: [0.0, 0.0],
+            gravity: 0.0,
+            velocity_x: [0.0, 0.0],
+            velocity_y: [1.0, 2.0],
+            velocity_z: [0.0, 0.0],
+            particle_lifetime: [0.3, 1.0],
+            particle_scale: [0.0, 0.0],
+            particle_count: 10,
+            colors: vec![],
+            texture_path: String::new(),
+            texture_has_alpha: false,
+            radial_speed: [0.0, 0.0],
+            up_speed: [1.0, 2.0],
+            jitter: [0.01, 0.2],
+
+            base_alpha: [1.0, 1.0],
+            alpha_multiplier: 0.0,
+            alpha_power: 1.0,
+
+            base_scale: [0.08, 0.1],
+            scale_multiplier: 1.0,
+            scale_power: 1.0,
+
+            direction: [0.0, 1.0, 0.0]
+        }
+    }
 }
