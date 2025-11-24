@@ -23,6 +23,8 @@ void main() {
 
 // FRAGMENT_SHADER
 #version 410 core
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
 
 in vec2 tex_coords;
 in float particle_alpha;
@@ -32,7 +34,7 @@ uniform sampler2D texture1;
 uniform bool has_tex;
 uniform bool texture_has_alpha;
 
-out vec4 FragColor;
+//out vec4 FragColor;
 
 vec4 luminance_texture() {
     if (particle_alpha <= 0.001) discard;

@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{collections::{HashMap, HashSet}, fmt::Display, fs::{read_to_string, write}, hash::Hash};
+use std::{collections::{HashMap, HashSet}, fmt::Display, fs::{read_to_string, write}, hash::Hash, ptr::hash};
 use glam::{Quat, Vec2, Vec3, Vec4};
 use image::{GenericImageView, Rgba};
 use russimp::Color4D;
@@ -64,6 +64,7 @@ pub struct EmitterBlackboard {
     pub scale_power: f32,
 
     pub direction: Vec3,
+    pub pps: Option<usize>,
 }
 
 fn load_texture<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
@@ -113,6 +114,7 @@ where
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct UiEmitterBlackboard {
+    pub id: Option<usize>,
     pub name: String,
     pub angle_rand: [f32; 2],
     pub radius_rand: [f32; 2],
@@ -139,12 +141,16 @@ pub struct UiEmitterBlackboard {
     pub scale_multiplier: f32, // Where we end up in the lifetime
     pub scale_power: f32, // curve shape 1.0 is linear
 
-    pub direction: [f32; 3]
+    pub direction: [f32; 3],
+    
+    // !!! Having a value > 0 makes this a continuous emitter !!!
+    pub pps: i32,
 }
 
 impl Default for UiEmitterBlackboard {
     fn default() -> Self {
         Self {
+            id: None,
             name: String::new(),
             angle_rand: [0.0, std::f32::consts::TAU],
             radius_rand: [0.0, 0.0],
@@ -170,7 +176,9 @@ impl Default for UiEmitterBlackboard {
             scale_multiplier: 1.0,
             scale_power: 1.0,
 
-            direction: [0.0, 1.0, 0.0]
+            direction: [0.0, 1.0, 0.0],
+
+            pps: 0,
         }
     }
 }

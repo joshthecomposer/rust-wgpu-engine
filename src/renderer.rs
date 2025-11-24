@@ -411,18 +411,17 @@ impl Renderer {
                                 if !fa.triggered.get() {
                                     fa.triggered.set(true);
 
-                                    if let Some(bone_world_model_space) = animation.get_raw_global_bone_transform_by_name(
-                                        "Bone.029.L",
-                                        bonez,
-                                        Mat4::IDENTITY,
-                                    ) {
-                                        let bone_world_space = m_mat * bone_world_model_space;
-                                        let position = bone_world_space.w_axis.truncate();
+                                    //if let Some(bone_world_model_space) = animation.get_raw_global_bone_transform_by_name(
+                                    //    "Bone.029.L",
+                                    //    bonez,
+                                    //    Mat4::IDENTITY,
+                                    //) {
+                                    //    let bone_world_space = m_mat * bone_world_model_space;
+                                    //    let position = bone_world_space.w_axis.truncate();
 
-                                        // You can randomize velocity or make it static for now
-                                        particles.spawn_oneshot_emitter("ShootyPart", position, Some(forward));
-                                        particles.spawn_oneshot_emitter("SmokeyPart", position, Some(forward));
-                                    }
+                                    //    particles.spawn_oneshot_emitter("ShootyPart", position, Some(forward));
+                                    //    particles.spawn_oneshot_emitter("SmokeyPart", position, Some(forward));
+                                    //}
 
                                 }
                             } else {

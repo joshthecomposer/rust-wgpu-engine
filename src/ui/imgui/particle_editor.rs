@@ -94,6 +94,9 @@ impl ParticleEditor {
                     ui.input_int("Particle Count", &mut new_emitter.particle_count)
                         .build();
 
+                    ui.input_int("PPS (continuous emitter)", &mut new_emitter.pps)
+                        .build();
+
                     if Drag::new("Particle Color").speed(0.01).build_array(ui, &mut self.current_color) {};
 
                     if ui.button("Add color") {
@@ -151,10 +154,9 @@ impl ParticleEditor {
                 // ===========================================================
                 // Gather Emitter Data
                 // ===========================================================
-
                 self.payloads.clear();
 
-                for (i, new_emitter) in self.new_emitters.iter().enumerate() {
+                for (i, new_emitter) in self.new_emitters.iter_mut().enumerate() {
                     let id_token = ui.push_id(format!("{}", i));
 
                     let final_colors: Vec<Vec4> = if new_emitter.colors.len() > 0 {
@@ -167,6 +169,12 @@ impl ParticleEditor {
                         None
                     } else {
                         Some(new_emitter.texture_path.clone())
+                    };
+
+                    let pps = if new_emitter.pps > 0 {
+                        Some(new_emitter.pps as usize)
+                    } else {
+                        None
                     };
 
                     let payload = EmitterBlackboard {
@@ -199,12 +207,31 @@ impl ParticleEditor {
                         scale_power: new_emitter.scale_power,
 
                         direction: new_emitter.direction.into(),
+                        pps,
                     };
 
-                    if self.do_render && self.timer >= 1.0 {
-                        particles.spawn_oneshot_editor_emitter(&payload, self.new_pos.into());
-                        self.did_render = true;
-                    }
+                    if self.do_render {
+                        let origin = self.new_pos.into();
+
+                        if payload.pps.is_some() {
+                            // CONTINUOUS EMITTER PREVIEW
+                            if let Some(id) = new_emitter.id {
+                                // we already have an instance of this one, edit it instead
+                                particles.edit_staged_emitter(id, &payload, origin);
+                            } else if self.timer >= 1.0 {
+                                // First time spawning
+                                let id = particles.spawn_oneshot_editor_emitter(&payload, origin);
+                                new_emitter.id = Some(id);
+                                self.did_render = true;
+                            }
+                        } else {
+                            // ONESHOT PREVIEW
+                            if self.timer >= 1.0 {
+                                particles.spawn_oneshot_editor_emitter(&payload, origin);
+                                self.did_render = true;
+                            }
+                        }
+                    } 
 
                     self.payloads.push(payload);
 
@@ -214,6 +241,7 @@ impl ParticleEditor {
 
 
                 ui.checkbox("Render Emitters", &mut self.do_render);
+                particles.render_staged_emitters = self.do_render;
 
                 if ui.button("Save ") {
                     for payload in self.payloads.iter() {
