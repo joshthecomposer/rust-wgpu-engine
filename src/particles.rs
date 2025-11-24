@@ -1,34 +1,48 @@
+use std::collections::HashSet;
+
 use gl::SampleMaski;
 use glam::{vec3, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 use image::{GenericImageView, Rgba};
 use rand::{rng, Rng};
 use rapier3d::parry::utils::hashmap::HashMap;
 
-use crate::{camera::Camera, config::emitter_data::EmitterData, enums_types::EmitterName, gl_call, lights::Lights, shaders::Shader};
+use crate::{camera::Camera, config::emitter_data::{EmitterBlackboard, EmitterData, UiEmitterBlackboard}, enums_types::EmitterName, gl_call, lights::Lights, shaders::Shader};
 
+#[derive(Debug)]
 pub struct Emitter {
     pub positions: Vec<Vec3>,
     pub times_alive: Vec<f32>,
     pub lifetimes: Vec<f32>,
     pub velocities: Vec<Vec3>,
-    pub scales: Vec<Vec3>,
     pub rotation_speeds: Vec<f32>,
     pub rotation_offsets: Vec<f32>,
 
     pub count: usize,
     pub alive: bool,
-    pub emit_type: String,
+    pub name: String,
 
-    pub pps: usize,
+    pub pps: Option<usize>,
     pub emit_accumulator: f32,
     pub origin: Vec3,
     pub texture: Option<u32>,
+    pub texture_has_alpha: bool,
     pub instance_vbo: u32,
-    pub alphas: Vec<f32>,
     pub alpha_vbo: u32,
     pub color_vbo: u32,
     pub colors: Vec<Vec4>,
     pub gravity: f32,
+
+    pub alphas: Vec<f32>,
+    pub base_alphas: Vec<f32>,
+    pub end_alphas: Vec<f32>,
+    pub alpha_powers: Vec<f32>,
+
+    pub scales: Vec<f32>,
+    pub base_scales: Vec<f32>,
+    pub end_scales: Vec<f32>,
+    pub scale_powers: Vec<f32>,
+
+    pub editor_blackboard: Option<EmitterBlackboard>,
 }
 
 impl Emitter {
@@ -46,24 +60,35 @@ impl Emitter {
             times_alive: vec![],
             lifetimes: vec![],
             velocities: vec![],
-            scales: vec![],
 
             rotation_speeds: vec![],
             rotation_offsets: vec![],
             count: 0,
             alive: true,
-            emit_type: "".to_string(),
+            name: String::new(),
 
-            pps: 0,
+            pps: None,
             emit_accumulator: 0.0,
             origin: Vec3::splat(1.0),
             texture: None,
+            texture_has_alpha: true,
             instance_vbo,
-            alphas: vec![],
             alpha_vbo,
             color_vbo,
             colors: vec![],
             gravity: 0.0,
+
+            alpha_powers: vec![], // Curve shape
+            alphas: vec![], // Current
+            base_alphas: vec![], // beginning
+            end_alphas: vec![], // end goal
+
+            scale_powers: vec![],
+            scales: vec![],
+            base_scales: vec![],
+            end_scales: vec![],
+
+            editor_blackboard: None,
         }
     }
 
@@ -74,23 +99,35 @@ impl Emitter {
             gl_call!(gl::DepthMask(gl::FALSE));
         }
 
-        // TODO: add growth back in for smoke based ones
-
         shader.activate();
 
         let mut rng = rng();
 
         let mut matrices = Vec::with_capacity(self.count);
-
         for i in 0..self.count {
             let t = self.times_alive[i];
             let t_norm = (t / self.lifetimes[i]).clamp(0.0, 1.0);
 
-            self.alphas[i] = (0.9 - t_norm).clamp(0.0, 1.0);
-            
-            // grow over time
-            let growth = 1.0 + t_norm * 0.5;
-            let scale = self.scales[i] * growth;
+            // ====================================================
+            // ALPHA OVER TIME
+            // ====================================================
+            let alpha_t = t_norm.powf(self.alpha_powers[i]);
+            let start_alpha = self.base_alphas[i];
+            let end_alpha = self.end_alphas[i];
+
+            let a = start_alpha + (end_alpha - start_alpha) * alpha_t;
+            self.alphas[i] = a.clamp(0.0, 1.0);
+            // self.alphas[i] = 1.0;
+
+            // ====================================================
+            // GROWTH OVER TIME
+            // ====================================================
+            let scale_t = t_norm.powf(self.scale_powers[i]);
+            let start_factor = self.base_scales[i];
+            let end_factor   = self.end_scales[i];
+            let factor = start_factor + (end_factor - start_factor) * scale_t;
+            let scale = self.scales[i] * factor;
+
             let rotation = self.rotation_offsets[i] + self.rotation_speeds[i] * t;
 
             let view = camera.view;
@@ -101,7 +138,7 @@ impl Emitter {
             );
             let inv_view_rot = view_rot.transpose();
             let model_rot = Mat4::from_mat3(inv_view_rot);
-            let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(scale);
+            let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(Vec3::splat(scale));
             //let model = Mat4::from_scale_rotation_translation(scale, , self.positions[i]);
 
             matrices.push(model);
@@ -142,6 +179,7 @@ impl Emitter {
                 gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
             }
             shader.set_int("texture1", 0);
+            shader.set_bool("texture_has_alpha", self.texture_has_alpha);
         }
 
         unsafe {
@@ -219,11 +257,22 @@ impl Emitter {
     }
 }
 
+// an emitter that is just being previewed in the editor
+#[derive(Debug)]
+pub struct StagedEmitter {
+    pub id: usize,
+    pub emitter: Emitter,
+}
 
 pub struct ParticleSystem {
     pub emitters: Vec<Emitter>,
     pub vao: u32,
     pub emitter_data: EmitterData,
+    pub registered_textures: HashMap<String, u32>,
+
+    pub next_staged_id: usize,
+    pub staged_emitters: Vec<StagedEmitter>,
+    pub render_staged_emitters: bool,
 }
 
 impl ParticleSystem {
@@ -268,56 +317,331 @@ impl ParticleSystem {
             gl_call!(gl::BindVertexArray(0));
         }
 
-        let emitter_data = EmitterData::load_from_file(ed_file);
+        let mut emitter_data = EmitterData::load_from_file(ed_file);
+
+        let mut registered_textures = HashMap::new();
+
+        for (k, v) in &mut emitter_data.one_shot_data {
+            if let Some(path) = &v.texture_path {
+                let tex = Self::load_texture(&path);
+                registered_textures.insert(path.clone(), tex);
+                v.texture_idx = Some(tex);
+            }
+        }
 
         Self {
-            emitters: Vec::new(),
+            emitters: vec![],
             vao,
             emitter_data,
+            registered_textures,
+
+            next_staged_id: 0,
+            staged_emitters: vec![],
+            render_staged_emitters: false,
         }
     }
 
-    pub fn spawn_oneshot_emitter(
+    fn load_texture(path: &str) -> u32 {
+        let mut tex = 0;
+
+        println!("FOUND TEXTURE {}", &path);
+
+        unsafe {
+            gl_call!(gl::GenTextures(1, &mut tex));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
+            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32));
+            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
+            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
+            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
+
+            let img = match image::open(path) {
+                Ok(img) => img,
+                _ => panic!("error opening smoke texture"),
+            };
+
+            let (img_width, img_height) = img.dimensions();
+            let rgba = img.to_rgba8();
+            let raw = rgba.as_raw();
+
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA8 as i32,
+                img_width as i32,
+                img_height as i32,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                raw.as_ptr().cast(),
+            ));
+        }
+
+        tex
+    }
+
+    pub fn spawn_oneshot_editor_emitter(
         &mut self, 
-        emitter_name: EmitterName,
+        ed: &EmitterBlackboard,
         origin: Vec3,
-    ) {
+    ) -> usize {
         let mut rng = rng();
-
-        let ed = match self.emitter_data.one_shot_data.get(&emitter_name) {
-            Some(ed) => ed,
-            None     => { 
-                eprintln!("WARNING: no emitter found for type {}", emitter_name);
-                return;
-            }
-        };
-
         let mut emitter = Emitter::new();
 
-        emitter.texture = ed.texture;
+        emitter.texture = match &ed.texture_path {
+            Some(path) => {
+                if let Some(tex) = self.registered_textures.get(path) {
+                    Some(*tex)
+                } else {
+                    let tex = Self::load_texture(&path);
+                    self.registered_textures.insert(path.to_string(), tex);
+                    Some(tex)
+                }
+            },
+            None => None,
+        };
 
         emitter.origin = origin;
         emitter.gravity = ed.gravity;
 
+        let mut local_up = Vec3::Y;
+
+        let desired_dir = if ed.direction.length_squared() > 0.0 {
+            ed.direction.normalize()
+        } else {
+            Vec3::Y // fallback so we don't get NaNs
+        };
+
+        let rot = Quat::from_rotation_arc(local_up, desired_dir);
+
+        emitter.pps = ed.pps;
+
+        if emitter.pps.is_none() {
+            for _ in 0..ed.particle_count {
+                let angle = if ed.angle_rand.x >= ed.angle_rand.y {
+                    ed.angle_rand.x
+                } else {
+                    rng.random_range(ed.angle_rand.x..=ed.angle_rand.y)
+                };
+                let radius = if ed.radius_rand.x >= ed.radius_rand.y {
+                    ed.radius_rand.x
+                } else { 
+                    rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
+                };
+
+
+                let local_offset = vec3(radius * angle.cos(), 0.0, radius * angle.sin());
+
+                let world_offset = rot * local_offset;
+                let position = origin + world_offset;
+
+                let local_dir = local_offset.normalize_or_zero();
+
+                let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
+                    ed.radial_speed.x
+                } else {
+                    rng.random_range(ed.radial_speed.x..=ed.radial_speed.y)
+                };
+
+                let up_speed = if ed.up_speed.x >= ed.up_speed.y {
+                    ed.up_speed.x
+                } else {
+                    rng.random_range(ed.up_speed.x..=ed.up_speed.y)
+                };
+
+                let jitter_amount = if ed.jitter.x >= ed.jitter.y {
+                    ed.jitter.x
+                } else {
+                    rng.random_range(ed.jitter.x..=ed.jitter.y)
+                };
+
+                let jitter_dir = {
+                    let a = rng.random_range(0.0..std::f32::consts::TAU);
+                    vec3(a.cos(), 0.0, a.sin())
+                };
+                let jitter_local = jitter_dir * jitter_amount;
+
+                let local_velocity =
+                local_dir * radial_speed +
+                Vec3::Y * up_speed +
+                jitter_local;
+
+                // Rotate velocity into world space
+                let velocity = rot * local_velocity;
+
+                let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
+                    ed.particle_lifetime.x
+                } else {
+                    rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
+                };
+
+                let scale = if ed.base_scale.x >= ed.base_scale.y {
+                    ed.base_scale.x
+                } else {
+                    rng.random_range(ed.base_scale.x..=ed.base_scale.y)
+                };
+
+                let alpha = if ed.base_alpha.x >= ed.base_alpha.y {
+                    ed.base_alpha.x
+                } else {
+                    rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
+                };
+
+                // color randomization
+                let color = if ed.colors.len() > 1 {
+                    ed.colors[rng.random_range(0..ed.colors.len())]
+                } else {
+                    ed.colors[0]
+                };
+
+                emitter.positions.push(position);
+                emitter.velocities.push(velocity);
+                emitter.colors.push(color);
+                emitter.lifetimes.push(lifetime);
+                emitter.times_alive.push(0.0);
+                emitter.rotation_speeds.push(0.0);
+                emitter.rotation_offsets.push(0.0);
+
+                emitter.alphas.push(alpha);
+                emitter.base_alphas.push(alpha);
+                emitter.end_alphas.push(alpha * ed.alpha_multiplier);
+                emitter.alpha_powers.push(ed.alpha_power);
+
+                emitter.scales.push(scale);
+                emitter.base_scales.push(scale);
+                emitter.end_scales.push(scale * ed.scale_multiplier);
+                emitter.scale_powers.push(ed.scale_power);
+            }
+
+            emitter.count = ed.particle_count;
+        } else {
+            // continuous emitters start with no particles, this avoids len out of bounds error 
+            emitter.count = 0;
+        }
+
+        emitter.editor_blackboard = Some(ed.clone());
+
+        emitter.name = ed.name.clone();
+        emitter.texture_has_alpha = ed.texture_has_alpha; 
+        // emitter.colors = ed.colors.clone();
+        let current_id = self.next_staged_id;
+        let staged_emitter = StagedEmitter {
+            id: current_id,
+            emitter,
+        };
+        self.staged_emitters.push(staged_emitter);
+        self.next_staged_id += 1;
+
+        current_id
+    }
+
+    pub fn spawn_oneshot_emitter(
+        &mut self, 
+        emitter_name: &str,
+        origin: Vec3,
+        direction: Option<Vec3>,
+    ) {
+        let mut rng = rng();
+        let mut emitter = Emitter::new();
+
+        let ed = match self.emitter_data.one_shot_data.get(emitter_name) {
+            Some(ed) => ed,
+            None => panic!("Could not find emitter type of {}", emitter_name),
+        };
+
+        emitter.texture = match &ed.texture_path {
+            Some(path) => {
+                if let Some(tex) = self.registered_textures.get(path) {
+                    Some(*tex)
+                } else {
+                    let tex = Self::load_texture(&path);
+                    self.registered_textures.insert(path.to_string(), tex);
+                    Some(tex)
+                }
+            },
+            None => None,
+        };
+
+        emitter.origin = origin;
+        emitter.gravity = ed.gravity;
+
+        let local_up = Vec3::Y;
+
+        let desired_dir = if let Some(d) = direction {
+            d.normalize()
+        } else {
+            Vec3::Y
+        };
+
+        let rot = Quat::from_rotation_arc(local_up, desired_dir);
+
         for _ in 0..ed.particle_count {
-            let angle = rng.random_range(0.0..std::f32::consts::TAU);
-            let radius = if ed.radius_rand.x == ed.radius_rand.y {
+            let angle = if ed.angle_rand.x >= ed.angle_rand.y {
+                ed.angle_rand.x
+            } else {
+                rng.random_range(ed.angle_rand.x..=ed.angle_rand.y)
+            };
+            let radius = if ed.radius_rand.x >= ed.radius_rand.y {
                 ed.radius_rand.x
             } else { 
-                rng.random_range(ed.radius_rand.x..ed.radius_rand.y)
+                rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
             };
 
-            let x = radius * angle.cos();
-            let z = radius * angle.sin();
+            let local_offset = vec3(radius * angle.cos(), 0.0, radius * angle.sin());
 
-            let position = origin + vec3(x, 0.0, z);
+            let world_offset = rot * local_offset;
+            let position = origin + world_offset;
 
-            let outward = vec3(x, 0.0, z).normalize();
-            let upward = vec3(0.0, rng.random_range(0.0..2.0), 0.0);
-            let velocity = (outward + upward).normalize() * rng.random_range(1.0..3.0);
+            let local_dir = local_offset.normalize_or_zero();
 
-            let lifetime = rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y);
-            let scale = Vec3::splat(rng.random_range(ed.particle_scale.x..=ed.particle_scale.y));
+            let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
+                ed.radial_speed.x
+            } else {
+                rng.random_range(ed.radial_speed.x..=ed.radial_speed.y)
+            };
+
+            let up_speed = if ed.up_speed.x >= ed.up_speed.y {
+                ed.up_speed.x
+            } else {
+                rng.random_range(ed.up_speed.x..=ed.up_speed.y)
+            };
+
+            let jitter_amount = if ed.jitter.x >= ed.jitter.y {
+                ed.jitter.x
+            } else {
+                rng.random_range(ed.jitter.x..=ed.jitter.y)
+            };
+
+            let jitter_dir = {
+                let a = rng.random_range(0.0..std::f32::consts::TAU);
+                vec3(a.cos(), 0.0, a.sin())
+            };
+            let jitter_local = jitter_dir * jitter_amount;
+
+            let local_velocity =
+            local_dir * radial_speed +
+            Vec3::Y * up_speed +
+            jitter_local;
+
+            // Rotate velocity into world space
+            let velocity = rot * local_velocity;
+
+            let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
+                ed.particle_lifetime.x
+            } else {
+                rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
+            };
+
+            let scale = if ed.base_scale.x >= ed.base_scale.y {
+                ed.base_scale.x
+            } else {
+                rng.random_range(ed.base_scale.x..=ed.base_scale.y)
+            };
+
+            let alpha = if ed.base_alpha.x >= ed.base_alpha.y {
+                ed.base_alpha.x
+            } else {
+                rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
+            };
 
             // color randomization
             let color = if ed.colors.len() > 1 {
@@ -330,178 +654,283 @@ impl ParticleSystem {
             emitter.velocities.push(velocity);
             emitter.colors.push(color);
             emitter.lifetimes.push(lifetime);
-            emitter.scales.push(scale);
             emitter.times_alive.push(0.0);
             emitter.rotation_speeds.push(0.0);
             emitter.rotation_offsets.push(0.0);
-            emitter.alphas.push(1.0);
+
+            emitter.alphas.push(alpha);
+            emitter.base_alphas.push(alpha);
+            emitter.end_alphas.push(alpha * ed.alpha_multiplier);
+            emitter.alpha_powers.push(ed.alpha_power);
+
+            emitter.scales.push(scale);
+            emitter.base_scales.push(scale);
+            emitter.end_scales.push(scale * ed.scale_multiplier);
+            emitter.scale_powers.push(ed.scale_power);
+            emitter.texture_has_alpha = ed.texture_has_alpha; 
         }
 
+        emitter.name = ed.name.clone();
+        emitter.pps = ed.pps;
         emitter.count = ed.particle_count;
         // emitter.colors = ed.colors.clone();
         self.emitters.push(emitter);
     }
 
-    pub fn spawn_continuous_emitter(&mut self, pps: usize, origin: Vec3, emit_type: &str, texture_path: Option<&str>) {
-        let mut emitter = Emitter::new();
+    pub fn update(&mut self, dt: f32) {
+        let ed = &self.emitter_data;
 
-        unsafe {
-            if let Some(texture_path) = texture_path {
-                let mut tex = 0;
-
-                gl_call!(gl::GenTextures(1, &mut tex));
-                gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
-                gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32));
-                gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
-                gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
-                gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
-
-                let img = match image::open(texture_path) {
-                    Ok(img) => img,
-                    _ => panic!("error opening smoke texture"),
-                };
-
-                let (img_width, img_height) = img.dimensions();
-                let rgba = img.to_rgba8();
-                let raw = rgba.as_raw();
-
-                gl_call!(gl::TexImage2D(
-                    gl::TEXTURE_2D,
-                    0,
-                    gl::RGBA8 as i32,
-                    img_width as i32,
-                    img_height as i32,
-                    0,
-                    gl::RGBA,
-                    gl::UNSIGNED_BYTE,
-                    raw.as_ptr().cast(),
-                ));
-
-                emitter.texture = Some(tex);
-            }
+        for e in self.emitters.iter_mut() {
+            Self::update_emitter(e, dt, ed);
         }
-
-        emitter.pps = pps;
-        emitter.origin = origin;
-        emitter.emit_type = emit_type.to_string();
-        self.emitters.push(emitter);
+        self.emitters.retain(|e| e.alive);
+        
+        for se in self.staged_emitters.iter_mut() {
+            Self::update_emitter(&mut se.emitter, dt, ed);
+        }
+        self.staged_emitters.retain(|se| se.emitter.alive);
     }
 
-    pub fn update(&mut self, dt: f32) {
-        for emitter in self.emitters.iter_mut() {
-            let gravity = Vec3::new(0.0, emitter.gravity, 0.0);
-            if emitter.pps > 0 {
+    fn update_emitter(
+        emitter: &mut Emitter,
+        dt: f32,
+        emitter_data: &EmitterData,
+    ) {
+        let gravity = Vec3::new(0.0, emitter.gravity, 0.0);
+
+        let def: EmitterBlackboard = if let Some(bb) = &emitter.editor_blackboard {
+            bb.clone()
+        } else {
+            emitter_data
+                .one_shot_data
+                .get(&emitter.name)
+                .expect("missing emitter preset")
+                .clone()
+        };
+
+        if let Some(pps) = emitter.pps {
+            if pps > 0 {
                 emitter.emit_accumulator += dt;
-                let seconds_per_particle = 1.0 / emitter.pps as f32;
+                let seconds_per_particle = 1.0 / pps as f32;
 
                 while emitter.emit_accumulator >= seconds_per_particle {
                     emitter.emit_accumulator -= seconds_per_particle;
-                    Self::spawn_particle(emitter);
+                    ParticleSystem::spawn_particle(emitter, &def);
                 }
-            }
-            let mut i = 0;
-            while i < emitter.count {
-                if emitter.times_alive[i] >= emitter.lifetimes[i] {
-                    let last = emitter.count - 1;
-
-                    emitter.positions.swap(i, last);
-                    emitter.times_alive.swap(i, last);
-                    emitter.lifetimes.swap(i, last);
-                    emitter.velocities.swap(i, last);
-                    emitter.rotation_speeds.swap(i, last);
-                    emitter.rotation_offsets.swap(i, last);
-                    emitter.alphas.swap(i, last);
-
-                    emitter.count -= 1;
-                } else {
-                    // let t_norm = (emitter.times_alive[i] / emitter.lifetimes[i]).clamp(0.0, 1.0);
-
-                    // let velocity_scale = 1.0 - t_norm * t_norm;
-                    // emitter.velocities[i] *= velocity_scale;
-
-                    // emitter.velocities[i] += gravity * dt;
-                    // emitter.positions[i] += emitter.velocities[i] * dt;
-                    // emitter.times_alive[i] += dt;
-
-                    // if emitter.positions[i].y <= 0.0 {
-                    //     emitter.positions[i].y = 0.0;
-                    //     emitter.velocities[i].y *= -0.3;
-
-                    //     let friction = 0.9; // Lower = more friction
-                    //     emitter.velocities[i].x *= friction;
-                    //     emitter.velocities[i].z *= friction;
-                    // }
-
-                    // i += 1;
-
-                    let prev_t_norm = (emitter.times_alive[i] / emitter.lifetimes[i]).clamp(0.0, 1.0);
-                    emitter.times_alive[i] += dt;
-                    let t_norm = (emitter.times_alive[i] / emitter.lifetimes[i]).clamp(0.0, 1.0);
-
-                    //let ease_out_cubic = |u: f32| 1.0 - (1.0 - u).powf(3.0);
-                    //let delta = ease_out_cubic(t_norm) - ease_out_cubic(prev_t_norm);
-
-                    emitter.velocities[i] += gravity * dt;
-                    emitter.positions[i] += emitter.velocities[i] * dt;
-                    //emitter.positions[i] += emitter.velocities[i] * dt;
-                i += 1;
-                }
-            }
-
-            if emitter.count == 0 && emitter.pps == 0 {
-                emitter.alive = false;
             }
         }
 
-        self.emitters.retain(|e| e.alive);
+        // lifetime / gravity stuff
+        let mut i = 0;
+        while i < emitter.count {
+            if emitter.times_alive[i] >= emitter.lifetimes[i] {
+                let last = emitter.count - 1;
+
+                emitter.positions.swap(i, last);
+                emitter.times_alive.swap(i, last);
+                emitter.lifetimes.swap(i, last);
+                emitter.velocities.swap(i, last);
+                emitter.rotation_speeds.swap(i, last);
+                emitter.rotation_offsets.swap(i, last);
+
+                emitter.alphas.swap(i, last);
+                emitter.base_alphas.swap(i, last);
+                emitter.end_alphas.swap(i, last);
+                emitter.alpha_powers.swap(i, last);
+
+                emitter.scales.swap(i, last);
+                emitter.base_scales.swap(i, last);
+                emitter.end_scales.swap(i, last);
+                emitter.scale_powers.swap(i, last);
+
+                emitter.colors.swap(i, last);
+
+                emitter.count -= 1;
+            } else {
+                emitter.times_alive[i] += dt;
+                emitter.velocities[i] += gravity * dt;
+                emitter.positions[i] += emitter.velocities[i] * dt;
+                i += 1;
+            }
+        }
+
+        if emitter.count == 0 {
+            if let Some(pps) = emitter.pps {
+                if pps == 0 {
+                    emitter.alive = false;
+                }
+            } else {
+                emitter.alive = false;
+            }
+        }
     }
 
-    pub fn spawn_particle(emitter: &mut Emitter) {
+    pub fn edit_staged_emitter(&mut self, id: usize, ed: &EmitterBlackboard, origin: Vec3) {
+        if let Some(se) = self.staged_emitters.iter_mut().find(|se| se.id == id) {
+            let emitter = &mut se.emitter;
+
+            emitter.origin = origin;
+            emitter.gravity = ed.gravity;
+            emitter.name = ed.name.clone();
+            emitter.texture_has_alpha = ed.texture_has_alpha;
+            emitter.pps = ed.pps;
+            emitter.editor_blackboard = Some(ed.clone());
+
+            emitter.texture = match &ed.texture_path {
+                Some(path) => {
+                    if let Some(tex) = self.registered_textures.get(path) {
+                        Some(*tex)
+                    } else {
+                        let tex = Self::load_texture(path);
+                        self.registered_textures.insert(path.to_string(), tex);
+                        Some(tex)
+                    }
+                }
+                None => None,
+            };
+        }
+    }
+
+    pub fn spawn_particle(emitter: &mut Emitter, ed: &EmitterBlackboard) {
+        let mut local_up = Vec3::Y;
+
+        let desired_dir = if ed.direction.length_squared() > 0.0 {
+            ed.direction.normalize()
+        } else {
+            Vec3::Y // fallback so we don't get NaNs
+        };
+
+        let rot = Quat::from_rotation_arc(local_up, desired_dir);
         let mut rng = rng();
-        let angle = rng.random_range(0.0..std::f32::consts::TAU);
-        let radius = rng.random_range(0.2..30.0);
 
-        let x = radius * angle.cos();
-        let z = radius * angle.sin();
-        let position = emitter.origin;
+        let angle = if ed.angle_rand.x >= ed.angle_rand.y {
+            ed.angle_rand.x
+        } else {
+            rng.random_range(ed.angle_rand.x..=ed.angle_rand.y)
+        };
 
-        let outward = vec3(x, 0.0, z).normalize_or_zero();
-        let upward = vec3(0.0, rng.random_range(-20.0..20.0), 0.0);
-        let velocity = outward * rng.random_range(2.0..30.0) + upward;
+        let radius = if ed.radius_rand.x >= ed.radius_rand.y {
+            ed.radius_rand.x
+        } else { 
+            rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
+        };
 
-        let lifetime = rng.random_range(6.0..15.0);
-        let scale = Vec3::splat(rng.random_range(1.0..3.0));
+        let local_offset = vec3(radius * angle.cos(), 0.0, radius * angle.sin());
 
-        let rotation_speed = rng.random_range(-3.0..3.0); // Radians per second
-        let rotation_offset = rng.random_range(0.0..std::f32::consts::TAU);
+        let world_offset = rot * local_offset;
+        let position = emitter.origin + world_offset;
 
-        // TODO: Instead allocate the right size at the beginning by multiplying the particles per second by the lifetimes
+        let local_dir = local_offset.normalize_or_zero();
+
+        let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
+            ed.radial_speed.x
+        } else {
+            rng.random_range(ed.radial_speed.x..=ed.radial_speed.y)
+        };
+
+        let up_speed = if ed.up_speed.x >= ed.up_speed.y {
+            ed.up_speed.x
+        } else {
+            rng.random_range(ed.up_speed.x..=ed.up_speed.y)
+        };
+
+        let jitter_amount = if ed.jitter.x >= ed.jitter.y {
+            ed.jitter.x
+        } else {
+            rng.random_range(ed.jitter.x..=ed.jitter.y)
+        };
+
+        let jitter_dir = {
+            let a = rng.random_range(0.0..std::f32::consts::TAU);
+            vec3(a.cos(), 0.0, a.sin())
+        };
+        let jitter_local = jitter_dir * jitter_amount;
+
+        let local_velocity =
+        local_dir * radial_speed +
+        Vec3::Y * up_speed +
+        jitter_local;
+
+        // Rotate velocity into world space
+        let velocity = rot * local_velocity;
+
+        let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
+            ed.particle_lifetime.x
+        } else {
+            rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
+        };
+
+        let scale = if ed.base_scale.x >= ed.base_scale.y {
+            ed.base_scale.x
+        } else {
+            rng.random_range(ed.base_scale.x..=ed.base_scale.y)
+        };
+
+        let alpha = if ed.base_alpha.x >= ed.base_alpha.y {
+            ed.base_alpha.x
+        } else {
+            rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
+        };
+
+        // color randomization
+        let color = if ed.colors.len() > 1 {
+            ed.colors[rng.random_range(0..ed.colors.len())]
+        } else {
+            ed.colors[0]
+        };
+
+        // TODO: Instead allocate the right size at the beginning by multiplying the particles per second by the lifetime
+
         if emitter.count < emitter.positions.len() {
             let i = emitter.count;
             emitter.positions[i] = position;
             emitter.velocities[i] = velocity;
+            emitter.colors[i] = color;
             emitter.lifetimes[i] = lifetime;
-            emitter.scales[i] = scale;
             emitter.times_alive[i] = 0.0;
-            emitter.rotation_speeds[i] = rotation_speed;
-            emitter.rotation_offsets[i] = rotation_offset;
-            emitter.alphas[i] = 0.4;
+            emitter.rotation_speeds[i] = 0.0;
+            emitter.rotation_offsets[i] = 0.0;
+
+            emitter.alphas[i] = alpha;
+            emitter.base_alphas[i] = alpha;
+            emitter.end_alphas[i] = alpha * ed.alpha_multiplier;
+            emitter.alpha_powers[i] = ed.alpha_power;
+
+            emitter.scales[i] = scale;
+            emitter.base_scales[i] = scale;
+            emitter.end_scales[i] = scale * ed.scale_multiplier;
+            emitter.scale_powers[i] = ed.scale_power;
         } else {
             emitter.positions.push(position);
             emitter.velocities.push(velocity);
+            emitter.colors.push(color);
             emitter.lifetimes.push(lifetime);
-            emitter.scales.push(scale);
             emitter.times_alive.push(0.0);
-            emitter.rotation_speeds.push(rotation_speed);
-            emitter.rotation_offsets.push(rotation_offset);
-            emitter.alphas.push(0.4);
+            emitter.rotation_speeds.push(0.0);
+            emitter.rotation_offsets.push(0.0);
+
+            emitter.alphas.push(alpha);
+            emitter.base_alphas.push(alpha);
+            emitter.end_alphas.push(alpha * ed.alpha_multiplier);
+            emitter.alpha_powers.push(ed.alpha_power);
+
+            emitter.scales.push(scale);
+            emitter.base_scales.push(scale);
+            emitter.end_scales.push(scale * ed.scale_multiplier);
+            emitter.scale_powers.push(ed.scale_power);
         }
         emitter.count += 1;
     }
 
     pub fn render(&mut self, shader: &mut Shader, camera: &Camera) {
-        for emitter in self.emitters.iter_mut() {
-            emitter.render(shader, camera, self.vao);
+       // for emitter in self.emitters.iter_mut() {
+       //     emitter.render(shader, camera, self.vao);
+       // }
+        
+        if self.render_staged_emitters {
+            for se in self.staged_emitters.iter_mut() {
+                se.emitter.render(shader, camera, self.vao);
+            }
         }
     }
 

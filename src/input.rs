@@ -16,7 +16,8 @@ pub struct InputState {
 
     pub mouse_pos_current: Vec2,
 
-    pub ray_just_hit: Vec3,
+    pub ray_just_hit: bool,
+    pub ray_pos: Vec3,
 }
 
 impl InputState {
@@ -30,7 +31,8 @@ impl InputState {
 
             mouse_pos_current: Vec2::splat(0.0),
 
-            ray_just_hit: Vec3::splat(0.0),
+            ray_just_hit: false,
+            ray_pos: Vec3::splat(0.0),
         }
     }
 
@@ -158,10 +160,13 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size
                     let groups = collider.collision_groups();
 
                     if groups.memberships & GROUP_TERRAIN.into() != 0.into() {
-                        let hit_point = ray.point_at(toi);
-                        input_state.ray_just_hit = hit_point.into();
-                        println!("HIT THE TERRAIN AT: {:?}", hit_point);
-                        return;
+                        if !input_state.ray_just_hit {
+                            let hit_point = ray.point_at(toi);
+                            input_state.ray_pos = hit_point.into();
+                            println!("HIT THE TERRAIN AT: {:?}", hit_point);
+                            input_state.ray_just_hit = true;
+                            return;
+                        }
                     }
                 }
             }

@@ -428,6 +428,11 @@ impl Display for EmitterName {
     }
 }
 
+pub enum EmitterType {
+    OneShot,
+    Continuous,
+}
+
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Copy, Serialize)]
 #[serde(tag = "shape", rename_all = "PascalCase")]
