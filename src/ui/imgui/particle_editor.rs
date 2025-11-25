@@ -86,8 +86,15 @@ impl ParticleEditor {
 
                     if Drag::new("Gravity").speed(0.1).build(ui, &mut new_emitter.gravity) {};
 
-                    if Drag::new("Radial Speed").speed(0.1).build_array(ui, &mut new_emitter.radial_speed) {};
-                    if Drag::new("Upward Speed").speed(0.1).build_array(ui, &mut new_emitter.up_speed) {};
+                    if Drag::new("Base Radial Speed").speed(0.1).build_array(ui, &mut new_emitter.base_radial_speed) {};
+                    if Drag::new("Radial Speed Multiplier").speed(0.01).build(ui, &mut new_emitter.radial_speed_multiplier) {};
+                    if Drag::new("Radial Speed Curve (1.0 is linear)").speed(0.01).build(ui, &mut new_emitter.radial_speed_power) {};
+
+
+                    if Drag::new("Base Up Speed").speed(0.1).build_array(ui, &mut new_emitter.base_up_speed) {};
+                    if Drag::new("Up Speed Multiplier").speed(0.01).build(ui, &mut new_emitter.up_speed_multiplier) {};
+                    if Drag::new("Up Speed Curve (1.0 is linear)").speed(0.01).build(ui, &mut new_emitter.up_speed_power) {};
+
                     if Drag::new("Particle Lifetime").speed(0.1).build_array(ui, &mut new_emitter.particle_lifetime) {};
                     //if Drag::new("Particle Scale").speed(0.001).build_array(ui, &mut new_emitter.particle_scale) {};
 
@@ -194,8 +201,6 @@ impl ParticleEditor {
                         texture_path: texture_path,
                         texture_idx: None,
                         texture_has_alpha: new_emitter.texture_has_alpha,
-                        radial_speed: new_emitter.radial_speed.into(),
-                        up_speed: new_emitter.up_speed.into(),
                         jitter: new_emitter.jitter.into(),
 
                         base_alpha: new_emitter.base_alpha.into(),
@@ -205,6 +210,14 @@ impl ParticleEditor {
                         base_scale: new_emitter.base_scale.into(),
                         scale_multiplier: new_emitter.scale_multiplier,
                         scale_power: new_emitter.scale_power,
+
+                        base_radial_speed: new_emitter.base_radial_speed.into(),
+                        radial_speed_multiplier: new_emitter.radial_speed_multiplier,
+                        radial_speed_power: new_emitter.radial_speed_power,
+
+                        base_up_speed: new_emitter.base_up_speed.into(),
+                        up_speed_multiplier: new_emitter.up_speed_multiplier,
+                        up_speed_power: new_emitter.up_speed_power,
 
                         direction: new_emitter.direction.into(),
                         pps,

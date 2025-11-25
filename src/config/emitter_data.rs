@@ -51,8 +51,6 @@ pub struct EmitterBlackboard {
     #[serde(default)]
     pub texture_idx: Option<u32>,
     pub texture_has_alpha: bool,
-    pub radial_speed: Vec2,
-    pub up_speed: Vec2,
     pub jitter: Vec2,
 
     pub base_alpha: Vec2,
@@ -62,6 +60,14 @@ pub struct EmitterBlackboard {
     pub base_scale: Vec2,
     pub scale_multiplier: f32,
     pub scale_power: f32,
+
+    pub base_radial_speed: Vec2,
+    pub radial_speed_multiplier: f32,
+    pub radial_speed_power: f32, //
+    
+    pub base_up_speed: Vec2,
+    pub up_speed_multiplier: f32,
+    pub up_speed_power: f32,
 
     pub direction: Vec3,
     pub pps: Option<usize>,
@@ -129,8 +135,6 @@ pub struct UiEmitterBlackboard {
     pub colors: Vec<[f32; 4]>,
     pub texture_path: String,
     pub texture_has_alpha: bool,
-    pub radial_speed: [f32; 2],
-    pub up_speed: [f32; 2],
     pub jitter: [f32; 2],
     
     pub base_alpha: [f32; 2], // start alpha
@@ -140,6 +144,14 @@ pub struct UiEmitterBlackboard {
     pub base_scale: [f32; 2],
     pub scale_multiplier: f32, // Where we end up in the lifetime
     pub scale_power: f32, // curve shape 1.0 is linear
+    
+    pub base_radial_speed: [f32; 2],
+    pub radial_speed_multiplier: f32,
+    pub radial_speed_power: f32, //
+    
+    pub base_up_speed: [f32; 2],
+    pub up_speed_multiplier: f32,
+    pub up_speed_power: f32,
 
     pub direction: [f32; 3],
     
@@ -164,8 +176,6 @@ impl Default for UiEmitterBlackboard {
             colors: vec![],
             texture_path: String::new(),
             texture_has_alpha: false,
-            radial_speed: [0.0, 0.0],
-            up_speed: [1.0, 2.0],
             jitter: [0.01, 0.2],
 
             base_alpha: [1.0, 1.0],
@@ -175,6 +185,14 @@ impl Default for UiEmitterBlackboard {
             base_scale: [0.08, 0.1],
             scale_multiplier: 1.0,
             scale_power: 1.0,
+
+            base_radial_speed: [0.0, 0.0],
+            radial_speed_power: 0.0,
+            radial_speed_multiplier: 0.0,
+
+            base_up_speed: [1.0, 2.0],
+            up_speed_power: 1.0,
+            up_speed_multiplier: 1.0,
 
             direction: [0.0, 1.0, 0.0],
 
