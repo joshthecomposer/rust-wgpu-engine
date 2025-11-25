@@ -346,40 +346,77 @@ impl ParticleSystem {
             // Unbind
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
             gl_call!(gl::BindVertexArray(0));
+        }
 
+        let width  = 1920;
+        let height = 1080;
+
+        unsafe {
             // ===================================================
             // GENERATE BRIGHT COLOR FRAME BUFFER
             // ===================================================
             gl_call!(gl::GenFramebuffers(1, &mut hdr_fbo));
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_fbo));
 
+            let width  = 1920;
+            let height = 1080;
+
             let mut color_buffers: [u32; 2] = [0, 0];
             gl_call!(gl::GenTextures(2, color_buffers.as_mut_ptr()));
-            
+
             for i in 0..2 {
                 gl_call!(gl::BindTexture(gl::TEXTURE_2D, color_buffers[i]));
                 gl_call!(gl::TexImage2D(
                     gl::TEXTURE_2D,
                     0,
                     gl::RGBA16F as i32,
-                    1920,
-                    1080,
+                    width,
+                    height,
                     0,
                     gl::RGBA,
                     gl::FLOAT,
                     std::ptr::null()
                 ));
+                gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32));
+                gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
+                gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
+                gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
+
                 gl_call!(gl::FramebufferTexture2D(
-                    gl::FRAMEBUFFER, 
-                    gl::COLOR_ATTACHMENT0 + i as u32, 
-                    gl::TEXTURE_2D, 
-                    color_buffers[i], 
+                    gl::FRAMEBUFFER,
+                    gl::COLOR_ATTACHMENT0 + i as u32,
+                    gl::TEXTURE_2D,
+                    color_buffers[i],
                     0
                 ));
             }
 
-            hdr_color = color_buffers[0];
+            hdr_color  = color_buffers[0];
             hdr_bright = color_buffers[1];
+
+            // Tell GL we’re drawing to *both* color attachments
+            let attachments = [gl::COLOR_ATTACHMENT0, gl::COLOR_ATTACHMENT1];
+            gl_call!(gl::DrawBuffers(attachments.len() as i32, attachments.as_ptr()));
+
+            // OPTIONAL but recommended: add a depth buffer if you keep depth test on
+            let mut rbo_depth = 0;
+            gl_call!(gl::GenRenderbuffers(1, &mut rbo_depth));
+            gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, rbo_depth));
+            gl_call!(gl::RenderbufferStorage(gl::RENDERBUFFER, gl::DEPTH_COMPONENT24, width, height));
+            gl_call!(gl::FramebufferRenderbuffer(
+                gl::FRAMEBUFFER,
+                gl::DEPTH_ATTACHMENT,
+                gl::RENDERBUFFER,
+                rbo_depth,
+            ));
+
+            // Sanity check
+            let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
+            if status != gl::FRAMEBUFFER_COMPLETE {
+                panic!("HDR FBO incomplete: 0x{:x}", status);
+            }
+
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
         }
 
         let mut emitter_data = EmitterData::load_from_file(ed_file);
@@ -542,7 +579,7 @@ impl ParticleSystem {
             Self::update_emitter(e, dt, ed);
         }
         self.emitters.retain(|e| e.alive);
-        
+
         for se in self.staged_emitters.iter_mut() {
             Self::update_emitter(&mut se.emitter, dt, ed);
         }
@@ -898,16 +935,15 @@ impl ParticleSystem {
     }
 
     pub fn render(&mut self, (shader, bloom_shader): (&mut Shader, &mut Shader), camera: &Camera) {
+        let (fb_w, fb_h) = (1920, 1080); // or pass in the real framebuffer size
+
+        // 1) Render particles into hdr_fbo
         unsafe {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, self.hdr_fbo));
-
-            let attachments = [gl::COLOR_ATTACHMENT0, gl::COLOR_ATTACHMENT1];
-            gl_call!(gl::DrawBuffers(attachments.len() as i32, attachments.as_ptr()));
+            gl_call!(gl::Viewport(0, 0, fb_w, fb_h));
+            gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 0.0));
+            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
         }
-
-        // for emitter in self.emitters.iter_mut() {
-        //     emitter.render(shader, camera, self.vao);
-        // }
 
         if self.render_staged_emitters {
             for se in self.staged_emitters.iter_mut() {
@@ -915,11 +951,13 @@ impl ParticleSystem {
             }
         }
 
+        // 2) Composite hdr_color additively onto **already rendered world**
         unsafe {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
-            gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
-            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
+            // viewport already set by your renderer’s shadow_pass / skybox_pass
             gl_call!(gl::Disable(gl::DEPTH_TEST));
+            gl_call!(gl::Enable(gl::BLEND));
+            gl_call!(gl::BlendFunc(gl::ONE, gl::ONE)); // additive
         }
 
         bloom_shader.activate();
@@ -927,17 +965,14 @@ impl ParticleSystem {
 
         unsafe {
             gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_color));
+            // **Use hdr_bright instead of hdr_color for nice glow**
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_bright));
 
             gl_call!(gl::BindVertexArray(self.vao));
             gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
-            gl_call!(gl::BindVertexArray(0));
-        }
 
-        unsafe {
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            gl_call!(gl::Disable(gl::BLEND));
+            gl_call!(gl::Enable(gl::DEPTH_TEST));
         }
-
     }
-
 }
