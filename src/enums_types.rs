@@ -46,6 +46,7 @@ pub enum ShaderType {
     Gizmo,
     Particles,
     GameUi,
+    Bloom,
 }
 
 /// A struct to carry some rotation state for blending between rotations smoothly

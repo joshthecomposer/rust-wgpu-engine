@@ -55,6 +55,8 @@ impl Renderer {
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
         let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");
 
+        let bloom_shader = Shader::new("resources/shaders/bloom.glsl");
+
         let mut vao = 0;
         let mut vbo = 0;
         let mut ebo = 0;
@@ -234,6 +236,7 @@ impl Renderer {
         shaders.insert(ShaderType::Gizmo, gizmo_shader);
         shaders.insert(ShaderType::Particles, particle_shader);
         shaders.insert(ShaderType::GameUi, game_ui_shader);
+        shaders.insert(ShaderType::Bloom, bloom_shader);
 
         // DEFAULT TEXTURES
         let defaults = DefaultTextures {

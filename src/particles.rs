@@ -257,6 +257,7 @@ impl Emitter {
             // gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
             // gl::Disable(gl::CULL_FACE);
             // gl::Disable(gl::DEPTH_TEST);
+
             gl_call!(gl::DrawArraysInstanced(gl::TRIANGLES, 0, 6, self.count as i32));
             gl_call!(gl::BindVertexArray(0));
             //                     gl::Enable(gl::CULL_FACE);
@@ -297,12 +298,18 @@ pub struct ParticleSystem {
     pub next_staged_id: usize,
     pub staged_emitters: Vec<StagedEmitter>,
     pub render_staged_emitters: bool,
+    pub hdr_fbo: u32,
+    pub hdr_color: u32,
+    pub hdr_bright: u32,
 }
 
 impl ParticleSystem {
     pub fn new(ed_file: &str) -> Self {
         let mut vao = 0;
         let mut vbo = 0;
+        let mut hdr_fbo = 0;
+        let mut hdr_color = 0;
+        let mut hdr_bright = 0;
 
         let quad_vertices: [f32; 30] = [
             // coords            // tex_coords
@@ -339,6 +346,40 @@ impl ParticleSystem {
             // Unbind
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
             gl_call!(gl::BindVertexArray(0));
+
+            // ===================================================
+            // GENERATE BRIGHT COLOR FRAME BUFFER
+            // ===================================================
+            gl_call!(gl::GenFramebuffers(1, &mut hdr_fbo));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_fbo));
+
+            let mut color_buffers: [u32; 2] = [0, 0];
+            gl_call!(gl::GenTextures(2, color_buffers.as_mut_ptr()));
+            
+            for i in 0..2 {
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, color_buffers[i]));
+                gl_call!(gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    gl::RGBA16F as i32,
+                    1920,
+                    1080,
+                    0,
+                    gl::RGBA,
+                    gl::FLOAT,
+                    std::ptr::null()
+                ));
+                gl_call!(gl::FramebufferTexture2D(
+                    gl::FRAMEBUFFER, 
+                    gl::COLOR_ATTACHMENT0 + i as u32, 
+                    gl::TEXTURE_2D, 
+                    color_buffers[i], 
+                    0
+                ));
+            }
+
+            hdr_color = color_buffers[0];
+            hdr_bright = color_buffers[1];
         }
 
         let mut emitter_data = EmitterData::load_from_file(ed_file);
@@ -362,6 +403,10 @@ impl ParticleSystem {
             next_staged_id: 0,
             staged_emitters: vec![],
             render_staged_emitters: false,
+            hdr_fbo,
+            hdr_color,
+            hdr_bright,
+
         }
     }
 
@@ -852,16 +897,47 @@ impl ParticleSystem {
         }
     }
 
-        pub fn render(&mut self, shader: &mut Shader, camera: &Camera) {
-            // for emitter in self.emitters.iter_mut() {
-            //     emitter.render(shader, camera, self.vao);
-            // }
+    pub fn render(&mut self, (shader, bloom_shader): (&mut Shader, &mut Shader), camera: &Camera) {
+        unsafe {
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, self.hdr_fbo));
 
-            if self.render_staged_emitters {
-                for se in self.staged_emitters.iter_mut() {
-                    se.emitter.render(shader, camera, self.vao);
-                }
+            let attachments = [gl::COLOR_ATTACHMENT0, gl::COLOR_ATTACHMENT1];
+            gl_call!(gl::DrawBuffers(attachments.len() as i32, attachments.as_ptr()));
+        }
+
+        // for emitter in self.emitters.iter_mut() {
+        //     emitter.render(shader, camera, self.vao);
+        // }
+
+        if self.render_staged_emitters {
+            for se in self.staged_emitters.iter_mut() {
+                se.emitter.render(shader, camera, self.vao);
             }
         }
 
+        unsafe {
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
+            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
+            gl_call!(gl::Disable(gl::DEPTH_TEST));
+        }
+
+        bloom_shader.activate();
+        bloom_shader.set_int("scene", 0);
+
+        unsafe {
+            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_color));
+
+            gl_call!(gl::BindVertexArray(self.vao));
+            gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
+            gl_call!(gl::BindVertexArray(0));
+        }
+
+        unsafe {
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+        }
+
     }
+
+}

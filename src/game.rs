@@ -299,7 +299,7 @@ impl Game {
 
 
         self.world.particles.render(
-            self.renderer.shaders.get_mut(&ShaderType::Particles).unwrap(),
+            self.renderer.shaders.get_pair_mut(&ShaderType::Particles, &ShaderType::Bloom).unwrap(),
             &self.world.camera,
         );
 
