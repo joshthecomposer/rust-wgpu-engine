@@ -384,7 +384,6 @@ impl ParticleSystem {
         ed: &EmitterBlackboard,
         origin: Vec3,
     ) -> usize {
-        let mut rng = rng();
         let mut emitter = Emitter::new();
 
         emitter.texture = match &ed.texture_path {
@@ -403,120 +402,15 @@ impl ParticleSystem {
         emitter.origin = origin;
         emitter.gravity = ed.gravity;
 
-        let mut local_up = Vec3::Y;
-
         let desired_dir = if ed.direction.length_squared() > 0.0 {
             ed.direction.normalize()
         } else {
             Vec3::Y // fallback so we don't get NaNs
         };
 
-        let rot = Quat::from_rotation_arc(local_up, desired_dir);
-
         emitter.pps = ed.pps;
 
-        if emitter.pps.is_none() {
-            for _ in 0..ed.particle_count {
-                let angle = if ed.angle_rand.x >= ed.angle_rand.y {
-                    ed.angle_rand.x
-                } else {
-                    rng.random_range(ed.angle_rand.x..=ed.angle_rand.y)
-                };
-                let radius = if ed.radius_rand.x >= ed.radius_rand.y {
-                    ed.radius_rand.x
-                } else { 
-                    rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
-                };
-
-
-                let local_offset = vec3(radius * angle.cos(), 0.0, radius * angle.sin());
-
-                let world_offset = rot * local_offset;
-                let position = origin + world_offset;
-
-                let local_dir = local_offset.normalize_or_zero();
-
-                let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
-                    ed.radial_speed.x
-                } else {
-                    rng.random_range(ed.radial_speed.x..=ed.radial_speed.y)
-                };
-
-                let up_speed = if ed.up_speed.x >= ed.up_speed.y {
-                    ed.up_speed.x
-                } else {
-                    rng.random_range(ed.up_speed.x..=ed.up_speed.y)
-                };
-
-                let jitter_amount = if ed.jitter.x >= ed.jitter.y {
-                    ed.jitter.x
-                } else {
-                    rng.random_range(ed.jitter.x..=ed.jitter.y)
-                };
-
-                let jitter_dir = {
-                    let a = rng.random_range(0.0..std::f32::consts::TAU);
-                    vec3(a.cos(), 0.0, a.sin())
-                };
-                let jitter_local = jitter_dir * jitter_amount;
-
-                let local_velocity =
-                local_dir * radial_speed +
-                Vec3::Y * up_speed +
-                jitter_local;
-
-                // Rotate velocity into world space
-                let velocity = rot * local_velocity;
-
-                let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
-                    ed.particle_lifetime.x
-                } else {
-                    rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
-                };
-
-                let scale = if ed.base_scale.x >= ed.base_scale.y {
-                    ed.base_scale.x
-                } else {
-                    rng.random_range(ed.base_scale.x..=ed.base_scale.y)
-                };
-
-                let alpha = if ed.base_alpha.x >= ed.base_alpha.y {
-                    ed.base_alpha.x
-                } else {
-                    rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
-                };
-
-                // color randomization
-                let color = if ed.colors.len() > 1 {
-                    ed.colors[rng.random_range(0..ed.colors.len())]
-                } else {
-                    ed.colors[0]
-                };
-
-                emitter.positions.push(position);
-                emitter.velocities.push(velocity);
-                emitter.colors.push(color);
-                emitter.lifetimes.push(lifetime);
-                emitter.times_alive.push(0.0);
-                emitter.rotation_speeds.push(0.0);
-                emitter.rotation_offsets.push(0.0);
-
-                emitter.alphas.push(alpha);
-                emitter.base_alphas.push(alpha);
-                emitter.end_alphas.push(alpha * ed.alpha_multiplier);
-                emitter.alpha_powers.push(ed.alpha_power);
-
-                emitter.scales.push(scale);
-                emitter.base_scales.push(scale);
-                emitter.end_scales.push(scale * ed.scale_multiplier);
-                emitter.scale_powers.push(ed.scale_power);
-            }
-
-            emitter.count = ed.particle_count;
-        } else {
-            // continuous emitters start with no particles, this avoids len out of bounds error 
-            emitter.count = 0;
-        }
+        Self::calculate_particle_data(ed, origin, Some(desired_dir), &mut emitter);
 
         emitter.editor_blackboard = Some(ed.clone());
 
@@ -540,7 +434,6 @@ impl ParticleSystem {
         origin: Vec3,
         direction: Option<Vec3>,
     ) {
-        let mut rng = rng();
         let mut emitter = Emitter::new();
 
         let ed = match self.emitter_data.one_shot_data.get(emitter_name) {
@@ -563,117 +456,11 @@ impl ParticleSystem {
 
         emitter.origin = origin;
         emitter.gravity = ed.gravity;
+        emitter.pps = ed.pps;
 
-        let local_up = Vec3::Y;
-
-        let desired_dir = if let Some(d) = direction {
-            d.normalize()
-        } else {
-            Vec3::Y
-        };
-
-        let rot = Quat::from_rotation_arc(local_up, desired_dir);
-
-        for _ in 0..ed.particle_count {
-            let angle = if ed.angle_rand.x >= ed.angle_rand.y {
-                ed.angle_rand.x
-            } else {
-                rng.random_range(ed.angle_rand.x..=ed.angle_rand.y)
-            };
-            let radius = if ed.radius_rand.x >= ed.radius_rand.y {
-                ed.radius_rand.x
-            } else { 
-                rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
-            };
-
-            let local_offset = vec3(radius * angle.cos(), 0.0, radius * angle.sin());
-
-            let world_offset = rot * local_offset;
-            let position = origin + world_offset;
-
-            let local_dir = local_offset.normalize_or_zero();
-
-            let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
-                ed.radial_speed.x
-            } else {
-                rng.random_range(ed.radial_speed.x..=ed.radial_speed.y)
-            };
-
-            let up_speed = if ed.up_speed.x >= ed.up_speed.y {
-                ed.up_speed.x
-            } else {
-                rng.random_range(ed.up_speed.x..=ed.up_speed.y)
-            };
-
-            let jitter_amount = if ed.jitter.x >= ed.jitter.y {
-                ed.jitter.x
-            } else {
-                rng.random_range(ed.jitter.x..=ed.jitter.y)
-            };
-
-            let jitter_dir = {
-                let a = rng.random_range(0.0..std::f32::consts::TAU);
-                vec3(a.cos(), 0.0, a.sin())
-            };
-            let jitter_local = jitter_dir * jitter_amount;
-
-            let local_velocity =
-            local_dir * radial_speed +
-            Vec3::Y * up_speed +
-            jitter_local;
-
-            // Rotate velocity into world space
-            let velocity = rot * local_velocity;
-
-            let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
-                ed.particle_lifetime.x
-            } else {
-                rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
-            };
-
-            let scale = if ed.base_scale.x >= ed.base_scale.y {
-                ed.base_scale.x
-            } else {
-                rng.random_range(ed.base_scale.x..=ed.base_scale.y)
-            };
-
-            let alpha = if ed.base_alpha.x >= ed.base_alpha.y {
-                ed.base_alpha.x
-            } else {
-                rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
-            };
-
-            // color randomization
-            let color = if ed.colors.len() > 1 {
-                ed.colors[rng.random_range(0..ed.colors.len())]
-            } else {
-                ed.colors[0]
-            };
-
-            emitter.positions.push(position);
-            emitter.velocities.push(velocity);
-            emitter.colors.push(color);
-            emitter.lifetimes.push(lifetime);
-            emitter.times_alive.push(0.0);
-            emitter.rotation_speeds.push(0.0);
-            emitter.rotation_offsets.push(0.0);
-
-            emitter.alphas.push(alpha);
-            emitter.base_alphas.push(alpha);
-            emitter.end_alphas.push(alpha * ed.alpha_multiplier);
-            emitter.alpha_powers.push(ed.alpha_power);
-
-            emitter.scales.push(scale);
-            emitter.base_scales.push(scale);
-            emitter.end_scales.push(scale * ed.scale_multiplier);
-            emitter.scale_powers.push(ed.scale_power);
-            emitter.texture_has_alpha = ed.texture_has_alpha; 
-        }
+        Self::calculate_particle_data(ed, origin, direction, &mut emitter);
 
         emitter.name = ed.name.clone();
-        emitter.pps = ed.pps;
-        emitter.count = ed.particle_count;
-        // emitter.colors = ed.colors.clone();
         self.emitters.push(emitter);
     }
 
@@ -684,7 +471,7 @@ impl ParticleSystem {
             Self::update_emitter(e, dt, ed);
         }
         self.emitters.retain(|e| e.alive);
-        
+
         for se in self.staged_emitters.iter_mut() {
             Self::update_emitter(&mut se.emitter, dt, ed);
         }
@@ -792,141 +579,174 @@ impl ParticleSystem {
     }
 
     pub fn spawn_particle(emitter: &mut Emitter, ed: &EmitterBlackboard) {
-        let mut local_up = Vec3::Y;
+        let origin = emitter.origin;
 
         let desired_dir = if ed.direction.length_squared() > 0.0 {
-            ed.direction.normalize()
+            Some(ed.direction.normalize())
         } else {
-            Vec3::Y // fallback so we don't get NaNs
+            Some(Vec3::Y) // fallback so we don't get NaNs
+        };
+
+        Self::calculate_particle_data(ed, origin, desired_dir, emitter);
+    }
+
+    pub fn calculate_particle_data(
+        ed: &EmitterBlackboard, 
+        origin: Vec3, 
+        direction: Option<Vec3>,
+        emitter: &mut Emitter,
+    ) {
+        // TODO: Do we want to take the local of particles authored facing other directions or can
+        // we just assume we don't need to?
+        let local_up = Vec3::Y;
+
+        let desired_dir = if let Some(d) = direction {
+            d.normalize()
+        } else {
+            Vec3::Y
         };
 
         let rot = Quat::from_rotation_arc(local_up, desired_dir);
+
         let mut rng = rng();
 
-        let angle = if ed.angle_rand.x >= ed.angle_rand.y {
-            ed.angle_rand.x
+        // How many particles to spawn this call?
+        // - Oneshot emitters (pps == None): spawn all at once
+        // - Continuous emitters (pps == Some): spawn exactly 1 per call
+        let num_to_spawn = if emitter.pps.is_none() {
+            ed.particle_count
         } else {
-            rng.random_range(ed.angle_rand.x..=ed.angle_rand.y)
+            1
         };
 
-        let radius = if ed.radius_rand.x >= ed.radius_rand.y {
-            ed.radius_rand.x
-        } else { 
-            rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
-        };
+        for _ in 0..num_to_spawn {
+            let rot = Quat::from_rotation_arc(local_up, desired_dir);
 
-        let local_offset = vec3(radius * angle.cos(), 0.0, radius * angle.sin());
+            let angle = if ed.angle_rand.x >= ed.angle_rand.y {
+                ed.angle_rand.x
+            } else {
+                rng.random_range(ed.angle_rand.x..=ed.angle_rand.y)
+            };
 
-        let world_offset = rot * local_offset;
-        let position = emitter.origin + world_offset;
+            let radius = if ed.radius_rand.x >= ed.radius_rand.y {
+                ed.radius_rand.x
+            } else { 
+                rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
+            };
 
-        let local_dir = local_offset.normalize_or_zero();
+            let local_offset = vec3(radius * angle.cos(), 0.0, radius * angle.sin());
 
-        let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
-            ed.radial_speed.x
-        } else {
-            rng.random_range(ed.radial_speed.x..=ed.radial_speed.y)
-        };
+            let world_offset = rot * local_offset;
+            let position = emitter.origin + world_offset;
 
-        let up_speed = if ed.up_speed.x >= ed.up_speed.y {
-            ed.up_speed.x
-        } else {
-            rng.random_range(ed.up_speed.x..=ed.up_speed.y)
-        };
+            let local_dir = local_offset.normalize_or_zero();
 
-        let jitter_amount = if ed.jitter.x >= ed.jitter.y {
-            ed.jitter.x
-        } else {
-            rng.random_range(ed.jitter.x..=ed.jitter.y)
-        };
+            let radial_speed = if ed.radial_speed.x >= ed.radial_speed.y {
+                ed.radial_speed.x
+            } else {
+                rng.random_range(ed.radial_speed.x..=ed.radial_speed.y)
+            };
 
-        let jitter_dir = {
-            let a = rng.random_range(0.0..std::f32::consts::TAU);
-            vec3(a.cos(), 0.0, a.sin())
-        };
-        let jitter_local = jitter_dir * jitter_amount;
+            let up_speed = if ed.up_speed.x >= ed.up_speed.y {
+                ed.up_speed.x
+            } else {
+                rng.random_range(ed.up_speed.x..=ed.up_speed.y)
+            };
 
-        let local_velocity =
-        local_dir * radial_speed +
-        Vec3::Y * up_speed +
-        jitter_local;
+            let jitter_amount = if ed.jitter.x >= ed.jitter.y {
+                ed.jitter.x
+            } else {
+                rng.random_range(ed.jitter.x..=ed.jitter.y)
+            };
 
-        // Rotate velocity into world space
-        let velocity = rot * local_velocity;
+            let jitter_dir = {
+                let a = rng.random_range(0.0..std::f32::consts::TAU);
+                vec3(a.cos(), 0.0, a.sin())
+            };
+            let jitter_local = jitter_dir * jitter_amount;
 
-        let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
-            ed.particle_lifetime.x
-        } else {
-            rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
-        };
+            let local_velocity =
+            local_dir * radial_speed +
+            Vec3::Y * up_speed +
+            jitter_local;
 
-        let scale = if ed.base_scale.x >= ed.base_scale.y {
-            ed.base_scale.x
-        } else {
-            rng.random_range(ed.base_scale.x..=ed.base_scale.y)
-        };
+            // Rotate velocity into world space
+            let velocity = rot * local_velocity;
 
-        let alpha = if ed.base_alpha.x >= ed.base_alpha.y {
-            ed.base_alpha.x
-        } else {
-            rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
-        };
+            let lifetime = if ed.particle_lifetime.x >= ed.particle_lifetime.y {
+                ed.particle_lifetime.x
+            } else {
+                rng.random_range(ed.particle_lifetime.x..=ed.particle_lifetime.y)
+            };
 
-        // color randomization
-        let color = if ed.colors.len() > 1 {
-            ed.colors[rng.random_range(0..ed.colors.len())]
-        } else {
-            ed.colors[0]
-        };
+            let scale = if ed.base_scale.x >= ed.base_scale.y {
+                ed.base_scale.x
+            } else {
+                rng.random_range(ed.base_scale.x..=ed.base_scale.y)
+            };
 
-        // TODO: Instead allocate the right size at the beginning by multiplying the particles per second by the lifetime
+            let alpha = if ed.base_alpha.x >= ed.base_alpha.y {
+                ed.base_alpha.x
+            } else {
+                rng.random_range(ed.base_alpha.x..=ed.base_alpha.y)
+            };
 
-        if emitter.count < emitter.positions.len() {
-            let i = emitter.count;
-            emitter.positions[i] = position;
-            emitter.velocities[i] = velocity;
-            emitter.colors[i] = color;
-            emitter.lifetimes[i] = lifetime;
-            emitter.times_alive[i] = 0.0;
-            emitter.rotation_speeds[i] = 0.0;
-            emitter.rotation_offsets[i] = 0.0;
+            // color randomization
+            let color = if ed.colors.len() > 1 {
+                ed.colors[rng.random_range(0..ed.colors.len())]
+            } else {
+                ed.colors[0]
+            };
 
-            emitter.alphas[i] = alpha;
-            emitter.base_alphas[i] = alpha;
-            emitter.end_alphas[i] = alpha * ed.alpha_multiplier;
-            emitter.alpha_powers[i] = ed.alpha_power;
+            // TODO: Instead allocate the right size at the beginning by multiplying the particles per second by the lifetime
+            if emitter.count < emitter.positions.len() {
+                let i = emitter.count;
+                emitter.positions[i] = position;
+                emitter.velocities[i] = velocity;
+                emitter.colors[i] = color;
+                emitter.lifetimes[i] = lifetime;
+                emitter.times_alive[i] = 0.0;
+                emitter.rotation_speeds[i] = 0.0;
+                emitter.rotation_offsets[i] = 0.0;
 
-            emitter.scales[i] = scale;
-            emitter.base_scales[i] = scale;
-            emitter.end_scales[i] = scale * ed.scale_multiplier;
-            emitter.scale_powers[i] = ed.scale_power;
-        } else {
-            emitter.positions.push(position);
-            emitter.velocities.push(velocity);
-            emitter.colors.push(color);
-            emitter.lifetimes.push(lifetime);
-            emitter.times_alive.push(0.0);
-            emitter.rotation_speeds.push(0.0);
-            emitter.rotation_offsets.push(0.0);
+                emitter.alphas[i] = alpha;
+                emitter.base_alphas[i] = alpha;
+                emitter.end_alphas[i] = alpha * ed.alpha_multiplier;
+                emitter.alpha_powers[i] = ed.alpha_power;
 
-            emitter.alphas.push(alpha);
-            emitter.base_alphas.push(alpha);
-            emitter.end_alphas.push(alpha * ed.alpha_multiplier);
-            emitter.alpha_powers.push(ed.alpha_power);
+                emitter.scales[i] = scale;
+                emitter.base_scales[i] = scale;
+                emitter.end_scales[i] = scale * ed.scale_multiplier;
+                emitter.scale_powers[i] = ed.scale_power;
+            } else {
+                emitter.positions.push(position);
+                emitter.velocities.push(velocity);
+                emitter.colors.push(color);
+                emitter.lifetimes.push(lifetime);
+                emitter.times_alive.push(0.0);
+                emitter.rotation_speeds.push(0.0);
+                emitter.rotation_offsets.push(0.0);
 
-            emitter.scales.push(scale);
-            emitter.base_scales.push(scale);
-            emitter.end_scales.push(scale * ed.scale_multiplier);
-            emitter.scale_powers.push(ed.scale_power);
+                emitter.alphas.push(alpha);
+                emitter.base_alphas.push(alpha);
+                emitter.end_alphas.push(alpha * ed.alpha_multiplier);
+                emitter.alpha_powers.push(ed.alpha_power);
+
+                emitter.scales.push(scale);
+                emitter.base_scales.push(scale);
+                emitter.end_scales.push(scale * ed.scale_multiplier);
+                emitter.scale_powers.push(ed.scale_power);
+            }
+
+            emitter.count += 1;
         }
-        emitter.count += 1;
     }
 
     pub fn render(&mut self, shader: &mut Shader, camera: &Camera) {
-       // for emitter in self.emitters.iter_mut() {
-       //     emitter.render(shader, camera, self.vao);
-       // }
-        
+        // for emitter in self.emitters.iter_mut() {
+        //     emitter.render(shader, camera, self.vao);
+        // }
+
         if self.render_staged_emitters {
             for se in self.staged_emitters.iter_mut() {
                 se.emitter.render(shader, camera, self.vao);
