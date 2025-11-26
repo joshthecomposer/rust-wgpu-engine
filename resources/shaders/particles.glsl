@@ -1,5 +1,5 @@
 // VERTEX_SHADER
-#version 410 core
+#version 460 core
 layout (location = 0) in vec3 a_pos;
 layout (location = 1) in vec2 a_tex_coords;
 layout (location = 2) in mat4 instance_matrix;
@@ -22,7 +22,7 @@ void main() {
 }
 
 // FRAGMENT_SHADER
-#version 410 core
+#version 460 core
 layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;
 

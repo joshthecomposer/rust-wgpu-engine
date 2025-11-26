@@ -12,7 +12,7 @@ impl Platform {
     pub fn new(title: &str, w: u32, h: u32, vsync: bool) -> Self {
         let mut glfw = glfw::init(glfw::fail_on_errors).expect("Failed to init glfw");
 
-        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 1)); // opengl version
+        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 6)); // opengl version
         glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
         glfw.window_hint(glfw::WindowHint::Resizable(true));
 

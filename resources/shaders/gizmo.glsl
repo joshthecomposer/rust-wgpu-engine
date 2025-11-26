@@ -1,5 +1,5 @@
 // VERTEX_SHADER
-#version 410 core
+#version 460 core
 layout (location = 0) in vec3 a_pos;
 
 out vec3 FragPos;
@@ -15,7 +15,7 @@ void main()
 }
 
 // FRAGMENT_SHADER
-#version 410 core
+#version 460 core
 out vec4 FragColor;
 
 in vec3 FragPos;
