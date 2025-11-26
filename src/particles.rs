@@ -743,9 +743,9 @@ impl ParticleSystem {
     }
 
     pub fn render(&mut self, shader: &mut Shader, camera: &Camera) {
-        // for emitter in self.emitters.iter_mut() {
-        //     emitter.render(shader, camera, self.vao);
-        // }
+        for emitter in self.emitters.iter_mut() {
+            emitter.render(shader, camera, self.vao);
+        }
 
         if self.render_staged_emitters {
             for se in self.staged_emitters.iter_mut() {

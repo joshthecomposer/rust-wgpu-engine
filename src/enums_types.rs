@@ -233,6 +233,23 @@ pub enum PlayerState {
     Block,
 }
 
+impl Display for PlayerState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            PlayerState::Init         => write!(f, "Init"),
+            PlayerState::Idle         => write!(f, "Idle"),
+            PlayerState::Running      => write!(f, "Running"),
+            PlayerState::Jumping      => write!(f, "Jumping"),
+            PlayerState::Freefalling  => write!(f, "Freefalling"),
+            PlayerState::Combat       => write!(f, "Combat"),
+            PlayerState::Dying        => write!(f, "Dying"),
+            PlayerState::Dead         => write!(f, "Dead"),
+            PlayerState::Dashing      => write!(f, "Dashing"),
+            PlayerState::Block        => write!(f, "Block"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct PlayerController {
     pub state: PlayerState,
@@ -245,6 +262,16 @@ pub enum AttackState {
     Attack1,
     Attack2,
     Attack3,
+}
+
+impl Display for AttackState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            AttackState::Attack1 => write!(f, "Attack1"),
+            AttackState::Attack2 => write!(f, "Attack2"),
+            AttackState::Attack3 => write!(f, "Attack3"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize, Serialize)]

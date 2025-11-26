@@ -37,7 +37,7 @@
         }
       ],
       "base_speed": 6.5,
-      "health": 100.0,
+      "health": 100000.0,
       "jump_height": 1.0,
       "cleanup_timer": null
     },
