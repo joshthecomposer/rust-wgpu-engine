@@ -19,6 +19,8 @@ use crate::time::Time;
 use crate::platform::Platform;
 use crate::world::World;
 
+// Farts
+
 pub struct Game {
     platform: Platform, // OS/window/events
     time: Time, // delta time, alpha time, elapsed time
