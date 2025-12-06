@@ -226,7 +226,7 @@ colors = [
     1.0,
 ],
 ]
-texture_path = 'C:\Users\jdwis\OneDrive\Desktop\2d7afc3dc3c2b6e1d29682aa33974933ee4eb4f3_2_250x250.png'
+texture_path = ''
 texture_idx = 2
 texture_has_alpha = false
 radial_speed = [
@@ -549,7 +549,7 @@ colors = [
     1.0,
 ],
 ]
-texture_path = 'E:\Software_Dev\rust\rust-opengl-engine\resources\textures\brushes\820.jpg'
+texture_path = 'resources\textures\brushes\820.jpg'
 texture_idx = 1
 texture_has_alpha = false
 radial_speed = [
