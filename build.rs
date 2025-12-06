@@ -17,32 +17,31 @@ fn main() {
         println!("cargo:rustc-link-lib=dylib=assimp");
     }
 
-    // Debug: Check if Bash is available
     #[cfg(target_os = "windows")]
     {
-        let bash_status = Command::new("where")
-            .arg("bash")
+        let script_path = "copy_files.bat";
+        if !Path::new(script_path).exists() {
+            panic!("Script not found: {}", script_path);
+        }
+        let status = Command::new("cmd")
+            .args(["/C", script_path])
             .status()
-            .expect("Failed to check for Bash installation");
-
-        if !bash_status.success() {
-            panic!("Bash not found! Ensure it's installed and in PATH.");
+            .expect("Failed to execute batch script");
+        if !status.success() {
+            panic!("Batch script failed with status: {:?}", status);
         }
     }
 
-    //#[allow(clippy)]
+    #[cfg(not(target_os = "windows"))]
     {
-        let resource_script_path = "./copy_files.sh";
-
-        if !Path::new(resource_script_path).exists() {
-            panic!("Script not found {}", resource_script_path);
+        let script_path = "./copy_files.sh";
+        if !Path::new(script_path).exists() {
+            panic!("Script not found: {}", script_path);
         }
-
         let status = Command::new("bash")
-            .arg(resource_script_path)
+            .arg(script_path)
             .status()
-            .expect("Failed to execute external Bash script");
-
+            .expect("Failed to execute bash script");
         if !status.success() {
             panic!("Script failed with status: {:?}", status);
         }
