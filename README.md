@@ -7,18 +7,13 @@ A 3D game engine built in Rust with OpenGL.
 ### Prerequisites
 
 1. **Install MSVC Toolchain**
-   - Download and install [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+   - Download and install [Visual Studio Build Tools 2022](https://my.visualstudio.com/Downloads?q=Visual%20Studio%202022)
    - Select "Desktop development with C++" workload
 
 2. **Install CMake**
    - Download and install [CMake 4.2.0](https://cmake.org/download/) from the official website
 
-3. **Install Ninja**
-   ```powershell
-   choco install ninja -y
-   ```
-
-4. **Dependencies**
+3. **Dependencies**
    - Libs are manually provided for the time being
    - Ensure the `libs/` folder is present with required libraries
 
