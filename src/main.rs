@@ -40,7 +40,7 @@ use std::io::Write;
 
 use crate::platform::Platform;
 
-use winit::application::ApplicationHandler;
+use winit::{application::ApplicationHandler, event::DeviceEvent};
 use winit::event::{WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::WindowId;
@@ -86,7 +86,6 @@ impl ApplicationHandler for App {
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         // This runs every time winit is about to sleep
         let now = self.start.elapsed().as_secs_f32();
-        self.game.begin_input_frame();
         self.game.tick(now);
 
         // Continuous redraw
@@ -94,6 +93,21 @@ impl ApplicationHandler for App {
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {}
+
+    fn device_event(
+            &mut self,
+            event_loop: &ActiveEventLoop,
+            device_id: winit::event::DeviceId,
+            event: winit::event::DeviceEvent,
+        ) {
+        if let DeviceEvent::MouseMotion { delta } = event {
+            // delta: (dx, dy) in f64
+            let (dx, dy) = delta;
+            if !self.game.paused {
+                self.game.world.camera.process_mouse_input(dx, dy);
+            }
+        }
+    }
 }
 
 fn main() {

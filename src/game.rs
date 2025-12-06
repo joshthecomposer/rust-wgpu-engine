@@ -1,8 +1,10 @@
 use std::path::Path;
 
+use gl::ActiveTexture;
 use glutin::surface::GlSurface;
 use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::window::CursorGrabMode;
 
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
@@ -19,20 +21,20 @@ use crate::physics::PhysicsState;
 use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
 use crate::time::Time;
-use crate::platform::Platform;
+use crate::platform::{CursorMode, Platform};
 use crate::world::World;
 
 pub struct Game {
     pub platform: Platform, // OS/window/events
     time: Time, // delta time, alpha time, elapsed time
     physics: PhysicsState,
-    world: World, // ECS, terrain, particles, sim
+    pub world: World, // ECS, terrain, particles, sim
     renderer: Renderer,
     sound: SoundManager,
-    input: InputState,
+    pub input: InputState,
     ui: GameUiContext,
     imgui_manager: ImguiManager,
-    paused: bool,
+    pub paused: bool,
     message_queue: MessageQueue,
     // imgui: SpagImgui,
     // something
@@ -76,15 +78,20 @@ impl Game {
 
 
         // Mouse lock / cursor mode
-        let desired_cursor_mode = if self.paused
-        || self.world.camera.move_state == CameraState::Locked
-        {
+        if self.paused {
             self.platform.window.set_cursor_visible(true);
+            let _ = self.platform.window.set_cursor_grab(CursorGrabMode::None);
+            self.platform.cursor_mode = CursorMode::Normal;
         } else {
             self.platform.window.set_cursor_visible(false);
-        };
+            let _ = self.platform.window.set_cursor_grab(CursorGrabMode::Confined);
+            self.platform.cursor_mode = CursorMode::Hidden;
+        }
+
+        let mut stepped = false;
 
         while self.time.should_step() {
+            stepped = true;
             self.time.begin_fixed_step();
 
             {
@@ -159,6 +166,10 @@ impl Game {
 
         self.update();
         self.render();
+        
+        if stepped {
+            self.input.update();
+        }
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
@@ -191,16 +202,16 @@ impl Game {
             }
 
             WindowEvent::CursorMoved { position, .. } => {
-                let io = self.imgui_manager.imgui.io();
-                if !io.want_capture_mouse {
-                    if !self.paused {
-                        self.world
-                            .camera
-                            .process_mouse_input(*position);
-                    }
-                    self.input.mouse_pos_current =
-                        glam::vec2(position.x as f32, position.y as f32);
-                }
+                //let io = self.imgui_manager.imgui.io();
+                //if !io.want_capture_mouse {
+                //    if !self.paused {
+                //        self.world
+                //            .camera
+                //            .process_mouse_input(*position);
+                //    }
+                //    self.input.mouse_pos_current =
+                //        glam::vec2(position.x as f32, position.y as f32);
+                //}
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
@@ -271,10 +282,6 @@ impl Game {
 
             _ => {}
         }
-    }
-
-    pub fn begin_input_frame(&mut self) {
-        self.input.update();
     }
 
     pub fn update(&mut self) {

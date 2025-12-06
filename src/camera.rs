@@ -196,22 +196,37 @@ impl Camera {
         self.first_mousing = true;
     }
 
-    pub fn process_mouse_input(&mut self, position: PhysicalPosition<f64>) {
-        let xpos = position.x;
-        let ypos = position.y;
+    pub fn process_mouse_input(&mut self, dx: f64, dy: f64) {
+        let mut x_offset = dx as f64;
+        let mut y_offset = dy as f64; // invert y
 
-        match self.move_state {
-            CameraState::Free => {
-                self.handle_mouse_delta_free(xpos, ypos);
-            }
-            CameraState::Third => {
-                self.handle_mouse_delta_third(xpos, ypos);
-            }
-            CameraState::Locked => {
-                // ignore mouse look
-            }
-        }
+        x_offset *= self.sensitivity;
+        y_offset *= self.sensitivity;
+
+        self.yaw += x_offset;
+        self.pitch += y_offset;
+
+        self.clamp_angles();
+
+        self.update_direction_from_angles();
     }
+
+    //pub fn process_mouse_input(&mut self, position: PhysicalPosition<f64>) {
+    //    let xpos = position.x;
+    //    let ypos = position.y;
+
+    //    match self.move_state {
+    //        CameraState::Free => {
+    //            self.handle_mouse_delta_free(xpos, ypos);
+    //        }
+    //        CameraState::Third => {
+    //            self.handle_mouse_delta_third(xpos, ypos);
+    //        }
+    //        CameraState::Locked => {
+    //            // ignore mouse look
+    //        }
+    //    }
+    //}
 
     fn handle_mouse_delta_free(&mut self, xpos: f64, ypos: f64) {
         if self.first_mousing {
