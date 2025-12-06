@@ -2,12 +2,9 @@ use core::fmt;
 use std::{collections::{HashMap, HashSet}, fmt::Display, fs::{read_to_string, write}, hash::Hash, ptr::hash};
 use glam::{Quat, Vec2, Vec3, Vec4};
 use image::{GenericImageView, Rgba};
-use russimp::Color4D;
 use serde_json::ser::Formatter;
 use toml::value::{Table, Value, Array};
-
 use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
-
 use crate::{enums_types::{EmitterName, EntityType, Faction}, gl_call};
 
 
