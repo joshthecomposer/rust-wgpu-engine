@@ -22,7 +22,10 @@ A 3D game engine built in Rust with OpenGL.
 **VS Code (recommended):**
 - The run command auto-populates via Terminal Keeper extension
 
-**Manual:**
+**Neovim (more recommended):**
+./poop.bat
+
+**Other:**
 ```cmd
 poop.bat
 ```
