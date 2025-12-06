@@ -12,7 +12,7 @@ impl PlayerData {
         em: &mut EntityManager,
         size: &[f32; 2]
     ) {
-        ui.window("Entity Editor")
+        ui.window("Player Data")
             .size([500.0, size[1]], imgui::Condition::FirstUseEver)
             .position([0.0, 0.0], imgui::Condition::FirstUseEver)
             .build(|| {
