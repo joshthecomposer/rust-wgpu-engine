@@ -197,18 +197,38 @@ impl Camera {
     }
 
     pub fn process_mouse_input(&mut self, dx: f64, dy: f64) {
-        let mut x_offset = dx as f64;
-        let mut y_offset = -dy as f64; // invert y
+        match self.move_state {
+            CameraState::Locked => {
+            },
+            CameraState::Third => {
+                let mut x_offset = dx as f64;
+                let mut y_offset = dy as f64; // invert y
 
-        x_offset *= self.sensitivity;
-        y_offset *= self.sensitivity;
+                x_offset *= self.sensitivity;
+                y_offset *= self.sensitivity;
 
-        self.yaw += x_offset;
-        self.pitch += y_offset;
+                self.yaw += x_offset;
+                self.pitch += y_offset;
 
-        self.clamp_angles();
+                self.clamp_angles();
 
-        self.update_direction_from_angles();
+                self.update_direction_from_angles();
+            },
+            CameraState::Free => {
+                let mut x_offset = dx as f64;
+                let mut y_offset = -dy as f64; // invert y
+
+                x_offset *= self.sensitivity;
+                y_offset *= self.sensitivity;
+
+                self.yaw += x_offset;
+                self.pitch += y_offset;
+
+                self.clamp_angles();
+
+                self.update_direction_from_angles();
+            },
+        }
     }
 
     pub fn process_mouse_input_movement(&mut self, position: PhysicalPosition<f64>) {
