@@ -226,7 +226,6 @@ colors = [
     1.0,
 ],
 ]
-texture_path = ''
 texture_idx = 2
 texture_has_alpha = false
 radial_speed = [
