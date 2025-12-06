@@ -198,7 +198,7 @@ impl Camera {
 
     pub fn process_mouse_input(&mut self, dx: f64, dy: f64) {
         let mut x_offset = dx as f64;
-        let mut y_offset = dy as f64; // invert y
+        let mut y_offset = -dy as f64; // invert y
 
         x_offset *= self.sensitivity;
         y_offset *= self.sensitivity;
