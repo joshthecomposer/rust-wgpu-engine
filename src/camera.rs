@@ -211,22 +211,20 @@ impl Camera {
         self.update_direction_from_angles();
     }
 
-    //pub fn process_mouse_input(&mut self, position: PhysicalPosition<f64>) {
-    //    let xpos = position.x;
-    //    let ypos = position.y;
+    pub fn process_mouse_input_movement(&mut self, position: PhysicalPosition<f64>) {
+        let xpos = position.x;
+        let ypos = position.y;
 
-    //    match self.move_state {
-    //        CameraState::Free => {
-    //            self.handle_mouse_delta_free(xpos, ypos);
-    //        }
-    //        CameraState::Third => {
-    //            self.handle_mouse_delta_third(xpos, ypos);
-    //        }
-    //        CameraState::Locked => {
-    //            // ignore mouse look
-    //        }
-    //    }
-    //}
+        match self.move_state {
+            CameraState::Free => {
+            }
+            CameraState::Third => {
+            }
+            CameraState::Locked => {
+                
+            }
+        }
+    }
 
     fn handle_mouse_delta_free(&mut self, xpos: f64, ypos: f64) {
         if self.first_mousing {

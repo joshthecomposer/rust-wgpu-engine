@@ -78,7 +78,7 @@ impl Game {
 
 
         // Mouse lock / cursor mode
-        if self.paused {
+        if self.paused || self.world.camera.move_state == CameraState::Locked {
             self.platform.window.set_cursor_visible(true);
             let _ = self.platform.window.set_cursor_grab(CursorGrabMode::None);
             self.platform.cursor_mode = CursorMode::Normal;
@@ -202,16 +202,16 @@ impl Game {
             }
 
             WindowEvent::CursorMoved { position, .. } => {
-                //let io = self.imgui_manager.imgui.io();
-                //if !io.want_capture_mouse {
-                //    if !self.paused {
-                //        self.world
-                //            .camera
-                //            .process_mouse_input(*position);
-                //    }
-                //    self.input.mouse_pos_current =
-                //        glam::vec2(position.x as f32, position.y as f32);
-                //}
+                let io = self.imgui_manager.imgui.io();
+                if !io.want_capture_mouse {
+                    if !self.paused {
+                        self.world
+                            .camera
+                            .process_mouse_input_movement(*position);
+                    }
+                    self.input.mouse_pos_current =
+                        glam::vec2(position.x as f32, position.y as f32);
+                }
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
