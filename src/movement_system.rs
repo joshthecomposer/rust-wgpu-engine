@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use glam::{vec3, Quat, Vec3};
 use rapier3d::{control::{CharacterAutostep, CharacterLength, KinematicCharacterController}, prelude::{QueryFilter, QueryFilterFlags}};
+use winit::keyboard::KeyCode;
 
 use crate::{camera::{CamMoveBasis, Camera}, entity_manager::{glam_to_nalgebra_quat, EntityManager}, enums_types::{AnimationType, CameraState, EntityType, Faction, PlayerState, SimState, Transform, VisualEffect, ANIMATION_EPSILON}, input::InputState, physics::PhysicsState, some_data::{FREEFALL_DELAY, GRAVITY}, terrain::Terrain};
 
@@ -69,10 +70,10 @@ fn handle_player_movement_rapier(
     let forward_flat = vec3(cam_basis.fwd_flat.x, 0.0, cam_basis.fwd_flat.z).normalize_or_zero();
     let right_flat = vec3(cam_basis.right_flat.x, 0.0, cam_basis.right_flat.z).normalize_or_zero();
 
-    if input_state.keys_current.contains(&glfw::Key::W) { move_dir += forward_flat; }
-    if input_state.keys_current.contains(&glfw::Key::S) { move_dir -= forward_flat; }
-    if input_state.keys_current.contains(&glfw::Key::D) { move_dir += right_flat; }
-    if input_state.keys_current.contains(&glfw::Key::A) { move_dir -= right_flat; }
+    if input_state.keys_current.contains(&KeyCode::KeyW) { move_dir += forward_flat; }
+    if input_state.keys_current.contains(&KeyCode::KeyS) { move_dir -= forward_flat; }
+    if input_state.keys_current.contains(&KeyCode::KeyD) { move_dir += right_flat; }
+    if input_state.keys_current.contains(&KeyCode::KeyA) { move_dir -= right_flat; }
 
     let rotator = em.rotators.get_mut(player_key).unwrap();
 

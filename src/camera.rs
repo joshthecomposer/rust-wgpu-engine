@@ -1,12 +1,19 @@
 #![allow(dead_code, clippy::single_match)]
+
 use glam::{vec3, Mat4, Vec3};
-use glfw::{Action, Key, PWindow, WindowEvent};
+use winit::{dpi::PhysicalPosition, keyboard::KeyCode};
 
-// comment
+use crate::{
+    entity_manager::EntityManager,
+    enums_types::{CameraState},
+    input::{InputState},
+    physics::PhysicsState,
+};
 
-use crate::{entity_manager::EntityManager, enums_types::{CameraState, Faction, PlayerState}, input::{mouse_ray_from_screen, InputState}, physics::PhysicsState, renderer};
-
-pub struct CamMoveBasis { pub fwd_flat: glam::Vec3, pub right_flat: glam::Vec3 }
+pub struct CamMoveBasis {
+    pub fwd_flat: glam::Vec3,
+    pub right_flat: glam::Vec3,
+}
 
 pub struct Camera {
     pub yaw: f64,
@@ -22,7 +29,7 @@ pub struct Camera {
     pub sensitivity: f64,
 
     pub first_mousing: bool,
-    pub last_x: f64, 
+    pub last_x: f64,
     pub last_y: f64,
 
     pub z_near: f32,
@@ -37,15 +44,14 @@ pub struct Camera {
     pub move_state: CameraState,
 
     pub distance_from_target: f32,
-    
 
     pub locked_position: Vec3,
     pub locked_target: Vec3,
 
     pub desired_position: Vec3,
     pub desired_target: Vec3,
-    
-    // TESTING
+
+    // interpolation cache
     pub prev_pos: Vec3,
     pub prev_forward: Vec3,
     pub prev_up: Vec3,
@@ -88,7 +94,7 @@ impl Camera {
 
             desired_position: vec3(0.0, 15.0, 0.0),
             desired_target: vec3(2.5, 0.0, 0.0),
-            
+
             prev_pos: vec3(0.0, 0.0, 15.0),
             prev_forward: vec3(0.0, 0.0, -1.0),
             prev_up: vec3(0.0, 1.0, 0.0),
@@ -97,29 +103,34 @@ impl Camera {
     }
 
     pub fn basis_for_sim(&self) -> CamMoveBasis {
-        // Yaw-only basis on the XZ plane (RH coordinates, camera looks -Z at yaw=0)
         let yaw = self.yaw.to_radians() as f32;
 
-        // "Camera forward" on ground plane — points from camera toward its target.
-        // At yaw=0 => (0,0,-1). As you orbit, this rotates smoothly.
         let f = glam::Vec3::new(-yaw.cos(), 0.0, -yaw.sin()).normalize();
-
-        // Right = f × up (RH). If you prefer A/D to be swapped, flip the cross order.
         let r = f.cross(glam::Vec3::Y).normalize();
 
-        CamMoveBasis { fwd_flat: f, right_flat: r }
+        CamMoveBasis {
+            fwd_flat: f,
+            right_flat: r,
+        }
     }
 
-    pub fn update(&mut self, _em: &EntityManager, dt: f32, ps: &PhysicsState, alpha: f32, input: &InputState, aspect: f32) {
+    pub fn update(
+        &mut self,
+        em: &EntityManager,
+        dt: f32,
+        _ps: &PhysicsState,
+        alpha: f32,
+        input: &InputState,
+        aspect: f32,
+    ) {
         match self.move_state {
             CameraState::Free => {
                 self.forward = self.direction.normalize();
                 self.target = self.position + self.forward;
             }
             CameraState::Third => {
-                if let Some(player_key) = _em.factions.iter().find(|e| e.value() == "Player") {
-
-                    let player_transform = _em.transforms.get(player_key.key()).unwrap();
+                if let Some(player_key) = em.factions.iter().find(|e| e.value() == "Player") {
+                    let player_transform = em.transforms.get(player_key.key()).unwrap();
 
                     self.desired_target = player_transform.position + vec3(0.0, 1.1, 0.0);
 
@@ -136,12 +147,12 @@ impl Camera {
                     self.target = self.desired_target;
 
                     self.forward = (self.target - self.position).normalize();
-                } 
+                }
             }
             CameraState::Locked => {
                 self.target = self.locked_target;
                 self.position = self.locked_position;
-                self.forward = Vec3::normalize(self.target - self.position);
+                self.forward = (self.target - self.position).normalize();
             }
         }
 
@@ -150,29 +161,25 @@ impl Camera {
 
         self.process_key_event(dt, input);
 
-        // final cleanup
         self.projection = glam::Mat4::perspective_rh_gl(
             self.fovy,
             aspect,
             self.z_near,
             self.z_far,
         );
+
         match self.move_state {
             CameraState::Free | CameraState::Locked => {
-                //let pos    = self.prev_pos.lerp(self.position, alpha);
-                //let target = self.prev_target.lerp(self.target, alpha);
-                //let up     = self.prev_up.lerp(self.up, alpha).normalize();
-                //self.view  = glam::Mat4::look_at_rh(pos, target, up);
                 let p = self.prev_pos.lerp(self.position, alpha);
                 let f = self.prev_forward.lerp(self.forward, alpha).normalize();
                 let r = f.cross(glam::Vec3::Y).normalize();
                 let u = r.cross(f).normalize();
                 self.view = glam::Mat4::look_at_rh(p, p + f, u);
-            },
+            }
             CameraState::Third => {
-                let pos    = self.prev_pos.lerp(self.position, alpha);
+                let pos = self.prev_pos.lerp(self.position, alpha);
                 let target = self.prev_target.lerp(self.target, alpha);
-                let up     = self.prev_up.lerp(self.up, alpha).normalize();
+                let up = self.prev_up.lerp(self.up, alpha).normalize();
                 self.view = glam::Mat4::look_at_rh(pos, target, up);
             }
         }
@@ -182,130 +189,131 @@ impl Camera {
         self.view = Mat4::look_at_rh(self.position, self.target, self.up);
     }
 
-    pub fn sync_mouse_position(&mut self, window: &PWindow) {
-        let (x, y) = window.get_cursor_pos();
-        self.last_x = x;
-        self.last_y = y;
+    // Call this when switching camera modes to reset the "first mouse" delta.
+    pub fn sync_mouse_position_from_input(&mut self, input: &InputState) {
+        self.last_x = input.mouse_pos_current.x as f64;
+        self.last_y = input.mouse_pos_current.y as f64;
         self.first_mousing = true;
     }
 
-    pub fn process_mouse_input(&mut self, window: &PWindow, event: &WindowEvent) {
-        if self.move_state == CameraState::Free {
-            match event {
-                // Pitch yaw stuff
-                glfw::WindowEvent::CursorPos(xpos, ypos) => {
-                    if self.first_mousing {
-                        self.last_x = *xpos;
-                        self.last_y = *ypos;
-                        self.first_mousing = false;
-                        return;
-                    }
+    pub fn process_mouse_input(&mut self, position: PhysicalPosition<f64>) {
+        let xpos = position.x;
+        let ypos = position.y;
 
-                    let mut x_offset = xpos - self.last_x;
-                    let mut y_offset = self.last_y - ypos;
-
-                    self.last_x = *xpos;
-                    self.last_y = *ypos;
-
-                    x_offset *= self.sensitivity; 
-                    y_offset *= self.sensitivity;
-                    self.yaw += x_offset;
-                    self.pitch += y_offset;
-
-                    if self.yaw >= 360.0 { 
-                        self.yaw -= 360.0;
-                    } else if self.yaw < 0.0 {
-                        self.yaw += 360.0;
-                    }
-                    
-                    self.pitch = self.pitch.clamp(-89.0, 89.0);
-
-                    self.direction.x = (self.yaw.to_radians().cos() * self.pitch.to_radians().cos()) as f32;
-                    self.direction.y = self.pitch.to_radians().sin() as f32;
-                    self.direction.z = (self.yaw.to_radians().sin() * self.pitch.to_radians().cos()) as f32;
-                    self.direction = self.direction.normalize();
-
-                    self.forward = self.direction;
-                },
-                _ => {}
-
+        match self.move_state {
+            CameraState::Free => {
+                self.handle_mouse_delta_free(xpos, ypos);
             }
-
-            // Zoom
-
-        }
-
-        if self.move_state == CameraState::Third{
-            match event {
-                // Pitch yaw stuff
-                glfw::WindowEvent::CursorPos(xpos, ypos) => {
-                    if self.first_mousing {
-                        self.last_x = *xpos;
-                        self.last_y = *ypos;
-                        self.first_mousing = false;
-                        return;
-                    }
-
-                    let mut x_offset = xpos - self.last_x;
-                    let mut y_offset = self.last_y - ypos;
-
-                    self.last_x = *xpos;
-                    self.last_y = *ypos;
-
-                    x_offset *= self.sensitivity; 
-                    y_offset *= self.sensitivity;
-                    self.yaw += x_offset;
-                    self.pitch -= y_offset;
-
-                    if self.yaw >= 360.0 { 
-                        self.yaw -= 360.0;
-                    } else if self.yaw < 0.0 {
-                        self.yaw += 360.0;
-                    }
-                    
-                    self.pitch = self.pitch.clamp(-89.0, 89.0);
-
-                    self.direction.x = (self.yaw.to_radians().cos() * self.pitch.to_radians().cos()) as f32;
-                    self.direction.y = self.pitch.to_radians().sin() as f32;
-                    self.direction.z = (self.yaw.to_radians().sin() * self.pitch.to_radians().cos()) as f32;
-                    self.direction = self.direction.normalize();
-
-                    self.forward = self.direction;
-                },
-                _ => {}
-
+            CameraState::Third => {
+                self.handle_mouse_delta_third(xpos, ypos);
             }
-
-            // Zoom
-
+            CameraState::Locked => {
+                // ignore mouse look
+            }
         }
     }
 
+    fn handle_mouse_delta_free(&mut self, xpos: f64, ypos: f64) {
+        if self.first_mousing {
+            self.last_x = xpos;
+            self.last_y = ypos;
+            self.first_mousing = false;
+            return;
+        }
+
+        let mut x_offset = xpos - self.last_x;
+        let mut y_offset = self.last_y - ypos; // invert y
+
+        self.last_x = xpos;
+        self.last_y = ypos;
+
+        x_offset *= self.sensitivity;
+        y_offset *= self.sensitivity;
+
+        self.yaw += x_offset;
+        self.pitch += y_offset;
+
+        self.clamp_angles();
+
+        self.update_direction_from_angles();
+    }
+
+    fn handle_mouse_delta_third(&mut self, xpos: f64, ypos: f64) {
+        if self.first_mousing {
+            self.last_x = xpos;
+            self.last_y = ypos;
+            self.first_mousing = false;
+            return;
+        }
+
+        let mut x_offset = xpos - self.last_x;
+        let mut y_offset = self.last_y - ypos;
+
+        self.last_x = xpos;
+        self.last_y = ypos;
+
+        x_offset *= self.sensitivity;
+        y_offset *= self.sensitivity;
+
+        self.yaw += x_offset;
+        self.pitch -= y_offset; // note: flipped sign vs Free
+
+        self.clamp_angles();
+
+        self.update_direction_from_angles();
+    }
+
+    fn clamp_angles(&mut self) {
+        if self.yaw >= 360.0 {
+            self.yaw -= 360.0;
+        } else if self.yaw < 0.0 {
+            self.yaw += 360.0;
+        }
+
+        self.pitch = self.pitch.clamp(-89.0, 89.0);
+    }
+
+    fn update_direction_from_angles(&mut self) {
+        let yaw_rad = self.yaw.to_radians();
+        let pitch_rad = self.pitch.to_radians();
+
+        self.direction.x = (yaw_rad.cos() * pitch_rad.cos()) as f32;
+        self.direction.y = pitch_rad.sin() as f32;
+        self.direction.z = (yaw_rad.sin() * pitch_rad.cos()) as f32;
+        self.direction = self.direction.normalize();
+
+        self.forward = self.direction;
+    }
+
     pub fn process_key_event(&mut self, delta: f32, input: &InputState) {
+        use KeyCode::*;
+
         if self.move_state == CameraState::Free {
-            if input.is_down(Key::W) {
+            if input.is_down(KeyW) {
                 self.position += (self.movement_speed * self.forward) * delta;
             }
-            if input.is_down(Key::S) {
+            if input.is_down(KeyS) {
                 self.position -= (self.movement_speed * self.forward) * delta;
             }
-            if input.is_down(Key::A) {
-                self.position += ((self.up.cross(self.forward).normalize()) * self.movement_speed) * delta;
+            if input.is_down(KeyA) {
+                self.position +=
+                    (self.up.cross(self.forward).normalize() * self.movement_speed) * delta;
             }
-            if input.is_down(Key::D) {
-                self.position -= ((self.up.cross(self.forward).normalize()) * self.movement_speed) * delta;
+            if input.is_down(KeyD) {
+                self.position -=
+                    (self.up.cross(self.forward).normalize() * self.movement_speed) * delta;
             }
         }
 
-        if input.is_down(Key::U) {
+        if input.is_down(KeyU) {
             self.fovy = 5.0_f32.to_radians();
         } else {
             self.fovy = 45.0_f32.to_radians();
         }
-        
-        if input.just_pressed(Key::L){
+
+        if input.just_pressed(KeyL) {
             self.locked_target = self.target;
-            self.locked_position  = self.position;
+            self.locked_position = self.position;
         }
     }
 }

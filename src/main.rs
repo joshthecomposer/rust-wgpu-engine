@@ -38,7 +38,69 @@ use game::Game;
 use glam::Quat;
 use std::io::Write;
 
+use crate::platform::Platform;
+
+use winit::application::ApplicationHandler;
+use winit::event::{WindowEvent};
+use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::window::WindowId;
+
+struct App {
+    game: Game,
+    window_id: WindowId,
+    start: std::time::Instant,
+}
+
+impl App {
+    fn new(game: Game) -> Self {
+        let window_id = game.platform.window.id();
+        Self {
+            game,
+            window_id,
+            start: std::time::Instant::now(),
+        }
+    }
+}
+
+impl ApplicationHandler for App {
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        window_id: WindowId,
+        event: WindowEvent,
+    ) {
+        if window_id != self.window_id {
+            return;
+        }
+
+        match &event {
+            WindowEvent::CloseRequested => {
+                event_loop.exit(); // TODO: Put this in the message queue like it was in glfw
+            }
+            _ => {
+                self.game.handle_window_event(&event);
+            }
+        }
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        // This runs every time winit is about to sleep
+        let now = self.start.elapsed().as_secs_f32();
+        self.game.begin_input_frame();
+        self.game.tick(now);
+
+        // Continuous redraw
+        self.game.platform.window.request_redraw();
+    }
+
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {}
+}
+
 fn main() {
-    let mut game = Game::new();
-    game.run();
+    let (platform, event_loop) = Platform::new("Spaghetti engine", 1920, 1080, false);
+
+    let game = Game::new(platform);
+    let mut app = App::new(game);
+
+    event_loop.run_app(&mut app).expect("event loop error");
 }

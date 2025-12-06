@@ -1,18 +1,18 @@
 use std::collections::HashSet;
 
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec3Swizzles, Vec4Swizzles};
-use glfw::MouseButton;
 
 use rapier3d::{data::Index, prelude::*};
+use winit::{event::{ElementState, MouseButton}, keyboard::KeyCode};
 
 use crate::{camera::{self, Camera}, entity_manager::EntityManager, enums_types::{AnimationType, CameraState, Faction}, physics::PhysicsState, some_data::GROUP_TERRAIN};
 
 pub struct InputState {
-    pub keys_current: HashSet<glfw::Key>,           // Held this frame
-    pub keys_previous: HashSet<glfw::Key>,          // held last frame
+    pub keys_current: HashSet<KeyCode>,           // Held this frame
+    pub keys_previous: HashSet<KeyCode>,          // held last frame
 
-    pub mouse_current: HashSet<glfw::MouseButton>,  // Held this frame
-    pub mouse_previous: HashSet<glfw::MouseButton>, // held last frame
+    pub mouse_current: HashSet<MouseButton>,  // Held this frame
+    pub mouse_previous: HashSet<MouseButton>, // held last frame
 
     pub mouse_pos_current: Vec2,
 
@@ -36,63 +36,63 @@ impl InputState {
         }
     }
 
-    pub fn just_pressed(&self, key: glfw::Key) -> bool {
+    pub fn just_pressed(&self, key: KeyCode) -> bool {
         self.keys_current.contains(&key) && !self.keys_previous.contains(&key)
     }
 
-    pub fn just_released(&self, key: glfw::Key) -> bool {
+    pub fn just_released(&self, key: KeyCode) -> bool {
         !self.keys_current.contains(&key) && self.keys_previous.contains(&key)
     }
 
     pub fn space_just_pressed(&self) -> bool {
-        self.keys_current.contains(&glfw::Key::Space) && !self.keys_previous.contains(&glfw::Key::Space)
+        self.keys_current.contains(&KeyCode::Space) && !self.keys_previous.contains(&KeyCode::Space)
     }
     
-    pub fn is_down(&self, key: glfw::Key) -> bool {
+    pub fn is_down(&self, key: KeyCode) -> bool {
         self.keys_current.contains(&key)
     }
 
     pub fn wasd_is_down(&self) -> bool {
-        self.keys_current.contains(&glfw::Key::W)
-       || self.keys_current.contains(&glfw::Key::S)
-       || self.keys_current.contains(&glfw::Key::A)
-       || self.keys_current.contains(&glfw::Key::D)
+        self.keys_current.contains(&KeyCode::KeyW)
+       || self.keys_current.contains(&KeyCode::KeyS)
+       || self.keys_current.contains(&KeyCode::KeyA)
+       || self.keys_current.contains(&KeyCode::KeyD)
     }
     
     pub fn shift_is_down(&self) -> bool {
-        self.keys_current.contains(&glfw::Key::LeftShift)
+        self.keys_current.contains(&KeyCode::ShiftLeft)
     }
 
-    pub fn mouse_just_pressed(&self, b: glfw::MouseButton) -> bool {
+    pub fn mouse_just_pressed(&self, b: MouseButton) -> bool {
         self.mouse_current.contains(&b) && !self.mouse_previous.contains(&b)
     }
 
-    pub fn mouse_just_released(&self, b: glfw::MouseButton) -> bool {
+    pub fn mouse_just_released(&self, b: MouseButton) -> bool {
         !self.mouse_current.contains(&b) && self.mouse_previous.contains(&b)
     }
 
     pub fn left_mouse_just_pressed(&self) -> bool {
-        self.mouse_current.contains(&glfw::MouseButtonLeft) && !self.mouse_previous.contains(&glfw::MouseButtonLeft)
+        self.mouse_current.contains(&MouseButton::Left) && !self.mouse_previous.contains(&MouseButton::Left)
     }
 
     pub fn left_mouse_just_released(&self) -> bool {
-        !self.mouse_current.contains(&glfw::MouseButtonLeft) && self.mouse_previous.contains(&glfw::MouseButtonLeft)
+        !self.mouse_current.contains(&MouseButton::Left) && self.mouse_previous.contains(&MouseButton::Left)
     }
 
     pub fn right_mouse_just_pressed(&self) -> bool {
-        self.mouse_current.contains(&glfw::MouseButtonRight) && !self.mouse_previous.contains(&glfw::MouseButtonRight)
+        self.mouse_current.contains(&MouseButton::Right) && !self.mouse_previous.contains(&MouseButton::Right)
     }
 
     pub fn right_mouse_just_released(&self) -> bool {
-        !self.mouse_current.contains(&glfw::MouseButtonRight) && self.mouse_previous.contains(&glfw::MouseButtonRight)
+        !self.mouse_current.contains(&MouseButton::Right) && self.mouse_previous.contains(&MouseButton::Right)
     }
 
-    pub fn mouse_is_down(&self, b: glfw::MouseButton) -> bool {
+    pub fn mouse_is_down(&self, b: MouseButton) -> bool {
         self.mouse_current.contains(&b)
     }
 
     pub fn right_mouse_is_down(&self) -> bool {
-        self.mouse_current.contains(&glfw::MouseButtonRight)
+        self.mouse_current.contains(&MouseButton::Right)
     }
 
 
@@ -102,10 +102,10 @@ impl InputState {
     }
 }
 
-pub fn handle_keyboard_input(key: glfw::Key, action: glfw::Action, input_state: &mut InputState) {
+pub fn handle_keyboard_input(key: KeyCode, action: ElementState, input_state: &mut InputState) {
     match action {
-        glfw::Action::Press => { input_state.keys_current.insert(key); }
-        glfw::Action::Release => { input_state.keys_current.remove(&key); }
+        ElementState::Pressed => { input_state.keys_current.insert(key); }
+        ElementState::Released => { input_state.keys_current.remove(&key); }
         _=> ()
     }
 }
@@ -113,15 +113,15 @@ pub fn handle_keyboard_input(key: glfw::Key, action: glfw::Action, input_state: 
 pub fn handle_mouse_motion() {
 }
 
-pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &mut InputState, physics: &mut PhysicsState) {
+pub fn handle_mouse_input(button: MouseButton, action: ElementState, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &mut InputState, physics: &mut PhysicsState) {
     let cursor_pos = input_state.mouse_pos_current;
     let pressed_keys = &input_state.keys_current;
     match action {
-        glfw::Action::Press => { 
+        ElementState::Pressed => { 
             input_state.mouse_current.insert(button);
-            if button == glfw::MouseButtonLeft {
+            if button == MouseButton::Left {
 
-                if !pressed_keys.contains(&glfw::Key::LeftShift) {
+                if !pressed_keys.contains(&KeyCode::ShiftLeft) {
                     em.empty_selected_and_reset_bodies(physics);
                 }
 
@@ -171,7 +171,7 @@ pub fn handle_mouse_input(button: MouseButton, action: glfw::Action, screen_size
                 }
             }
         },
-        glfw::Action::Release => { input_state.mouse_current.remove(&button); },
+        ElementState::Released => { input_state.mouse_current.remove(&button); },
         _ => ()
    }
 }

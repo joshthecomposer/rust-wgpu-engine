@@ -1,6 +1,9 @@
 use std::path::Path;
 
-use glfw::Context;
+use glutin::surface::GlSurface;
+use winit::event::{ElementState, KeyEvent, WindowEvent};
+use winit::keyboard::{KeyCode, PhysicalKey};
+
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
 use crate::entity_manager::EntityManager;
@@ -20,7 +23,7 @@ use crate::platform::Platform;
 use crate::world::World;
 
 pub struct Game {
-    platform: Platform, // OS/window/events
+    pub platform: Platform, // OS/window/events
     time: Time, // delta time, alpha time, elapsed time
     physics: PhysicsState,
     world: World, // ECS, terrain, particles, sim
@@ -36,21 +39,21 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new() -> Self {
+    pub fn new(mut platform: Platform) -> Self {
         let config = GameConfig::load_from_file("config/game_config.json");
 
-        let mut platform = Platform::new("Spaghetti engine", 1920, 1080, false);
-        let time = Time::new(60.0, platform.glfw.get_time() as f32);
+        let start_seconds = 0.0;
+        let time = Time::new(60.0, start_seconds);
+
         let mut physics = PhysicsState::new();
         let mut world = World::new();
-        let imgui_manager = ImguiManager::new(&mut platform.window);
+
+        let imgui_manager = ImguiManager::new(&platform);
 
         world.ecs.populate_entity_data(&mut physics);
 
         let renderer = Renderer::new();
-
         let sound = SoundManager::new(&config);
-
         let ui = GameUiContext::new();
 
         Self {
@@ -67,178 +70,211 @@ impl Game {
             message_queue: MessageQueue::new(),
         }
     }
-    
-    pub fn run(&mut self) {
-        while !self.platform.window.should_close() {
-            self.time.begin_frame(self.platform.glfw.get_time() as f32);
 
-            self.platform.glfw.poll_events();
+    pub fn tick(&mut self, now_seconds: f32) {
+        self.time.begin_frame(now_seconds);
 
-            let desired_cursor_mode = if self.paused {
-                glfw::CursorMode::Normal
-            } else if self.world.camera.move_state == CameraState::Locked {
-                glfw::CursorMode::Normal
-            } else {
-                glfw::CursorMode::Disabled
-            };
 
-            self.platform.window.set_cursor_mode(desired_cursor_mode);
+        // Mouse lock / cursor mode
+        let desired_cursor_mode = if self.paused
+        || self.world.camera.move_state == CameraState::Locked
+        {
+            self.platform.window.set_cursor_visible(true);
+        } else {
+            self.platform.window.set_cursor_visible(false);
+        };
 
-            while self.time.should_step() {
-                self.time.begin_fixed_step();
+        while self.time.should_step() {
+            self.time.begin_fixed_step();
 
-                
-                // Snapshot all transforms
-                {
-                    for curr in self.world.ecs.transforms.iter() {
-                        self.world.ecs.prev_transforms.insert(curr.key(), curr.value().clone());
-                    }
+            {
+                for curr in self.world.ecs.transforms.iter() {
+                    self.world
+                        .ecs
+                        .prev_transforms
+                        .insert(curr.key(), curr.value().clone());
                 }
-
-                // Snapshot camera
-                {
-                    let cam = &mut self.world.camera;
-                    cam.prev_pos     = cam.position;
-                    cam.prev_forward = cam.forward;
-                    cam.prev_up      = cam.up;
-                    cam.prev_target  = cam.target;
-                }
-
-                // poll events and update input
-                {
-                    self.input.update();
-                    for (_, e) in glfw::flush_messages(&self.platform.events) {
-                        self.imgui_manager.handle_imgui_event(&e);
-
-                        let io = self.imgui_manager.imgui.io();
-
-                        match e {
-                            glfw::WindowEvent::FileDrop(paths) => {
-                                for path in paths {
-
-                                    match path.extension().and_then(|ext| ext.to_str()) {
-                                        Some("txt") => {
-                                            self.imgui_manager.entity_editor.new_archetype.mesh_path = path.to_string_lossy().into_owned();
-                                        },
-                                        Some("png") | Some("jpg") | Some("jpeg") => {
-                                            self.imgui_manager.entity_editor.new_archetype.texture_path = path.to_string_lossy().into_owned();
-                                            self.imgui_manager.particle_editor.staged_texture = path.to_string_lossy().into_owned();
-                                        },
-                                        Some(_) => {},
-                                        None => {},
-                                    }
-                                }
-                            },
-                            glfw::WindowEvent::CursorPos(x, y) => {
-                                if !io.want_capture_mouse {
-                                    if !self.paused {
-                                        self.world.camera.process_mouse_input(&self.platform.window, &e);
-                                    }
-                                    self.input.mouse_pos_current = glam::vec2(x as f32, y as f32);
-                                }
-                            }
-                            glfw::WindowEvent::MouseButton(b, a, _) => {
-                                if !io.want_capture_mouse {
-                                    input::handle_mouse_input(
-                                        b,
-                                        a,
-                                        glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32),
-                                        &self.world.camera,
-                                        &mut self.world.ecs,
-                                        &mut self.input,
-                                        &mut self.physics,
-                                    );
-                                }
-                            }
-                            glfw::WindowEvent::Key(k, _, a, _) => {
-                                if !io.want_capture_keyboard {
-                                    input::handle_keyboard_input(k, a, &mut self.input);
-                                    match (k,a) {
-                                        (glfw::Key::Escape, glfw::Action::Press) => self.paused = !self.paused,
-                                        _ => ()
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-
-                    if self.input.just_pressed(glfw::Key::F) {
-                        let maybe_player_id = self.world.ecs.factions.iter().find(|e| *e.value() == "Player");
-
-                        self.world.camera.move_state = match self.world.camera.move_state {
-                            CameraState::Free  => {
-                                if maybe_player_id.is_none() {
-                                    CameraState::Locked
-                                } else {
-                                    CameraState::Third
-                                }
-                            },
-                            CameraState::Third => CameraState::Locked,
-                            CameraState::Locked=> CameraState::Free,
-                        };
-                    } 
-                }
-                
-                let cam_basis = self.world.camera.basis_for_sim();
-
-                if !self.paused {
-                    grounding_solver::grounding_solver(
-                        &mut self.world.ecs, 
-                        &self.physics, 
-                    );
-                    state_machine_system::update(
-                        &mut self.world.ecs, 
-                        self.time.fixed_dt, 
-                        &mut self.world.particles,
-                        &self.input, 
-                        &mut self.physics, 
-                        &mut self.sound, 
-                        &self.world.camera
-                    );
-                    items::update(&mut self.world.ecs, &mut self.physics);
-                    animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
-                    combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics, &mut self.world.particles);
-                    self.world.ecs.update(&mut self.sound, &mut self.physics, &mut self.input, self.time.fixed_dt);
-
-                    Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
-                    // this is mostly for when we select and move them
-                    Self::push_static_kinematics(&self.world.ecs, &mut self.physics);
-
-                    match self.world.camera.move_state {
-                        CameraState::Third | CameraState::Locked => {
-                            movement_system::update(
-                                &mut self.world.ecs,
-                                self.time.fixed_dt,
-                                &cam_basis,
-                                &self.input,
-                                &mut self.physics,
-                            );
-                        },
-                        _ => (),
-                    }
-
-                    {
-                        self.physics.step();
-                    }
-                }
-
-                // post-physics pull RBs, handle events, snapshot current transforms
-                Self::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
-                
-                self.time.end_fixed_step();
             }
 
-            self.time.end_frame();
+            {
+                let cam = &mut self.world.camera;
+                cam.prev_pos = cam.position;
+                cam.prev_forward = cam.forward;
+                cam.prev_up = cam.up;
+                cam.prev_target = cam.target;
+            }
 
-            self.update(); // Variable rate systems
-            self.render(); // render uses time.alpha and interps
+            let cam_basis = self.world.camera.basis_for_sim();
 
-            // unsafe { dbg!(DRAW_CALLS); }
+            if !self.paused {
+                grounding_solver::grounding_solver(&mut self.world.ecs, &self.physics);
 
-            // unsafe { DRAW_CALLS = 0; }
+                state_machine_system::update(
+                    &mut self.world.ecs,
+                    self.time.fixed_dt,
+                    &mut self.world.particles,
+                    &self.input,
+                    &mut self.physics,
+                    &mut self.sound,
+                    &self.world.camera,
+                );
+
+                items::update(&mut self.world.ecs, &mut self.physics);
+                animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
+                combat_system::update(
+                    &mut self.world.ecs,
+                    self.time.fixed_dt,
+                    &mut self.physics,
+                    &mut self.world.particles,
+                );
+                self.world
+                    .ecs
+                    .update(&mut self.sound, &mut self.physics, &mut self.input, self.time.fixed_dt);
+
+                Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
+                Self::push_static_kinematics(&self.world.ecs, &mut self.physics);
+
+                match self.world.camera.move_state {
+                    CameraState::Third | CameraState::Locked => {
+                        movement_system::update(
+                            &mut self.world.ecs,
+                            self.time.fixed_dt,
+                            &cam_basis,
+                            &self.input,
+                            &mut self.physics,
+                        );
+                    }
+                    _ => {}
+                }
+
+                self.physics.step();
+            }
+
+            Self::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
+
+            self.time.end_fixed_step();
         }
 
+        self.time.end_frame();
+
+        self.update();
+        self.render();
+    }
+
+    pub fn handle_window_event(&mut self, event: &WindowEvent) {
+        match event {
+            WindowEvent::Resized(size) => {
+                self.platform.fb_width = size.width;
+                self.platform.fb_height = size.height;
+            }
+
+            WindowEvent::CloseRequested => {
+            }
+
+            WindowEvent::DroppedFile(path) => {
+                let path = Path::new(path);
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    match ext {
+                        "txt" => {
+                            self.imgui_manager.entity_editor.new_archetype.mesh_path =
+                                path.to_string_lossy().into_owned();
+                        }
+                        "png" | "jpg" | "jpeg" => {
+                            self.imgui_manager.entity_editor.new_archetype.texture_path =
+                                path.to_string_lossy().into_owned();
+                            self.imgui_manager.particle_editor.staged_texture =
+                                path.to_string_lossy().into_owned();
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            WindowEvent::CursorMoved { position, .. } => {
+                let io = self.imgui_manager.imgui.io();
+                if !io.want_capture_mouse {
+                    if !self.paused {
+                        self.world
+                            .camera
+                            .process_mouse_input(*position);
+                    }
+                    self.input.mouse_pos_current =
+                        glam::vec2(position.x as f32, position.y as f32);
+                }
+            }
+
+            WindowEvent::MouseInput { state, button, .. } => {
+                let io = self.imgui_manager.imgui.io();
+                if !io.want_capture_mouse {
+                    let fb = glam::vec2(
+                        self.platform.fb_width as f32,
+                        self.platform.fb_height as f32,
+                    );
+
+                    input::handle_mouse_input(
+                        *button,
+                        *state,
+                        fb,
+                        &self.world.camera,
+                        &mut self.world.ecs,
+                        &mut self.input,
+                        &mut self.physics,
+                    );
+                }
+            }
+
+            WindowEvent::KeyboardInput {
+                event:
+                KeyEvent {
+                    physical_key,
+                    state,
+                    ..
+                },
+                ..
+            } => {
+                let io = self.imgui_manager.imgui.io();
+                if !io.want_capture_keyboard {
+                    if let PhysicalKey::Code(code) = physical_key {
+                        let keycode: KeyCode = *code;
+
+                        input::handle_keyboard_input(keycode, *state, &mut self.input);
+
+                        // Escape toggles pause
+                        if keycode == KeyCode::Escape && *state == ElementState::Pressed {
+                            self.paused = !self.paused;
+                        }
+
+                        // F toggles camera mode (Free <-> Third <-> Locked)
+                        if keycode == KeyCode::KeyF && *state == ElementState::Pressed {
+                            let maybe_player_id = self
+                                .world
+                                .ecs
+                                .factions
+                                .iter()
+                                .find(|e| *e.value() == "Player");
+
+                            self.world.camera.move_state = match self.world.camera.move_state {
+                                CameraState::Free => {
+                                    if maybe_player_id.is_none() {
+                                        CameraState::Locked
+                                    } else {
+                                        CameraState::Third
+                                    }
+                                }
+                                CameraState::Third => CameraState::Locked,
+                                CameraState::Locked => CameraState::Free,
+                            };
+                        }
+                    }
+                }
+            }
+
+            _ => {}
+        }
+    }
+
+    pub fn begin_input_frame(&mut self) {
+        self.input.update();
     }
 
     pub fn update(&mut self) {
@@ -249,16 +285,12 @@ impl Game {
 
         let msgs = self.message_queue.drain();
 
-        if msgs.contains(&UiMessage::WindowShouldClose) {
-            self.platform.window.set_should_close(true);
-        }
-
         if msgs.contains(&UiMessage::ReloadWorldData) {
             let mut world = World::new();
             let mut physics = PhysicsState::new();
 
             world.ecs.populate_entity_data(&mut physics);
-            
+
             // Cleanup 3d sounds
             {
                 let keys: Vec<usize> = self.sound.active_3d_sounds.keys().cloned().collect();
@@ -307,8 +339,12 @@ impl Game {
         // unsafe { gl::Disable(gl::FRAMEBUFFER_SRGB); }
 
         // Fix for mac scaled pixels garbage.
-        let (win_w, win_h) = self.platform.window.get_size();                 // logical points
-        let (fb_w,  fb_h)  = self.platform.window.get_framebuffer_size();     // physical pixels
+        let logical_size = self.platform.window.inner_size();
+        let win_w = logical_size.width as f32;
+        let win_h = logical_size.height as f32;
+
+        let fb_w = self.platform.fb_width as f32;
+        let fb_h = self.platform.fb_height as f32;
 
         let sx = fb_w as f32 / win_w as f32;
         let sy = fb_h as f32 / win_h as f32;
@@ -325,7 +361,7 @@ impl Game {
             font_shader,
             &mut self.message_queue,
             &mut self.paused, 
-            self.platform.window.get_cursor_mode(), 
+            self.platform.cursor_mode,
             &self.world.camera.move_state, 
             &mut self.ui, 
             &mut self.renderer.render_gizmos,
@@ -348,8 +384,10 @@ impl Game {
             &mut self.world.particles,
         );
 
-        self.platform.window.swap_buffers();
-        //self.platform.glfw.poll_events();
+        self.platform
+            .surface
+            .swap_buffers(&self.platform.gl_context)
+            .expect("swap_buffers failed");
     }
 
 

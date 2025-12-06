@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use glam::{Mat4, Quat, Vec3};
-use glfw::{Action, MouseButton, PWindow, WindowEvent};
 use imgui::{sys::{ImGuiKey, ImGuiKey_Backspace}, Drag, Io, Ui};
 
 use crate::{animation::animation::Animator, camera::Camera, config::{entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};

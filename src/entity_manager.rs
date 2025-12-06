@@ -9,6 +9,7 @@ use nalgebra::{Point3, UnitQuaternion, Vector3};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::prelude::*;
+use winit::keyboard::KeyCode;
 
 use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper}, factions_config::FactionsConfig, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AnimationType, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, input::InputState, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
 
@@ -692,7 +693,7 @@ impl EntityManager {
                 self.entity_trashcan.push(o.key());
             }
         }
-        if input.just_pressed(glfw::Key::Delete) {
+        if input.just_pressed(KeyCode::Delete) {
             for i in self.selected.iter() {
                 self.entity_trashcan.push(*i);
             }

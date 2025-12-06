@@ -1,5 +1,4 @@
 use glam::{vec3, Mat4, Vec3};
-use glfw::{Key, MouseButton};
 
 use crate::{animation::animation::Animator, entity_manager::EntityManager, enums_types::{AnimationType, AttackState, EmitterName, EntityType, Faction, PlayerState, SimState, SimStateController, SoundType, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
