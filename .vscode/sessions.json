@@ -1,0 +1,20 @@
+{
+    "$schema": "https://cdn.statically.io/gh/nguyenngoclongdev/cdn/main/schema/v11/terminal-keeper.json",
+    "theme": "tribe",
+    "active": "default",
+    "activateOnStartup": true,
+    "keepExistingTerminals": false,
+    "sessions": {
+        "default": [
+            {
+                "name": "run game",
+                "autoExecuteCommands": false,
+                "icon": "game",
+                "color": "terminal.ansiGreen",
+                "commands": [
+                    "call \"C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat\" && set CMAKE_GENERATOR=Ninja&& cargo run"
+                ]
+            }
+        ]
+    }
+}
