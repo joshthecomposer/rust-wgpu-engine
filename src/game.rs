@@ -19,7 +19,7 @@ use crate::time::Time;
 use crate::platform::Platform;
 use crate::world::World;
 
-// Farts
+// Farts and sharts
 
 pub struct Game {
     platform: Platform, // OS/window/events
