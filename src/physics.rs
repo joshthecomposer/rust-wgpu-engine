@@ -68,12 +68,13 @@ impl PhysicsState {
 }
 
 pub fn apply_delta_v(rb: &mut RigidBody, dir: glam::Vec3, dv: f32) {
-    let J = dir.normalize() * (rb.mass() * dv);
-    rb.apply_impulse(J.into(), true);
+    let impulse = dir.normalize() * (rb.mass() * dv);
+    rb.apply_impulse(impulse.into(), true);
 }
 
+#[allow(dead_code)]
 pub fn jump_to_height(rb: &mut RigidBody, h: f32, gravity: f32) {
     let v0 = (2.0 * gravity.abs() * h).sqrt();
-    let J = glam::vec3(0.0, rb.mass() * v0, 0.0);
-    rb.apply_impulse(J.into(), true);
+    let impulse = glam::vec3(0.0, rb.mass() * v0, 0.0);
+    rb.apply_impulse(impulse.into(), true);
 }

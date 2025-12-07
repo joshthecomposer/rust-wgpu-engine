@@ -1,5 +1,6 @@
 use glam::Vec4;
 
+#[allow(dead_code)]
 pub fn hex_to_vec4(input: &str) -> Vec4 {
     let sanitized = if input.starts_with('#')  {
         &input[1..]

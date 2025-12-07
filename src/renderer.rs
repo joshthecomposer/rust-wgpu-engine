@@ -281,7 +281,7 @@ impl Renderer {
     }
 
 
-    fn gizmo_pass(&mut self, camera: &mut Camera, em: &EntityManager, ids: Vec<usize>, ps: &PhysicsState, alpha: f32) {
+    fn gizmo_pass(&mut self, camera: &mut Camera, em: &EntityManager, ids: Vec<usize>, _ps: &PhysicsState, alpha: f32) {
         unsafe {
             gl_call!(gl::PolygonMode( gl::FRONT_AND_BACK, gl::LINE ));
         }
@@ -327,11 +327,11 @@ impl Renderer {
     }
 
     fn model_pass(
-        &mut self, camera: 
-        &mut Camera, 
-        em: &EntityManager, 
-        light_manager: &Lights, 
-        ps: &PhysicsState, 
+        &mut self, camera:
+        &mut Camera,
+        em: &EntityManager,
+        light_manager: &Lights,
+        _ps: &PhysicsState,
         alpha: f32,
         particles: &mut ParticleSystem,
         sound_manager: &mut SoundManager,
@@ -378,14 +378,13 @@ impl Renderer {
                 let model = em.models.get(id.key()).unwrap();
                 let trans = Self::render_transform(em, id.key(), alpha);
 
-                let forward = trans.rotation * Vec3::Z;
                 let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
 
                 match em.animators.get(id.key()) {
                     Some(animator) => {
                         let animation = animator.get_current_animation().unwrap();
-                        let bonez = em.skellingtons.get(id.key()).unwrap();
+                        let _bonez = em.skellingtons.get(id.key()).unwrap();
 
                         for os in animation.one_shots.iter() {
                             if animation.current_segment.get() == os.segment {
@@ -584,7 +583,7 @@ impl Renderer {
         }
     }
 
-    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32) {
+    fn render_sample_depth(&mut self, em: &EntityManager, _ps: &PhysicsState, alpha: f32) {
         let shader = self.shaders.get(&ShaderType::Depth).unwrap();
         shader.activate();
 

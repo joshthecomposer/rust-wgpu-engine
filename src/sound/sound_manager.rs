@@ -262,9 +262,13 @@ impl SoundManager {
             unsafe {
                 let result = FMOD_Studio_EventInstance_SetParameterByName(*instance, vol.as_ptr(), self.master_volume, 0);
                 if result != 0 {
-                    println!("Updating volume failed with error code: {}", result);
+                    println!("[Sound] Updating volume failed with error code: {} (maybe 'main_volume' parameter not exposed in FMOD event)", result);
+                } else {
+                    println!("[Sound] Volume set to {}", self.master_volume);
                 }
             }
+        } else {
+            println!("[Sound] No active instance for {:?} to set volume on", sound_type);
         }
     }
 

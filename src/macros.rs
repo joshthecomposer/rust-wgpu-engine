@@ -29,6 +29,7 @@ pub fn gl_log_call(function: &str, file: &str, line: u32) -> bool {
     }
 }
 
+#[allow(dead_code)]
 pub static mut DRAW_CALLS: usize = 0;
 
 #[macro_export]
@@ -51,6 +52,7 @@ macro_rules! gl_call {
     }};
 }
 
+#[allow(dead_code)]
 pub fn incr_draw_call() {
     unsafe { DRAW_CALLS += 1; }
 }

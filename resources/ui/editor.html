@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor UI</title>
+    <link rel="stylesheet" href="css/editor.css">
+    <!-- Rust Bridge: Must be first script to ensure it's available before other scripts -->
+    <script>
+        window.rustBridge = {
+            sendEvent: function (jsonData) {
+                console.log('RUST_EVENT:' + jsonData);
+            }
+        };
+    </script>
+</head>
+
+<body>
+    <!-- Left Panel: Entity Editor -->
+    <div id="entity-editor" class="panel panel-left">
+        <div class="panel-header">🔧 Entity Editor</div>
+
+        <!-- Player Data Section -->
+        <div class="section" id="player-section">
+            <div class="section-header" onclick="toggleSection('player-section')">
+                <span>👤 Player Data</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="data-row">
+                    <span class="data-label">Position</span>
+                    <span class="data-value" id="player-pos">0, 0, 0</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">State</span>
+                    <span class="data-value" id="player-state">Idle</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Attack State</span>
+                    <span class="data-value" id="player-attack-state">None</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Animation</span>
+                    <span class="data-value" id="player-animation">Idle</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lights Section -->
+        <div class="section" id="lights-section">
+            <div class="section-header" onclick="toggleSection('lights-section')">
+                <span>💡 Directional Light</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <label>Direction X</label>
+                    <input type="range" id="light-dir-x" min="-1" max="1" step="0.01" value="0"
+                        oninput="onLightChange()">
+                    <span id="light-dir-x-val" style="width:40px">0.00</span>
+                </div>
+                <div class="form-row">
+                    <label>Direction Y</label>
+                    <input type="range" id="light-dir-y" min="-1" max="1" step="0.01" value="-1"
+                        oninput="onLightChange()">
+                    <span id="light-dir-y-val" style="width:40px">-1.00</span>
+                </div>
+                <div class="form-row">
+                    <label>Direction Z</label>
+                    <input type="range" id="light-dir-z" min="-1" max="1" step="0.01" value="0"
+                        oninput="onLightChange()">
+                    <span id="light-dir-z-val" style="width:40px">0.00</span>
+                </div>
+                <div class="form-row">
+                    <label>Distance</label>
+                    <input type="range" id="light-distance" min="0" max="100" step="1" value="50"
+                        oninput="onLightChange()">
+                    <span id="light-distance-val" style="width:40px">50</span>
+                </div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="shadow-debug" onchange="onShadowDebugChange()">
+                    <label for="shadow-debug">Shadow Debug</label>
+                </div>
+                <div class="form-row">
+                    <label>Ortho Near</label>
+                    <input type="range" id="ortho-near" min="0" max="10" step="0.1" value="1" oninput="onOrthoChange()">
+                    <span id="ortho-near-val" style="width:40px">1.0</span>
+                </div>
+                <div class="form-row">
+                    <label>Ortho Far</label>
+                    <input type="range" id="ortho-far" min="0" max="500" step="1" value="100" oninput="onOrthoChange()">
+                    <span id="ortho-far-val" style="width:40px">100</span>
+                </div>
+                <div class="form-row">
+                    <label>Bounds</label>
+                    <input type="range" id="ortho-bounds" min="0" max="100" step="1" value="50"
+                        oninput="onOrthoChange()">
+                    <span id="ortho-bounds-val" style="width:40px">50</span>
+                </div>
+                <div class="form-row">
+                    <label>Bias Scalar</label>
+                    <input type="number" id="bias-scalar" step="0.0001" value="0.005" onchange="onOrthoChange()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Sound Section -->
+        <div class="section" id="sound-section">
+            <div class="section-header" onclick="toggleSection('sound-section')">
+                <span>🔊 Sound Controls</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <button class="btn btn-secondary" onclick="sendEvent('sound_pause')">⏸ Pause</button>
+                    <button class="btn btn-secondary" onclick="sendEvent('sound_play')">▶ Play</button>
+                </div>
+                <div class="form-row">
+                    <label>Volume</label>
+                    <input type="range" id="master-volume" min="0" max="1" step="0.01" value="1"
+                        oninput="onVolumeChange()">
+                    <span id="volume-val" style="width:40px">1.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Entity Editing Section -->
+        <div class="section" id="entity-edit-section">
+            <div class="section-header" onclick="toggleSection('entity-edit-section')">
+                <span>✏️ Entity Editing</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="section-content">
+                <button class="btn btn-success" onclick="sendEvent('save_entity_state')"
+                    style="width:100%;margin-bottom:8px">
+                    💾 Save Entity State
+                </button>
+                <div id="selected-entities">
+                    <p style="color:var(--text-secondary);font-style:italic">No entities selected</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Faction Section -->
+        <div class="section" id="faction-section">
+            <div class="section-header" onclick="toggleSection('faction-section')">
+                <span>🏴 Create Faction</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <label>Faction Name</label>
+                    <input type="text" id="new-faction-name" placeholder="Enter faction name">
+                </div>
+                <button class="btn btn-primary" onclick="createFaction()" style="width:100%">Save Faction</button>
+            </div>
+        </div>
+
+        <!-- Entity Placement Section -->
+        <div class="section" id="placement-section">
+            <div class="section-header" onclick="toggleSection('placement-section')">
+                <span>📍 Place Entities</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <label>Entity Type</label>
+                    <select id="place-entity-type"></select>
+                </div>
+                <div class="form-row">
+                    <label>Faction</label>
+                    <select id="place-faction"></select>
+                </div>
+                <div class="form-row">
+                    <label>Weapon</label>
+                    <select id="place-weapon"></select>
+                </div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="include-weapon">
+                    <label for="include-weapon">Include Weapon</label>
+                </div>
+                <div class="form-row">
+                    <label>Base Speed</label>
+                    <input type="number" id="place-base-speed" step="0.1" value="0">
+                </div>
+                <button class="btn btn-primary" id="create-mode-btn" onclick="onEnterCreateMode()" style="width:100%">🎯
+                    Enter Create Mode</button>
+                <p id="create-mode-hint"
+                    style="display:none;color:var(--accent-color);font-size:0.85em;margin-top:8px;text-align:center;">
+                    Click on terrain to place entity...</p>
+            </div>
+        </div>
+
+        <!-- Create Entity Type Section -->
+        <div class="section collapsed" id="create-type-section">
+            <div class="section-header" onclick="toggleSection('create-type-section')">
+                <span>🆕 Create Entity Type</span>
+                <span class="toggle-icon">▶</span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <label>Type Name</label>
+                    <input type="text" id="new-type-name" placeholder="e.g. Goblin">
+                </div>
+                <div class="form-row">
+                    <label>Rot Correction</label>
+                    <input type="text" id="new-type-rot" placeholder="x,y,z,w" value="0,0,0,1">
+                </div>
+                <div class="form-row">
+                    <label>Scale Correction</label>
+                    <input type="text" id="new-type-scale" placeholder="x,y,z" value="1,1,1">
+                </div>
+                <div class="form-row">
+                    <label>Model Path</label>
+                    <input type="text" id="new-type-mesh" placeholder="assets/models/...">
+                </div>
+                <div class="form-row">
+                    <label>Texture Path</label>
+                    <input type="text" id="new-type-texture" placeholder="assets/textures/...">
+                </div>
+                <div class="form-row">
+                    <label>Aggro Range</label>
+                    <input type="number" id="new-type-aggro" step="0.1" value="10">
+                </div>
+                <div class="form-row">
+                    <label>Total Mass</label>
+                    <input type="number" id="new-type-mass" step="0.1" value="1">
+                </div>
+                <div class="form-row">
+                    <label>Hitbox Type</label>
+                    <select id="new-type-hitbox" onchange="onHitboxTypeChange()">
+                        <option value="Cylinder">Cylinder</option>
+                        <option value="Pill">Pill</option>
+                        <option value="BoxDim">BoxDim</option>
+                        <option value="Sphere">Sphere</option>
+                        <option value="Mesh">Mesh</option>
+                        <option value="BoundingBox">BoundingBox</option>
+                    </select>
+                </div>
+                <div id="hitbox-params">
+                    <div class="form-row">
+                        <label>Radius</label>
+                        <input type="number" id="new-type-radius" step="0.1" value="0.5">
+                    </div>
+                    <div class="form-row">
+                        <label>Height</label>
+                        <input type="number" id="new-type-height" step="0.1" value="1.8">
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="createEntityType()" style="width:100%;margin-top:8px">
+                    💾 Save Entity Type
+                </button>
+            </div>
+        </div>
+
+        <!-- Delete Entity Type Section -->
+        <div class="section collapsed" id="delete-type-section">
+            <div class="section-header" onclick="toggleSection('delete-type-section')">
+                <span>🗑️ Delete Entity Type</span>
+                <span class="toggle-icon">▶</span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <label>Entity Type</label>
+                    <select id="delete-entity-type"></select>
+                </div>
+                <button class="btn btn-danger" onclick="deleteEntityType()" style="width:100%">
+                    Delete Type
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel: Particle Editor -->
+    <div id="particle-editor" class="panel panel-right">
+        <div class="panel-header">✨ Particle Editor</div>
+
+        <!-- Emitter Selection -->
+        <div class="section" id="emitter-select-section">
+            <div class="section-header" onclick="toggleSection('emitter-select-section')">
+                <span>📋 Emitter Types</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <label>Emitter</label>
+                    <select id="emitter-type-select"></select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Emitter Section -->
+        <div class="section" id="create-emitter-section">
+            <div class="section-header" onclick="toggleSection('create-emitter-section')">
+                <span>🆕 Create Emitter</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="section-content">
+                <div class="form-row">
+                    <label>Emitter Name</label>
+                    <input type="text" id="emitter-name" placeholder="e.g. BloodSplat">
+                </div>
+                <div class="form-row">
+                    <label>Position</label>
+                    <input type="text" id="emitter-pos" placeholder="x,y,z" value="0,0,0">
+                </div>
+                <div class="form-row">
+                    <label>Direction</label>
+                    <input type="text" id="emitter-dir" placeholder="x,y,z" value="0,1,0">
+                </div>
+                <div class="form-row">
+                    <label>Angle Range</label>
+                    <input type="text" id="emitter-angle" placeholder="min,max" value="0,360">
+                </div>
+                <div class="form-row">
+                    <label>Radius Range</label>
+                    <input type="text" id="emitter-radius" placeholder="min,max" value="0,1">
+                </div>
+                <div class="form-row">
+                    <label>Jitter</label>
+                    <input type="text" id="emitter-jitter" placeholder="x,y,z" value="0,0,0">
+                </div>
+                <div class="form-row">
+                    <label>Gravity</label>
+                    <input type="number" id="emitter-gravity" step="0.1" value="-9.8">
+                </div>
+                <div class="form-row">
+                    <label>Radial Speed</label>
+                    <input type="text" id="emitter-radial-speed" placeholder="min,max" value="1,3">
+                </div>
+                <div class="form-row">
+                    <label>Upward Speed</label>
+                    <input type="text" id="emitter-up-speed" placeholder="min,max" value="2,5">
+                </div>
+                <div class="form-row">
+                    <label>Lifetime</label>
+                    <input type="text" id="emitter-lifetime" placeholder="min,max" value="0.5,2">
+                </div>
+                <div class="form-row">
+                    <label>Particle Count</label>
+                    <input type="number" id="emitter-count" value="10">
+                </div>
+                <div class="form-row">
+                    <label>PPS (0=oneshot)</label>
+                    <input type="number" id="emitter-pps" value="0">
+                </div>
+                <div class="form-row">
+                    <label>Texture Path</label>
+                    <input type="text" id="emitter-texture" placeholder="assets/textures/...">
+                </div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="emitter-tex-alpha">
+                    <label for="emitter-tex-alpha">Texture Has Alpha</label>
+                </div>
+                <div class="form-row">
+                    <label>Base Alpha</label>
+                    <input type="text" id="emitter-base-alpha" placeholder="min,max" value="0.8,1">
+                </div>
+                <div class="form-row">
+                    <label>Alpha Multiplier</label>
+                    <input type="number" id="emitter-alpha-mult" step="0.01" value="1">
+                </div>
+                <div class="form-row">
+                    <label>Alpha Power</label>
+                    <input type="range" id="emitter-alpha-power" min="0" max="1" step="0.01" value="1"
+                        oninput="updateAlphaPowerLabel()">
+                    <span id="alpha-power-val" style="width:40px">1.00</span>
+                </div>
+                <div class="form-row">
+                    <label>Base Scale</label>
+                    <input type="text" id="emitter-base-scale" placeholder="min,max" value="0.1,0.3">
+                </div>
+                <div class="form-row">
+                    <label>Scale Multiplier</label>
+                    <input type="number" id="emitter-scale-mult" step="0.01" value="1">
+                </div>
+                <div class="form-row">
+                    <label>Scale Power</label>
+                    <input type="range" id="emitter-scale-power" min="0" max="1" step="0.01" value="1"
+                        oninput="updateScalePowerLabel()">
+                    <span id="scale-power-val" style="width:40px">1.00</span>
+                </div>
+
+                <!-- Colors -->
+                <div style="margin-top:8px;margin-bottom:4px;font-weight:500">Colors</div>
+                <div id="emitter-colors-list"></div>
+                <div class="form-row">
+                    <input type="color" id="new-color-picker" value="#ffffff">
+                    <input type="number" id="new-color-alpha" min="0" max="1" step="0.1" value="1" style="width:60px">
+                    <button class="btn btn-secondary" onclick="addEmitterColor()">+ Add</button>
+                </div>
+
+                <div style="margin-top:12px">
+                    <div class="checkbox-row">
+                        <input type="checkbox" id="render-emitter-preview" onchange="onRenderPreviewChange()">
+                        <label for="render-emitter-preview" style="font-weight:600;color:var(--accent-color)">👁 Render
+                            Preview</label>
+                    </div>
+                    <button class="btn btn-success" onclick="saveEmitter()" style="width:100%;margin-top:8px">
+                        💾 Save Emitter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/editor.js"></script>
+</body>
+
+</html>

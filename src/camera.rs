@@ -231,10 +231,7 @@ impl Camera {
         }
     }
 
-    pub fn process_mouse_input_movement(&mut self, position: PhysicalPosition<f64>) {
-        let xpos = position.x;
-        let ypos = position.y;
-
+    pub fn process_mouse_input_movement(&mut self, _position: PhysicalPosition<f64>) {
         match self.move_state {
             CameraState::Free => {
             }

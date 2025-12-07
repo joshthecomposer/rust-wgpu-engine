@@ -23,6 +23,9 @@ toml = "0.8.22"
 nalgebra = { version = "0.33.2", features = [ "convert-glam029" ] }
 rapier3d = { version = "0.26.1", features = [ "simd-stable" ] }
 
+# Ultralight HTML/CSS/JS UI rendering
+ul-next = "0.5"
+
 [build-dependencies]
 
 [profile.rwd] # release with debug

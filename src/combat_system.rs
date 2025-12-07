@@ -4,7 +4,7 @@ use crate::{entity_manager::EntityManager, enums_types::{AnimationType, AttackSt
 
 pub fn update(
     em: &mut EntityManager,
-    dt: f32,
+    _dt: f32,
     ps: &mut PhysicsState,
     px: &mut ParticleSystem,
 ) {
@@ -12,7 +12,7 @@ pub fn update(
     handle_enemy_to_player(em, ps);
 }
 
-fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particles: &mut ParticleSystem) {
+fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, _particles: &mut ParticleSystem) {
     let attacking_player_ids = em.player_get_ids_for_state(PlayerState::Combat);
 
     for player_id in attacking_player_ids {
@@ -93,7 +93,7 @@ fn handle_player_to_enemy(em: &mut EntityManager, ps: &mut PhysicsState, particl
                             did_particles: false,
                         };
 
-                        let trans = em.transforms.get(target_id).unwrap();
+                        let _trans = em.transforms.get(target_id).unwrap();
 
 
                         if sim_state.state != SimState::Blocking {

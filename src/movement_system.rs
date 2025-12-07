@@ -37,8 +37,6 @@ fn handle_player_movement_rapier(
     let player_state = em.player_controllers.get(player_key).unwrap();
     let speed = em.base_speeds.get(player_key).unwrap();
 
-    let kb = em.knockbacks.get_mut(player_key);
-
     let kb_active = em.knockbacks.get_mut(player_key).map_or(false, |kb| {
         kb.ttl -= delta;
         kb.ttl > 0.0

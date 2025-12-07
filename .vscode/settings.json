@@ -1,10 +1,33 @@
 {
 	"cSpell.words": [
+		"assimp",
+		"BGRA",
+		"chacha",
+		"Deque",
+		"dylib",
 		"FMOD",
+		"Gles",
 		"glfw",
+		"glutin",
+		"hitbox",
+		"hitsets",
 		"imgui",
+		"Integerv",
+		"Knockback",
+		"knockbacks",
+		"libclang",
+		"Luma",
 		"MSVC",
-		"winit",
-		"Spag"
+		"multisampling",
+		"nalgebra",
+		"Parameteri",
+		"rustc",
+		"Seedable",
+		"simstate",
+		"skellingtons",
+		"Spag",
+		"Storei",
+		"unpositioned",
+		"winit"
 	]
 }

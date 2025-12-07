@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec3Swizzles, Vec4Swizzles};
+use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec4Swizzles};
 
 use rapier3d::{data::Index, prelude::*};
 use winit::{event::{ElementState, MouseButton}, keyboard::KeyCode};
@@ -40,6 +40,7 @@ impl InputState {
         self.keys_current.contains(&key) && !self.keys_previous.contains(&key)
     }
 
+    #[allow(dead_code)]
     pub fn just_released(&self, key: KeyCode) -> bool {
         !self.keys_current.contains(&key) && self.keys_previous.contains(&key)
     }
@@ -63,10 +64,12 @@ impl InputState {
         self.keys_current.contains(&KeyCode::ShiftLeft)
     }
 
+    #[allow(dead_code)]
     pub fn mouse_just_pressed(&self, b: MouseButton) -> bool {
         self.mouse_current.contains(&b) && !self.mouse_previous.contains(&b)
     }
 
+    #[allow(dead_code)]
     pub fn mouse_just_released(&self, b: MouseButton) -> bool {
         !self.mouse_current.contains(&b) && self.mouse_previous.contains(&b)
     }
@@ -75,14 +78,17 @@ impl InputState {
         self.mouse_current.contains(&MouseButton::Left) && !self.mouse_previous.contains(&MouseButton::Left)
     }
 
+    #[allow(dead_code)]
     pub fn left_mouse_just_released(&self) -> bool {
         !self.mouse_current.contains(&MouseButton::Left) && self.mouse_previous.contains(&MouseButton::Left)
     }
 
+    #[allow(dead_code)]
     pub fn right_mouse_just_pressed(&self) -> bool {
         self.mouse_current.contains(&MouseButton::Right) && !self.mouse_previous.contains(&MouseButton::Right)
     }
 
+    #[allow(dead_code)]
     pub fn right_mouse_just_released(&self) -> bool {
         !self.mouse_current.contains(&MouseButton::Right) && self.mouse_previous.contains(&MouseButton::Right)
     }
@@ -106,10 +112,10 @@ pub fn handle_keyboard_input(key: KeyCode, action: ElementState, input_state: &m
     match action {
         ElementState::Pressed => { input_state.keys_current.insert(key); }
         ElementState::Released => { input_state.keys_current.remove(&key); }
-        _=> ()
     }
 }
 
+#[allow(dead_code)]
 pub fn handle_mouse_motion() {
 }
 
@@ -172,7 +178,6 @@ pub fn handle_mouse_input(button: MouseButton, action: ElementState, screen_size
             }
         },
         ElementState::Released => { input_state.mouse_current.remove(&button); },
-        _ => ()
    }
 }
 
@@ -206,6 +211,7 @@ pub fn mouse_ray_from_screen(
     (camera_pos, ray_world)
 }
 
+#[allow(dead_code)]
 fn ray_hits_cylinder(
     ray_origin: Vec3,
     ray_dir: Vec3,

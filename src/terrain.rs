@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
-use gl::ActiveTexture;
-use glam::{vec2, vec3, vec4, Vec3, Vec4};
-use image::{GenericImageView, ImageBuffer, Luma};
+use glam::{vec2, vec3, Vec3, Vec4};
+use image::{ImageBuffer, Luma};
 use nalgebra::Point3;
 use rapier3d::prelude::{Collider, ColliderBuilder, ColliderSet, InteractionGroups, RigidBodyHandle, RigidBodySet};
 

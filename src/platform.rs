@@ -16,12 +16,14 @@ use winit::{
 };
 
 #[derive(PartialEq, Copy, Clone)]
+#[allow(dead_code)]
 pub enum CursorMode {
     Normal,
     Hidden,
     Disabled,
 }
 
+#[allow(dead_code)]
 pub struct Platform {
     pub window: Window,
     pub gl_context: PossiblyCurrentContext,
@@ -121,6 +123,7 @@ impl Platform {
         )
     }
 
+    #[allow(dead_code)]
     pub fn set_cursor_mode(&mut self, mode: CursorMode) {
         match mode {
             CursorMode::Normal => {

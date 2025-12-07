@@ -1,0 +1,160 @@
+/* Pause Menu Styles */
+:root {
+    --bg-primary: rgba(30, 30, 35, 0.98);
+    --bg-secondary: rgba(40, 40, 48, 0.95);
+    --bg-hover: rgba(60, 60, 70, 0.95);
+    --border-color: rgba(80, 80, 90, 0.8);
+    --accent-color: #4a9eff;
+    --accent-hover: #6ab0ff;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --danger-color: #f44336;
+    --danger-hover: #ff5252;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    color: var(--text-primary);
+    background: transparent;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Semi-transparent overlay behind the menu */
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
+/* Main pause menu container */
+#pause-menu {
+    position: relative;
+    z-index: 2;
+    width: 320px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+/* Menu header */
+.menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.menu-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.close-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.close-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* Menu content */
+.menu-content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Menu buttons */
+.menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid transparent;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+
+.menu-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-color);
+}
+
+.menu-btn.danger:hover {
+    border-color: var(--danger-color);
+    background: rgba(244, 67, 54, 0.15);
+}
+
+.btn-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+}
+
+.btn-text {
+    flex: 1;
+}
+
+.btn-status {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(100, 100, 110, 0.5);
+}
+
+.btn-status.status-on {
+    background: rgba(76, 175, 80, 0.3);
+    color: var(--success-color);
+}
+
+.btn-status.status-off {
+    background: rgba(100, 100, 110, 0.5);
+    color: var(--text-secondary);
+}
+
+/* Divider */
+.menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 8px 0;
+}
+

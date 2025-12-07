@@ -3,9 +3,8 @@
 use core::f32;
 use std::{collections::{HashMap, HashSet}, path::Path, time::UNIX_EPOCH};
 
-use gl::ActiveShaderProgram;
-use glam::{Mat4, Quat, Vec3};
-use nalgebra::{Point3, UnitQuaternion, Vector3};
+use glam::{Quat, Vec3};
+use nalgebra::{Point3, UnitQuaternion};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::prelude::*;
@@ -19,7 +18,7 @@ pub struct EntityManager {
     pub prev_transforms: SparseSet<Transform>,
     // This is pretty much exclusively for weapons that need an additional 90° orientation for instance
     pub local_corrections: SparseSet<Transform>,
-    // The model for rendering the colldier. Otherwwise this is just managed in rapier3d
+    // The model for rendering the collider. Otherwise this is just managed in rapier3d
     pub collider_gizmos: SparseSet<Model>,
     pub collider_transforms: SparseSet<Transform>,
     pub prev_collider_transforms: SparseSet<Transform>,
@@ -44,6 +43,7 @@ pub struct EntityManager {
     pub player_controllers: SparseSet<PlayerController>,
     pub simstate_controllers: SparseSet<SimStateController>,
     pub destinations: SparseSet<Vec3>,
+    #[allow(dead_code)]
     pub rng: ChaCha8Rng,
     pub selected: Vec<usize>,
     pub v_effects: SparseSet<VisualEffect>,
@@ -380,11 +380,11 @@ impl EntityManager {
     }
 
     pub fn create_pill_hitbox(
-        &mut self, 
+        &mut self,
         r: f32,
         h: f32,
         position: Vec3,
-        scale: Vec3,
+        _scale: Vec3,
         rotation: Quat,
         parent_id: usize,
         ps: &mut PhysicsState,
@@ -984,6 +984,7 @@ impl EntityManager {
         None
     }
 
+    #[allow(dead_code)]
     pub fn remove_entity_type_definition(&mut self, entity_type: &str) {
         let now = std::time::SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -1007,6 +1008,7 @@ impl EntityManager {
         ec.write_to_file(&format!("config/entity_config.json"));
     }
 
+    #[allow(dead_code)]
     pub fn register_new_entity_type(&mut self, data: &UiEntityTypeHelper) {
         if data.entity_type.is_empty() {
             eprintln!("[Error] Entity Type is blank");
@@ -1136,10 +1138,12 @@ impl EntityManager {
         ec.write_to_file("config/entity_config.json");
     }
 
+    #[allow(dead_code)]
     pub fn register_new_faction(&mut self, faction: &str) {
         self.faction_register.insert(faction.to_string());
     }
 
+    #[allow(dead_code)]
     pub fn serialize_faction_register(&self) {
         let cfg = FactionsConfig {
             factions: self.faction_register.clone(),

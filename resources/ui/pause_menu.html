@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pause Menu</title>
+    <link rel="stylesheet" href="css/pause_menu.css">
+    <script>
+        window.rustBridge = {
+            sendEvent: function (jsonData) {
+                console.log('RUST_EVENT:' + jsonData);
+            }
+        };
+
+        // Store pending events for Rust to poll
+        window.__rustPendingEvents = [];
+
+        function sendToRust(eventData) {
+            window.__rustPendingEvents.push(JSON.stringify(eventData));
+        }
+
+        // Called by Rust to drain pending events
+        function drainEvents() {
+            const events = window.__rustPendingEvents;
+            window.__rustPendingEvents = [];
+            return JSON.stringify(events);
+        }
+    </script>
+</head>
+
+<body>
+    <!-- Semi-transparent overlay -->
+    <div id="overlay"></div>
+
+    <!-- Pause Menu Container -->
+    <div id="pause-menu">
+        <div class="menu-header">
+            <span class="menu-title">⏸️ Paused</span>
+            <button class="close-btn" onclick="closeMenu()">✕</button>
+        </div>
+
+        <div class="menu-content">
+            <button class="menu-btn" onclick="resumeGame()">
+                <span class="btn-icon">▶️</span>
+                <span class="btn-text">Resume Game</span>
+            </button>
+
+            <button class="menu-btn" onclick="toggleGizmos()">
+                <span class="btn-icon">📐</span>
+                <span class="btn-text">Toggle Gizmos</span>
+                <span class="btn-status" id="gizmo-status">OFF</span>
+            </button>
+
+            <button class="menu-btn" onclick="reloadWorldData()">
+                <span class="btn-icon">🔄</span>
+                <span class="btn-text">Reload World Data</span>
+            </button>
+
+            <button class="menu-btn" onclick="savePlayerData()">
+                <span class="btn-icon">💾</span>
+                <span class="btn-text">Save Player Data</span>
+            </button>
+
+            <div class="menu-divider"></div>
+
+            <button class="menu-btn danger" onclick="quitGame()">
+                <span class="btn-icon">🚪</span>
+                <span class="btn-text">Quit Game</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function closeMenu() {
+            sendToRust({ type: 'pause_close' });
+        }
+
+        function resumeGame() {
+            sendToRust({ type: 'pause_resume' });
+        }
+
+        function toggleGizmos() {
+            sendToRust({ type: 'pause_toggle_gizmos' });
+        }
+
+        function reloadWorldData() {
+            sendToRust({ type: 'pause_reload_world' });
+        }
+
+        function savePlayerData() {
+            sendToRust({ type: 'pause_save_player' });
+        }
+
+        function quitGame() {
+            sendToRust({ type: 'pause_quit' });
+        }
+
+        // Called by Rust to update gizmo status display
+        function updateGizmoStatus(enabled) {
+            const status = document.getElementById('gizmo-status');
+            status.textContent = enabled ? 'ON' : 'OFF';
+            status.className = 'btn-status ' + (enabled ? 'status-on' : 'status-off');
+        }
+    </script>
+</body>
+
+</html>
+

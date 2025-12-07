@@ -29,20 +29,18 @@ mod game;
 mod time;
 mod platform;
 mod grounding_solver;
+mod ultralight;
 
 mod world;
-use std::{fs::{self, OpenOptions}, path::Path};
 
 use game::Game;
 
-use glam::Quat;
-use std::io::Write;
-
 use crate::platform::Platform;
+use crate::ui::ui_manager::UiManager;
 
 use winit::{application::ApplicationHandler, event::DeviceEvent};
 use winit::event::{WindowEvent};
-use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::event_loop::ActiveEventLoop;
 use winit::window::WindowId;
 
 struct App {
@@ -83,21 +81,27 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         // This runs every time winit is about to sleep
         let now = self.start.elapsed().as_secs_f32();
         self.game.tick(now);
+
+        // Check if game requested to close (e.g., from pause menu quit button)
+        if self.game.should_close {
+            event_loop.exit();
+            return;
+        }
 
         // Continuous redraw
         self.game.platform.window.request_redraw();
     }
 
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {}
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
 
     fn device_event(
             &mut self,
-            event_loop: &ActiveEventLoop,
-            device_id: winit::event::DeviceId,
+            _event_loop: &ActiveEventLoop,
+            _device_id: winit::event::DeviceId,
             event: winit::event::DeviceEvent,
         ) {
         if let DeviceEvent::MouseMotion { delta } = event {
@@ -111,9 +115,12 @@ impl ApplicationHandler for App {
 }
 
 fn main() {
-    let (platform, event_loop) = Platform::new("Spaghetti engine", 1920, 1080, false);
+    let (platform, event_loop) = Platform::new("Spaghetti engine", 1280, 720, false);
 
-    let game = Game::new(platform);
+    // Initialize UI manager with Ultralight views
+    let ui_manager = UiManager::new(platform.fb_width, platform.fb_height);
+
+    let game = Game::new(platform, ui_manager);
     let mut app = App::new(game);
 
     event_loop.run_app(&mut app).expect("event loop error");

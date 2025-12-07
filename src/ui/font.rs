@@ -5,8 +5,9 @@ use rusttype::{point, Font, Scale};
 
 use crate::{enums_types::ShaderType, gl_call, shaders::Shader};
 
-use super::game_ui::Rect;
+use super::deprecated_game_ui::game_ui::Rect;
 
+#[allow(dead_code)]
 pub struct GlyphInfo {
     pub texture: u32,
     pub width: u32,
@@ -136,6 +137,7 @@ impl FontManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn render_phrase(&self, phrase: &str, x: f32, y: f32, fb_width: f32, fb_height: f32, shader: &Shader, scale: f32) {
         shader.activate();
 
@@ -198,6 +200,7 @@ impl FontManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn render_phrase_centered(
         &self,
         phrase: &str,

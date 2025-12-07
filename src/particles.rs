@@ -101,8 +101,6 @@ impl Emitter {
 
         shader.activate();
 
-        let mut rng = rng();
-
         let mut matrices = Vec::with_capacity(self.count);
         for i in 0..self.count {
             let t = self.times_alive[i];
@@ -128,7 +126,7 @@ impl Emitter {
             let factor = start_factor + (end_factor - start_factor) * scale_t;
             let scale = self.scales[i] * factor;
 
-            let rotation = self.rotation_offsets[i] + self.rotation_speeds[i] * t;
+            let _rotation = self.rotation_offsets[i] + self.rotation_speeds[i] * t;
 
             let view = camera.view;
             let view_rot = Mat3::from_cols(
@@ -321,7 +319,7 @@ impl ParticleSystem {
 
         let mut registered_textures = HashMap::new();
 
-        for (k, v) in &mut emitter_data.one_shot_data {
+        for (_k, v) in &mut emitter_data.one_shot_data {
             if let Some(path) = &v.texture_path {
                 let tex = Self::load_texture(&path);
                 registered_textures.insert(path.clone(), tex);
@@ -591,8 +589,8 @@ impl ParticleSystem {
     }
 
     pub fn calculate_particle_data(
-        ed: &EmitterBlackboard, 
-        origin: Vec3, 
+        ed: &EmitterBlackboard,
+        _origin: Vec3,
         direction: Option<Vec3>,
         emitter: &mut Emitter,
     ) {
@@ -606,7 +604,7 @@ impl ParticleSystem {
             Vec3::Y
         };
 
-        let rot = Quat::from_rotation_arc(local_up, desired_dir);
+        let _rot = Quat::from_rotation_arc(local_up, desired_dir);
 
         let mut rng = rng();
 

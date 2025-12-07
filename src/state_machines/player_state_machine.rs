@@ -312,10 +312,10 @@ fn player_combat_transition(
 
 fn player_non_combat_transition(
     c: &mut PlayerController,
-    next_state: PlayerState, 
+    next_state: PlayerState,
     a: &mut Animator,
     reset_anim: bool,
-    rb: &mut RigidBody,
+    _rb: &mut RigidBody,
 ) {
     let anim = match next_state {
         PlayerState::Init        => AnimationType::Idle,
@@ -348,18 +348,19 @@ fn player_non_combat_transition(
     }
 }
 
+#[allow(dead_code)]
 fn is_grounded_ray(
     query: &QueryPipeline,
     colliders: &ColliderSet,
     bodies: &RigidBodySet,
     origin: glam::Vec3,
     max_dist: f32,
-    terrain_mask: u32, // pass 0 to not use this
+    _terrain_mask: u32, // pass 0 to not use this
 ) -> bool {
     let ray = Ray::new(point![origin.x, origin.y, origin.z], vector![0.0, -1.0, 0.0]);
 
     let filter = QueryFilter::default().groups(InteractionGroups::new(u32::MAX.into(), u32::MAX.into())).into();
-    if let Some((handle, toi)) = query.cast_ray(&bodies, &colliders, &ray, max_dist, true, filter) {
+    if query.cast_ray(bodies, colliders, &ray, max_dist, true, filter).is_some() {
         // can add a slope limit here
         return true;
     }

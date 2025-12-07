@@ -1,6 +1,7 @@
 use std::collections::{vec_deque::Drain, VecDeque};
 
 #[derive(PartialEq)]
+#[allow(dead_code)]
 pub enum UiMessage {
     LeftMouseClicked,
     WindowShouldClose,

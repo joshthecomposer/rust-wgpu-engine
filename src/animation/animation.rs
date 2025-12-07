@@ -85,6 +85,7 @@ impl Model {
     }
 
     /// Convenience: get by "type" using a fixed mapping
+    #[allow(dead_code)]
     pub fn get_tex_by_type(&self, tex_type: &str) -> Option<&Texture> {
         match tex_type {
             "Diffuse"  => self.textures[0].as_ref(),
@@ -270,6 +271,7 @@ pub struct Animator {
     pub animations: HashMap<AnimationType, Animation>,
     pub blend_factor: f32,
     pub blend_time: f32,
+    #[allow(dead_code)]
     pub restarted: bool, // TODO: A hack for determining if we should restart attack animations
 }
 

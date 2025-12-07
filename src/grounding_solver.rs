@@ -10,7 +10,7 @@ pub fn grounding_solver(em: &mut EntityManager, ps: &PhysicsState) {
 
     for id in ids.iter() {
         let ph = em.physics_handles.get(*id).unwrap();
-        let ch = ph.collider;
+        let _ch = ph.collider;
         let rb_handle = ph.rigid_body;
 
         let trans = em.transforms.get(*id).unwrap();
