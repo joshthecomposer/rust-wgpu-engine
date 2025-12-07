@@ -95,8 +95,8 @@ velocity = [
 ],
 ]
 particle_lifetime = [
-    0.23000000417232513,
     0.5,
+    1.0,
 ]
 particle_scale = [
     0.07999999821186066,
@@ -143,22 +143,23 @@ jitter = [
     0.0,
 ]
 base_alpha = [
-    0.0,
-    0.0,
+    1.0,
+    1.0,
 ]
-alpha_multiplier = 0.0
-alpha_power = 0.0
+alpha_multiplier = 1.0
+alpha_power = 1.0
 base_scale = [
-    0.0,
-    0.0,
+    0.5,
+    0.5,
 ]
-scale_multiplier = 0.0
-scale_power = 0.0
+scale_multiplier = 1.0
+scale_power = 1.0
 direction = [
     0.0,
-    0.0,
+    1.0,
     0.0,
 ]
+texture_path = "resources/textures/smoke.png"
 
 [one_shot_data.ShootyPart]
 name = "ShootyPart"
