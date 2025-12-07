@@ -1,10 +1,10 @@
 use std::{collections::{HashMap, HashSet}, ffi::c_void};
 
 use glam::{Vec2, Vec4};
-use glfw::CursorMode;
 use image::GenericImageView;
+use winit::{event::MouseButton, keyboard::KeyCode};
 
-use crate::{entity_manager::EntityManager, enums_types::CameraState, gl_call, input::InputState, shaders::Shader};
+use crate::{entity_manager::EntityManager, enums_types::CameraState, gl_call, input::InputState, platform::CursorMode, shaders::Shader};
 
 use super::{color::hex_to_vec4, font::FontManager, message_queue::{MessageQueue, UiMessage}};
 
@@ -364,7 +364,6 @@ pub fn button(
     texture_id: Option<u32>,
     input: &mut InputState
 ) -> bool {
-    use glfw::Key::*;
 
     let color_900 = hex_to_vec4("#1c1917");
     let color_800 = hex_to_vec4("#292524");
@@ -373,16 +372,16 @@ pub fn button(
     let mut hovered = false;
 
     let num_check = match label {
-        "1" => Some(Num1),
-        "2" => Some(Num2),
-        "3" => Some(Num3),
-        "4" => Some(Num4),
-        "5" => Some(Num5),
-        "6" => Some(Num6),
-        "7" => Some(Num7),
-        "8" => Some(Num8),
-        "9" => Some(Num9),
-        "0" => Some(Num0),
+        "1" => Some(KeyCode::Numpad1),
+        "2" => Some(KeyCode::Numpad2),
+        "3" => Some(KeyCode::Numpad3),
+        "4" => Some(KeyCode::Numpad4),
+        "5" => Some(KeyCode::Numpad5),
+        "6" => Some(KeyCode::Numpad6),
+        "7" => Some(KeyCode::Numpad7),
+        "8" => Some(KeyCode::Numpad8),
+        "9" => Some(KeyCode::Numpad9),
+        "0" => Some(KeyCode::Numpad0),
         _ => None,
     };
 
@@ -399,7 +398,7 @@ pub fn button(
 
         clicked = hovered && input.left_mouse_just_pressed();
 
-        if clicked { input.mouse_current.remove(&glfw::MouseButton::Left); }
+        if clicked { input.mouse_current.remove(&MouseButton::Left); }
     }
 
     final_color = if hovered { color_800 } else { color_900 };

@@ -1,6 +1,3 @@
-use glfw::Glfw;
-use glfw;
-
 pub struct Time {
     // variable/render timing
     pub now: f32,

@@ -1,5 +1,6 @@
 use nalgebra::{point, vector};
 use rapier3d::prelude::{ColliderSet, ContactPair, InteractionGroups, QueryFilter, QueryPipeline, Ray, RigidBody, RigidBodySet};
+use winit::keyboard::KeyCode;
 
 use crate::{animation::{animation::Animator, animation_system}, camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, AttackState, CameraState, EmitterName, EntityType, Faction, PlayerController, PlayerState, SoundType, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::{self, PhysicsState}, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
 
@@ -202,7 +203,7 @@ pub fn player_state_machine(
 
                 let block_anim = animator.animations.get_mut(&AnimationType::Block).unwrap();
 
-                if input.mouse_is_down(glfw::MouseButton::Right) {
+                if input.mouse_is_down(winit::event::MouseButton::Right) {
                     if let Some(hold_frame) = block_anim.hold_frame {
                         if block_anim.current_segment.get() == hold_frame  {
                             block_anim.do_hold = true;

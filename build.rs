@@ -6,8 +6,6 @@ fn main() {
     {
         println!("cargo:rustc-link-search=native=libs");
         println!("cargo:rustc-link-lib=static=libclang");
-        println!("cargo:rustc-link-lib=static=glfw3");
-        println!("cargo:rustc-link-lib=static=assimp");
     }
     #[cfg(target_os = "macos")]
     {
