@@ -1,7 +1,10 @@
 {
 	"cSpell.words": [
+		"FMOD",
 		"glfw",
 		"imgui",
+		"MSVC",
+		"winit",
 		"Spag"
 	]
 }
