@@ -1,11 +1,9 @@
 use std::{env, fs::{self, OpenOptions}, path::Path, process::Command};
 
 fn main() {
-    // Link against the GLFW static library
     #[cfg(target_os = "windows")]
     {
         println!("cargo:rustc-link-search=native=libs");
-        println!("cargo:rustc-link-lib=static=libclang");
     }
     #[cfg(target_os = "macos")]
     {
