@@ -10,23 +10,9 @@ A 3D game engine built in Rust with OpenGL.
    - Download and install [Visual Studio Build Tools 2022](https://my.visualstudio.com/Downloads?q=Visual%20Studio%202022)
    - Select "Desktop development with C++" workload
 
-2. **Install CMake**
-   - Download and install [CMake 4.2.0](https://cmake.org/download/) from the official website
-
-3. **Dependencies**
-   - Libs are manually provided for the time being
+2. **Dependencies**
+   - Libs are manually provided for the time being - only FMOD.dlls
    - Ensure the `libs/` folder is present with required libraries
 
 ### Running
-
-**VS Code (recommended):**
-- The run command auto-populates via Terminal Keeper extension
-
-**Neovim (more recommended):**
-./poop.bat
-
-**Other:**
-```cmd
-poop.bat
-```
-
+Run `cargo run` from the root directory.
