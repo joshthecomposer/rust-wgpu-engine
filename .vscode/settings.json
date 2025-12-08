@@ -2,9 +2,15 @@
 	"cSpell.words": [
 		"FMOD",
 		"glfw",
+		"glutin",
+		"hitbox",
 		"imgui",
 		"MSVC",
+		"Numpad",
+		"opengl",
+		"rects",
+		"Spag",
 		"winit",
-		"Spag"
+		"slint"
 	]
 }

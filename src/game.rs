@@ -13,7 +13,7 @@ use crate::enums_types::{CameraState, PhysicsHandle, ShaderType, SoundType, Tran
 use crate::input::{self, InputState};
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
-use crate::ui::imgui::imgui_manager::ImguiManager;
+use crate::ui::imgui_deprecated::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::{combat_system, grounding_solver, items, movement_system};
