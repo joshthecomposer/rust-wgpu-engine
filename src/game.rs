@@ -13,7 +13,6 @@ use crate::enums_types::{CameraState, PhysicsHandle, ShaderType, SoundType, Tran
 use crate::input::{self, InputState};
 use crate::state_machines::state_machine_system;
 use crate::ui::game_ui::{do_ui, GameUiContext};
-use crate::ui::imgui_deprecated::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::{combat_system, grounding_solver, items, movement_system};
@@ -33,11 +32,9 @@ pub struct Game {
     sound: SoundManager,
     pub input: InputState,
     ui: GameUiContext,
-    imgui_manager: ImguiManager,
+    // imgui_manager: ImguiManager,
     pub paused: bool,
     message_queue: MessageQueue,
-    // imgui: SpagImgui,
-    // something
 }
 
 impl Game {
@@ -49,8 +46,6 @@ impl Game {
 
         let mut physics = PhysicsState::new();
         let mut world = World::new();
-
-        let imgui_manager = ImguiManager::new(&platform);
 
         world.ecs.populate_entity_data(&mut physics);
 
@@ -67,7 +62,6 @@ impl Game {
             sound,
             input: InputState::new(),
             ui,
-            imgui_manager,
             paused: false,
             message_queue: MessageQueue::new(),
         }
@@ -184,54 +178,54 @@ impl Game {
 
             WindowEvent::DroppedFile(path) => {
                 let path = Path::new(path);
-                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    match ext {
-                        "txt" => {
-                            self.imgui_manager.entity_editor.new_archetype.mesh_path =
-                                path.to_string_lossy().into_owned();
-                        }
-                        "png" | "jpg" | "jpeg" => {
-                            self.imgui_manager.entity_editor.new_archetype.texture_path =
-                                path.to_string_lossy().into_owned();
-                            self.imgui_manager.particle_editor.staged_texture =
-                                path.to_string_lossy().into_owned();
-                        }
-                        _ => {}
-                    }
-                }
+                // if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    // match ext {
+                    //     "txt" => {
+                    //         self.imgui_manager.entity_editor.new_archetype.mesh_path =
+                    //             path.to_string_lossy().into_owned();
+                    //     }
+                    //     "png" | "jpg" | "jpeg" => {
+                    //         self.imgui_manager.entity_editor.new_archetype.texture_path =
+                    //             path.to_string_lossy().into_owned();
+                    //         self.imgui_manager.particle_editor.staged_texture =
+                    //             path.to_string_lossy().into_owned();
+                    //     }
+                    //     _ => {}
+                    // }
+                // }
             }
 
             WindowEvent::CursorMoved { position, .. } => {
-                let io = self.imgui_manager.imgui.io();
-                if !io.want_capture_mouse {
-                    if !self.paused {
-                        self.world
-                            .camera
-                            .process_mouse_input_movement(*position);
-                    }
-                    self.input.mouse_pos_current =
-                        glam::vec2(position.x as f32, position.y as f32);
-                }
+                // let io = self.imgui_manager.imgui.io();
+                // if !io.want_capture_mouse {
+                //     if !self.paused {
+                //         self.world
+                //             .camera
+                //             .process_mouse_input_movement(*position);
+                //     }
+                //     self.input.mouse_pos_current =
+                //         glam::vec2(position.x as f32, position.y as f32);
+                // }
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
-                let io = self.imgui_manager.imgui.io();
-                if !io.want_capture_mouse {
-                    let fb = glam::vec2(
-                        self.platform.fb_width as f32,
-                        self.platform.fb_height as f32,
-                    );
+                // let io = self.imgui_manager.imgui.io();
+                // if !io.want_capture_mouse {
+                //     let fb = glam::vec2(
+                //         self.platform.fb_width as f32,
+                //         self.platform.fb_height as f32,
+                //     );
 
-                    input::handle_mouse_input(
-                        *button,
-                        *state,
-                        fb,
-                        &self.world.camera,
-                        &mut self.world.ecs,
-                        &mut self.input,
-                        &mut self.physics,
-                    );
-                }
+                //     input::handle_mouse_input(
+                //         *button,
+                //         *state,
+                //         fb,
+                //         &self.world.camera,
+                //         &mut self.world.ecs,
+                //         &mut self.input,
+                //         &mut self.physics,
+                //     );
+                // }
             }
 
             WindowEvent::KeyboardInput {
@@ -243,41 +237,41 @@ impl Game {
                 },
                 ..
             } => {
-                let io = self.imgui_manager.imgui.io();
-                if !io.want_capture_keyboard {
-                    if let PhysicalKey::Code(code) = physical_key {
-                        let keycode: KeyCode = *code;
+                // let io = self.imgui_manager.imgui.io();
+                // if !io.want_capture_keyboard {
+                //     if let PhysicalKey::Code(code) = physical_key {
+                //         let keycode: KeyCode = *code;
 
-                        input::handle_keyboard_input(keycode, *state, &mut self.input);
+                //         input::handle_keyboard_input(keycode, *state, &mut self.input);
 
-                        // Escape toggles pause
-                        if keycode == KeyCode::Escape && *state == ElementState::Pressed {
-                            self.paused = !self.paused;
-                        }
+                //         // Escape toggles pause
+                //         if keycode == KeyCode::Escape && *state == ElementState::Pressed {
+                //             self.paused = !self.paused;
+                //         }
 
-                        // F toggles camera mode (Free <-> Third <-> Locked)
-                        if keycode == KeyCode::KeyF && *state == ElementState::Pressed {
-                            let maybe_player_id = self
-                                .world
-                                .ecs
-                                .factions
-                                .iter()
-                                .find(|e| *e.value() == "Player");
+                //         // F toggles camera mode (Free <-> Third <-> Locked)
+                //         if keycode == KeyCode::KeyF && *state == ElementState::Pressed {
+                //             let maybe_player_id = self
+                //                 .world
+                //                 .ecs
+                //                 .factions
+                //                 .iter()
+                //                 .find(|e| *e.value() == "Player");
 
-                            self.world.camera.move_state = match self.world.camera.move_state {
-                                CameraState::Free => {
-                                    if maybe_player_id.is_none() {
-                                        CameraState::Locked
-                                    } else {
-                                        CameraState::Third
-                                    }
-                                }
-                                CameraState::Third => CameraState::Locked,
-                                CameraState::Locked => CameraState::Free,
-                            };
-                        }
-                    }
-                }
+                //             self.world.camera.move_state = match self.world.camera.move_state {
+                //                 CameraState::Free => {
+                //                     if maybe_player_id.is_none() {
+                //                         CameraState::Locked
+                //                     } else {
+                //                         CameraState::Third
+                //                     }
+                //                 }
+                //                 CameraState::Third => CameraState::Locked,
+                //                 CameraState::Locked => CameraState::Free,
+                //             };
+                //         }
+                //     }
+                // }
             }
 
             _ => {}
@@ -376,20 +370,20 @@ impl Game {
             &mut self.world.ecs,
         );
 
-        self.imgui_manager.draw(
-            &mut self.platform.window, 
-            self.platform.fb_width as f32, 
-            self.platform.fb_height as f32, 
-            self.time.dt, 
-            &mut self.world.lights, 
-            &mut self.renderer, 
-            &mut self.sound, 
-            &self.world.camera, 
-            &mut self.world.ecs,
-            &mut self.physics,
-            &mut self.input,
-            &mut self.world.particles,
-        );
+        // self.imgui_manager.draw(
+        //     &mut self.platform.window, 
+        //     self.platform.fb_width as f32, 
+        //     self.platform.fb_height as f32, 
+        //     self.time.dt, 
+        //     &mut self.world.lights, 
+        //     &mut self.renderer, 
+        //     &mut self.sound, 
+        //     &self.world.camera, 
+        //     &mut self.world.ecs,
+        //     &mut self.physics,
+        //     &mut self.input,
+        //     &mut self.world.particles,
+        // );
 
         self.platform
             .surface
