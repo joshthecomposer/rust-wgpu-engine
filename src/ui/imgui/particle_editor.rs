@@ -101,10 +101,12 @@ impl ParticleEditor {
                     if ui.button("Add color") {
                         new_emitter.colors.push(self.current_color.clone());
                     };
-                    let new = self.current_color;
+
+                    let new = Vec4::from_array(self.current_color).normalize();
+
                     ui.color_button(
                         "##new color preview",
-                        [new[0], new[1], new[2], new[3]],
+                        [new.x, new.y, new.z, new.w],
                     );
 
                     ui.combo(

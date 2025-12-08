@@ -32,6 +32,7 @@ pub enum EboType {
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum FboType {
     DepthMap,
+    HDR,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -46,6 +47,8 @@ pub enum ShaderType {
     Gizmo,
     Particles,
     GameUi,
+    HDR,
+    Blur,
 }
 
 /// A struct to carry some rotation state for blending between rotations smoothly

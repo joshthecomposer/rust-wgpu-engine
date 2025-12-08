@@ -50,9 +50,7 @@ vec4 luminance_texture() {
 
     vec3 outRGB = particle_color.rgb;
 
-	vec3 gamma = pow(outRGB.rgb, vec3(1.0/2.2));
-
-    return vec4(gamma, outA);
+    return vec4(outRGB.rgb, outA);
 }
 
 vec4 alpha_texture() {
@@ -65,9 +63,7 @@ vec4 alpha_texture() {
 
 	if (outA <= 0.001) discard;
 
-	vec3 gamma = pow(outRGB.rgb, vec3(1.0/2.2));
-
-	return vec4(gamma, outA);
+	return vec4(outRGB.rgb, outA);
 }
 
 void main() {

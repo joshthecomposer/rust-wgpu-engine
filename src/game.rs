@@ -41,7 +41,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(mut platform: Platform) -> Self {
+    pub fn new(platform: Platform) -> Self {
         let config = GameConfig::load_from_file("config/game_config.json");
 
         let start_seconds = 0.0;
@@ -54,7 +54,7 @@ impl Game {
 
         world.ecs.populate_entity_data(&mut physics);
 
-        let renderer = Renderer::new();
+        let renderer = Renderer::new(&platform);
         let sound = SoundManager::new(&config);
         let ui = GameUiContext::new();
 
@@ -173,6 +173,8 @@ impl Game {
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
+        self.imgui_manager.handle_imgui_event(event);
+
         match event {
             WindowEvent::Resized(size) => {
                 self.platform.fb_width = size.width;
@@ -338,10 +340,10 @@ impl Game {
         );
 
 
-        self.world.particles.render(
-            self.renderer.shaders.get_mut(&ShaderType::Particles).unwrap(),
-            &self.world.camera,
-        );
+        //self.world.particles.render(
+        //    self.renderer.shaders.get_mut(&ShaderType::Particles).unwrap(),
+        //    &self.world.camera,
+        //);
 
         // unsafe { gl::Disable(gl::FRAMEBUFFER_SRGB); }
 

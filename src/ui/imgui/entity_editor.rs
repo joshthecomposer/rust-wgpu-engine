@@ -122,6 +122,12 @@ impl EntityEditor {
                     sm.set_master_volume(&SoundType::Music);
                 }
 
+                // ===================== bloom stuff =====================
+
+                if Drag::new("Exposure").speed(0.01).build(ui, &mut rdr.exposure) {};
+                if ui.checkbox("Do HDR", &mut rdr.do_hdr) {};
+                if Drag::new("Bloom Strength").speed(0.01).build(ui, &mut rdr.bloom_strength) {};
+
                 // ===================== Entity Editing =====================
                 ui.separator();
                 ui.text("Entity Editing");

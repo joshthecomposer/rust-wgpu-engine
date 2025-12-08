@@ -44,8 +44,8 @@ impl Platform {
         let template = ConfigTemplateBuilder::new()
             .with_alpha_size(8)
             .with_depth_size(24)
-            .with_stencil_size(8)
-            .with_multisampling(16);
+            .with_stencil_size(8);
+            //.with_multisampling(16);
 
         let display_builder = DisplayBuilder::new()
             .with_preference(ApiPreference::FallbackEgl)     // Prefer desktop GL
