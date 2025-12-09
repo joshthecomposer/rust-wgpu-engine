@@ -1,9 +1,17 @@
 #![allow(dead_code)]
-use std::{cell::Cell, fmt::{self, Display, Formatter}, ops::RangeInclusive, str::FromStr};
+use std::{
+    cell::Cell,
+    fmt::{self, Display, Formatter},
+    ops::RangeInclusive,
+    str::FromStr,
+};
 
 use glam::{Mat4, Quat, Vec3};
 use nalgebra::RealField;
-use rapier3d::{math::Vector, prelude::{ColliderHandle, ColliderType, RigidBodyHandle, RigidBodyType}};
+use rapier3d::{
+    math::Vector,
+    prelude::{ColliderHandle, ColliderType, RigidBodyHandle, RigidBodyType},
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -11,7 +19,7 @@ pub enum VaoType {
     Cube,
     Skybox,
     DebugLight,
-    GroundPlane
+    GroundPlane,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -46,6 +54,7 @@ pub enum ShaderType {
     Gizmo,
     Particles,
     GameUi,
+    UiOverlay,
 }
 
 /// A struct to carry some rotation state for blending between rotations smoothly
@@ -111,8 +120,6 @@ impl Display for EntityType {
     }
 }
 
-
-
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum Faction {
     Enemy,
@@ -129,7 +136,7 @@ impl Display for Faction {
             Faction::Enemy => write!(f, "Enemy"),
             Faction::Static => write!(f, "Static"),
             Faction::World => write!(f, "World"),
-            Faction::Player=> write!(f, "Player"),
+            Faction::Player => write!(f, "Player"),
             Faction::Gizmo => write!(f, "Gizmo"),
             Faction::Item => write!(f, "Item"),
         }
@@ -140,12 +147,12 @@ impl Display for Faction {
 pub enum CellType {
     Grass,
     Tree,
-    Path
+    Path,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TextureType {
-    Diffuse, 
+    Diffuse,
     Specular,
     Emissive,
     NormalMap,
@@ -194,7 +201,7 @@ pub enum SimState {
     Waiting,
     Aggro,
     Dancing,
-    Dying ,
+    Dying,
     Dead,
     Combat,
     Flinching,
@@ -223,7 +230,7 @@ impl Default for SimStateController {
 pub enum PlayerState {
     Init,
     Idle,
-    Running, 
+    Running,
     Jumping,
     Freefalling,
     Combat,
@@ -236,16 +243,16 @@ pub enum PlayerState {
 impl Display for PlayerState {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            PlayerState::Init         => write!(f, "Init"),
-            PlayerState::Idle         => write!(f, "Idle"),
-            PlayerState::Running      => write!(f, "Running"),
-            PlayerState::Jumping      => write!(f, "Jumping"),
-            PlayerState::Freefalling  => write!(f, "Freefalling"),
-            PlayerState::Combat       => write!(f, "Combat"),
-            PlayerState::Dying        => write!(f, "Dying"),
-            PlayerState::Dead         => write!(f, "Dead"),
-            PlayerState::Dashing      => write!(f, "Dashing"),
-            PlayerState::Block        => write!(f, "Block"),
+            PlayerState::Init => write!(f, "Init"),
+            PlayerState::Idle => write!(f, "Idle"),
+            PlayerState::Running => write!(f, "Running"),
+            PlayerState::Jumping => write!(f, "Jumping"),
+            PlayerState::Freefalling => write!(f, "Freefalling"),
+            PlayerState::Combat => write!(f, "Combat"),
+            PlayerState::Dying => write!(f, "Dying"),
+            PlayerState::Dead => write!(f, "Dead"),
+            PlayerState::Dashing => write!(f, "Dashing"),
+            PlayerState::Block => write!(f, "Block"),
         }
     }
 }
@@ -349,7 +356,7 @@ pub struct Inventory {
 pub struct PhysicsHandle {
     pub rigid_body: RigidBodyHandle,
     pub collider: ColliderHandle,
-    
+
     // for moving things around or temporarily changing them for impulses etc.
     // we can set them to kinematic and then back to this when needed
     pub og_rb_type: RigidBodyType,
@@ -374,7 +381,6 @@ impl Display for SoundType {
             SoundType::Jump => write!(f, "Jump"),
             SoundType::Land => write!(f, "Land"),
             SoundType::StopRunning => write!(f, "StopRunning"),
-
         }
     }
 }
@@ -400,12 +406,12 @@ pub enum TextureProfile {
 }
 
 impl TextureProfile {
-    pub fn from_str(input: &str) -> Option<Self>  {
+    pub fn from_str(input: &str) -> Option<Self> {
         match input {
             "BroadDefault" => Some(Self::BroadDefault),
-            "DecalCrisp"   => Some(Self::DecalCrisp),
-            "AlphaMasked"  => Some(Self::AlphaMasked),
-            _              => panic!("Invalid TextureProfile passed in."),
+            "DecalCrisp" => Some(Self::DecalCrisp),
+            "AlphaMasked" => Some(Self::AlphaMasked),
+            _ => panic!("Invalid TextureProfile passed in."),
         }
     }
 }
@@ -460,15 +466,14 @@ pub enum EmitterType {
     Continuous,
 }
 
-
 #[derive(Clone, Debug, PartialEq, Deserialize, Copy, Serialize)]
 #[serde(tag = "shape", rename_all = "PascalCase")]
 pub enum HitboxShape {
-    Cylinder   { r: f32, h: f32 },
+    Cylinder { r: f32, h: f32 },
     Pill { r: f32, h: f32 },
     BoxDim { hx: f32, hy: f32, hz: f32 },
     Sphere { r: f32 },
-    Mesh, // The mesh itself is the collider
+    Mesh,        // The mesh itself is the collider
     BoundingBox, // Dynamically generated box around the mesh
 }
 
@@ -479,11 +484,15 @@ impl FromStr for HitboxShape {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Cylinder"    | "cylinder"    => Ok(HitboxShape::Cylinder { r: 0.5, h: 1.0 }),
-            "Pill"        | "pill"        => Ok(HitboxShape::Pill { r: 0.5, h: 1.0 }),
-            "BoxDim"      | "boxdim"      => Ok(HitboxShape::BoxDim { hx: 0.5, hy: 0.5, hz: 0.5 }),
-            "Sphere"      | "sphere"      => Ok(HitboxShape::Sphere { r: 0.5 }),
-            "Mesh"        | "mesh"        => Ok(HitboxShape::Mesh),
+            "Cylinder" | "cylinder" => Ok(HitboxShape::Cylinder { r: 0.5, h: 1.0 }),
+            "Pill" | "pill" => Ok(HitboxShape::Pill { r: 0.5, h: 1.0 }),
+            "BoxDim" | "boxdim" => Ok(HitboxShape::BoxDim {
+                hx: 0.5,
+                hy: 0.5,
+                hz: 0.5,
+            }),
+            "Sphere" | "sphere" => Ok(HitboxShape::Sphere { r: 0.5 }),
+            "Mesh" | "mesh" => Ok(HitboxShape::Mesh),
             "BoundingBox" | "boundingbox" => Ok(HitboxShape::BoundingBox),
             _ => Err(ParseHitboxShapeError),
         }
@@ -499,9 +508,9 @@ pub enum EquipSlot {
 #[derive(Clone, Debug, Copy)]
 pub struct JumpHeight {
     pub desired: f32,
-    // The precalculated impulse. This is scary because if we add or 
+    // The precalculated impulse. This is scary because if we add or
     // take away a collider we will have to recalc this
-    pub precalculated: Option<Vector<rapier3d::math::Real>>
+    pub precalculated: Option<Vector<rapier3d::math::Real>>,
 }
 
 #[derive(Clone, Debug)]
@@ -511,5 +520,5 @@ pub struct GroundedState {
     pub just_left: bool,
     pub just_landed: bool,
     pub ray_length_grounded: f32,
-    pub ray_length_airborn: f32
+    pub ray_length_airborn: f32,
 }

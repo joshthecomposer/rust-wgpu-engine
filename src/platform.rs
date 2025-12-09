@@ -1,6 +1,9 @@
 use glutin::{
     config::{Config, ConfigTemplateBuilder},
-    context::{ContextApi, ContextAttributesBuilder, GlProfile, NotCurrentContext, PossiblyCurrentContext, Version},
+    context::{
+        ContextApi, ContextAttributesBuilder, GlProfile, NotCurrentContext, PossiblyCurrentContext,
+        Version,
+    },
     display::{Display, GetGlDisplay},
     prelude::*,
     surface::{GlSurface, Surface, SurfaceAttributesBuilder, SwapInterval, WindowSurface},
@@ -40,7 +43,7 @@ impl Platform {
             .with_title(title.to_string())
             .with_inner_size(LogicalSize::new(w, h))
             .with_resizable(true);
-        
+
         let template = ConfigTemplateBuilder::new()
             .with_alpha_size(8)
             .with_depth_size(24)
@@ -48,7 +51,7 @@ impl Platform {
             .with_multisampling(16);
 
         let display_builder = DisplayBuilder::new()
-            .with_preference(ApiPreference::FallbackEgl)     // Prefer desktop GL
+            .with_preference(ApiPreference::FallbackEgl) // Prefer desktop GL
             .with_window_attributes(Some(window_attrs));
 
         let (window_opt, config) = display_builder
@@ -101,8 +104,7 @@ impl Platform {
         }
 
         gl::load_with(|symbol| {
-            display.get_proc_address(&std::ffi::CString::new(symbol).unwrap())
-            as *const _
+            display.get_proc_address(&std::ffi::CString::new(symbol).unwrap()) as *const _
         });
 
         let size = window.inner_size();
@@ -152,4 +154,3 @@ fn pick_config<'a>(configs: Box<dyn Iterator<Item = Config> + 'a>) -> Config {
         })
         .expect("No GL configs found")
 }
-

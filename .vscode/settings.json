@@ -5,12 +5,20 @@
 		"glutin",
 		"hitbox",
 		"imgui",
+		"Integerv",
 		"MSVC",
+		"multisampling",
 		"Numpad",
 		"opengl",
+		"Parameteri",
 		"rects",
+		"slint",
 		"Spag",
-		"winit",
-		"slint"
-	]
+		"vsync",
+		"winit"
+	],
+	"[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "editor.formatOnSave": true
+    }
 }

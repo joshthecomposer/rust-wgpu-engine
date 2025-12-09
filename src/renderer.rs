@@ -1,11 +1,36 @@
 #![allow(dead_code, clippy::too_many_arguments)]
-use std::{collections::{HashMap, HashSet}, ffi::c_void, mem, ptr::null_mut};
+use std::{
+    collections::{HashMap, HashSet},
+    ffi::c_void,
+    mem,
+    ptr::null_mut,
+};
 
 use gl::CULL_FACE;
 use glam::{vec3, vec4, Mat4, Vec3, Vec4};
 use image::GenericImageView;
 
-use crate::{camera::Camera, entity_manager::EntityManager, enums_types::{AnimationType, EmitterName, EntityType, Faction, FboType, ShaderType, Transform, VaoType}, gl_call, grid::Grid, lights::Lights, particles::ParticleSystem, physics::PhysicsState, shaders::Shader, some_data::{FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES}, sound::{fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR}, sound_manager::SoundManager}};
+use crate::{
+    camera::Camera,
+    entity_manager::EntityManager,
+    enums_types::{
+        AnimationType, EmitterName, EntityType, Faction, FboType, ShaderType, Transform, VaoType,
+    },
+    gl_call,
+    grid::Grid,
+    lights::Lights,
+    particles::ParticleSystem,
+    physics::PhysicsState,
+    shaders::Shader,
+    some_data::{
+        FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES,
+        SKYBOX_VERTICES, UNIT_CUBE_VERTICES,
+    },
+    sound::{
+        fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR},
+        sound_manager::SoundManager,
+    },
+};
 
 pub struct DefaultTextures {
     pub white: u32,
@@ -39,18 +64,20 @@ impl Renderer {
         let depth_shader = Shader::new("resources/shaders/depth_shader.glsl");
         let text_shader = Shader::new("resources/shaders/text.glsl");
         text_shader.activate();
-        let loc = unsafe { gl::GetUniformLocation(text_shader.id, b"textTexture\0".as_ptr() as *const _) };
+        let loc = unsafe {
+            gl::GetUniformLocation(text_shader.id, b"textTexture\0".as_ptr() as *const _)
+        };
         unsafe {
-            gl::Uniform1i(loc, 1); 
+            gl::Uniform1i(loc, 1);
         }
         let model_shader = Shader::new("resources/shaders/color_for_texture.glsl");
         model_shader.activate();
-        model_shader.set_int("material.Diffuse",  1);
+        model_shader.set_int("material.Diffuse", 1);
         model_shader.set_int("material.Specular", 2);
         model_shader.set_int("material.Emissive", 3);
-        model_shader.set_int("material.Opacity",  4);
-        model_shader.set_int("shadow_map",        7);
-        model_shader.set_int("skybox",           10);
+        model_shader.set_int("material.Opacity", 4);
+        model_shader.set_int("shadow_map", 7);
+        model_shader.set_int("skybox", 10);
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
         let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");
@@ -77,7 +104,7 @@ impl Renderer {
 
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, vbo));
             gl_call!(gl::BufferData(
-                gl::ARRAY_BUFFER, 
+                gl::ARRAY_BUFFER,
                 (mem::size_of::<f32>() * SKYBOX_VERTICES.len()) as isize,
                 SKYBOX_VERTICES.as_ptr().cast(),
                 gl::STATIC_DRAW
@@ -92,11 +119,11 @@ impl Renderer {
             ));
 
             gl_call!(gl::VertexAttribPointer(
-                0, 
-                3, 
-                gl::FLOAT, 
-                gl::FALSE, 
-                (3 * mem::size_of::<f32>()) as i32, 
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                (3 * mem::size_of::<f32>()) as i32,
                 std::ptr::null(),
             ));
             gl_call!(gl::EnableVertexAttribArray(0));
@@ -108,36 +135,55 @@ impl Renderer {
             // SKYBOX TEXTURES
             gl_call!(gl::GenTextures(1, &mut cubemap_texture));
             gl_call!(gl::BindTexture(gl::TEXTURE_CUBE_MAP, cubemap_texture));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_MAG_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_MIN_FILTER,
+                gl::LINEAR as i32
+            ));
             // These are very important to prevent seams
-            gl_call!(gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_CUBE_MAP, gl::TEXTURE_WRAP_R, gl::CLAMP_TO_EDGE as i32));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_WRAP_R,
+                gl::CLAMP_TO_EDGE as i32
+            ));
 
             for i in 0..FACES_CUBEMAP.len() {
                 let img = match image::open(FACES_CUBEMAP[i]) {
                     Ok(img) => img,
-                    _=> panic!("Error opening {}", FACES_CUBEMAP[i]),
+                    _ => panic!("Error opening {}", FACES_CUBEMAP[i]),
                 };
                 let (img_width, img_height) = img.dimensions();
                 let rgba = img.to_rgb8();
                 let raw = rgba.as_raw();
 
                 gl_call!(gl::TexImage2D(
-                    gl::TEXTURE_CUBE_MAP_POSITIVE_X + i as u32, 
-                    0, 
-                    gl::RGB as i32, 
-                    img_width as i32, 
-                    img_height as i32, 
-                    0, 
-                    gl::RGB, 
-                    gl::UNSIGNED_BYTE, 
+                    gl::TEXTURE_CUBE_MAP_POSITIVE_X + i as u32,
+                    0,
+                    gl::RGB as i32,
+                    img_width as i32,
+                    img_height as i32,
+                    0,
+                    gl::RGB,
+                    gl::UNSIGNED_BYTE,
                     raw.as_ptr().cast()
                 ));
             }
         }
-
 
         // =============================================================
         // Debug point light setup
@@ -148,20 +194,19 @@ impl Renderer {
             gl_call!(gl::GenVertexArrays(1, &mut vao));
             gl_call!(gl::GenBuffers(1, &mut vbo));
 
-
             vaos.insert(VaoType::DebugLight, vao);
 
             gl_call!(gl::BindVertexArray(vao));
 
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, vbo));
             gl_call!(gl::BufferData(
-                gl::ARRAY_BUFFER, 
-                (mem::size_of::<f32>() * UNIT_CUBE_VERTICES.len()) as isize, 
-                UNIT_CUBE_VERTICES.as_ptr().cast(), 
+                gl::ARRAY_BUFFER,
+                (mem::size_of::<f32>() * UNIT_CUBE_VERTICES.len()) as isize,
+                UNIT_CUBE_VERTICES.as_ptr().cast(),
                 gl::STATIC_DRAW
             ));
 
-            // Position 
+            // Position
             gl_call!(gl::VertexAttribPointer(
                 0,
                 3,
@@ -171,7 +216,7 @@ impl Renderer {
                 std::ptr::null(),
             ));
             gl_call!(gl::EnableVertexAttribArray(0));
-        
+
             // Normal
             gl_call!(gl::VertexAttribPointer(
                 1,
@@ -182,15 +227,15 @@ impl Renderer {
                 (5 * mem::size_of::<f32>()) as *const c_void
             ));
             gl_call!(gl::EnableVertexAttribArray(1));
-        } 
+        }
 
         // =============================================================
         // Shadow Mapping
         // =============================================================
-        // The general idea is that we need to create a depth map rendered 
-        // from the perspective of the light source. In this case one 
+        // The general idea is that we need to create a depth map rendered
+        // from the perspective of the light source. In this case one
         // directional light.
-        // We can do this using a "framebuffer". We have been using a 
+        // We can do this using a "framebuffer". We have been using a
         // framebuffer all along, just the "default" one given to us.
         let mut fbo = 0;
         let mut depth_map = 0;
@@ -201,19 +246,51 @@ impl Renderer {
 
             gl_call!(gl::GenTextures(1, &mut depth_map));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, depth_map));
-            gl_call!(gl::TexImage2D(gl::TEXTURE_2D, 0, gl::DEPTH_COMPONENT as i32, SHADOW_WIDTH, SHADOW_HEIGHT, 0, gl::DEPTH_COMPONENT, gl::FLOAT, null_mut()));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_BORDER as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_BORDER as i32));
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::DEPTH_COMPONENT as i32,
+                SHADOW_WIDTH,
+                SHADOW_HEIGHT,
+                0,
+                gl::DEPTH_COMPONENT,
+                gl::FLOAT,
+                null_mut()
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::NEAREST as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::NEAREST as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_BORDER as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_BORDER as i32
+            ));
             gl_call!(gl::TexParameterfv(
-                gl::TEXTURE_2D, 
-                gl::TEXTURE_BORDER_COLOR, 
-                [1.0, 1.0, 1.0, 1.0].as_ptr().cast() 
+                gl::TEXTURE_2D,
+                gl::TEXTURE_BORDER_COLOR,
+                [1.0, 1.0, 1.0, 1.0].as_ptr().cast()
             ));
 
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, fbo));
-            gl_call!(gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, gl::TEXTURE_2D, depth_map, 0));
+            gl_call!(gl::FramebufferTexture2D(
+                gl::FRAMEBUFFER,
+                gl::DEPTH_ATTACHMENT,
+                gl::TEXTURE_2D,
+                depth_map,
+                0
+            ));
             gl_call!(gl::DrawBuffer(gl::NONE));
             gl_call!(gl::ReadBuffer(gl::NONE));
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
@@ -225,6 +302,10 @@ impl Renderer {
         debug_depth_quad.store_uniform_location("depth_map");
         debug_depth_quad.set_int("depth_map", 0);
 
+        let mut ui_overlay_shader = Shader::new("resources/shaders/ui_overlay.glsl");
+        ui_overlay_shader.activate();
+        ui_overlay_shader.set_int("ui_texture", 0);
+
         shaders.insert(ShaderType::Model, model_shader);
         shaders.insert(ShaderType::Skybox, skybox_shader);
         shaders.insert(ShaderType::DebugLight, debug_light_shader);
@@ -234,12 +315,13 @@ impl Renderer {
         shaders.insert(ShaderType::Gizmo, gizmo_shader);
         shaders.insert(ShaderType::Particles, particle_shader);
         shaders.insert(ShaderType::GameUi, game_ui_shader);
+        shaders.insert(ShaderType::UiOverlay, ui_overlay_shader);
 
         // DEFAULT TEXTURES
         let defaults = DefaultTextures {
-            white:  Self::make_solid_texture(255,255,255,255),
-            black:  Self::make_solid_texture(0,0,0,255),
-            opaque: Self::make_solid_texture(255,255,255,255),
+            white: Self::make_solid_texture(255, 255, 255, 255),
+            black: Self::make_solid_texture(0, 0, 0, 255),
+            opaque: Self::make_solid_texture(255, 255, 255, 255),
         };
 
         Self {
@@ -256,17 +338,17 @@ impl Renderer {
     }
 
     pub fn draw(
-        &mut self, 
-        em: &EntityManager, 
+        &mut self,
+        em: &EntityManager,
         camera: &mut Camera,
         light_manager: &Lights,
         sound_manager: &mut SoundManager,
         fb_width: u32,
         fb_height: u32,
-        _elapsed: f32, // TODO: This is for the flashing white 
+        _elapsed: f32, // TODO: This is for the flashing white
         ps: &PhysicsState,
         alpha: f32,
-        particles: &mut ParticleSystem
+        particles: &mut ParticleSystem,
     ) {
         self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha);
         if self.shadow_debug {
@@ -277,13 +359,27 @@ impl Renderer {
             let gizmo_ids = em.get_gizmo_ids();
             self.gizmo_pass(camera, em, gizmo_ids, ps, alpha);
         }
-        self.model_pass(camera, em, light_manager, ps, alpha, particles, sound_manager);
+        self.model_pass(
+            camera,
+            em,
+            light_manager,
+            ps,
+            alpha,
+            particles,
+            sound_manager,
+        );
     }
 
-
-    fn gizmo_pass(&mut self, camera: &mut Camera, em: &EntityManager, ids: Vec<usize>, ps: &PhysicsState, alpha: f32) {
+    fn gizmo_pass(
+        &mut self,
+        camera: &mut Camera,
+        em: &EntityManager,
+        ids: Vec<usize>,
+        ps: &PhysicsState,
+        alpha: f32,
+    ) {
         unsafe {
-            gl_call!(gl::PolygonMode( gl::FRONT_AND_BACK, gl::LINE ));
+            gl_call!(gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE));
         }
 
         let shader = self.shaders.get_mut(&ShaderType::Gizmo).unwrap();
@@ -294,7 +390,8 @@ impl Renderer {
                 None => continue,
             };
             let trans = Self::render_transform(em, id, alpha);
-            let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
+            let m_mat =
+                Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
             shader.set_mat4("model", m_mat);
             shader.set_mat4("projection", camera.projection);
@@ -303,7 +400,7 @@ impl Renderer {
         }
 
         unsafe {
-            gl_call!(gl::PolygonMode( gl::FRONT_AND_BACK, gl::FILL ));
+            gl_call!(gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL));
         }
     }
 
@@ -314,8 +411,15 @@ impl Renderer {
             gl::BindTexture(gl::TEXTURE_2D, id);
             let pix = [r, g, b, a];
             gl::TexImage2D(
-                gl::TEXTURE_2D, 0, gl::RGBA8 as i32, 1, 1, 0,
-                gl::RGBA, gl::UNSIGNED_BYTE, pix.as_ptr() as *const _
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA8 as i32,
+                1,
+                1,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                pix.as_ptr() as *const _,
             );
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
@@ -327,11 +431,11 @@ impl Renderer {
     }
 
     fn model_pass(
-        &mut self, camera: 
-        &mut Camera, 
-        em: &EntityManager, 
-        light_manager: &Lights, 
-        ps: &PhysicsState, 
+        &mut self,
+        camera: &mut Camera,
+        em: &EntityManager,
+        light_manager: &Lights,
+        ps: &PhysicsState,
         alpha: f32,
         particles: &mut ParticleSystem,
         sound_manager: &mut SoundManager,
@@ -345,20 +449,26 @@ impl Renderer {
             gl::FrontFace(gl::CCW);
 
             // Set default textures for models that don't have one
-            gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
-            gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
-            gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
-            gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
+            gl::ActiveTexture(gl::TEXTURE1);
+            gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
+            gl::ActiveTexture(gl::TEXTURE2);
+            gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
+            gl::ActiveTexture(gl::TEXTURE3);
+            gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
+            gl::ActiveTexture(gl::TEXTURE4);
+            gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
 
-            gl::ActiveTexture(gl::TEXTURE7); gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
-            gl::ActiveTexture(gl::TEXTURE10); gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
+            gl::ActiveTexture(gl::TEXTURE7);
+            gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
+            gl::ActiveTexture(gl::TEXTURE10);
+            gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
         }
         let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
         shader.activate();
-        
+
         for &is_alpha_pass in &[false, true] {
             shader.set_bool("alpha_test_pass", is_alpha_pass);
-            
+
             // Hoist stuff
             shader.set_mat4("projection", camera.projection);
             shader.set_mat4("view", camera.view);
@@ -379,8 +489,11 @@ impl Renderer {
                 let trans = Self::render_transform(em, id.key(), alpha);
 
                 let forward = trans.rotation * Vec3::Z;
-                let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
-
+                let m_mat = Mat4::from_scale_rotation_translation(
+                    trans.scale,
+                    trans.rotation,
+                    trans.position,
+                );
 
                 match em.animators.get(id.key()) {
                     Some(animator) => {
@@ -390,8 +503,16 @@ impl Renderer {
                         for os in animation.one_shots.iter() {
                             if animation.current_segment.get() == os.segment {
                                 if !os.triggered.get() {
-                                    sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position, id.key());
-                                    particles.spawn_oneshot_emitter("DesertStep", trans.position, None);
+                                    sound_manager.play_sound_3d(
+                                        os.sound_type.clone(),
+                                        &trans.position,
+                                        id.key(),
+                                    );
+                                    particles.spawn_oneshot_emitter(
+                                        "DesertStep",
+                                        trans.position,
+                                        None,
+                                    );
                                     os.triggered.set(true);
                                 }
                             } else {
@@ -401,13 +522,17 @@ impl Renderer {
 
                         for cs in animation.continuous_sounds.iter() {
                             if !cs.playing.get() {
-                                sound_manager.play_sound_3d(cs.sound_type.clone(), &trans.position, id.key());
+                                sound_manager.play_sound_3d(
+                                    cs.sound_type.clone(),
+                                    &trans.position,
+                                    id.key(),
+                                );
                                 cs.playing.set(true);
                             }
                         }
 
                         if let Some(fa) = &animation.hurtbox_activation {
-                            if fa.segment_range.contains(&animation.current_segment.get()) { 
+                            if fa.segment_range.contains(&animation.current_segment.get()) {
                                 if !fa.triggered.get() {
                                     fa.triggered.set(true);
 
@@ -422,21 +547,18 @@ impl Renderer {
                                     //    particles.spawn_oneshot_emitter("ShootyPart", position, Some(forward));
                                     //    particles.spawn_oneshot_emitter("SmokeyPart", position, Some(forward));
                                     //}
-
                                 }
                             } else {
                                 fa.triggered.set(false);
                             }
                         }
 
-
                         shader.set_bool("is_animated", true);
                         shader.set_mat4_array("bone_transforms", &animation.current_pose);
-
-                    },
+                    }
                     _ => {
                         shader.set_bool("is_animated", false);
-                    },
+                    }
                 }
 
                 shader.set_mat4("model", m_mat);
@@ -461,7 +583,7 @@ impl Renderer {
         shader.set_bool("selection_fresnel", false);
     }
 
-    fn grid_pass(&mut self,grid: &mut Grid, camera: &mut Camera, light_manager: &Lights) {
+    fn grid_pass(&mut self, grid: &mut Grid, camera: &mut Camera, light_manager: &Lights) {
         unsafe {
             gl::Enable(gl::BLEND);
             gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
@@ -514,10 +636,17 @@ impl Renderer {
             skybox_shader_prog.set_mat4("view", view_no_translation);
             skybox_shader_prog.set_mat4("projection", camera.projection);
 
-            gl_call!(gl::BindVertexArray(*self.vaos.get(&VaoType::Skybox).unwrap()));
+            gl_call!(gl::BindVertexArray(
+                *self.vaos.get(&VaoType::Skybox).unwrap()
+            ));
             gl_call!(gl::ActiveTexture(gl::TEXTURE1));
             gl_call!(gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture));
-            gl_call!(gl::DrawElements(gl::TRIANGLES, 36, gl::UNSIGNED_INT, std::ptr::null(),));
+            gl_call!(gl::DrawElements(
+                gl::TRIANGLES,
+                36,
+                gl::UNSIGNED_INT,
+                std::ptr::null(),
+            ));
             gl_call!(gl::BindVertexArray(0));
 
             gl_call!(gl::DepthFunc(gl::LESS));
@@ -525,7 +654,16 @@ impl Renderer {
         }
     }
 
-    fn shadow_pass(&mut self, em: &EntityManager, camera: &mut Camera, light_manager: &Lights, fb_width: u32, fb_height: u32, ps: &PhysicsState, alpha: f32) {
+    fn shadow_pass(
+        &mut self,
+        em: &EntityManager,
+        camera: &mut Camera,
+        light_manager: &Lights,
+        fb_width: u32,
+        fb_height: u32,
+        ps: &PhysicsState,
+        alpha: f32,
+    ) {
         let shader = self.shaders.get_mut(&ShaderType::Depth).unwrap();
         let near_plane = light_manager.near;
         let far_plane = light_manager.far;
@@ -545,7 +683,8 @@ impl Renderer {
 
         let light_pos = shadow_center + light_dir * light_distance;
 
-        let light_projection = Mat4::orthographic_rh_gl(bound_l, bound_r, bound_b, bound_t, near_plane, far_plane);
+        let light_projection =
+            Mat4::orthographic_rh_gl(bound_l, bound_r, bound_b, bound_t, near_plane, far_plane);
         let light_view = Mat4::look_at_rh(light_pos, shadow_center, vec3(0.0, 1.0, 0.0));
 
         camera.light_space = light_projection * light_view;
@@ -554,17 +693,20 @@ impl Renderer {
 
         unsafe {
             gl_call!(gl::Viewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT));
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, *self.fbos.get(&FboType::DepthMap).unwrap()));
+            gl_call!(gl::BindFramebuffer(
+                gl::FRAMEBUFFER,
+                *self.fbos.get(&FboType::DepthMap).unwrap()
+            ));
             gl_call!(gl::Clear(gl::DEPTH_BUFFER_BIT));
             // Render scene
             gl_call!(gl::Enable(CULL_FACE));
             //gl_call!(gl::CullFace(gl::BACK));
             gl::CullFace(gl::FRONT);
             self.render_sample_depth(em, ps, alpha);
-            gl_call!(gl::CullFace(gl::BACK)); 
+            gl_call!(gl::CullFace(gl::BACK));
             gl_call!(gl::Disable(CULL_FACE));
             // End render
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER,0));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
             gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
 
             gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
@@ -597,28 +739,27 @@ impl Renderer {
                     let animation = animator.get_current_animation().unwrap();
                     shader.set_bool("is_animated", true);
                     shader.set_mat4_array("bone_transforms", &animation.current_pose);
-
-                },
+                }
                 _ => {
                     shader.set_bool("is_animated", false);
-                },
+                }
             }
-
 
             let model = em.models.get(id.key()).unwrap();
             let trans = Self::render_transform(em, id.key(), alpha);
             //let trans = em.transforms.get(model.key()).unwrap();
 
-            let model_model = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
+            let model_model =
+                Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
             unsafe {
                 gl::BindVertexArray(model.vao);
             }
             shader.set_mat4("model", model_model);
             unsafe {
                 gl_call!(gl::DrawElements(
-                    gl::TRIANGLES, 
-                    model.indices.len() as i32, 
-                    gl::UNSIGNED_INT, 
+                    gl::TRIANGLES,
+                    model.indices.len() as i32,
+                    gl::UNSIGNED_INT,
                     std::ptr::null(),
                 ));
 
@@ -634,12 +775,13 @@ impl Renderer {
         debug_light_shader.set_mat4("projection", camera.projection);
 
         unsafe {
-            gl_call!(gl::BindVertexArray(*self.vaos.get(&VaoType::DebugLight).unwrap()));
+            gl_call!(gl::BindVertexArray(
+                *self.vaos.get(&VaoType::DebugLight).unwrap()
+            ));
             for light_pos in &POINT_LIGHT_POSITIONS {
-
                 let mut m_mat = Mat4::IDENTITY;
                 m_mat *= Mat4::from_translation(*light_pos);
-                m_mat *= Mat4::from_scale(vec3(0.2, 0.2, 0.2)); 
+                m_mat *= Mat4::from_scale(vec3(0.2, 0.2, 0.2));
 
                 debug_light_shader.set_mat4("model", m_mat);
                 debug_light_shader.set_vec3("LightColor", vec3(1.0, 1.0, 1.0));
@@ -655,13 +797,8 @@ impl Renderer {
 
         let quad_vertices: [f32; 30] = [
             // Positions      // Texture Coords
-            -1.0,  1.0, 0.0,  0.0, 1.0,
-            -1.0, -1.0, 0.0,  0.0, 0.0,
-            1.0, -1.0, 0.0,  1.0, 0.0,
-
-            -1.0,  1.0, 0.0,  0.0, 1.0,
-            1.0, -1.0, 0.0,  1.0, 0.0,
-            1.0,  1.0, 0.0,  1.0, 1.0
+            -1.0, 1.0, 0.0, 0.0, 1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0, 0.0, 1.0, 0.0, -1.0,
+            1.0, 0.0, 0.0, 1.0, 1.0, -1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0,
         ];
 
         unsafe {
@@ -681,11 +818,25 @@ impl Renderer {
 
             // Position Attribute
             gl_call!(gl::EnableVertexAttribArray(0));
-            gl_call!(gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, std::ptr::null()));
+            gl_call!(gl::VertexAttribPointer(
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                std::ptr::null()
+            ));
 
             // Texture Coordinate Attribute
             gl_call!(gl::EnableVertexAttribArray(1));
-            gl_call!(gl::VertexAttribPointer(1, 2, gl::FLOAT, gl::FALSE, stride, (3 * std::mem::size_of::<f32>()) as *const _));
+            gl_call!(gl::VertexAttribPointer(
+                1,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (3 * std::mem::size_of::<f32>()) as *const _
+            ));
 
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
             gl_call!(gl::BindVertexArray(0));
@@ -705,8 +856,7 @@ impl Renderer {
         Transform {
             position: prev.position.lerp(curr.position, alpha),
             rotation: prev.rotation.slerp(curr.rotation, alpha),
-            scale:    curr.scale,
+            scale: curr.scale,
         }
     }
 }
-

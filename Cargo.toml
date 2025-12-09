@@ -22,7 +22,7 @@ libc = "0.2.171"
 toml = "0.8.22"
 nalgebra = { version = "0.33.2", features = [ "convert-glam029" ] }
 rapier3d = { version = "0.26.1", features = [ "simd-stable" ] }
-slint = "1.14.1"
+slint = { version = "1.14.1", default-features = false, features = ["std", "compat-1-2", "renderer-software", "software-renderer-systemfonts"] }
 
 [build-dependencies]
 
