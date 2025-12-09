@@ -1213,6 +1213,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e57e16b3fe8ff4364c0661fdaac543fb38b29ea9bc9c2f45612d90adf931d2b"
 dependencies = [
  "hashbrown 0.15.5",
+ "rayon",
  "ttf-parser 0.21.1",
 ]
 
@@ -1580,6 +1581,7 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash",
+ "rayon",
 ]
 
 [[package]]
@@ -1708,14 +1710,19 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "derive_more",
+ "fontdue",
  "i-slint-common",
+ "image",
  "itertools 0.14.0",
  "linked_hash_set",
  "lyon_extra",
  "lyon_path",
  "num_enum",
+ "polib",
  "proc-macro2",
  "quote",
+ "rayon",
+ "resvg",
  "rowan",
  "smol_str 0.3.4",
  "strum",
@@ -2226,6 +2233,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slint",
+ "slint-build",
  "toml 0.8.22",
  "winit",
 ]
@@ -2294,6 +2302,15 @@ name = "linebender_resource_handle"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4a5ff6bcca6c4867b1c4fd4ef63e4db7436ef363e0ad7531d1558856bae64f4"
+
+[[package]]
+name = "linereader"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d921fea6860357575519aca014c6e22470585accdd543b370c404a8a72d0dd1d"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "linked-hash-map"
@@ -3231,6 +3248,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "polib"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b393b155cf9be86249cba1b56cc81be0e6212c66d94ac0d76d37a1761f3bb1b"
+dependencies = [
+ "linereader",
+]
+
+[[package]]
 name = "polling"
 version = "3.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3988,6 +4014,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "slint-build"
+version = "1.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6f9e30dfc58198894a4a4fe38d126a24ed4121d11cd8564643f3b7915752adc"
+dependencies = [
+ "derive_more",
+ "i-slint-compiler",
+ "spin_on",
+ "toml_edit 0.23.5",
+]
+
+[[package]]
 name = "slint-macros"
 version = "1.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4235,7 +4273,7 @@ dependencies = [
  "getrandom 0.3.1",
  "once_cell",
  "rustix 1.1.2",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4424,6 +4462,7 @@ dependencies = [
  "indexmap",
  "toml_datetime 0.7.3",
  "toml_parser",
+ "toml_writer",
  "winnow",
 ]
 

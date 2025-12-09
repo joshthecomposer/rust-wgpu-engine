@@ -25,6 +25,7 @@ rapier3d = { version = "0.26.1", features = [ "simd-stable" ] }
 slint = { version = "1.14.1", default-features = false, features = ["std", "compat-1-2", "renderer-software", "software-renderer-systemfonts"] }
 
 [build-dependencies]
+slint-build = "1.14.1"
 
 [profile.rwd] # release with debug
 inherits = "release"

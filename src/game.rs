@@ -302,7 +302,7 @@ impl Game {
             self.physics = physics;
         }
 
-        self.engine_ui.update();
+        self.engine_ui.update(&self.world.ecs);
     }
 
     pub fn render(&mut self) {

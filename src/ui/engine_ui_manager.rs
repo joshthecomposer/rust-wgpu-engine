@@ -3,28 +3,19 @@ use std::rc::Rc;
 use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgbaColor};
 use slint::platform::PointerEventButton;
 use slint::platform::WindowEvent as SlintWindowEvent;
-use slint::{LogicalPosition, PhysicalSize};
+use slint::{LogicalPosition, PhysicalSize, SharedString};
 use winit::event::WindowEvent;
 
+use crate::entity_manager::EntityManager;
 use crate::ui::slint_platform::init_slint_platform;
 
-slint::slint! {
-    export component MainWindow inherits Window {
-        background: transparent;
-
-        Text {
-            text: "Hello from Slint!";
-            font-size: 24px;
-            color: white;
-        }
-    }
-}
+slint::include_modules!();
 
 /// Manages Slint UI rendering as an overlay on top of the OpenGL scene.
 /// Uses software rendering to a pixel buffer, which is then uploaded to a GL texture.
 pub struct EngineUiManager {
     window: Rc<MinimalSoftwareWindow>,
-    _ui: MainWindow,
+    player_debug_panel: PlayerDebugPanel,
     pixel_buffer: Vec<PremultipliedRgbaColor>,
     width: u32,
     height: u32,
@@ -40,7 +31,7 @@ impl EngineUiManager {
     pub fn new(width: u32, height: u32) -> Self {
         let window = init_slint_platform(width, height);
 
-        let ui = MainWindow::new().unwrap();
+        let player_debug_panel = PlayerDebugPanel::new().unwrap();
 
         let pixel_count = (width * height) as usize;
         let pixel_buffer = vec![PremultipliedRgbaColor::default(); pixel_count];
@@ -69,14 +60,14 @@ impl EngineUiManager {
             tex
         };
 
-        // Create VAO/VBO for fullscreen quad overlay
+        // create VAO/VBO for fullscreen quad overlay
         let (overlay_vao, overlay_vbo) = unsafe {
             let mut vao = 0u32;
             let mut vbo = 0u32;
             gl::GenVertexArrays(1, &mut vao);
             gl::GenBuffers(1, &mut vbo);
 
-            // Fullscreen quad vertices: position (x,y) + texcoord (u,v)
+            // fullscreen quad vertices: position (x,y) + texcoord (u,v)
             // note: Y is flipped for texture coordinates
             let quad_vertices: [f32; 24] = [
                 // pos        // uv
@@ -125,7 +116,7 @@ impl EngineUiManager {
 
         Self {
             window,
-            _ui,
+            player_debug_panel,
             pixel_buffer,
             width,
             height,
@@ -213,9 +204,48 @@ impl EngineUiManager {
         self.needs_texture_resize = true;
     }
 
-    /// Update Slint's internal timers and animations. Call this every frame.
-    pub fn update(&mut self) {
+    /// Update the UI each frame. Handles all ECS data extraction internally.
+    pub fn update(&mut self, em: &EntityManager) {
+        self.update_player_data(em);
         slint::platform::update_timers_and_animations();
+    }
+
+    fn update_player_data(&self, em: &EntityManager) {
+        let maybe_player = em.factions.iter().find(|e| *e.value() == "Player");
+
+        if let Some(player_entry) = maybe_player {
+            let player_id = player_entry.key();
+
+            let position = em
+                .transforms
+                .get(player_id)
+                .map(|t| t.position)
+                .unwrap_or(glam::Vec3::ZERO);
+
+            let (player_state, attack_state) = em
+                .player_controllers
+                .get(player_id)
+                .map(|pc| (pc.state.to_string(), pc.attack_state.to_string()))
+                .unwrap_or(("N/A".to_string(), "N/A".to_string()));
+
+            let current_animation = em
+                .animators
+                .get(player_id)
+                .map(|a| a.current_animation.to_string())
+                .unwrap_or("N/A".to_string());
+
+            self.player_debug_panel
+                .set_position_text(SharedString::from(format!(
+                    "x: {:.2} y: {:.2} z: {:.2}",
+                    position.x, position.y, position.z
+                )));
+            self.player_debug_panel
+                .set_player_state_text(SharedString::from(player_state));
+            self.player_debug_panel
+                .set_attack_state_text(SharedString::from(attack_state));
+            self.player_debug_panel
+                .set_current_animation_text(SharedString::from(current_animation));
+        }
     }
 
     /// Render the UI to the internal pixel buffer and upload to GL texture.

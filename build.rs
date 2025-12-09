@@ -1,4 +1,4 @@
-use std::{env, fs::{self, OpenOptions}, path::Path, process::Command};
+use std::{path::Path, process::Command};
 
 fn main() {
     #[cfg(target_os = "windows")]
@@ -43,5 +43,7 @@ fn main() {
         }
     }
 
+    let config = slint_build::CompilerConfiguration::new()
+        .embed_resources(slint_build::EmbedResourcesKind::EmbedForSoftwareRenderer);
+    slint_build::compile_with_config("resources/ui/player_debug.slint", config).unwrap();
 }
-
