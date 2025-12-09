@@ -1,0 +1,361 @@
+import { VerticalBox, HorizontalBox, CheckBox, LineEdit, Button, ScrollView } from "std-widgets.slint";
+
+import { Theme } from "components/theme.slint";
+import { InlineDropdown } from "components/inline_dropdown.slint";
+import { SectionHeader } from "components/section_header.slint";
+import { LabeledSlider } from "components/labeled_slider.slint";
+import { LabeledDropdown } from "components/labeled_dropdown.slint";
+import { DataRow } from "components/data_row.slint";
+import { Panel, PanelHeader } from "components/panel.slint";
+
+export component EngineUI inherits Window {
+    background: transparent;
+    
+    in property <string> position_text: "x: 0.0 y: 0.0 z: 0.0";
+    in property <string> player_state_text: "Init";
+    in property <string> attack_state_text: "Attack1";
+    in property <string> current_animation_text: "Idle";
+    in-out property <bool> player_panel_expanded: true;
+    
+    in property <bool> editor_visible: false;
+    
+    in-out property <float> dir_light_x: 0.0;
+    in-out property <float> dir_light_y: 1.0;
+    in-out property <float> dir_light_z: -1.0;
+    in-out property <float> dir_light_distance: 32.797;
+    in-out property <bool> shadow_debug: false;
+    in-out property <float> ortho_near: 0.6;
+    in-out property <float> ortho_far: 115.756;
+    in-out property <float> bounds: 17.5;
+    in-out property <float> bias_scalar: 0.002;
+    
+    in-out property <float> master_volume: 1.0;
+    
+    callback dir_light_changed();
+    callback shadow_debug_changed(bool);
+    callback ortho_near_changed(float);
+    callback ortho_far_changed(float);
+    callback bounds_changed(float);
+    callback bias_scalar_changed(float);
+    
+    callback pause_music();
+    callback play_music();
+    callback volume_changed(float);
+    
+    callback save_entity_state();
+    
+    in-out property <string> new_faction_name: "";
+    callback save_faction();
+    
+    in property <[string]> entity_types: [];
+    in property <[string]> factions: [];
+    in-out property <int> entity_type_index: 0;
+    in-out property <int> faction_index: 0;
+    in-out property <int> weapon_type_index: 0;
+    in-out property <bool> include_weapon: false;
+    in-out property <float> base_speed: 0.0;
+    in-out property <bool> create_mode: false;
+    callback create_mode_changed(bool);
+    
+    in-out property <bool> lights_expanded: true;
+    in-out property <bool> sound_expanded: true;
+    in-out property <bool> editing_expanded: true;
+    in-out property <bool> placing_expanded: true;
+
+    // ==================== PLAYER DEBUG PANEL ====================
+    Panel {
+        x: 10px;
+        y: 10px;
+        panel-width: 320px;
+        panel-height: player_panel_expanded ? 140px : 30px;
+
+        VerticalLayout {
+            padding: 8px;
+            spacing: 4px;
+
+            PanelHeader {
+                title: "Player Data";
+                expanded <=> player_panel_expanded;
+            }
+
+            if player_panel_expanded: VerticalLayout {
+                spacing: 4px;
+                padding-top: 4px;
+
+                DataRow { label: "Position"; value: position_text; }
+                DataRow { label: "Player State"; value: player_state_text; }
+                DataRow { label: "Attack State"; value: attack_state_text; }
+                DataRow { label: "Current Animation"; value: current_animation_text; }
+            }
+        }
+    }
+
+    // ==================== ENTITY EDITOR PANEL ====================
+    if editor_visible: Rectangle {
+        x: 10px;
+        y: player_panel_expanded ? 160px : 50px;
+        width: 380px;
+        height: 500px;
+        background: #1a1a2eee;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: #4a4a6a;
+
+        ScrollView {
+            width: parent.width;
+            height: parent.height;
+            viewport-width: parent.width - 20px;
+
+            VerticalLayout {
+                padding: 8px;
+                spacing: 6px;
+
+                // =============== LIGHTS SECTION ===============
+                SectionHeader {
+                    title: "Controls for Various Lights";
+                    expanded <=> lights_expanded;
+                }
+
+                if lights_expanded: VerticalLayout {
+                    spacing: 4px;
+                    padding-left: 8px;
+
+                    LabeledSlider {
+                        label: "Dir Light X";
+                        minimum: -1.0;
+                        maximum: 1.0;
+                        value <=> dir_light_x;
+                        changed(v) => { dir_light_changed(); }
+                    }
+                    LabeledSlider {
+                        label: "Dir Light Y";
+                        minimum: -1.0;
+                        maximum: 1.0;
+                        value <=> dir_light_y;
+                        changed(v) => { dir_light_changed(); }
+                    }
+                    LabeledSlider {
+                        label: "Dir Light Z";
+                        minimum: -1.0;
+                        maximum: 1.0;
+                        value <=> dir_light_z;
+                        changed(v) => { dir_light_changed(); }
+                    }
+                    LabeledSlider {
+                        label: "Dir Light Distance";
+                        minimum: 0.0;
+                        maximum: 100.0;
+                        value <=> dir_light_distance;
+                        changed(v) => { dir_light_changed(); }
+                    }
+
+                    HorizontalLayout {
+                        height: 24px;
+                        spacing: 8px;
+                        CheckBox {
+                            text: "Shadow Debug";
+                            checked <=> shadow_debug;
+                            toggled => { shadow_debug_changed(shadow_debug); }
+                        }
+                    }
+
+                    LabeledSlider {
+                        label: "Ortho Near";
+                        minimum: 0.0;
+                        maximum: 10.0;
+                        value <=> ortho_near;
+                        changed(v) => { ortho_near_changed(v); }
+                    }
+                    LabeledSlider {
+                        label: "Ortho Far";
+                        minimum: 0.0;
+                        maximum: 500.0;
+                        value <=> ortho_far;
+                        changed(v) => { ortho_far_changed(v); }
+                    }
+                    LabeledSlider {
+                        label: "Bounds";
+                        minimum: 0.0;
+                        maximum: 100.0;
+                        value <=> bounds;
+                        changed(v) => { bounds_changed(v); }
+                    }
+                    LabeledSlider {
+                        label: "Bias Scalar";
+                        minimum: 0.0;
+                        maximum: 0.01;
+                        value <=> bias_scalar;
+                        changed(v) => { bias_scalar_changed(v); }
+                    }
+                }
+
+                // =============== SOUND SECTION ===============
+                SectionHeader {
+                    title: "Controls Fmod Sounds";
+                    expanded <=> sound_expanded;
+                }
+
+                if sound_expanded: VerticalLayout {
+                    spacing: 4px;
+                    padding-left: 8px;
+
+                    HorizontalLayout {
+                        height: 28px;
+                        spacing: 8px;
+
+                        Button {
+                            text: "Pause";
+                            clicked => { pause_music(); }
+                        }
+                        Button {
+                            text: "Play";
+                            clicked => { play_music(); }
+                        }
+                    }
+
+                    LabeledSlider {
+                        label: "Volume";
+                        minimum: 0.0;
+                        maximum: 1.0;
+                        value <=> master_volume;
+                        changed(v) => { volume_changed(v); }
+                    }
+                }
+
+                // =============== ENTITY EDITING SECTION ===============
+                SectionHeader {
+                    title: "Entity Editing";
+                    expanded <=> editing_expanded;
+                }
+
+                if editing_expanded: VerticalLayout {
+                    spacing: 4px;
+                    padding-left: 8px;
+
+                    Button {
+                        text: "Save Entity State";
+                        clicked => { save_entity_state(); }
+                    }
+
+                    // Faction creation
+                    HorizontalLayout {
+                        height: 28px;
+                        spacing: 8px;
+                        padding-top: 8px;
+
+                        LineEdit {
+                            width: 180px;
+                            placeholder-text: "New Faction Name";
+                            text <=> new_faction_name;
+                        }
+                        Button {
+                            text: "Save Faction";
+                            clicked => { save_faction(); }
+                        }
+                    }
+                }
+
+                // =============== PLACING ENTITIES SECTION ===============
+                SectionHeader {
+                    title: "Placing Entities";
+                    expanded <=> placing_expanded;
+                }
+
+                if placing_expanded: VerticalLayout {
+                    spacing: 4px;
+                    padding-left: 8px;
+
+                    // Entity Type dropdown
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text {
+                            text: "Entity Type:";
+                            color: #aaaaaa;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                            width: 80px;
+                        }
+                    }
+                    InlineDropdown {
+                        model: entity_types;
+                        current-index <=> entity_type_index;
+                    }
+
+                    // Faction dropdown
+                    HorizontalLayout {
+                        spacing: 8px;
+                        padding-top: 4px;
+                        Text {
+                            text: "Faction:";
+                            color: #aaaaaa;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                            width: 80px;
+                        }
+                    }
+                    InlineDropdown {
+                        model: factions;
+                        current-index <=> faction_index;
+                    }
+
+                    // Weapon dropdown
+                    HorizontalLayout {
+                        spacing: 8px;
+                        padding-top: 4px;
+                        Text {
+                            text: "Weapon:";
+                            color: #aaaaaa;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                            width: 80px;
+                        }
+                    }
+                    InlineDropdown {
+                        model: entity_types;
+                        current-index <=> weapon_type_index;
+                    }
+
+                    HorizontalLayout {
+                        height: 24px;
+                        spacing: 8px;
+                        padding-top: 4px;
+
+                        CheckBox {
+                            text: "Include Weapon";
+                            checked <=> include_weapon;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        height: 28px;
+                        spacing: 8px;
+
+                        LineEdit {
+                            width: 80px;
+                            text: base_speed == 0 ? "0.0" : base_speed;
+                            input-type: decimal;
+                        }
+                        Text {
+                            text: "Base Speed";
+                            color: #aaaaaa;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        height: 24px;
+                        spacing: 8px;
+
+                        CheckBox {
+                            text: "Create Mode";
+                            checked <=> create_mode;
+                            toggled => { create_mode_changed(create_mode); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

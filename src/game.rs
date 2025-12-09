@@ -176,8 +176,7 @@ impl Game {
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
-        // Let Slint handle the event first
-        let ui_consumed = self.engine_ui.handle_window_event(&event);
+        let _ui_consumed = self.engine_ui.handle_window_event(&event, &mut self.input);
 
         // Process events for the game (keyboard, mouse, etc.)
         // Note: Currently we always process game events regardless of UI consumption.
@@ -302,7 +301,21 @@ impl Game {
             self.physics = physics;
         }
 
-        self.engine_ui.update(&self.world.ecs);
+        let screen_size = glam::vec2(
+            self.platform.fb_width as f32,
+            self.platform.fb_height as f32,
+        );
+        self.engine_ui.update(
+            &mut self.world.ecs,
+            self.world.camera.move_state,
+            &mut self.world.lights,
+            &mut self.renderer,
+            &mut self.sound,
+            &mut self.input,
+            &mut self.physics,
+            &self.world.camera,
+            screen_size,
+        );
     }
 
     pub fn render(&mut self) {

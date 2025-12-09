@@ -1,6 +1,7 @@
 {
 	"cSpell.words": [
 		"FMOD",
+		"glcall",
 		"glfw",
 		"glutin",
 		"hitbox",

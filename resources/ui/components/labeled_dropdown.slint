@@ -1,0 +1,24 @@
+// Labeled dropdown with label above
+import { Theme } from "theme.slint";
+import { InlineDropdown } from "inline_dropdown.slint";
+
+export component LabeledDropdown inherits VerticalLayout {
+    in property <string> label;
+    in property <[string]> model: [];
+    in-out property <int> current-index: 0;
+    callback selected(int);
+    
+    spacing: 2px;
+    
+    Text {
+        text: label;
+        color: Theme.text-secondary;
+        font-size: 11px;
+    }
+    InlineDropdown {
+        model: root.model;
+        current-index <=> root.current-index;
+        selected(idx) => { root.selected(idx); }
+    }
+}
+

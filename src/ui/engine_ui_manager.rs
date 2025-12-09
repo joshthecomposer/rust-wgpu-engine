@@ -1,21 +1,57 @@
 use std::rc::Rc;
 
+use glam::{Quat, Vec2};
+use rapier3d::prelude::{point, vector, InteractionGroups, Ray};
 use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgbaColor};
 use slint::platform::PointerEventButton;
 use slint::platform::WindowEvent as SlintWindowEvent;
-use slint::{LogicalPosition, PhysicalSize, SharedString};
+use slint::{LogicalPosition, ModelRc, PhysicalSize, SharedString, VecModel};
 use winit::event::WindowEvent;
 
+use crate::camera::Camera;
+use crate::config::world_data::EntityInstance;
 use crate::entity_manager::EntityManager;
+use crate::enums_types::CameraState;
+use crate::gl_call;
+use crate::input::{mouse_ray_from_screen, InputState};
+use crate::lights::Lights;
+use crate::physics::PhysicsState;
+use crate::renderer::Renderer;
+use crate::some_data::GROUP_TERRAIN;
+use crate::sound::sound_manager::SoundManager;
 use crate::ui::slint_platform::init_slint_platform;
 
 slint::include_modules!();
+
+/// State for entity editor selections
+pub struct EntityEditorState {
+    pub entity_type_index: usize,
+    pub weapon_type_index: usize,
+    pub faction_index: usize,
+    pub create_mode: bool,
+    pub include_weapon: bool,
+    pub base_speed: f32,
+}
+
+impl Default for EntityEditorState {
+    fn default() -> Self {
+        Self {
+            entity_type_index: 0,
+            weapon_type_index: 0,
+            faction_index: 0,
+            create_mode: false,
+            include_weapon: false,
+            base_speed: 0.0,
+        }
+    }
+}
 
 /// Manages Slint UI rendering as an overlay on top of the OpenGL scene.
 /// Uses software rendering to a pixel buffer, which is then uploaded to a GL texture.
 pub struct EngineUiManager {
     window: Rc<MinimalSoftwareWindow>,
-    player_debug_panel: PlayerDebugPanel,
+    engine_ui: EngineUI,
+    pub editor_state: EntityEditorState,
     pixel_buffer: Vec<PremultipliedRgbaColor>,
     width: u32,
     height: u32,
@@ -24,6 +60,7 @@ pub struct EngineUiManager {
     needs_texture_resize: bool,
     overlay_vao: u32,
     overlay_vbo: u32,
+    ui_consumed_click: bool,
 }
 
 impl EngineUiManager {
@@ -31,7 +68,7 @@ impl EngineUiManager {
     pub fn new(width: u32, height: u32) -> Self {
         let window = init_slint_platform(width, height);
 
-        let player_debug_panel = PlayerDebugPanel::new().unwrap();
+        let engine_ui = EngineUI::new().unwrap();
 
         let pixel_count = (width * height) as usize;
         let pixel_buffer = vec![PremultipliedRgbaColor::default(); pixel_count];
@@ -39,13 +76,29 @@ impl EngineUiManager {
         // Create GL texture with RGBA format
         let gl_texture = unsafe {
             let mut tex = 0u32;
-            gl::GenTextures(1, &mut tex);
-            gl::BindTexture(gl::TEXTURE_2D, tex);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
-            gl::TexImage2D(
+            gl_call!(gl::GenTextures(1, &mut tex));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
                 gl::RGBA as i32,
@@ -55,8 +108,8 @@ impl EngineUiManager {
                 gl::RGBA,
                 gl::UNSIGNED_BYTE,
                 std::ptr::null(),
-            );
-            gl::BindTexture(gl::TEXTURE_2D, 0);
+            ));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
             tex
         };
 
@@ -64,8 +117,8 @@ impl EngineUiManager {
         let (overlay_vao, overlay_vbo) = unsafe {
             let mut vao = 0u32;
             let mut vbo = 0u32;
-            gl::GenVertexArrays(1, &mut vao);
-            gl::GenBuffers(1, &mut vbo);
+            gl_call!(gl::GenVertexArrays(1, &mut vao));
+            gl_call!(gl::GenBuffers(1, &mut vbo));
 
             // fullscreen quad vertices: position (x,y) + texcoord (u,v)
             // note: Y is flipped for texture coordinates
@@ -79,44 +132,45 @@ impl EngineUiManager {
                 1.0, 1.0, 1.0, 0.0, // top-right
             ];
 
-            gl::BindVertexArray(vao);
-            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-            gl::BufferData(
+            gl_call!(gl::BindVertexArray(vao));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, vbo));
+            gl_call!(gl::BufferData(
                 gl::ARRAY_BUFFER,
                 (quad_vertices.len() * std::mem::size_of::<f32>()) as isize,
                 quad_vertices.as_ptr() as *const _,
                 gl::STATIC_DRAW,
-            );
+            ));
 
             // position attribute (location 0)
-            gl::VertexAttribPointer(
+            gl_call!(gl::VertexAttribPointer(
                 0,
                 2,
                 gl::FLOAT,
                 gl::FALSE,
                 4 * std::mem::size_of::<f32>() as i32,
                 std::ptr::null(),
-            );
-            gl::EnableVertexAttribArray(0);
+            ));
+            gl_call!(gl::EnableVertexAttribArray(0));
 
             // texcoord attribute (location 1)
-            gl::VertexAttribPointer(
+            gl_call!(gl::VertexAttribPointer(
                 1,
                 2,
                 gl::FLOAT,
                 gl::FALSE,
                 4 * std::mem::size_of::<f32>() as i32,
                 (2 * std::mem::size_of::<f32>()) as *const _,
-            );
-            gl::EnableVertexAttribArray(1);
+            ));
+            gl_call!(gl::EnableVertexAttribArray(1));
 
-            gl::BindVertexArray(0);
+            gl_call!(gl::BindVertexArray(0));
             (vao, vbo)
         };
 
         Self {
             window,
-            player_debug_panel,
+            engine_ui,
+            editor_state: EntityEditorState::default(),
             pixel_buffer,
             width,
             height,
@@ -125,11 +179,46 @@ impl EngineUiManager {
             needs_texture_resize: false,
             overlay_vao,
             overlay_vbo,
+            ui_consumed_click: false,
         }
     }
 
+    /// Check if the cursor is over any visible UI panel
+    fn is_cursor_over_ui(&self) -> bool {
+        let x = self.last_cursor_pos.x;
+        let y = self.last_cursor_pos.y;
+
+        let player_panel_expanded = self.engine_ui.get_player_panel_expanded();
+        let player_panel_height = if player_panel_expanded { 140.0 } else { 30.0 };
+        let player_panel = (10.0, 10.0, 330.0, player_panel_height);
+
+        if x >= player_panel.0
+            && x <= player_panel.0 + player_panel.2
+            && y >= player_panel.1
+            && y <= player_panel.1 + player_panel.3
+        {
+            return true;
+        }
+
+        if self.engine_ui.get_editor_visible() {
+            let editor_y = if player_panel_expanded { 160.0 } else { 50.0 };
+            let editor_panel = (10.0, editor_y, 390.0, 500.0);
+
+            if x >= editor_panel.0
+                && x <= editor_panel.0 + editor_panel.2
+                && y >= editor_panel.1
+                && y <= editor_panel.1 + editor_panel.3
+            {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Handle a winit window event. Returns true if Slint consumed the event.
-    pub fn handle_window_event(&mut self, event: &WindowEvent) -> bool {
+    /// Also sets input.ui_consumed_click when mouse clicks are over UI elements.
+    pub fn handle_window_event(&mut self, event: &WindowEvent, input: &mut InputState) -> bool {
         let slint_event = match event {
             WindowEvent::CursorMoved { position, .. } => {
                 self.last_cursor_pos = LogicalPosition::new(position.x as f32, position.y as f32);
@@ -144,6 +233,17 @@ impl EngineUiManager {
                     winit::event::MouseButton::Middle => PointerEventButton::Middle,
                     _ => return false,
                 };
+
+                if *button == winit::event::MouseButton::Left {
+                    if *state == winit::event::ElementState::Pressed {
+                        let over_ui = self.is_cursor_over_ui();
+                        self.ui_consumed_click = over_ui;
+                        input.ui_consumed_click = over_ui;
+                    } else {
+                        input.ui_consumed_click = false;
+                    }
+                }
+
                 Some(match state {
                     winit::event::ElementState::Pressed => SlintWindowEvent::PointerPressed {
                         position: self.last_cursor_pos,
@@ -176,9 +276,7 @@ impl EngineUiManager {
 
         if let Some(evt) = slint_event {
             self.window.dispatch_event(evt);
-            // for now, we always assume Slint always processes events -
-            // we can check if there's a focused element for more precise control
-            true
+            self.is_cursor_over_ui()
         } else {
             false
         }
@@ -205,9 +303,152 @@ impl EngineUiManager {
     }
 
     /// Update the UI each frame. Handles all ECS data extraction internally.
-    pub fn update(&mut self, em: &EntityManager) {
+    /// Pass camera_state to control entity editor visibility.
+    /// When create_mode is enabled and user clicks terrain, an entity is spawned.
+    pub fn update(
+        &mut self,
+        em: &mut EntityManager,
+        camera_state: CameraState,
+        lights: &mut Lights,
+        renderer: &mut Renderer,
+        sound_manager: &mut SoundManager,
+        input: &mut InputState,
+        physics: &mut PhysicsState,
+        camera: &Camera,
+        screen_size: Vec2,
+    ) {
         self.update_player_data(em);
+
+        let editor_visible = camera_state != CameraState::Third;
+        self.engine_ui.set_editor_visible(editor_visible);
+
+        if editor_visible {
+            self.update_entity_editor(em, lights, renderer, sound_manager);
+
+            if self.editor_state.create_mode
+                && input.left_mouse_just_pressed()
+                && !self.ui_consumed_click
+            {
+                if let Some(hit_pos) = self.raycast_terrain(input, physics, camera, screen_size) {
+                    self.spawn_entity_at_position(em, physics, hit_pos);
+
+                    self.editor_state.create_mode = false;
+                    self.engine_ui.set_create_mode(false);
+                }
+            }
+        }
+
         slint::platform::update_timers_and_animations();
+    }
+
+    /// Raycast from mouse position to find terrain hit point
+    fn raycast_terrain(
+        &self,
+        input: &InputState,
+        physics: &PhysicsState,
+        camera: &Camera,
+        screen_size: Vec2,
+    ) -> Option<glam::Vec3> {
+        let cursor_pos = input.mouse_pos_current;
+        let (ray_origin, ray_dir) = mouse_ray_from_screen(cursor_pos, screen_size, camera);
+
+        let ray = Ray::new(
+            point![ray_origin.x, ray_origin.y, ray_origin.z],
+            vector![ray_dir.x, ray_dir.y, ray_dir.z],
+        );
+
+        let query_pipeline = physics.query_pipeline.as_ref()?;
+        let colliders = &physics.collider_set;
+        let bodies = &physics.rigid_body_set;
+
+        let max_toi = 1000.0;
+        let solid = true;
+
+        if let Some((handle, toi)) = query_pipeline.cast_ray(
+            bodies,
+            colliders,
+            &ray,
+            max_toi,
+            solid,
+            InteractionGroups::all().into(),
+        ) {
+            let collider = physics.collider_set.get(handle)?;
+            let groups = collider.collision_groups();
+
+            if groups.memberships & GROUP_TERRAIN.into() != 0.into() {
+                let hit_point = ray.point_at(toi);
+                println!("[EntityEditor] Terrain hit at: {:?}", hit_point);
+                return Some(glam::vec3(hit_point.x, hit_point.y, hit_point.z));
+            }
+        }
+
+        None
+    }
+
+    /// Spawn an entity at the given position based on current editor state
+    fn spawn_entity_at_position(
+        &self,
+        em: &mut EntityManager,
+        physics: &mut PhysicsState,
+        position: glam::Vec3,
+    ) {
+        let entity_types: Vec<String> = em.entity_type_register.keys().cloned().collect();
+        let factions: Vec<String> = em.faction_register.iter().cloned().collect();
+
+        let selected_type = entity_types
+            .get(self.editor_state.entity_type_index)
+            .cloned()
+            .unwrap_or_default();
+        let selected_faction = factions
+            .get(self.editor_state.faction_index)
+            .cloned()
+            .unwrap_or_default();
+
+        if selected_type.is_empty() || selected_faction.is_empty() {
+            eprintln!("[EntityEditor] Cannot create entity: type or faction not selected");
+            return;
+        }
+
+        let weapons = if self.editor_state.include_weapon {
+            let weapon_types: Vec<String> = em.entity_type_register.keys().cloned().collect();
+            weapon_types
+                .get(self.editor_state.weapon_type_index)
+                .map(|wt| {
+                    vec![EntityInstance {
+                        entity_type: wt.clone(),
+                        faction: selected_faction.clone(),
+                        position: glam::Vec3::ZERO,
+                        rotation: Quat::IDENTITY,
+                        weapons: None,
+                        base_speed: None,
+                        health: None,
+                        jump_height: None,
+                        cleanup_timer: None,
+                    }]
+                })
+        } else {
+            None
+        };
+
+        let instance = EntityInstance {
+            entity_type: selected_type.clone(),
+            faction: selected_faction,
+            position,
+            rotation: Quat::IDENTITY,
+            weapons,
+            base_speed: Some(self.editor_state.base_speed),
+            jump_height: Some(1.0),
+            health: Some(100.0),
+            cleanup_timer: None,
+        };
+
+        println!(
+            "[EntityEditor] Creating entity '{}' at {:?}",
+            selected_type, position
+        );
+
+        let parent_id = em.create_entity(&instance, physics);
+        em.populate_inventory(parent_id, &instance, physics);
     }
 
     fn update_player_data(&self, em: &EntityManager) {
@@ -234,18 +475,67 @@ impl EngineUiManager {
                 .map(|a| a.current_animation.to_string())
                 .unwrap_or("N/A".to_string());
 
-            self.player_debug_panel
-                .set_position_text(SharedString::from(format!(
-                    "x: {:.2} y: {:.2} z: {:.2}",
-                    position.x, position.y, position.z
-                )));
-            self.player_debug_panel
+            self.engine_ui.set_position_text(SharedString::from(format!(
+                "x: {:.2} y: {:.2} z: {:.2}",
+                position.x, position.y, position.z
+            )));
+            self.engine_ui
                 .set_player_state_text(SharedString::from(player_state));
-            self.player_debug_panel
+            self.engine_ui
                 .set_attack_state_text(SharedString::from(attack_state));
-            self.player_debug_panel
+            self.engine_ui
                 .set_current_animation_text(SharedString::from(current_animation));
         }
+    }
+
+    fn update_entity_editor(
+        &mut self,
+        em: &EntityManager,
+        lights: &mut Lights,
+        renderer: &mut Renderer,
+        sound_manager: &mut SoundManager,
+    ) {
+        let dir_x = self.engine_ui.get_dir_light_x();
+        let dir_y = self.engine_ui.get_dir_light_y();
+        let dir_z = self.engine_ui.get_dir_light_z();
+        let dir_dist = self.engine_ui.get_dir_light_distance();
+
+        lights.dir_light.direction = glam::vec3(dir_x, dir_y, dir_z).normalize();
+        lights.dir_light.distance = dir_dist;
+
+        renderer.shadow_debug = self.engine_ui.get_shadow_debug();
+
+        lights.near = self.engine_ui.get_ortho_near();
+        lights.far = self.engine_ui.get_ortho_far();
+        lights.bounds = self.engine_ui.get_bounds();
+        lights.bias_scalar = self.engine_ui.get_bias_scalar();
+
+        // TODO: fix this
+        let volume = self.engine_ui.get_master_volume();
+        sound_manager.master_volume = volume;
+
+        // TODO: fix combo boxes
+        let entity_types: Vec<SharedString> = em
+            .entity_type_register
+            .keys()
+            .map(|k| SharedString::from(k.clone()))
+            .collect();
+        let factions: Vec<SharedString> = em
+            .faction_register
+            .iter()
+            .map(|f| SharedString::from(f.clone()))
+            .collect();
+
+        self.engine_ui
+            .set_entity_types(ModelRc::new(VecModel::from(entity_types)));
+        self.engine_ui
+            .set_factions(ModelRc::new(VecModel::from(factions)));
+
+        self.editor_state.entity_type_index = self.engine_ui.get_entity_type_index() as usize;
+        self.editor_state.faction_index = self.engine_ui.get_faction_index() as usize;
+        self.editor_state.weapon_type_index = self.engine_ui.get_weapon_type_index() as usize;
+        self.editor_state.include_weapon = self.engine_ui.get_include_weapon();
+        self.editor_state.create_mode = self.engine_ui.get_create_mode();
     }
 
     /// Render the UI to the internal pixel buffer and upload to GL texture.
@@ -254,8 +544,8 @@ impl EngineUiManager {
         // resize GL texture if needed
         if self.needs_texture_resize {
             unsafe {
-                gl::BindTexture(gl::TEXTURE_2D, self.gl_texture);
-                gl::TexImage2D(
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.gl_texture));
+                gl_call!(gl::TexImage2D(
                     gl::TEXTURE_2D,
                     0,
                     gl::RGBA as i32,
@@ -265,8 +555,8 @@ impl EngineUiManager {
                     gl::RGBA,
                     gl::UNSIGNED_BYTE,
                     std::ptr::null(),
-                );
-                gl::BindTexture(gl::TEXTURE_2D, 0);
+                ));
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
             }
             self.needs_texture_resize = false;
         }
@@ -302,41 +592,43 @@ impl EngineUiManager {
             // save current state
             let mut depth_test_enabled = 0i32;
             let mut blend_enabled = 0i32;
-            gl::GetIntegerv(gl::DEPTH_TEST, &mut depth_test_enabled);
-            gl::GetIntegerv(gl::BLEND, &mut blend_enabled);
+            gl_call!(gl::GetIntegerv(gl::DEPTH_TEST, &mut depth_test_enabled));
+            gl_call!(gl::GetIntegerv(gl::BLEND, &mut blend_enabled));
 
             // set up for 2D overlay rendering
-            gl::Disable(gl::DEPTH_TEST);
-            gl::Enable(gl::BLEND);
+            gl_call!(gl::Disable(gl::DEPTH_TEST));
+            gl_call!(gl::Enable(gl::BLEND));
             // use premultiplied alpha blending since Slint uses PremultipliedRgbaColor
-            gl::BlendFunc(gl::ONE, gl::ONE_MINUS_SRC_ALPHA);
+            gl_call!(gl::BlendFunc(gl::ONE, gl::ONE_MINUS_SRC_ALPHA));
 
             // activate shader and bind texture
             shader.activate();
-            gl::ActiveTexture(gl::TEXTURE0);
-            gl::BindTexture(gl::TEXTURE_2D, self.gl_texture);
+            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.gl_texture));
 
             // draw the fullscreen quad
-            gl::BindVertexArray(self.overlay_vao);
-            gl::DrawArrays(gl::TRIANGLES, 0, 6);
-            gl::BindVertexArray(0);
-            gl::BindTexture(gl::TEXTURE_2D, 0);
+            gl_call!(gl::BindVertexArray(self.overlay_vao));
+            gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
+            gl_call!(gl::BindVertexArray(0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
 
             // restore previous state
             if depth_test_enabled != 0 {
-                gl::Enable(gl::DEPTH_TEST);
+                gl_call!(gl::Enable(gl::DEPTH_TEST));
             }
             if blend_enabled == 0 {
-                gl::Disable(gl::BLEND);
+                gl_call!(gl::Disable(gl::BLEND));
             }
         }
     }
 
+    #[allow(dead_code)]
     /// Get the GL texture ID for drawing as an overlay.
     pub fn texture(&self) -> u32 {
         self.gl_texture
     }
 
+    #[allow(dead_code)]
     /// Get the current UI size.
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
@@ -346,9 +638,9 @@ impl EngineUiManager {
 impl Drop for EngineUiManager {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteTextures(1, &self.gl_texture);
-            gl::DeleteVertexArrays(1, &self.overlay_vao);
-            gl::DeleteBuffers(1, &self.overlay_vbo);
+            gl_call!(gl::DeleteTextures(1, &self.gl_texture));
+            gl_call!(gl::DeleteVertexArrays(1, &self.overlay_vao));
+            gl_call!(gl::DeleteBuffers(1, &self.overlay_vbo));
         }
     }
 }

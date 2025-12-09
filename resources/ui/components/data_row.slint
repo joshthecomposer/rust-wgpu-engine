@@ -1,0 +1,12 @@
+// Simple data row for displaying label: value pairs
+import { Theme } from "theme.slint";
+
+export component DataRow inherits Text {
+    in property <string> label;
+    in property <string> value;
+    
+    text: label + ": " + value;
+    color: Theme.text-primary;
+    font-size: 12px;
+}
+

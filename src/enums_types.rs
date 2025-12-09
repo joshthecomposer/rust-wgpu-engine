@@ -177,7 +177,7 @@ impl Display for TextureType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CameraState {
     Free,
     Third,
