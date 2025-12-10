@@ -16,7 +16,7 @@ use crate::ui::game_ui::{do_ui, GameUiContext};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
-use crate::{combat_system, grounding_solver, items, movement_system, physics};
+use crate::{combat_system, items, movement_system, physics};
 use crate::physics::PhysicsState;
 use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
@@ -121,7 +121,7 @@ impl Game {
             let cam_basis = self.world.camera.basis_for_sim();
 
             if !self.paused {
-                grounding_solver::grounding_solver(&mut self.world.ecs, &self.physics);
+                physics::grounding_solver(&mut self.world.ecs, &self.physics);
 
                 state_machine_system::update(
                     &mut self.world.ecs,
