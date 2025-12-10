@@ -582,17 +582,6 @@ impl EntityManager {
         self.model_heights.insert(parent_id, size.y);
 
 
-        self.collider_transforms.insert(parent_id, Transform {
-            position: Vec3::ZERO,
-            rotation: Quat::IDENTITY,
-            scale,
-        });
-        self.prev_collider_transforms.insert(parent_id, Transform {
-            position: Vec3::ZERO,
-            rotation: Quat::IDENTITY,
-            scale,
-        });
-
         // PHYSICS PASS
         let iso: Isometry<f32> = (position, rotation).into();
 
@@ -603,8 +592,8 @@ impl EntityManager {
 
         let half_extents = size * 0.5;
 
-        let collider = ColliderBuilder::cuboid(size.x * 0.5, size.y * 0.5, size.z * 0.5)
-            .translation(vector![0.0, half_extents.y, 0.0])
+        let collider = ColliderBuilder::cuboid(half_extents.x, half_extents.y, half_extents.z)
+            .translation(vector![center.x, center.y, center.z])
             .sensor(true)
             .density(0.0)
             .active_events(ActiveEvents::COLLISION_EVENTS)
@@ -621,6 +610,18 @@ impl EntityManager {
             collider: collider_handle,
 
             og_rb_type: RigidBodyType::KinematicPositionBased,
+        });
+
+        
+        self.collider_transforms.insert(parent_id, Transform {
+            position: center,
+            rotation: Quat::IDENTITY,
+            scale,
+        });
+        self.prev_collider_transforms.insert(parent_id, Transform {
+            position: center,
+            rotation: Quat::IDENTITY,
+            scale,
         });
 
         self.collider_to_entity.insert(collider_handle, parent_id);
