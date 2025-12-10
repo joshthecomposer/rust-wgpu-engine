@@ -490,7 +490,12 @@ impl Renderer {
                 Some(model) => model,
                 None => continue,
             };
-            let trans = Self::render_transform(em, id, alpha);
+
+            let curr = em.collider_transforms.get(id).unwrap();
+            let prev = em.prev_collider_transforms.get(id).unwrap();
+
+            let trans = Self::render_transform_from_args(em, curr, prev, alpha);
+
             let m_mat = Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
             shader.set_mat4("model", m_mat);
@@ -881,6 +886,14 @@ impl Renderer {
             gl_call!(gl::BindVertexArray(vao));
             gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
             gl_call!(gl::BindVertexArray(0));
+        }
+    }
+
+    pub fn render_transform_from_args(em: &EntityManager, curr: &Transform, prev: &Transform, alpha: f32) -> Transform {
+        Transform {
+            position: prev.position.lerp(curr.position, alpha),
+            rotation: prev.rotation.slerp(curr.rotation, alpha),
+            scale:    curr.scale,
         }
     }
 
