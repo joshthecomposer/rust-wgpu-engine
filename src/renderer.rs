@@ -34,8 +34,6 @@ pub struct Renderer {
     pub exposure: f32,
     pub do_hdr: bool,
     pub bloom_strength: f32,
-
-    pub hdr_msaa_fbo: u32,
 }
 
 impl Renderer {
@@ -465,9 +463,6 @@ impl Renderer {
             exposure: 1.5,
             do_hdr: true,
             bloom_strength: 0.1, 
-
-            hdr_msaa_fbo,
-
         }
     }
 
