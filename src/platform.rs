@@ -15,6 +15,8 @@ use winit::{
     window::{Window, WindowAttributes},
 };
 
+use crate::gl_call;
+
 #[derive(PartialEq, Copy, Clone)]
 pub enum CursorMode {
     Normal,
@@ -104,6 +106,8 @@ impl Platform {
             display.get_proc_address(&std::ffi::CString::new(symbol).unwrap())
             as *const _
         });
+
+        unsafe { gl_call!(gl::Enable(gl::MULTISAMPLE)) }; 
 
         let size = window.inner_size();
 

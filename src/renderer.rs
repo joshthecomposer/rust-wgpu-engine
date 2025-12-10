@@ -34,6 +34,8 @@ pub struct Renderer {
     pub exposure: f32,
     pub do_hdr: bool,
     pub bloom_strength: f32,
+
+    pub hdr_msaa_fbo: u32,
 }
 
 impl Renderer {
@@ -74,7 +76,7 @@ impl Renderer {
         let mut cubemap_texture = 0;
 
         // =============================================================
-        // Main framebuffer
+        // Main framebuffer (hdr end-result after multisampling)
         // =============================================================
         // we are using a custom framebuffer that is a floating point 
         // buffer and that allows HDR
@@ -196,6 +198,67 @@ impl Renderer {
             }
 
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+        }
+
+        // =============================================================
+        // Multi sample framebuffer
+        // =============================================================
+        let mut hdr_msaa_fbo = 0;
+
+        unsafe {
+            let samples = 16;
+
+            gl_call!(gl::GenFramebuffers(1, &mut hdr_msaa_fbo));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_fbo));
+
+            let mut color_rb_msaa: [u32; 2] = [0, 0];
+            gl_call!(gl::GenRenderbuffers(2, color_rb_msaa.as_mut_ptr()));
+
+            for i in 0..2 {
+                gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, color_rb_msaa[i]));
+                gl_call!(gl::RenderbufferStorageMultisample(
+                    gl::RENDERBUFFER,
+                    samples,
+                    gl::RGBA16F,
+                    width as i32,
+                    height as i32,
+                ));
+                gl_call!(gl::FramebufferRenderbuffer(
+                    gl::FRAMEBUFFER,
+                    gl::COLOR_ATTACHMENT0 + i as u32,
+                    gl::RENDERBUFFER,
+                    color_rb_msaa[i],
+                ));
+            }
+
+            let mut rbo_depth_msaa = 0;
+            gl_call!(gl::GenRenderbuffers(1, &mut rbo_depth_msaa));
+            gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, rbo_depth_msaa));
+            gl_call!(gl::RenderbufferStorageMultisample(
+                gl::RENDERBUFFER,
+                samples,
+                gl::DEPTH_COMPONENT24,
+                width as i32,
+                height as i32,
+            ));
+            gl_call!(gl::FramebufferRenderbuffer(
+                gl::FRAMEBUFFER,
+                gl::DEPTH_ATTACHMENT,
+                gl::RENDERBUFFER,
+                rbo_depth_msaa,
+            ));
+
+            let attachments = [gl::COLOR_ATTACHMENT0, gl::COLOR_ATTACHMENT1];
+            gl_call!(gl::DrawBuffers(attachments.len() as i32, attachments.as_ptr()));
+
+            let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
+            if status != gl::FRAMEBUFFER_COMPLETE {
+                panic!("HDR MSAA FBO incomplete: 0x{:x}", status);
+            }
+
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+
+            fbos.insert(FboType::HdrMsaa, hdr_msaa_fbo);
         }
 
         // =============================================================
@@ -403,6 +466,8 @@ impl Renderer {
             do_hdr: true,
             bloom_strength: 0.1, 
 
+            hdr_msaa_fbo,
+
         }
     }
 
@@ -425,7 +490,8 @@ impl Renderer {
         }
 
         unsafe {
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, *self.fbos.get(&FboType::HDR).unwrap()));
+            let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_fbo));
             gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
 
             gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
@@ -443,6 +509,37 @@ impl Renderer {
             self.shaders.get_mut(&ShaderType::Particles).unwrap(),
             camera,
         );
+
+        // ==========================================================
+        // blitting MSAA: read MSAA and draw texture FBO
+        // ==========================================================
+        unsafe {
+
+            let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
+            let hdr_fbo      = *self.fbos.get(&FboType::HDR).unwrap();
+
+            // bind for blit
+            gl_call!(gl::BindFramebuffer(gl::READ_FRAMEBUFFER, hdr_msaa_fbo));
+            gl_call!(gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, hdr_fbo));
+
+            gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT0));
+            gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT0));
+            gl_call!(gl::BlitFramebuffer(
+                0, 0, fb_width as i32, fb_height as i32,
+                0, 0, fb_width as i32, fb_height as i32,
+                gl::COLOR_BUFFER_BIT,
+                gl::NEAREST,
+            ));
+
+            gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT1));
+            gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT1));
+            gl_call!(gl::BlitFramebuffer(
+                0, 0, fb_width as i32, fb_height as i32,
+                0, 0, fb_width as i32, fb_height as i32,
+                gl::COLOR_BUFFER_BIT,
+                gl::NEAREST,
+            ));
+        }
 
         let blurred_bloom_tex = self.blur_bloom(fb_width, fb_height);
 
