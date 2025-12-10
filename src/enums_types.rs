@@ -33,6 +33,7 @@ pub enum EboType {
 pub enum FboType {
     DepthMap,
     HDR,
+    HdrMsaa
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
