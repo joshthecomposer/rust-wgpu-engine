@@ -21,6 +21,7 @@ use crate::{
     lights::Lights,
     particles::ParticleSystem,
     physics::PhysicsState,
+    platform::Platform,
     shaders::Shader,
     some_data::{
         FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES,
@@ -48,10 +49,21 @@ pub struct Renderer {
 
     pub shadow_debug: bool,
     pub render_gizmos: bool,
+
+    pub hdr_color: u32,
+    pub hdr_bright: u32,
+
+    pub pingpong_fbos: [u32; 2],
+    pub pingpong_tex: [u32; 2],
+
+    // Introspection stuff for ui
+    pub exposure: f32,
+    pub do_hdr: bool,
+    pub bloom_strength: f32,
 }
 
 impl Renderer {
-    pub fn new() -> Self {
+    pub fn new(platform: &Platform) -> Self {
         // =============================================================
         // Setup Shaders
         // =============================================================
@@ -81,11 +93,241 @@ impl Renderer {
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
         let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");
+        let hdr_shader = Shader::new("resources/shaders/hdr.glsl");
+        let blur_shader = Shader::new("resources/shaders/blur.glsl");
 
         let mut vao = 0;
         let mut vbo = 0;
         let mut ebo = 0;
         let mut cubemap_texture = 0;
+
+        // =============================================================
+        // Main framebuffer (hdr end-result after multisampling)
+        // =============================================================
+        // we are using a custom framebuffer that is a floating point
+        // buffer and that allows HDR
+
+        let mut hdr_fbo = 0;
+        let mut hdr_color = 0;
+        let mut hdr_bright = 0;
+
+        // TODO: Dynamic resizing of the FBO
+        let width = platform.fb_width;
+        let height = platform.fb_height;
+
+        unsafe {
+            gl_call!(gl::GenFramebuffers(1, &mut hdr_fbo));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_fbo));
+
+            let mut color_buffers: [u32; 2] = [0, 0];
+            gl_call!(gl::GenTextures(2, color_buffers.as_mut_ptr()));
+
+            for i in 0..2 {
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, color_buffers[i]));
+                gl_call!(gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    gl::RGBA16F as i32,
+                    width as i32,
+                    height as i32,
+                    0,
+                    gl::RGBA,
+                    gl::FLOAT,
+                    std::ptr::null()
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_MIN_FILTER,
+                    gl::LINEAR as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_MAG_FILTER,
+                    gl::LINEAR as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_S,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_T,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+
+                gl_call!(gl::FramebufferTexture2D(
+                    gl::FRAMEBUFFER,
+                    gl::COLOR_ATTACHMENT0 + i as u32,
+                    gl::TEXTURE_2D,
+                    color_buffers[i],
+                    0
+                ));
+            }
+
+            hdr_color = color_buffers[0];
+            hdr_bright = color_buffers[1];
+
+            // Tell GL we’re drawing to *both* color attachments
+            let attachments = [gl::COLOR_ATTACHMENT0, gl::COLOR_ATTACHMENT1];
+            gl_call!(gl::DrawBuffers(
+                attachments.len() as i32,
+                attachments.as_ptr()
+            ));
+
+            // OPTIONAL but recommended: add a depth buffer if you keep depth test on
+            let mut rbo_depth = 0;
+            gl_call!(gl::GenRenderbuffers(1, &mut rbo_depth));
+            gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, rbo_depth));
+            gl_call!(gl::RenderbufferStorage(
+                gl::RENDERBUFFER,
+                gl::DEPTH_COMPONENT24,
+                width as i32,
+                height as i32
+            ));
+            gl_call!(gl::FramebufferRenderbuffer(
+                gl::FRAMEBUFFER,
+                gl::DEPTH_ATTACHMENT,
+                gl::RENDERBUFFER,
+                rbo_depth,
+            ));
+
+            let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
+            if status != gl::FRAMEBUFFER_COMPLETE {
+                panic!("HDR FBO incomplete: 0x{:x}", status);
+            }
+
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+
+            fbos.insert(FboType::HDR, hdr_fbo);
+        }
+        // =============================================================
+        // Pingpong FBOs for bloom
+        // =============================================================
+
+        let mut pingpong_fbos = [0u32; 2];
+        let mut pingpong_tex = [0u32; 2];
+
+        unsafe {
+            gl_call!(gl::GenFramebuffers(2, pingpong_fbos.as_mut_ptr()));
+            gl_call!(gl::GenTextures(2, pingpong_tex.as_mut_ptr()));
+
+            for i in 0..2 {
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, pingpong_fbos[i]));
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, pingpong_tex[i]));
+
+                gl_call!(gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    gl::RGBA16F as i32,
+                    width as i32,
+                    height as i32,
+                    0,
+                    gl::RGBA,
+                    gl::FLOAT,
+                    std::ptr::null()
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_MIN_FILTER,
+                    gl::LINEAR as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_MAG_FILTER,
+                    gl::LINEAR as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_S,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_T,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+
+                gl_call!(gl::FramebufferTexture2D(
+                    gl::FRAMEBUFFER,
+                    gl::COLOR_ATTACHMENT0,
+                    gl::TEXTURE_2D,
+                    pingpong_tex[i],
+                    0
+                ));
+
+                let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
+                if status != gl::FRAMEBUFFER_COMPLETE {
+                    panic!("Pingpong FBO {} incomplete: 0x{:x}", i, status);
+                }
+            }
+
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+        }
+
+        // =============================================================
+        // Multi sample framebuffer
+        // =============================================================
+        let mut hdr_msaa_fbo = 0;
+
+        unsafe {
+            let samples = 16;
+
+            gl_call!(gl::GenFramebuffers(1, &mut hdr_msaa_fbo));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_fbo));
+
+            let mut color_rb_msaa: [u32; 2] = [0, 0];
+            gl_call!(gl::GenRenderbuffers(2, color_rb_msaa.as_mut_ptr()));
+
+            for i in 0..2 {
+                gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, color_rb_msaa[i]));
+                gl_call!(gl::RenderbufferStorageMultisample(
+                    gl::RENDERBUFFER,
+                    samples,
+                    gl::RGBA16F,
+                    width as i32,
+                    height as i32,
+                ));
+                gl_call!(gl::FramebufferRenderbuffer(
+                    gl::FRAMEBUFFER,
+                    gl::COLOR_ATTACHMENT0 + i as u32,
+                    gl::RENDERBUFFER,
+                    color_rb_msaa[i],
+                ));
+            }
+
+            let mut rbo_depth_msaa = 0;
+            gl_call!(gl::GenRenderbuffers(1, &mut rbo_depth_msaa));
+            gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, rbo_depth_msaa));
+            gl_call!(gl::RenderbufferStorageMultisample(
+                gl::RENDERBUFFER,
+                samples,
+                gl::DEPTH_COMPONENT24,
+                width as i32,
+                height as i32,
+            ));
+            gl_call!(gl::FramebufferRenderbuffer(
+                gl::FRAMEBUFFER,
+                gl::DEPTH_ATTACHMENT,
+                gl::RENDERBUFFER,
+                rbo_depth_msaa,
+            ));
+
+            let attachments = [gl::COLOR_ATTACHMENT0, gl::COLOR_ATTACHMENT1];
+            gl_call!(gl::DrawBuffers(
+                attachments.len() as i32,
+                attachments.as_ptr()
+            ));
+
+            let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
+            if status != gl::FRAMEBUFFER_COMPLETE {
+                panic!("HDR MSAA FBO incomplete: 0x{:x}", status);
+            }
+
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+
+            fbos.insert(FboType::HdrMsaa, hdr_msaa_fbo);
+        }
 
         // =============================================================
         // Skybox memes
@@ -301,7 +543,6 @@ impl Renderer {
         debug_depth_quad.activate();
         debug_depth_quad.store_uniform_location("depth_map");
         debug_depth_quad.set_int("depth_map", 0);
-
         let mut ui_overlay_shader = Shader::new("resources/shaders/ui_overlay.glsl");
         ui_overlay_shader.activate();
         ui_overlay_shader.set_int("ui_texture", 0);
@@ -316,6 +557,8 @@ impl Renderer {
         shaders.insert(ShaderType::Particles, particle_shader);
         shaders.insert(ShaderType::GameUi, game_ui_shader);
         shaders.insert(ShaderType::UiOverlay, ui_overlay_shader);
+        shaders.insert(ShaderType::HDR, hdr_shader);
+        shaders.insert(ShaderType::Blur, blur_shader);
 
         // DEFAULT TEXTURES
         let defaults = DefaultTextures {
@@ -334,6 +577,16 @@ impl Renderer {
             cubemap_texture,
             shadow_debug: false,
             render_gizmos: false,
+
+            hdr_color,
+            hdr_bright,
+
+            pingpong_fbos,
+            pingpong_tex,
+
+            exposure: 1.5,
+            do_hdr: true,
+            bloom_strength: 0.1,
         }
     }
 
@@ -354,6 +607,16 @@ impl Renderer {
         if self.shadow_debug {
             return;
         }
+
+        unsafe {
+            let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_fbo));
+            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
+
+            gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
+            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
+        }
+
         self.skybox_pass(camera, fb_width, fb_height);
         if self.render_gizmos {
             let gizmo_ids = em.get_gizmo_ids();
@@ -368,6 +631,84 @@ impl Renderer {
             particles,
             sound_manager,
         );
+
+        particles.render(
+            self.shaders.get_mut(&ShaderType::Particles).unwrap(),
+            camera,
+        );
+
+        // ==========================================================
+        // blitting MSAA: read MSAA and draw texture FBO
+        // ==========================================================
+        unsafe {
+            let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
+            let hdr_fbo = *self.fbos.get(&FboType::HDR).unwrap();
+
+            // bind for blit
+            gl_call!(gl::BindFramebuffer(gl::READ_FRAMEBUFFER, hdr_msaa_fbo));
+            gl_call!(gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, hdr_fbo));
+
+            gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT0));
+            gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT0));
+            gl_call!(gl::BlitFramebuffer(
+                0,
+                0,
+                fb_width as i32,
+                fb_height as i32,
+                0,
+                0,
+                fb_width as i32,
+                fb_height as i32,
+                gl::COLOR_BUFFER_BIT,
+                gl::NEAREST,
+            ));
+
+            gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT1));
+            gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT1));
+            gl_call!(gl::BlitFramebuffer(
+                0,
+                0,
+                fb_width as i32,
+                fb_height as i32,
+                0,
+                0,
+                fb_width as i32,
+                fb_height as i32,
+                gl::COLOR_BUFFER_BIT,
+                gl::NEAREST,
+            ));
+        }
+
+        let blurred_bloom_tex = self.blur_bloom(fb_width, fb_height);
+
+        unsafe {
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
+            gl_call!(gl::Disable(gl::DEPTH_TEST));
+            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
+        }
+
+        let hdr_shader = self.shaders.get_mut(&ShaderType::HDR).unwrap();
+        hdr_shader.activate();
+        hdr_shader.set_int("hdrBuffer", 0);
+        hdr_shader.set_int("bloomBuffer", 1);
+        hdr_shader.set_float("exposure", self.exposure);
+        hdr_shader.set_bool("hdr", self.do_hdr);
+        hdr_shader.set_float("bloomStrength", self.bloom_strength);
+
+        unsafe {
+            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_color));
+
+            gl_call!(gl::ActiveTexture(gl::TEXTURE1));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, blurred_bloom_tex));
+        }
+
+        self.render_quad();
+
+        unsafe {
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+        }
     }
 
     fn gizmo_pass(
@@ -389,7 +730,12 @@ impl Renderer {
                 Some(model) => model,
                 None => continue,
             };
-            let trans = Self::render_transform(em, id, alpha);
+
+            let curr = em.collider_transforms.get(id).unwrap();
+            let prev = em.prev_collider_transforms.get(id).unwrap();
+
+            let trans = Self::render_transform_from_args(em, curr, prev, alpha);
+
             let m_mat =
                 Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
 
@@ -615,14 +961,7 @@ impl Renderer {
 
     fn skybox_pass(&mut self, camera: &mut Camera, _fb_width: u32, _fb_height: u32) {
         unsafe {
-            let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
-            if status != gl::FRAMEBUFFER_COMPLETE {
-                println!("Framebuffer incomplete: {}", status);
-            }
             let skybox_shader_prog = self.shaders.get(&ShaderType::Skybox).unwrap();
-
-            gl_call!(gl::ClearColor(0.14, 0.13, 0.15, 1.0));
-            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
 
             let view_no_translation = Mat4 {
                 x_axis: camera.view.x_axis,
@@ -706,11 +1045,6 @@ impl Renderer {
             gl_call!(gl::CullFace(gl::BACK));
             gl_call!(gl::Disable(CULL_FACE));
             // End render
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
-            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
-
-            gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
-            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
         }
 
         // Render only shadow from light point of view if true
@@ -850,6 +1184,19 @@ impl Renderer {
         }
     }
 
+    pub fn render_transform_from_args(
+        em: &EntityManager,
+        curr: &Transform,
+        prev: &Transform,
+        alpha: f32,
+    ) -> Transform {
+        Transform {
+            position: prev.position.lerp(curr.position, alpha),
+            rotation: prev.rotation.slerp(curr.rotation, alpha),
+            scale: curr.scale,
+        }
+    }
+
     pub fn render_transform(em: &EntityManager, id: usize, alpha: f32) -> Transform {
         let curr = em.transforms.get(id).unwrap();
         let prev = em.prev_transforms.get(id).unwrap_or(curr);
@@ -858,5 +1205,62 @@ impl Renderer {
             rotation: prev.rotation.slerp(curr.rotation, alpha),
             scale: curr.scale,
         }
+    }
+
+    fn blur_bloom(&mut self, fb_width: u32, fb_height: u32) -> u32 {
+        {
+            let blur_shader = self.shaders.get_mut(&ShaderType::Blur).unwrap();
+            blur_shader.activate();
+            blur_shader.set_int("image", 0);
+        }
+
+        let mut horizontal = true;
+        let mut first_iteration = true;
+        let passes = 10;
+
+        unsafe {
+            gl_call!(gl::Disable(gl::DEPTH_TEST));
+        }
+
+        for _ in 0..passes {
+            let target_fbo = self.pingpong_fbos[if horizontal { 0 } else { 1 }];
+            unsafe {
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, target_fbo));
+                gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
+                gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT));
+            }
+
+            {
+                let blur_shader = self.shaders.get_mut(&ShaderType::Blur).unwrap();
+                blur_shader.set_bool("horizontal", horizontal);
+            }
+
+            unsafe {
+                gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+                if first_iteration {
+                    // first pass: source is the bright texture from HDR FBO
+                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_bright));
+                } else {
+                    // subsequent passes: source is the previous pingpong texture
+                    let src_tex = self.pingpong_tex[if horizontal { 1 } else { 0 }];
+                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, src_tex));
+                }
+            }
+
+            self.render_quad();
+
+            if first_iteration {
+                first_iteration = false;
+            }
+            horizontal = !horizontal;
+        }
+
+        unsafe {
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+        }
+
+        // After the loop, the "last written" texture is the one in the opposite index of `horizontal`
+        let final_index = if horizontal { 1 } else { 0 };
+        self.pingpong_tex[final_index]
     }
 }
