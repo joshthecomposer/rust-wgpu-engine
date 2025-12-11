@@ -18,14 +18,14 @@ impl EmitterData {
         println!("loading EmitterData from {}", &file_name);
         let config_str = read_to_string(file_name).unwrap();
 
-        toml::from_str(&config_str).expect("The EmitterData file was missing or malformed")
+        serde_json::from_str(&config_str).expect("The EmitterData file was missing or malformed")
     }
 
     pub fn write_to_file(&self, file_name: &str) {
         println!("writing emitter data to {}", &file_name);
 
-        let toml_string = toml::to_string_pretty(self).expect("Failed to serialize emitter data");
-        write(file_name, toml_string).expect("Failed to write emitter data");
+        let json_string = serde_json::to_string_pretty(self).expect("Failed to serialize emitter data");
+        write(file_name, json_string).expect("Failed to write emitter data");
 
         println!("Completed writing emitter data to {}", &file_name);
     }
