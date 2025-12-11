@@ -159,7 +159,7 @@ direction = [
     1.0,
     0.0,
 ]
-texture_path = "resources/textures/smoke.png"
+texture_path = "resources/textures/particles/smoke.png"
 
 [one_shot_data.ShootyPart]
 name = "ShootyPart"
@@ -319,7 +319,7 @@ colors = [
     0.800000011920929,
 ],
 ]
-texture_path = "resources/textures/smoke.png"
+texture_path = "resources/textures/particles/smoke.png"
 texture_idx = 3
 texture_has_alpha = true
 radial_speed = [
@@ -671,6 +671,6 @@ direction = [
     1.0,
     0.0,
 ]
-texture_path = "resources/textures/smoke.png"
+texture_path = "resources/textures/particles/smoke.png"
 texture_idx = 3
 texture_has_alpha = true

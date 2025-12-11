@@ -22,7 +22,7 @@ use crate::ui::game_ui::{do_ui, GameUiContext};
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::world::World;
-use crate::{combat_system, grounding_solver, items, movement_system};
+use crate::{combat_system, items, movement_system, physics};
 
 pub struct Game {
     pub platform: Platform, // OS/window/events
@@ -40,7 +40,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(mut platform: Platform) -> Self {
+    pub fn new(platform: Platform) -> Self {
         let config = GameConfig::load_from_file("config/game_config.json");
 
         let start_seconds = 0.0;
@@ -51,7 +51,7 @@ impl Game {
 
         world.ecs.populate_entity_data(&mut physics);
 
-        let renderer = Renderer::new();
+        let renderer = Renderer::new(&platform);
         let sound = SoundManager::new(&config);
         let ui = GameUiContext::new();
         let engine_ui = EngineUiManager::new(platform.fb_width, platform.fb_height);
@@ -101,6 +101,13 @@ impl Game {
                         .prev_transforms
                         .insert(curr.key(), curr.value().clone());
                 }
+
+                for curr in self.world.ecs.collider_transforms.iter() {
+                    self.world
+                        .ecs
+                        .prev_collider_transforms
+                        .insert(curr.key(), curr.value().clone());
+                }
             }
 
             {
@@ -114,7 +121,7 @@ impl Game {
             let cam_basis = self.world.camera.basis_for_sim();
 
             if !self.paused {
-                grounding_solver::grounding_solver(&mut self.world.ecs, &self.physics);
+                physics::grounding_solver(&mut self.world.ecs, &self.physics);
 
                 state_machine_system::update(
                     &mut self.world.ecs,
@@ -141,8 +148,8 @@ impl Game {
                     self.time.fixed_dt,
                 );
 
-                Self::push_weapon_kinematics_from_bones(&self.world.ecs, &mut self.physics);
-                Self::push_static_kinematics(&self.world.ecs, &mut self.physics);
+                physics::push_weapon_kinematics_from_bones(&mut self.world.ecs, &mut self.physics);
+                physics::push_static_kinematics(&self.world.ecs, &mut self.physics);
 
                 match self.world.camera.move_state {
                     CameraState::Third | CameraState::Locked => {
@@ -160,7 +167,9 @@ impl Game {
                 self.physics.step();
             }
 
-            Self::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
+            physics::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
+
+            physics::sync_collider_transforms_with_physics(&mut self.world.ecs, &mut self.physics);
 
             self.time.end_fixed_step();
         }

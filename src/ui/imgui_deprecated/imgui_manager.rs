@@ -92,23 +92,26 @@ impl ImguiManager {
                     io.add_input_character(ch);
                 }
             }
-           // WindowEvent::ReceivedCharacter(ch) => {
-           //     io.add_input_character(*ch);
-           // }
+           //WindowEvent::ReceivedCharacter(ch) => {
+           //    io.add_input_character(*ch);
+           //}
 
             // Key press / release
-            WindowEvent::KeyboardInput {
-                event:
-                KeyEvent {
-                    physical_key,
-                    state,
-                    ..
-                },
-                ..
-            } => {
-                let pressed = *state == ElementState::Pressed;
+            WindowEvent::KeyboardInput { event, .. } => {
+                let pressed = event.state == ElementState::Pressed;
 
-                if let PhysicalKey::Code(code) = physical_key {
+                if pressed {
+                    if let Some(text) = event.text.as_deref() {
+                        for ch in text.chars() {
+                            if !ch.is_control() {
+                                io.add_input_character(ch);
+                            }
+                        }
+                    }
+                }
+
+
+                if let PhysicalKey::Code(code) = event.physical_key {
                     // Map some keys ImGui cares about
                     match code {
                         KeyCode::Backspace => io.add_key_event(Key::Backspace, pressed),

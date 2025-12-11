@@ -12,6 +12,7 @@ pub struct ParticleEditor {
     em_idx: usize,
     new_pos: [f32; 3],
     current_color: [f32; 4],
+    color_intensity: f32,
     clr_idx: usize,
     do_render: bool,
     did_render: bool,
@@ -99,13 +100,30 @@ impl ParticleEditor {
                     if Drag::new("Particle Color").speed(0.01).build_array(ui, &mut self.current_color) {};
 
                     if ui.button("Add color") {
-                        new_emitter.colors.push(self.current_color.clone());
-                    };
-                    let new = self.current_color;
-                    ui.color_button(
-                        "##new color preview",
-                        [new[0], new[1], new[2], new[3]],
-                    );
+                        let base = Vec4::from_array(self.current_color);
+                        let rgb  = base.truncate() * self.color_intensity; // Vec3
+                        let a    = base.w; // keep alpha
+
+                        new_emitter.colors.push([rgb.x, rgb.y, rgb.z, a]);
+                    }
+
+                    let base = Vec4::from_array(self.current_color);
+                    let hdr_rgb = base.truncate() * self.color_intensity; // RGB only
+
+                    let max_c = hdr_rgb.x.max(hdr_rgb.y.max(hdr_rgb.z));
+                    let scale = if max_c > 1.0 { 1.0 / max_c } else { 1.0 };
+                    let preview_rgb = hdr_rgb * scale;
+
+                    let preview = [
+                        preview_rgb.x, // now in [0,1] but same hue
+                        preview_rgb.y,
+                        preview_rgb.z,
+                        base.w,        // or 1.0 if you want
+                    ];
+
+                    ui.color_button("##new color preview", preview);
+
+                    if Drag::new("Color Intensity").speed(0.1).build(ui, &mut self.color_intensity) {};
 
                     ui.combo(
                         "Colors",
@@ -161,7 +179,14 @@ impl ParticleEditor {
                     let final_colors: Vec<Vec4> = if new_emitter.colors.len() > 0 {
                         new_emitter.colors.iter().map(|arr| Vec4::from_array(*arr)).collect()
                     } else {
-                        vec![ self.current_color.into() ]
+                        let v = Vec4::from_array(self.current_color);
+                        vec![ 
+                            Vec4::new(
+                                v.x * self.color_intensity,
+                                v.y * self.color_intensity,
+                                v.z * self.color_intensity,
+                                1.0,)
+                        ]
                     };
 
                     let texture_path = if new_emitter.texture_path.is_empty() {
@@ -275,6 +300,7 @@ impl Default for ParticleEditor {
             em_idx: 0,
             new_pos: [0.0, 0.0, 0.0],
             current_color: [1.0, 1.0, 1.0, 1.0],
+            color_intensity: 1.0,
             clr_idx: 0,
             do_render: false,
             did_render: false,

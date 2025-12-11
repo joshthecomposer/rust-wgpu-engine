@@ -1,17 +1,7 @@
 use std::{path::Path, process::Command};
 
 fn main() {
-    #[cfg(target_os = "windows")]
-    {
-        println!("cargo:rustc-link-search=native=libs");
-    }
-    #[cfg(target_os = "macos")]
-    {
-        println!("cargo:rustc-link-search=native=libs");
-        println!("cargo:rustc-link-lib=dylib=clang");
-        println!("cargo:rustc-link-lib=static=glfw3");
-        println!("cargo:rustc-link-lib=dylib=assimp");
-    }
+    println!("cargo:rustc-link-search=native=libs");
 
     #[cfg(target_os = "windows")]
     {

@@ -18,6 +18,8 @@ use winit::{
     window::{Window, WindowAttributes},
 };
 
+use crate::gl_call;
+
 #[derive(PartialEq, Copy, Clone)]
 pub enum CursorMode {
     Normal,
@@ -47,8 +49,8 @@ impl Platform {
         let template = ConfigTemplateBuilder::new()
             .with_alpha_size(8)
             .with_depth_size(24)
-            .with_stencil_size(8)
-            .with_multisampling(16);
+            .with_stencil_size(8);
+            //.with_multisampling(16);
 
         let display_builder = DisplayBuilder::new()
             .with_preference(ApiPreference::FallbackEgl) // Prefer desktop GL
@@ -106,6 +108,8 @@ impl Platform {
         gl::load_with(|symbol| {
             display.get_proc_address(&std::ffi::CString::new(symbol).unwrap()) as *const _
         });
+
+        unsafe { gl_call!(gl::Enable(gl::MULTISAMPLE)) }; 
 
         let size = window.inner_size();
 
