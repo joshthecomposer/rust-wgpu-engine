@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use glam::{Quat, Vec2};
+use glam::{Quat, Vec2, Vec3, Vec4};
 use rapier3d::prelude::{point, vector, InteractionGroups, Ray};
 use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgbaColor};
 use slint::platform::PointerEventButton;
@@ -9,12 +9,14 @@ use slint::{LogicalPosition, ModelRc, PhysicalSize, SharedString, VecModel};
 use winit::event::WindowEvent;
 
 use crate::camera::Camera;
+use crate::config::emitter_data::EmitterBlackboard;
 use crate::config::world_data::EntityInstance;
 use crate::entity_manager::EntityManager;
 use crate::enums_types::CameraState;
 use crate::gl_call;
 use crate::input::{mouse_ray_from_screen, InputState};
 use crate::lights::Lights;
+use crate::particles::ParticleSystem;
 use crate::physics::PhysicsState;
 use crate::renderer::Renderer;
 use crate::some_data::GROUP_TERRAIN;
@@ -61,6 +63,13 @@ pub struct EngineUiManager {
     overlay_vao: u32,
     overlay_vbo: u32,
     ui_consumed_click: bool,
+    // Particle editor state (for Slint-based editor, mirroring old ImGui behavior)
+    particle_timer: f32,
+    particle_did_render: bool,
+    particle_staged_id: Option<usize>,
+    last_pe_do_render: bool,
+    last_pe_save_toggle: bool,
+    last_pe_use_staged_texture_toggle: bool,
 }
 
 impl EngineUiManager {
@@ -180,6 +189,12 @@ impl EngineUiManager {
             overlay_vao,
             overlay_vbo,
             ui_consumed_click: false,
+            particle_timer: 0.0,
+            particle_did_render: false,
+            particle_staged_id: None,
+            last_pe_do_render: false,
+            last_pe_save_toggle: false,
+            last_pe_use_staged_texture_toggle: false,
         }
     }
 
@@ -208,6 +223,27 @@ impl EngineUiManager {
                 && x <= editor_panel.0 + editor_panel.2
                 && y >= editor_panel.1
                 && y <= editor_panel.1 + editor_panel.3
+            {
+                return true;
+            }
+        }
+
+        // Right-side particle editor panel
+        if self.engine_ui.get_editor_visible() {
+            let particle_panel_expanded = self.engine_ui.get_particle_panel_expanded();
+            let panel_height = if particle_panel_expanded {
+                self.height as f32 - 20.0
+            } else {
+                30.0
+            };
+            // Matches Slint: x: parent.width - 430px; panel-width: 420px
+            let panel_x = self.width as f32 - 430.0;
+            let particle_panel = (panel_x, 10.0, 420.0, panel_height);
+
+            if x >= particle_panel.0
+                && x <= particle_panel.0 + particle_panel.2
+                && y >= particle_panel.1
+                && y <= particle_panel.1 + particle_panel.3
             {
                 return true;
             }
@@ -305,6 +341,7 @@ impl EngineUiManager {
     /// Update the UI each frame. Handles all ECS data extraction internally.
     /// Pass camera_state to control entity editor visibility.
     /// When create_mode is enabled and user clicks terrain, an entity is spawned.
+    /// Also updates the right-side particle editor panel and its preview behavior.
     pub fn update(
         &mut self,
         em: &mut EntityManager,
@@ -316,6 +353,8 @@ impl EngineUiManager {
         physics: &mut PhysicsState,
         camera: &Camera,
         screen_size: Vec2,
+        particles: &mut ParticleSystem,
+        dt: f32,
     ) {
         self.update_player_data(em);
 
@@ -323,13 +362,21 @@ impl EngineUiManager {
         self.engine_ui.set_editor_visible(editor_visible);
 
         if editor_visible {
-            self.update_entity_editor(em, lights, renderer, sound_manager);
+            let mut last_terrain_hit: Option<glam::Vec3> = None;
+            if input.left_mouse_just_pressed() && !self.ui_consumed_click {
+                last_terrain_hit = self.raycast_terrain(input, physics, camera, screen_size);
+                if let Some(hit_pos) = last_terrain_hit {
+                    self.engine_ui.set_pe_pos_x(hit_pos.x);
+                    self.engine_ui.set_pe_pos_y(hit_pos.y);
+                    self.engine_ui.set_pe_pos_z(hit_pos.z);
+                }
+            }
 
-            if self.editor_state.create_mode
-                && input.left_mouse_just_pressed()
-                && !self.ui_consumed_click
-            {
-                if let Some(hit_pos) = self.raycast_terrain(input, physics, camera, screen_size) {
+            self.update_entity_editor(em, lights, renderer, sound_manager);
+            self.update_particle_editor(particles, input, dt);
+
+            if self.editor_state.create_mode {
+                if let Some(hit_pos) = last_terrain_hit {
                     self.spawn_entity_at_position(em, physics, hit_pos);
 
                     self.editor_state.create_mode = false;
@@ -536,6 +583,225 @@ impl EngineUiManager {
         self.editor_state.weapon_type_index = self.engine_ui.get_weapon_type_index() as usize;
         self.editor_state.include_weapon = self.engine_ui.get_include_weapon();
         self.editor_state.create_mode = self.engine_ui.get_create_mode();
+    }
+
+    /// Build an EmitterBlackboard payload from the current Slint particle editor properties.
+    /// This mirrors the data that the old ImGui ParticleEditor produced per UiEmitterBlackboard.
+    fn build_particle_payload_from_ui(&self) -> EmitterBlackboard {
+        let name = self.engine_ui.get_pe_emitter_name().to_string();
+
+        let angle_rand = Vec2::new(
+            self.engine_ui.get_pe_angle_min(),
+            self.engine_ui.get_pe_angle_max(),
+        );
+
+        let radius_rand = Vec2::new(
+            self.engine_ui.get_pe_radius_min(),
+            self.engine_ui.get_pe_radius_max(),
+        );
+
+        let gravity = self.engine_ui.get_pe_gravity();
+
+        // velocity was used in the original data format but is no longer consumed by the
+        // still populating this bad boy for compatibility
+        let velocity = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 2.0),
+            Vec2::new(0.0, 0.0),
+        ];
+
+        let particle_lifetime = Vec2::new(
+            self.engine_ui.get_pe_lifetime_min(),
+            self.engine_ui.get_pe_lifetime_max(),
+        );
+
+        // legacy field
+        let particle_scale = Vec2::new(0.0, 0.0);
+
+        let particle_count = self.engine_ui.get_pe_particle_count().max(1.0).round() as usize;
+
+        let color = Vec4::new(
+            self.engine_ui.get_pe_color_r(),
+            self.engine_ui.get_pe_color_g(),
+            self.engine_ui.get_pe_color_b(),
+            self.engine_ui.get_pe_color_a(),
+        );
+        let colors = vec![color];
+
+        let texture_path_str = self.engine_ui.get_pe_texture_path().to_string();
+        let texture_path = if texture_path_str.is_empty() {
+            None
+        } else {
+            Some(texture_path_str)
+        };
+
+        let radial_speed = Vec2::new(
+            self.engine_ui.get_pe_radial_speed_min(),
+            self.engine_ui.get_pe_radial_speed_max(),
+        );
+
+        let up_speed = Vec2::new(
+            self.engine_ui.get_pe_up_speed_min(),
+            self.engine_ui.get_pe_up_speed_max(),
+        );
+
+        let jitter = Vec2::new(
+            self.engine_ui.get_pe_jitter_min(),
+            self.engine_ui.get_pe_jitter_max(),
+        );
+
+        let base_alpha = Vec2::new(
+            self.engine_ui.get_pe_base_alpha_min(),
+            self.engine_ui.get_pe_base_alpha_max(),
+        );
+
+        let alpha_multiplier = self.engine_ui.get_pe_alpha_multiplier();
+        let alpha_power = self.engine_ui.get_pe_alpha_power();
+
+        let base_scale = Vec2::new(
+            self.engine_ui.get_pe_base_scale_min(),
+            self.engine_ui.get_pe_base_scale_max(),
+        );
+
+        let scale_multiplier = self.engine_ui.get_pe_scale_multiplier();
+        let scale_power = self.engine_ui.get_pe_scale_power();
+
+        let direction = Vec3::new(
+            self.engine_ui.get_pe_dir_x(),
+            self.engine_ui.get_pe_dir_y(),
+            self.engine_ui.get_pe_dir_z(),
+        );
+
+        let pps_value = self.engine_ui.get_pe_pps();
+        let pps = if pps_value > 0.0 {
+            Some(pps_value as usize)
+        } else {
+            None
+        };
+
+        EmitterBlackboard {
+            name,
+            angle_rand,
+            radius_rand,
+            gravity,
+            velocity,
+            particle_lifetime,
+            particle_scale,
+            particle_count,
+            colors,
+            texture_path,
+            texture_idx: None,
+            texture_has_alpha: self.engine_ui.get_pe_texture_has_alpha(),
+            radial_speed,
+            up_speed,
+            jitter,
+            base_alpha,
+            alpha_multiplier,
+            alpha_power,
+            base_scale,
+            scale_multiplier,
+            scale_power,
+            direction,
+            pps,
+        }
+    }
+
+    /// Update the particle editor panel (right side) and drive particle preview/save
+    /// behavior, mirroring the old ImGui ParticleEditor.
+    fn update_particle_editor(
+        &mut self,
+        particles: &mut ParticleSystem,
+        _input: &mut InputState,
+        dt: f32,
+    ) {
+        let mut emitter_types: Vec<String> = particles
+            .emitter_data
+            .one_shot_data
+            .keys()
+            .cloned()
+            .collect();
+        emitter_types.sort_unstable();
+        let emitter_model: Vec<SharedString> = emitter_types
+            .iter()
+            .cloned()
+            .map(SharedString::from)
+            .collect();
+        self.engine_ui
+            .set_emitter_types(ModelRc::new(VecModel::from(emitter_model)));
+
+        let staged_texture = self.engine_ui.get_staged_texture().to_string();
+        let use_staged_toggle = self.engine_ui.get_pe_use_staged_texture_toggle();
+        if use_staged_toggle != self.last_pe_use_staged_texture_toggle && use_staged_toggle {
+            if !staged_texture.is_empty() {
+                self.engine_ui
+                    .set_pe_texture_path(SharedString::from(staged_texture.clone()));
+            }
+        }
+        self.last_pe_use_staged_texture_toggle = use_staged_toggle;
+
+        let mut payload = self.build_particle_payload_from_ui();
+
+        let do_render = self.engine_ui.get_pe_do_render();
+        let just_enabled = do_render && !self.last_pe_do_render;
+        particles.render_staged_emitters = do_render;
+
+        if do_render {
+            let origin = Vec3::new(
+                self.engine_ui.get_pe_pos_x(),
+                self.engine_ui.get_pe_pos_y(),
+                self.engine_ui.get_pe_pos_z(),
+            );
+
+            if payload.pps.is_some() {
+                // CONTINUOUS EMITTER PREVIEW
+                if let Some(id) = self.particle_staged_id {
+                    particles.edit_staged_emitter(id, &payload, origin);
+                } else if self.particle_timer >= 1.0 || just_enabled {
+                    // first time spawning
+                    let id = particles.spawn_oneshot_editor_emitter(&payload, origin);
+                    self.particle_staged_id = Some(id);
+                    self.particle_did_render = true;
+                }
+            } else {
+                // ONESHOT PREVIEW
+                if self.particle_timer >= 1.0 || just_enabled {
+                    particles.spawn_oneshot_editor_emitter(&payload, origin);
+                    self.particle_did_render = true;
+                }
+            }
+        }
+
+        if self.particle_did_render {
+            self.particle_timer -= self.particle_timer;
+            self.particle_did_render = false;
+        }
+        self.particle_timer += dt;
+
+        let save_toggle = self.engine_ui.get_pe_save_toggle();
+        if save_toggle != self.last_pe_save_toggle && save_toggle {
+            let name = self.engine_ui.get_pe_emitter_name().to_string();
+            if !name.is_empty() {
+                if !emitter_types.contains(&name) {
+                    payload.name = name.clone();
+                    particles
+                        .emitter_data
+                        .one_shot_data
+                        .insert(name.clone(), payload.clone());
+                    particles
+                        .emitter_data
+                        .write_to_file("config/particle_emitters.toml");
+                } else {
+                    eprintln!(
+                        "[ParticleEditor] emitter not saved, name '{}' already exists",
+                        name
+                    );
+                }
+            } else {
+                eprintln!("[ParticleEditor] cannot save emitter: name is empty");
+            }
+        }
+        self.last_pe_save_toggle = save_toggle;
+        self.last_pe_do_render = do_render;
     }
 
     /// Render the UI to the internal pixel buffer and upload to GL texture.

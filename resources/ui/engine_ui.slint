@@ -57,7 +57,52 @@ export component EngineUI inherits Window {
     in-out property <bool> lights_expanded: true;
     in-out property <bool> sound_expanded: true;
     in-out property <bool> editing_expanded: true;
-    in-out property <bool> placing_expanded: true;
+	    in-out property <bool> placing_expanded: true;
+
+	    // ==================== PARTICLE EDITOR PROPERTIES ====================
+	    in-out property <bool> particle_panel_expanded: true;
+	    in property <[string]> emitter_types: [];
+	    in-out property <int> emitter_type_index: 0;
+	    in-out property <string> staged_texture: "";
+	    in-out property <string> pe_emitter_name: "";
+	    in-out property <float> pe_pos_x: 0.0;
+	    in-out property <float> pe_pos_y: 0.0;
+	    in-out property <float> pe_pos_z: 0.0;
+	    in-out property <float> pe_dir_x: 0.0;
+	    in-out property <float> pe_dir_y: 1.0;
+	    in-out property <float> pe_dir_z: 0.0;
+	    in-out property <float> pe_angle_min: 0.0;
+	    in-out property <float> pe_angle_max: 6.28318;
+	    in-out property <float> pe_radius_min: 0.0;
+	    in-out property <float> pe_radius_max: 0.0;
+	    in-out property <float> pe_jitter_min: 0.0;
+	    in-out property <float> pe_jitter_max: 0.2;
+	    in-out property <float> pe_gravity: 0.0;
+	    in-out property <float> pe_radial_speed_min: 0.0;
+	    in-out property <float> pe_radial_speed_max: 1.0;
+	    in-out property <float> pe_up_speed_min: 1.0;
+	    in-out property <float> pe_up_speed_max: 2.0;
+	    in-out property <float> pe_lifetime_min: 0.3;
+	    in-out property <float> pe_lifetime_max: 1.0;
+	    in-out property <float> pe_particle_count: 10.0;
+	    in-out property <float> pe_pps: 0.0;
+	    in-out property <float> pe_base_alpha_min: 1.0;
+	    in-out property <float> pe_base_alpha_max: 1.0;
+	    in-out property <float> pe_alpha_multiplier: 0.0;
+	    in-out property <float> pe_alpha_power: 1.0;
+	    in-out property <float> pe_base_scale_min: 0.08;
+	    in-out property <float> pe_base_scale_max: 0.1;
+	    in-out property <float> pe_scale_multiplier: 1.0;
+	    in-out property <float> pe_scale_power: 1.0;
+	    in-out property <float> pe_color_r: 1.0;
+	    in-out property <float> pe_color_g: 1.0;
+	    in-out property <float> pe_color_b: 1.0;
+	    in-out property <float> pe_color_a: 1.0;
+	    in-out property <string> pe_texture_path: "";
+	    in-out property <bool> pe_texture_has_alpha: false;
+	    in-out property <bool> pe_do_render: false;
+	    in-out property <bool> pe_save_toggle: false;
+	    in-out property <bool> pe_use_staged_texture_toggle: false;
 
     // ==================== PLAYER DEBUG PANEL ====================
     Panel {
@@ -119,9 +164,8 @@ export component EngineUI inherits Window {
 		        y: 28px; // header height (20px) + 8px margin
 		        width: parent.width;
 		        height: parent.height - 28px;
-		        viewport-width: parent.width - 20px;
-
-	        VerticalLayout {
+		
+		        VerticalLayout {
 	            padding: 8px;
 	            spacing: 6px;
 
@@ -405,5 +449,302 @@ export component EngineUI inherits Window {
 	            }
 	        }
 	    }
+		}
+	
+			// ==================== PARTICLE EDITOR PANEL ====================
+			if editor_visible: Panel {
+			    x: parent.width - 430px;
+			    y: 10px;
+			    panel-width: 420px;
+			    panel-height: particle_panel_expanded ? parent.height - 20px : 30px;
+		
+		    PanelHeader {
+		        x: 8px;
+		        y: 4px;
+		        width: parent.width - 16px;
+		        title: "Particle Editor";
+		        expanded <=> particle_panel_expanded;
+		    }
+		
+		    if particle_panel_expanded: ScrollView {
+		        x: 0px;
+		        y: 28px;
+		        width: parent.width;
+		        height: parent.height - 28px;
+		
+		        VerticalLayout {
+		            padding: 8px;
+		            spacing: 6px;
+		
+		            Text {
+		                text: "Emitter Types";
+		                color: Theme.text-secondary;
+		                font-size: 11px;
+		            }
+		
+		            ComboBox {
+		                model: emitter_types;
+		                current-index <=> emitter_type_index;
+		            }
+		
+		            Rectangle {
+		                height: 1px;
+		                background: Theme.panel-border;
+		            }
+		
+		            Text {
+		                text: "Create a new Emitter";
+		                color: Theme.text-secondary;
+		                font-size: 11px;
+		            }
+		
+		            LineEdit {
+		                placeholder-text: "Staged Texture";
+		                text <=> staged_texture;
+		            }
+		
+		            Button {
+		                text: "Use Staged Texture";
+		                clicked => {
+		                    pe_use_staged_texture_toggle = !pe_use_staged_texture_toggle;
+		                }
+		            }
+		
+		            LineEdit {
+		                placeholder-text: "Emitter Name";
+		                text <=> pe_emitter_name;
+		            }
+		
+		            LabeledSlider {
+		                label: "Position X";
+		                minimum: -50.0;
+		                maximum: 50.0;
+		                value <=> pe_pos_x;
+		            }
+		            LabeledSlider {
+		                label: "Position Y";
+		                minimum: -50.0;
+		                maximum: 50.0;
+		                value <=> pe_pos_y;
+		            }
+		            LabeledSlider {
+		                label: "Position Z";
+		                minimum: -50.0;
+		                maximum: 50.0;
+		                value <=> pe_pos_z;
+		            }
+		
+		            LabeledSlider {
+		                label: "Direction X";
+		                minimum: -1.0;
+		                maximum: 1.0;
+		                value <=> pe_dir_x;
+		            }
+		            LabeledSlider {
+		                label: "Direction Y";
+		                minimum: -1.0;
+		                maximum: 1.0;
+		                value <=> pe_dir_y;
+		            }
+		            LabeledSlider {
+		                label: "Direction Z";
+		                minimum: -1.0;
+		                maximum: 1.0;
+		                value <=> pe_dir_z;
+		            }
+		
+		            LabeledSlider {
+		                label: "Angle Min";
+		                minimum: 0.0;
+		                maximum: 6.28318;
+		                value <=> pe_angle_min;
+		            }
+		            LabeledSlider {
+		                label: "Angle Max";
+		                minimum: 0.0;
+		                maximum: 6.28318;
+		                value <=> pe_angle_max;
+		            }
+		            LabeledSlider {
+		                label: "Radius Min";
+		                minimum: 0.0;
+		                maximum: 20.0;
+		                value <=> pe_radius_min;
+		            }
+		            LabeledSlider {
+		                label: "Radius Max";
+		                minimum: 0.0;
+		                maximum: 20.0;
+		                value <=> pe_radius_max;
+		            }
+		            LabeledSlider {
+		                label: "Jitter Min";
+		                minimum: 0.0;
+		                maximum: 5.0;
+		                value <=> pe_jitter_min;
+		            }
+		            LabeledSlider {
+		                label: "Jitter Max";
+		                minimum: 0.0;
+		                maximum: 5.0;
+		                value <=> pe_jitter_max;
+		            }
+		
+		            LabeledSlider {
+		                label: "Gravity";
+		                minimum: -50.0;
+		                maximum: 50.0;
+		                value <=> pe_gravity;
+		            }
+		            LabeledSlider {
+		                label: "Radial Speed Min";
+		                minimum: 0.0;
+		                maximum: 50.0;
+		                value <=> pe_radial_speed_min;
+		            }
+		            LabeledSlider {
+		                label: "Radial Speed Max";
+		                minimum: 0.0;
+		                maximum: 50.0;
+		                value <=> pe_radial_speed_max;
+		            }
+		            LabeledSlider {
+		                label: "Up Speed Min";
+		                minimum: -10.0;
+		                maximum: 10.0;
+		                value <=> pe_up_speed_min;
+		            }
+		            LabeledSlider {
+		                label: "Up Speed Max";
+		                minimum: -10.0;
+		                maximum: 10.0;
+		                value <=> pe_up_speed_max;
+		            }
+		
+		            LabeledSlider {
+		                label: "Lifetime Min";
+		                minimum: 0.0;
+		                maximum: 5.0;
+		                value <=> pe_lifetime_min;
+		            }
+		            LabeledSlider {
+		                label: "Lifetime Max";
+		                minimum: 0.0;
+		                maximum: 5.0;
+		                value <=> pe_lifetime_max;
+		            }
+		            LabeledSlider {
+		                label: "Particle Count";
+		                minimum: 1.0;
+		                maximum: 500.0;
+		                value <=> pe_particle_count;
+		            }
+		            LabeledSlider {
+		                label: "PPS (continuous)";
+		                minimum: 0.0;
+		                maximum: 200.0;
+		                value <=> pe_pps;
+		            }
+		
+		            LabeledSlider {
+		                label: "Color R";
+		                minimum: 0.0;
+		                maximum: 3.0;
+		                value <=> pe_color_r;
+		            }
+		            LabeledSlider {
+		                label: "Color G";
+		                minimum: 0.0;
+		                maximum: 3.0;
+		                value <=> pe_color_g;
+		            }
+		            LabeledSlider {
+		                label: "Color B";
+		                minimum: 0.0;
+		                maximum: 3.0;
+		                value <=> pe_color_b;
+		            }
+		            LabeledSlider {
+		                label: "Color A";
+		                minimum: 0.0;
+		                maximum: 1.0;
+		                value <=> pe_color_a;
+		            }
+		
+		            LabeledSlider {
+		                label: "Start Alpha Min";
+		                minimum: 0.0;
+		                maximum: 2.0;
+		                value <=> pe_base_alpha_min;
+		            }
+		            LabeledSlider {
+		                label: "Start Alpha Max";
+		                minimum: 0.0;
+		                maximum: 2.0;
+		                value <=> pe_base_alpha_max;
+		            }
+		            LabeledSlider {
+		                label: "Alpha Multiplier";
+		                minimum: 0.0;
+		                maximum: 3.0;
+		                value <=> pe_alpha_multiplier;
+		            }
+		            LabeledSlider {
+		                label: "Alpha Curve (1=linear)";
+		                minimum: 0.0;
+		                maximum: 3.0;
+		                value <=> pe_alpha_power;
+		            }
+		            LabeledSlider {
+		                label: "Start Scale Min";
+		                minimum: 0.0;
+		                maximum: 1.0;
+		                value <=> pe_base_scale_min;
+		            }
+		            LabeledSlider {
+		                label: "Start Scale Max";
+		                minimum: 0.0;
+		                maximum: 1.0;
+		                value <=> pe_base_scale_max;
+		            }
+		            LabeledSlider {
+		                label: "Scale Multiplier";
+		                minimum: 0.0;
+		                maximum: 3.0;
+		                value <=> pe_scale_multiplier;
+		            }
+		            LabeledSlider {
+		                label: "Scale Curve (1=linear)";
+		                minimum: 0.0;
+		                maximum: 3.0;
+		                value <=> pe_scale_power;
+		            }
+		
+		            LineEdit {
+		                placeholder-text: "Texture Path";
+		                text <=> pe_texture_path;
+		            }
+		
+		            CheckBox {
+		                text: "Texture Has Alpha";
+		                checked <=> pe_texture_has_alpha;
+		            }
+		
+		            HorizontalLayout {
+		                height: 28px;
+		                spacing: 8px;
+		                CheckBox {
+		                    text: "Render Emitters";
+		                    checked <=> pe_do_render;
+		                }
+		                Button {
+		                    text: "Save";
+		                    clicked => {
+		                        pe_save_toggle = !pe_save_toggle;
+		                    }
+		                }
+		            }
+		        }
+		    }
+		}
 	}
-}

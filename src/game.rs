@@ -324,6 +324,8 @@ impl Game {
             &mut self.physics,
             &self.world.camera,
             screen_size,
+            &mut self.world.particles,
+            self.time.dt,
         );
     }
 
