@@ -33,6 +33,8 @@ pub struct EntityEditorState {
     pub create_mode: bool,
     pub include_weapon: bool,
     pub base_speed: f32,
+    pub entity_editor_initialized: bool,
+    pub emitter_editor_initialized: bool,
 }
 
 impl Default for EntityEditorState {
@@ -44,6 +46,8 @@ impl Default for EntityEditorState {
             create_mode: false,
             include_weapon: false,
             base_speed: 0.0,
+            entity_editor_initialized: false,
+            emitter_editor_initialized: false,
         }
     }
 }
@@ -561,22 +565,26 @@ impl EngineUiManager {
         let volume = self.engine_ui.get_master_volume();
         sound_manager.master_volume = volume;
 
-        // TODO: fix combo boxes
-        let entity_types: Vec<SharedString> = em
-            .entity_type_register
-            .keys()
-            .map(|k| SharedString::from(k.clone()))
-            .collect();
-        let factions: Vec<SharedString> = em
-            .faction_register
-            .iter()
-            .map(|f| SharedString::from(f.clone()))
-            .collect();
+        if !self.editor_state.entity_editor_initialized {
+            let entity_types: Vec<SharedString> = em
+                .entity_type_register
+                .keys()
+                .map(|k| SharedString::from(k.clone()))
+                .collect();
 
-        self.engine_ui
-            .set_entity_types(ModelRc::new(VecModel::from(entity_types)));
-        self.engine_ui
-            .set_factions(ModelRc::new(VecModel::from(factions)));
+            let factions: Vec<SharedString> = em
+                .faction_register
+                .iter()
+                .map(|f| SharedString::from(f.clone()))
+                .collect();
+
+            self.engine_ui
+                .set_entity_types(ModelRc::new(VecModel::from(entity_types)));
+            self.engine_ui
+                .set_factions(ModelRc::new(VecModel::from(factions)));
+
+            self.editor_state.entity_editor_initialized = true;
+        }
 
         self.editor_state.entity_type_index = self.engine_ui.get_entity_type_index() as usize;
         self.editor_state.faction_index = self.engine_ui.get_faction_index() as usize;
@@ -721,13 +729,18 @@ impl EngineUiManager {
             .cloned()
             .collect();
         emitter_types.sort_unstable();
-        let emitter_model: Vec<SharedString> = emitter_types
-            .iter()
-            .cloned()
-            .map(SharedString::from)
-            .collect();
-        self.engine_ui
-            .set_emitter_types(ModelRc::new(VecModel::from(emitter_model)));
+
+        if !self.editor_state.emitter_editor_initialized {
+            let emitter_model: Vec<SharedString> = emitter_types
+                .iter()
+                .cloned()
+                .map(SharedString::from)
+                .collect();
+            self.engine_ui
+                .set_emitter_types(ModelRc::new(VecModel::from(emitter_model)));
+
+            self.editor_state.emitter_editor_initialized = true;
+        }
 
         let staged_texture = self.engine_ui.get_staged_texture().to_string();
         let use_staged_toggle = self.engine_ui.get_pe_use_staged_texture_toggle();
