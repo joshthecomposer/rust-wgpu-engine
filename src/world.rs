@@ -12,7 +12,7 @@ impl World {
         let ecs = EntityManager::new(10_000);
         let camera = Camera::new();
         let lights = Lights::new(50);
-        let particles = ParticleSystem::new("config/emitter_data.toml");
+        let particles = ParticleSystem::new("config/emitter_data.json");
 
         Self {
             ecs,
