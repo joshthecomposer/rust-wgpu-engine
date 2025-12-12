@@ -110,7 +110,7 @@ impl ApplicationHandler for App {
 }
 
 fn main() {
-    let (platform, event_loop) = Platform::new("Spaghetti engine", 1920, 1080, false);
+    let (platform, event_loop) = Platform::new("Spaghetti engine", 1280, 720, false);
 
     let game = Game::new(platform);
     let mut app = App::new(game);

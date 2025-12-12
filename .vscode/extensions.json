@@ -6,6 +6,7 @@
 		"editorconfig.editorconfig",
 		"christian-kohler.path-intellisense",
 		"dustypomerleau.rust-syntax",
-		"rust-lang.rust-analyzer"
+		"rust-lang.rust-analyzer",
+		"slint.slint"
 	]
 }

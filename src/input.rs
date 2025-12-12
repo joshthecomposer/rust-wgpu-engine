@@ -3,21 +3,33 @@ use std::collections::HashSet;
 use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec3Swizzles, Vec4Swizzles};
 
 use rapier3d::{data::Index, prelude::*};
-use winit::{event::{ElementState, MouseButton}, keyboard::KeyCode};
+use winit::{
+    event::{ElementState, MouseButton},
+    keyboard::KeyCode,
+};
 
-use crate::{camera::{self, Camera}, entity_manager::EntityManager, enums_types::{AnimationType, CameraState, Faction}, physics::PhysicsState, some_data::GROUP_TERRAIN};
+use crate::{
+    camera::{self, Camera},
+    entity_manager::EntityManager,
+    enums_types::{AnimationType, CameraState, Faction},
+    physics::PhysicsState,
+    some_data::GROUP_TERRAIN,
+};
 
 pub struct InputState {
-    pub keys_current: HashSet<KeyCode>,           // Held this frame
-    pub keys_previous: HashSet<KeyCode>,          // held last frame
+    pub keys_current: HashSet<KeyCode>,  // Held this frame
+    pub keys_previous: HashSet<KeyCode>, // held last frame
 
-    pub mouse_current: HashSet<MouseButton>,  // Held this frame
+    pub mouse_current: HashSet<MouseButton>, // Held this frame
     pub mouse_previous: HashSet<MouseButton>, // held last frame
 
     pub mouse_pos_current: Vec2,
 
     pub ray_just_hit: bool,
     pub ray_pos: Vec3,
+
+    /// True when UI consumed the mouse click (click was on UI, not game world)
+    pub ui_consumed_click: bool,
 }
 
 impl InputState {
@@ -33,6 +45,7 @@ impl InputState {
 
             ray_just_hit: false,
             ray_pos: Vec3::splat(0.0),
+            ui_consumed_click: false,
         }
     }
 
@@ -47,18 +60,18 @@ impl InputState {
     pub fn space_just_pressed(&self) -> bool {
         self.keys_current.contains(&KeyCode::Space) && !self.keys_previous.contains(&KeyCode::Space)
     }
-    
+
     pub fn is_down(&self, key: KeyCode) -> bool {
         self.keys_current.contains(&key)
     }
 
     pub fn wasd_is_down(&self) -> bool {
         self.keys_current.contains(&KeyCode::KeyW)
-       || self.keys_current.contains(&KeyCode::KeyS)
-       || self.keys_current.contains(&KeyCode::KeyA)
-       || self.keys_current.contains(&KeyCode::KeyD)
+            || self.keys_current.contains(&KeyCode::KeyS)
+            || self.keys_current.contains(&KeyCode::KeyA)
+            || self.keys_current.contains(&KeyCode::KeyD)
     }
-    
+
     pub fn shift_is_down(&self) -> bool {
         self.keys_current.contains(&KeyCode::ShiftLeft)
     }
@@ -72,19 +85,27 @@ impl InputState {
     }
 
     pub fn left_mouse_just_pressed(&self) -> bool {
-        self.mouse_current.contains(&MouseButton::Left) && !self.mouse_previous.contains(&MouseButton::Left)
+        // Return false if UI consumed the click
+        if self.ui_consumed_click {
+            return false;
+        }
+        self.mouse_current.contains(&MouseButton::Left)
+            && !self.mouse_previous.contains(&MouseButton::Left)
     }
 
     pub fn left_mouse_just_released(&self) -> bool {
-        !self.mouse_current.contains(&MouseButton::Left) && self.mouse_previous.contains(&MouseButton::Left)
+        !self.mouse_current.contains(&MouseButton::Left)
+            && self.mouse_previous.contains(&MouseButton::Left)
     }
 
     pub fn right_mouse_just_pressed(&self) -> bool {
-        self.mouse_current.contains(&MouseButton::Right) && !self.mouse_previous.contains(&MouseButton::Right)
+        self.mouse_current.contains(&MouseButton::Right)
+            && !self.mouse_previous.contains(&MouseButton::Right)
     }
 
     pub fn right_mouse_just_released(&self) -> bool {
-        !self.mouse_current.contains(&MouseButton::Right) && self.mouse_previous.contains(&MouseButton::Right)
+        !self.mouse_current.contains(&MouseButton::Right)
+            && self.mouse_previous.contains(&MouseButton::Right)
     }
 
     pub fn mouse_is_down(&self, b: MouseButton) -> bool {
@@ -95,7 +116,6 @@ impl InputState {
         self.mouse_current.contains(&MouseButton::Right)
     }
 
-
     pub fn update(&mut self) {
         self.keys_previous = self.keys_current.clone();
         self.mouse_previous = self.mouse_current.clone();
@@ -104,23 +124,33 @@ impl InputState {
 
 pub fn handle_keyboard_input(key: KeyCode, action: ElementState, input_state: &mut InputState) {
     match action {
-        ElementState::Pressed => { input_state.keys_current.insert(key); }
-        ElementState::Released => { input_state.keys_current.remove(&key); }
-        _=> ()
+        ElementState::Pressed => {
+            input_state.keys_current.insert(key);
+        }
+        ElementState::Released => {
+            input_state.keys_current.remove(&key);
+        }
+        _ => (),
     }
 }
 
-pub fn handle_mouse_motion() {
-}
+pub fn handle_mouse_motion() {}
 
-pub fn handle_mouse_input(button: MouseButton, action: ElementState, screen_size: Vec2, camera: &Camera, em: &mut EntityManager, input_state: &mut InputState, physics: &mut PhysicsState) {
+pub fn handle_mouse_input(
+    button: MouseButton,
+    action: ElementState,
+    screen_size: Vec2,
+    camera: &Camera,
+    em: &mut EntityManager,
+    input_state: &mut InputState,
+    physics: &mut PhysicsState,
+) {
     let cursor_pos = input_state.mouse_pos_current;
     let pressed_keys = &input_state.keys_current;
     match action {
-        ElementState::Pressed => { 
+        ElementState::Pressed => {
             input_state.mouse_current.insert(button);
             if button == MouseButton::Left {
-
                 if !pressed_keys.contains(&KeyCode::ShiftLeft) {
                     em.empty_selected_and_reset_bodies(physics);
                 }
@@ -132,7 +162,10 @@ pub fn handle_mouse_input(button: MouseButton, action: ElementState, screen_size
 
                 let (ray_origin, ray_dir) = mouse_ray_from_screen(cursor_pos, screen_size, camera);
 
-                let ray = Ray::new(point![ray_origin.x, ray_origin.y, ray_origin.z], vector![ray_dir.x, ray_dir.y, ray_dir.z]);
+                let ray = Ray::new(
+                    point![ray_origin.x, ray_origin.y, ray_origin.z],
+                    vector![ray_dir.x, ray_dir.y, ray_dir.z],
+                );
                 let query_pipeline = &physics.query_pipeline.as_ref().unwrap();
                 let colliders = &physics.collider_set;
                 let bodies = &physics.rigid_body_set;
@@ -153,7 +186,7 @@ pub fn handle_mouse_input(button: MouseButton, action: ElementState, screen_size
                         let ph = em.physics_handles.get_mut(entity_id).unwrap();
                         let rb = physics.rigid_body_set.get_mut(ph.rigid_body).unwrap();
                         rb.set_body_type(RigidBodyType::KinematicPositionBased, false);
-                        return
+                        return;
                     }
 
                     let collider = physics.collider_set.get(handle).unwrap();
@@ -170,20 +203,18 @@ pub fn handle_mouse_input(button: MouseButton, action: ElementState, screen_size
                     }
                 }
             }
-        },
-        ElementState::Released => { input_state.mouse_current.remove(&button); },
-        _ => ()
-   }
+        }
+        ElementState::Released => {
+            input_state.mouse_current.remove(&button);
+        }
+        _ => (),
+    }
 }
 
-pub fn mouse_ray_from_screen(
-    mouse_pos: Vec2,
-    screen_size: Vec2,
-    camera: &Camera,
-) -> (Vec3, Vec3) {
+pub fn mouse_ray_from_screen(mouse_pos: Vec2, screen_size: Vec2, camera: &Camera) -> (Vec3, Vec3) {
     let (mouse_x, mouse_y) = (mouse_pos.x, mouse_pos.y);
     let (screen_w, screen_h) = (screen_size.x, screen_size.y);
-    
+
     // Calculate NDC
     // transform x to match opengl left-to-right convention
     let x = (2.0 * mouse_x) / screen_w - 1.0;
@@ -231,7 +262,9 @@ fn ray_hits_cylinder(
     let t2 = (-b + sqrt_disc) / (2.0 * a);
 
     for &t in &[t1, t2] {
-        if t < 0.0 { continue; }
+        if t < 0.0 {
+            continue;
+        }
 
         let y = ray_origin.y + t * ray_dir.y;
         if y >= cyl_base.y && y <= cyl_base.y + height {

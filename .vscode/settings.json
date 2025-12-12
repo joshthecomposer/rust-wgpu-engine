@@ -1,10 +1,27 @@
 {
 	"cSpell.words": [
 		"FMOD",
+		"glcall",
 		"glfw",
+		"glutin",
+		"hitbox",
 		"imgui",
+		"Integerv",
 		"MSVC",
-		"winit",
-		"Spag"
-	]
+		"multisampling",
+		"Numpad",
+		"oneshot",
+		"opengl",
+		"Parameteri",
+		"rects",
+		"rgba",
+		"slint",
+		"Spag",
+		"vsync",
+		"winit"
+	],
+	"[rust]": {
+		"editor.defaultFormatter": "rust-lang.rust-analyzer",
+		"editor.formatOnSave": true
+	}
 }
