@@ -52,6 +52,18 @@ pub const UNIT_CUBE_VERTICES: [f32; 6 * 6 * 8] = [
     -0.5,  0.5, -0.5,       0.0, 0.0,           0.0,  1.0,  0.0,
 ];
 
+
+pub const BASIC_QUAD_VERTICES: [f32; 30] = [
+    // Positions       // Texture Coords
+    -1.0,  1.0, 0.0,   0.0, 1.0,
+    -1.0, -1.0, 0.0,   0.0, 0.0,
+     1.0, -1.0, 0.0,   1.0, 0.0,
+
+    -1.0,  1.0, 0.0,   0.0, 1.0,
+     1.0, -1.0, 0.0,   1.0, 0.0,
+     1.0,  1.0, 0.0,   1.0, 1.0,
+];
+
 pub const BISEXUAL_PINK:Vec3 = vec3(0.7294118, 0.11372549, 0.43529412);
 pub const BISEXUAL_PINK_SCALE: Vec3 = vec3(
     1.0,
