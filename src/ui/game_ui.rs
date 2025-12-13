@@ -156,113 +156,113 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
     // LOWER RIGHT BOX
     // =============================================================
     // Main panel w/h
-    if *cs == CameraState::Third {
-        let mut w = fb_width * 0.75;
-        let h = 100.0;
-        let gap = 10.0;
+    // if *cs == CameraState::Third {
+    //     let mut w = fb_width * 0.75;
+    //     let h = 100.0;
+    //     let gap = 10.0;
 
-        let main_container = Rect {
-            x: (fb_width / 2.0) - (w / 2.0),
-            y: (fb_height - h) - gap,
-            w,
-            h,
-            color: hex_to_vec4("#030712"),
-            text: "".to_string(),
-            texture_id: None,
-        };
+    //     let main_container = Rect {
+    //         x: (fb_width / 2.0) - (w / 2.0),
+    //         y: (fb_height - h) - gap,
+    //         w,
+    //         h,
+    //         color: hex_to_vec4("#030712"),
+    //         text: "".to_string(),
+    //         texture_id: None,
+    //     };
 
-        let button_h = main_container.h;
-        let button_w = button_h;
+    //     let button_h = main_container.h;
+    //     let button_w = button_h;
 
-        let num_buttons = 10;
+    //     let num_buttons = 10;
 
-        let total_width = (button_w * num_buttons as f32) + (gap * (num_buttons as f32 - 1.0));
+    //     let total_width = (button_w * num_buttons as f32) + (gap * (num_buttons as f32 - 1.0));
 
-        let mut x = main_container.x + (main_container.w - total_width) / 2.0;
-        let  y = main_container.y;
+    //     let mut x = main_container.x + (main_container.w - total_width) / 2.0;
+    //     let  y = main_container.y;
 
-        for i in 0..num_buttons {
-            let  label = if i == 9 { "0".to_string() } else { (i + 1).to_string() };
+    //     for i in 0..num_buttons {
+    //         let  label = if i == 9 { "0".to_string() } else { (i + 1).to_string() };
 
-            match i {
-                0 => {
-                    if button(
-                        &label, 
-                        x, 
-                        y, 
-                        button_w, 
-                        button_h, 
-                        mouse_pos, 
-                        mq, 
-                        &mut rects, 
-                        cm, 
-                        Some(
-                            ui_ctx.tex_cache.get_or_load("resources/textures/guy.png")
-                        ),
-                        input,
-                    ) {
-                        println!("Activated 1");
-                    }
-                },
-                1 => {
-                    if button(
-                        &label, 
-                        x, 
-                        y, 
-                        button_w, 
-                        button_h, 
-                        mouse_pos, 
-                        mq, 
-                        &mut rects, 
-                        cm, 
-                        Some(
-                            ui_ctx.tex_cache.get_or_load("resources/textures/tree.png")
-                        ),
-                        input,
-                    ) {
-                        println!("Activated 2");
-                    }
-                },
-                2 => {
-                    if button(
-                        &label, 
-                        x, 
-                        y, 
-                        button_w, 
-                        button_h, 
-                        mouse_pos, 
-                        mq, 
-                        &mut rects, 
-                        cm, 
-                        Some(
-                            ui_ctx.tex_cache.get_or_load("resources/textures/moose.png")
-                        ),
-                        input,
-                    ) {
-                        println!("Activated 3");
-                    }
-                }
-                _ => {
-                    if button(
-                        &label, 
-                        x, 
-                        y, 
-                        button_w, 
-                        button_h, 
-                        mouse_pos, 
-                        mq, 
-                        &mut rects, 
-                        cm, 
-                        None,
-                        input,
-                    ) {
-                    }
-                }
-            }
+    //         match i {
+    //             0 => {
+    //                 if button(
+    //                     &label, 
+    //                     x, 
+    //                     y, 
+    //                     button_w, 
+    //                     button_h, 
+    //                     mouse_pos, 
+    //                     mq, 
+    //                     &mut rects, 
+    //                     cm, 
+    //                     Some(
+    //                         ui_ctx.tex_cache.get_or_load("resources/textures/guy.png")
+    //                     ),
+    //                     input,
+    //                 ) {
+    //                     println!("Activated 1");
+    //                 }
+    //             },
+    //             1 => {
+    //                 if button(
+    //                     &label, 
+    //                     x, 
+    //                     y, 
+    //                     button_w, 
+    //                     button_h, 
+    //                     mouse_pos, 
+    //                     mq, 
+    //                     &mut rects, 
+    //                     cm, 
+    //                     Some(
+    //                         ui_ctx.tex_cache.get_or_load("resources/textures/tree.png")
+    //                     ),
+    //                     input,
+    //                 ) {
+    //                     println!("Activated 2");
+    //                 }
+    //             },
+    //             2 => {
+    //                 if button(
+    //                     &label, 
+    //                     x, 
+    //                     y, 
+    //                     button_w, 
+    //                     button_h, 
+    //                     mouse_pos, 
+    //                     mq, 
+    //                     &mut rects, 
+    //                     cm, 
+    //                     Some(
+    //                         ui_ctx.tex_cache.get_or_load("resources/textures/moose.png")
+    //                     ),
+    //                     input,
+    //                 ) {
+    //                     println!("Activated 3");
+    //                 }
+    //             }
+    //             _ => {
+    //                 if button(
+    //                     &label, 
+    //                     x, 
+    //                     y, 
+    //                     button_w, 
+    //                     button_h, 
+    //                     mouse_pos, 
+    //                     mq, 
+    //                     &mut rects, 
+    //                     cm, 
+    //                     None,
+    //                     input,
+    //                 ) {
+    //                 }
+    //             }
+    //         }
 
-            x += button_w + gap;
-        }
-    }
+    //         x += button_w + gap;
+    //     }
+    // }
 
     // =============================================================
     // DRAW ALL BOXES AT THE END
