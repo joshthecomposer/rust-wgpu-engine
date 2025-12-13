@@ -1,0 +1,27 @@
+// Dark-themed menu button for game UI (pause menu)
+import { Theme } from "theme.slint";
+
+export component MenuButton inherits Rectangle {
+    in property <string> label;
+    callback clicked();
+
+    height: 50px;
+    background: touch.has-hover ? Theme.dark-dropdown-item-hover : Theme.dark-section-background;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: Theme.dark-border-normal;
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    Text {
+        text: label;
+        color: Theme.dark-text-primary;
+        font-size: 14px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+

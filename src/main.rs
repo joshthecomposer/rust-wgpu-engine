@@ -1,36 +1,39 @@
-mod shaders;
 mod camera;
+mod shaders;
 // mod game_state;
-mod some_data;
-mod macros;
-mod enums_types;
-mod sparse_set;
-mod uniforms;
-mod entity_manager;
-mod lights;
-mod grid;
-mod renderer;
 mod animation;
-mod debug;
-mod input;
-mod movement_system;
-mod ui;
-mod sound;
 mod config;
+mod debug;
+mod entity_manager;
+mod enums_types;
+mod grid;
+mod input;
+mod lights;
+mod macros;
+mod movement_system;
+mod renderer;
+mod some_data;
+mod sound;
+mod sparse_set;
 mod terrain;
+mod ui;
+mod uniforms;
 // mod deprecated;
-mod state_machines;
-mod particles;
-mod items;
-mod physics;
-mod util;
 mod combat_system;
 mod game;
-mod time;
+mod items;
+mod particles;
+mod physics;
 mod platform;
+mod state_machines;
+mod time;
+mod util;
 
 mod world;
-use std::{fs::{self, OpenOptions}, path::Path};
+use std::{
+    fs::{self, OpenOptions},
+    path::Path,
+};
 
 use game::Game;
 
@@ -39,10 +42,10 @@ use std::io::Write;
 
 use crate::platform::Platform;
 
-use winit::{application::ApplicationHandler, event::DeviceEvent};
-use winit::event::{WindowEvent};
+use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::WindowId;
+use winit::{application::ApplicationHandler, event::DeviceEvent};
 
 struct App {
     game: Game,
@@ -82,10 +85,16 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         // This runs every time winit is about to sleep
         let now = self.start.elapsed().as_secs_f32();
         self.game.tick(now);
+
+        // Check if game wants to quit
+        if self.game.should_quit() {
+            event_loop.exit();
+            return;
+        }
 
         // Continuous redraw
         self.game.platform.window.request_redraw();
@@ -94,11 +103,11 @@ impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {}
 
     fn device_event(
-            &mut self,
-            event_loop: &ActiveEventLoop,
-            device_id: winit::event::DeviceId,
-            event: winit::event::DeviceEvent,
-        ) {
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        device_id: winit::event::DeviceId,
+        event: winit::event::DeviceEvent,
+    ) {
         if let DeviceEvent::MouseMotion { delta } = event {
             // delta: (dx, dy) in f64
             let (dx, dy) = delta;

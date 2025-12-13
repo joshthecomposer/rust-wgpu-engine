@@ -79,9 +79,13 @@ pub struct EngineUiManager {
 impl EngineUiManager {
     /// Create a new EngineUiManager. Must be called BEFORE any other Slint components are created.
     pub fn new(width: u32, height: u32) -> Self {
-        let window = init_slint_platform(width, height);
+        init_slint_platform(width, height);
 
         let engine_ui = EngineUI::new().unwrap();
+
+        // get the window that was created for this component
+        let window = crate::ui::slint_platform::get_last_created_window()
+            .expect("Expected window to be created for EngineUI");
 
         let pixel_count = (width * height) as usize;
         let pixel_buffer = vec![PremultipliedRgbaColor::default(); pixel_count];

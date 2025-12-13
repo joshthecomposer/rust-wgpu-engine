@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -6,30 +7,46 @@ use slint::platform::{
     Platform, PlatformError, WindowAdapter,
 };
 
+// Global storage for windows created by the platform.
+// This allows retrieving windows after component creation.
+thread_local! {
+    static CREATED_WINDOWS: RefCell<Vec<Rc<MinimalSoftwareWindow>>> = RefCell::new(Vec::new());
+}
+
 /// Custom Slint platform that uses MinimalSoftwareWindow for rendering.
 /// This allows us to use our own winit window and event loop instead of Slint's.
+///
+/// Each component gets its own window. Windows are stored in CREATED_WINDOWS
+/// and can be retrieved via `get_last_created_window()`.
 pub struct SlintPlatform {
-    window: Rc<MinimalSoftwareWindow>,
+    default_size: (u32, u32),
     start_time: Instant,
 }
 
 impl SlintPlatform {
-    pub fn new(width: u32, height: u32) -> (Self, Rc<MinimalSoftwareWindow>) {
-        let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
-        window.set_size(slint::PhysicalSize::new(width, height));
-
-        let platform = Self {
-            window: window.clone(),
+    pub fn new(width: u32, height: u32) -> Self {
+        Self {
+            default_size: (width, height),
             start_time: Instant::now(),
-        };
-
-        (platform, window)
+        }
     }
 }
 
 impl Platform for SlintPlatform {
     fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> {
-        Ok(self.window.clone())
+        // create a new window for each component
+        let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
+        window.set_size(slint::PhysicalSize::new(
+            self.default_size.0,
+            self.default_size.1,
+        ));
+
+        // store the window so it can be retrieved later
+        CREATED_WINDOWS.with(|windows| {
+            windows.borrow_mut().push(window.clone());
+        });
+
+        Ok(window)
     }
 
     fn duration_since_start(&self) -> std::time::Duration {
@@ -41,10 +58,14 @@ impl Platform for SlintPlatform {
 }
 
 /// Initialize the Slint platform. Must be called BEFORE creating any Slint components.
-/// Returns the MinimalSoftwareWindow that can be used for rendering.
-pub fn init_slint_platform(width: u32, height: u32) -> Rc<MinimalSoftwareWindow> {
-    let (platform, window) = SlintPlatform::new(width, height);
+pub fn init_slint_platform(width: u32, height: u32) {
+    let platform = SlintPlatform::new(width, height);
     slint::platform::set_platform(Box::new(platform))
         .expect("Failed to set Slint platform - was it already set?");
-    window
+}
+
+/// Get the last window created by the platform (i.e., the window for the most recently created component).
+/// This should be called immediately after creating a Slint component to get its window.
+pub fn get_last_created_window() -> Option<Rc<MinimalSoftwareWindow>> {
+    CREATED_WINDOWS.with(|windows| windows.borrow().last().cloned())
 }
