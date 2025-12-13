@@ -24,8 +24,7 @@ use crate::{
     platform::Platform,
     shaders::Shader,
     some_data::{
-        FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES,
-        SKYBOX_VERTICES, UNIT_CUBE_VERTICES,
+        BASIC_QUAD_VERTICES, FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES
     },
     sound::{
         fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR},
@@ -1129,11 +1128,7 @@ impl Renderer {
         let mut vao = 0;
         let mut vbo = 0;
 
-        let quad_vertices: [f32; 30] = [
-            // Positions      // Texture Coords
-            -1.0, 1.0, 0.0, 0.0, 1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0, 0.0, 1.0, 0.0, -1.0,
-            1.0, 0.0, 0.0, 1.0, 1.0, -1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0,
-        ];
+        let quad_vertices: [f32; 30] = BASIC_QUAD_VERTICES;
 
         unsafe {
             gl_call!(gl::GenVertexArrays(1, &mut vao));
