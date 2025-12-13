@@ -17,8 +17,9 @@ use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
-use crate::ui::engine_ui_manager::{self, EngineUiManager};
+use crate::ui::engine_ui_manager::EngineUiManager;
 use crate::ui::game_ui::{do_ui, GameUiContext};
+use crate::ui::game_ui_manager::{GameUiManager, PauseMenuContext};
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::world::World;
@@ -37,6 +38,8 @@ pub struct Game {
     pub paused: bool,
     message_queue: MessageQueue,
     engine_ui: EngineUiManager,
+    game_ui: GameUiManager,
+    should_quit: bool,
 }
 
 impl Game {
@@ -55,6 +58,8 @@ impl Game {
         let sound = SoundManager::new(&config);
         let ui = GameUiContext::new();
         let engine_ui = EngineUiManager::new(platform.fb_width, platform.fb_height);
+        // GameUiManager must be created AFTER EngineUiManager (platform must be initialized first)
+        let game_ui = GameUiManager::new(platform.fb_width, platform.fb_height);
 
         Self {
             platform,
@@ -68,7 +73,14 @@ impl Game {
             paused: false,
             message_queue: MessageQueue::new(),
             engine_ui,
+            game_ui,
+            should_quit: false,
         }
+    }
+
+    /// Returns true if the game should quit (e.g., user clicked Quit Game button)
+    pub fn should_quit(&self) -> bool {
+        self.should_quit
     }
 
     pub fn tick(&mut self, now_seconds: f32) {
@@ -187,6 +199,11 @@ impl Game {
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
         let _ui_consumed = self.engine_ui.handle_window_event(&event, &mut self.input);
 
+        // Forward events to game UI when paused
+        if self.paused {
+            self.game_ui.handle_window_event(&event, &mut self.input);
+        }
+
         // Process events for the game (keyboard, mouse, etc.)
         // Note: Currently we always process game events regardless of UI consumption.
         // If Slint UI has focused elements (e.g., text input), you may want to skip game input.
@@ -194,6 +211,7 @@ impl Game {
             WindowEvent::Resized(size) => {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
+                self.game_ui.resize(size.width, size.height);
             }
 
             WindowEvent::CloseRequested => {}
@@ -282,6 +300,10 @@ impl Game {
 
         let msgs = self.message_queue.drain();
 
+        if msgs.contains(&UiMessage::WindowShouldClose) {
+            self.should_quit = true;
+        }
+
         if msgs.contains(&UiMessage::ReloadWorldData) {
             let mut world = World::new();
             let mut physics = PhysicsState::new();
@@ -327,6 +349,14 @@ impl Game {
             &mut self.world.particles,
             self.time.dt,
         );
+
+        // Update game UI (pause menu) and handle actions
+        self.game_ui.update(PauseMenuContext {
+            paused: &mut self.paused,
+            render_gizmos: &mut self.renderer.render_gizmos,
+            message_queue: &mut self.message_queue,
+            entity_manager: &self.world.ecs,
+        });
     }
 
     pub fn render(&mut self) {
@@ -383,10 +413,16 @@ impl Game {
             &mut self.world.ecs,
         );
 
-        // Render Slint UI overlay
+        // Render Slint UI overlays
         self.engine_ui.render();
         let ui_overlay_shader = self.renderer.shaders.get(&ShaderType::UiOverlay).unwrap();
         self.engine_ui.draw_overlay(ui_overlay_shader);
+
+        // Render game UI (pause menu) overlay when paused
+        if self.paused {
+            self.game_ui.render();
+            self.game_ui.draw_overlay(ui_overlay_shader);
+        }
 
         self.platform
             .surface

@@ -1,0 +1,81 @@
+import { Theme } from "components/theme.slint";
+import { MenuButton } from "components/menu_button.slint";
+
+export component GameUI inherits Window {
+    background: transparent;
+
+    in property <bool> show-pause-menu: false;
+
+    callback close_clicked();
+    callback gizmo_clicked();
+    callback reload_world_clicked();
+    callback save_player_clicked();
+    callback quit_clicked();
+
+    // ==================== PAUSE MENU ====================
+    if show-pause-menu: Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width * 0.25;
+        height: parent.height * 0.50;
+        background: Theme.dark-panel-background;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: Theme.dark-panel-border;
+        clip: true;  // Prevent content overflow
+
+        // Close button (X) in top-right
+        Rectangle {
+            x: parent.width - self.width - 15px;
+            y: 15px;
+            width: 24px;
+            height: 24px;
+            background: close-touch.has-hover ? Theme.dark-dropdown-item-hover : Theme.dark-section-background;
+            border-radius: 4px;
+
+            close-touch := TouchArea {
+                clicked => { root.close_clicked(); }
+            }
+
+            Text {
+                text: "X";
+                color: Theme.dark-text-primary;
+                font-size: 14px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        // Button container - use padding instead of y offset to fit properly
+        VerticalLayout {
+            x: parent.width * 0.05;
+            y: 50px;  // Fixed offset below close button
+            width: parent.width * 0.90;
+            height: parent.height - 70px;  // Leave room for top padding and bottom margin
+            spacing: 12px;
+            padding-bottom: 15px;
+
+            MenuButton {
+                label: "GIZMO RENDERING";
+                clicked => { root.gizmo_clicked(); }
+            }
+
+            MenuButton {
+                label: "RELOAD WORLD DATA";
+                clicked => { root.reload_world_clicked(); }
+            }
+
+            MenuButton {
+                label: "SAVE PLAYER DATA";
+                clicked => { root.save_player_clicked(); }
+            }
+
+            MenuButton {
+                label: "QUIT GAME";
+                clicked => { root.quit_clicked(); }
+            }
+        }
+    }
+}
+

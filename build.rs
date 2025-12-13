@@ -35,5 +35,6 @@ fn main() {
 
     let config = slint_build::CompilerConfiguration::new()
         .embed_resources(slint_build::EmbedResourcesKind::EmbedForSoftwareRenderer);
+    // engine_ui.slint now re-exports GameUI from game_ui.slint, so both are available
     slint_build::compile_with_config("resources/ui/engine_ui.slint", config).unwrap();
 }
