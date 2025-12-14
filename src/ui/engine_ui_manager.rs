@@ -219,9 +219,9 @@ impl EngineUiManager {
         let player_panel = (10.0, 10.0, 330.0, player_panel_height);
 
         if x >= player_panel.0
-        && x <= player_panel.0 + player_panel.2
-        && y >= player_panel.1
-        && y <= player_panel.1 + player_panel.3
+            && x <= player_panel.0 + player_panel.2
+            && y >= player_panel.1
+            && y <= player_panel.1 + player_panel.3
         {
             return true;
         }
@@ -231,9 +231,9 @@ impl EngineUiManager {
             let editor_panel = (10.0, editor_y, 390.0, 500.0);
 
             if x >= editor_panel.0
-            && x <= editor_panel.0 + editor_panel.2
-            && y >= editor_panel.1
-            && y <= editor_panel.1 + editor_panel.3
+                && x <= editor_panel.0 + editor_panel.2
+                && y >= editor_panel.1
+                && y <= editor_panel.1 + editor_panel.3
             {
                 return true;
             }
@@ -252,9 +252,9 @@ impl EngineUiManager {
             let particle_panel = (panel_x, 10.0, 420.0, panel_height);
 
             if x >= particle_panel.0
-            && x <= particle_panel.0 + particle_panel.2
-            && y >= particle_panel.1
-            && y <= particle_panel.1 + particle_panel.3
+                && x <= particle_panel.0 + particle_panel.2
+                && y >= particle_panel.1
+                && y <= particle_panel.1 + particle_panel.3
             {
                 return true;
             }
@@ -768,7 +768,7 @@ impl EngineUiManager {
         let changed = do_render != self.last_pe_do_render;
 
         if changed {
-            message_queue.send(UiMessage::RenderStagedEmitters {do_it: do_render});
+            message_queue.send(UiMessage::RenderStagedEmitters { do_it: do_render });
         }
 
         if do_render {
@@ -834,7 +834,7 @@ impl EngineUiManager {
     /// Call this after update() but before drawing the overlay.
     pub fn render(&mut self, shader: &mut Shader, camera: &Camera) {
         match camera.move_state {
-            CameraState::SlintSandbox => {
+            CameraState::Locked => {
                 if self.needs_texture_resize {
                     unsafe {
                         gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.gl_texture));
@@ -876,8 +876,8 @@ impl EngineUiManager {
                 }
 
                 self.draw_overlay(shader);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 

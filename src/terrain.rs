@@ -4,9 +4,15 @@ use gl::ActiveTexture;
 use glam::{vec2, vec3, vec4, Vec3, Vec4};
 use image::{GenericImageView, ImageBuffer, Luma};
 use nalgebra::Point3;
-use rapier3d::prelude::{Collider, ColliderBuilder, ColliderSet, InteractionGroups, RigidBodyHandle, RigidBodySet};
+use rapier3d::prelude::{
+    Collider, ColliderBuilder, ColliderSet, InteractionGroups, RigidBodyHandle, RigidBodySet,
+};
 
-use crate::{animation::animation::{texture_from_file, Model, Vertex}, enums_types::{TextureProfile, TextureType}, some_data::{GROUP_TERRAIN, MAX_BONE_INFLUENCE}};
+use crate::{
+    animation::animation::{texture_from_file, Model, Vertex},
+    enums_types::{TextureProfile, TextureType},
+    some_data::{GROUP_TERRAIN, MAX_BONE_INFLUENCE},
+};
 
 pub struct Terrain {
     vertices: Vec<[f32; 3]>,
@@ -20,7 +26,12 @@ pub struct Terrain {
 }
 
 impl Terrain {
-    pub fn from_height_map(y_amplitude: f32, width: u32, height: u32, img: &ImageBuffer<Luma<u8>, Vec<u8>>) -> Self {
+    pub fn from_height_map(
+        y_amplitude: f32,
+        width: u32,
+        height: u32,
+        img: &ImageBuffer<Luma<u8>, Vec<u8>>,
+    ) -> Self {
         let height_map: Vec<f32> = img
             .pixels()
             // TODO: replace 10.0 with some max height value
@@ -38,7 +49,7 @@ impl Terrain {
                 vertices.push([x_pos, z, z_pos])
             }
         }
-        
+
         // INDICES
         let mut indices = Vec::new();
         for y in 0..height - 1 {
@@ -66,13 +77,29 @@ impl Terrain {
         for z in 0..height {
             for x in 0..width {
                 let idx = (z * width + x) as usize;
-                
+
                 // surrounding heights
-                let h_l = if x > 0 { height_map[(z * width + (x - 1)) as usize] } else { height_map[idx] };
-                let h_r = if x < width - 1 { height_map[(z * width + (x + 1)) as usize] } else { height_map[idx] };
-                let h_d = if z > 0 { height_map[((z - 1) * width + x) as usize] } else { height_map[idx] };
-                let h_u = if z < height - 1 { height_map[((z + 1) * width + x) as usize] } else { height_map[idx] };
-                
+                let h_l = if x > 0 {
+                    height_map[(z * width + (x - 1)) as usize]
+                } else {
+                    height_map[idx]
+                };
+                let h_r = if x < width - 1 {
+                    height_map[(z * width + (x + 1)) as usize]
+                } else {
+                    height_map[idx]
+                };
+                let h_d = if z > 0 {
+                    height_map[((z - 1) * width + x) as usize]
+                } else {
+                    height_map[idx]
+                };
+                let h_u = if z < height - 1 {
+                    height_map[((z + 1) * width + x) as usize]
+                } else {
+                    height_map[idx]
+                };
+
                 // central difference
                 let dx = h_l - h_r;
                 let dz = h_d - h_u;
@@ -96,7 +123,12 @@ impl Terrain {
         }
     }
 
-    pub fn heights_from_image(y_amplitude: f32, img: &ImageBuffer<Luma<u8>, Vec<u8>>, width: u32, height: u32) -> (nalgebra::DMatrix<f32>, usize, usize) {
+    pub fn heights_from_image(
+        y_amplitude: f32,
+        img: &ImageBuffer<Luma<u8>, Vec<u8>>,
+        width: u32,
+        height: u32,
+    ) -> (nalgebra::DMatrix<f32>, usize, usize) {
         let ncols = width as usize;
         let nrows = height as usize;
 
@@ -136,10 +168,15 @@ impl Terrain {
                 bone_ids: [-1; MAX_BONE_INFLUENCE],
                 bone_weights: [0.0; MAX_BONE_INFLUENCE],
             });
-        };
+        }
 
         model.directory = "resources/models/static/terrain".to_string();
-        texture_from_file(&mut model, "ai_slop/dirt4.png".to_string(), TextureType::Diffuse, TextureProfile::BroadDefault);
+        texture_from_file(
+            &mut model,
+            "ai_slop/dirt4.png".to_string(),
+            TextureType::Diffuse,
+            TextureProfile::BroadDefault,
+        );
 
         model.indices = self.indices.clone();
         model.setup_opengl();
@@ -157,7 +194,7 @@ impl Terrain {
         let z1 = z0 + 1;
 
         if x0 < 0 || z0 < 0 || x1 >= self.width as i32 || z1 >= self.height as i32 {
-            return 0.0; // out of bounds so return 0.       
+            return 0.0; // out of bounds so return 0.
         }
 
         let h00 = self.height_map[(z0 as u32 * self.width + x0 as u32) as usize];
@@ -173,18 +210,19 @@ impl Terrain {
         let height = h0 * (1.0 - tz) + h1 * tz;
 
         height - (self.max_height / 2.0)
-
     }
 
     pub fn create_collider(&self) -> Collider {
         // Convert terrain vertex positions to Point3
-        let vertices: Vec<Point3<f32>> = self.vertices
+        let vertices: Vec<Point3<f32>> = self
+            .vertices
             .iter()
             .map(|v| Point3::new(v[0], v[1], v[2]))
             .collect();
 
         // Convert triangle indices (assumed u32 or usize)
-        let indices: Vec<[u32; 3]> = self.indices
+        let indices: Vec<[u32; 3]> = self
+            .indices
             .chunks(3)
             .map(|tri| [tri[0] as u32, tri[1] as u32, tri[2] as u32])
             .collect();
@@ -197,15 +235,18 @@ impl Terrain {
 
 pub fn insert_chunked_terrain_colliders(
     model: &Model, // render mesh built from the heightmap
-    width: u32, height: u32, // heightmap dimensions (verts laid out row-major)
-    chunk_w: u32, chunk_h: u32,
+    width: u32,
+    height: u32, // heightmap dimensions (verts laid out row-major)
+    chunk_w: u32,
+    chunk_h: u32,
     body_handle: RigidBodyHandle,
     colliders: &mut ColliderSet,
     bodies: &mut RigidBodySet,
 ) {
     // Global arrays
     let g_vertices: Vec<Point3<f32>> = model.vertices.iter().map(|v| v.position.into()).collect();
-    let g_indices: &[[u32; 3]] = &model.indices
+    let g_indices: &[[u32; 3]] = &model
+        .indices
         .chunks(3)
         .map(|c| [c[0], c[1], c[2]])
         .collect::<Vec<_>>();
@@ -233,19 +274,24 @@ pub fn insert_chunked_terrain_colliders(
 
             for tri in g_indices.iter().copied() {
                 tri_buf.copy_from_slice(&tri);
-                let mut minx = u32::MAX; let mut maxx = 0u32;
-                let mut minz = u32::MAX; let mut maxz = 0u32;
+                let mut minx = u32::MAX;
+                let mut maxx = 0u32;
+                let mut minz = u32::MAX;
+                let mut maxz = 0u32;
 
                 for &vi in &tri_buf {
                     let gx = vi % w;
                     let gz = vi / w;
-                    minx = minx.min(gx); maxx = maxx.max(gx);
-                    minz = minz.min(gz); maxz = maxz.max(gz);
+                    minx = minx.min(gx);
+                    maxx = maxx.max(gx);
+                    minz = minz.min(gz);
+                    maxz = maxz.max(gz);
                 }
 
-                let overlaps =
-                    !(maxx < x0 || minx > x1 || maxz < z0 || minz > z1);
-                if !overlaps { continue; }
+                let overlaps = !(maxx < x0 || minx > x1 || maxz < z0 || minz > z1);
+                if !overlaps {
+                    continue;
+                }
 
                 let mut tri_local = [0u32; 3];
                 for (k, &gvi) in tri_buf.iter().enumerate() {
@@ -259,12 +305,17 @@ pub fn insert_chunked_terrain_colliders(
                 local_indices.push(tri_local);
             }
 
-            if local_indices.is_empty() { continue; }
+            if local_indices.is_empty() {
+                continue;
+            }
 
             // vertices are already in world space
             let col = ColliderBuilder::trimesh(local_vertices, local_indices)
                 .unwrap()
-                .collision_groups(InteractionGroups::new(GROUP_TERRAIN.into(), u32::MAX.into()))
+                .collision_groups(InteractionGroups::new(
+                    GROUP_TERRAIN.into(),
+                    u32::MAX.into(),
+                ))
                 .build();
             colliders.insert_with_parent(col, body_handle, bodies);
         }

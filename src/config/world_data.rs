@@ -1,6 +1,6 @@
-use std::fs::{read_to_string, write};
 use glam::{Quat, Vec3};
-use toml::value::{Table, Value, Array};
+use std::fs::{read_to_string, write};
+use toml::value::{Array, Table, Value};
 
 use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
 
@@ -22,7 +22,8 @@ impl WorldData {
     pub fn write_to_file(&self, file_name: &str) {
         println!("writing world data to {}", &file_name);
 
-        let json_string = serde_json::to_string_pretty(self).expect("Failed to serialize world data");
+        let json_string =
+            serde_json::to_string_pretty(self).expect("Failed to serialize world data");
         write(file_name, json_string).expect("Failed to write world data");
 
         println!("Completed writing world data to {}", &file_name);

@@ -4,7 +4,10 @@ use std::{collections::HashMap, ffi::CString, fs::read_to_string, ptr};
 use gl::types::{GLint, GLuint};
 use glam::{Mat4, Vec3};
 
-use crate::{gl_call, lights::{DirLight, PointLight}};
+use crate::{
+    gl_call,
+    lights::{DirLight, PointLight},
+};
 
 pub struct Shader {
     pub id: GLuint,
@@ -18,7 +21,7 @@ impl Shader {
         let mut shader = Self {
             id,
             uniform_locations: HashMap::new(),
-        }; 
+        };
 
         shader.parse_and_store_uniforms(file_path);
 
@@ -59,7 +62,7 @@ impl Shader {
                 }
             }
         }
-    }   
+    }
 
     pub fn store_uniform_location(&mut self, name: &str) {
         let c_name = CString::new(name).unwrap();
@@ -106,7 +109,14 @@ impl Shader {
     pub fn set_mat4(&self, name: &str, value: Mat4) {
         let location = self.get_uniform_location(name);
         if location != -1 {
-            unsafe { gl_call!(gl::UniformMatrix4fv(location, 1, gl::FALSE, value.to_cols_array().as_ptr() )) }
+            unsafe {
+                gl_call!(gl::UniformMatrix4fv(
+                    location,
+                    1,
+                    gl::FALSE,
+                    value.to_cols_array().as_ptr()
+                ))
+            }
         }
     }
 
@@ -138,15 +148,39 @@ impl Shader {
         let ambient = self.get_uniform_location(format!("{}.ambient", name).as_str());
         let diffuse = self.get_uniform_location(format!("{}.diffuse", name).as_str());
         let specular = self.get_uniform_location(format!("{}.specular", name).as_str());
-        
-        if direction != -1 || view_pos != -1 || ambient != -1 || diffuse != -1 ||
-            specular != -1 {
-            unsafe { 
-                gl_call!(gl::Uniform3f(direction, value.direction.x, value.direction.y, value.direction.z));
-                gl_call!(gl::Uniform3f(view_pos, value.view_pos.x, value.view_pos.y, value.view_pos.z));
-                gl_call!(gl::Uniform3f(ambient, value.ambient.x, value.ambient.y, value.ambient.z));
-                gl_call!(gl::Uniform3f(diffuse, value.diffuse.x, value.diffuse.y, value.diffuse.z));
-                gl_call!(gl::Uniform3f(specular, value.specular.x, value.specular.y, value.specular.z));
+
+        if direction != -1 || view_pos != -1 || ambient != -1 || diffuse != -1 || specular != -1 {
+            unsafe {
+                gl_call!(gl::Uniform3f(
+                    direction,
+                    value.direction.x,
+                    value.direction.y,
+                    value.direction.z
+                ));
+                gl_call!(gl::Uniform3f(
+                    view_pos,
+                    value.view_pos.x,
+                    value.view_pos.y,
+                    value.view_pos.z
+                ));
+                gl_call!(gl::Uniform3f(
+                    ambient,
+                    value.ambient.x,
+                    value.ambient.y,
+                    value.ambient.z
+                ));
+                gl_call!(gl::Uniform3f(
+                    diffuse,
+                    value.diffuse.x,
+                    value.diffuse.y,
+                    value.diffuse.z
+                ));
+                gl_call!(gl::Uniform3f(
+                    specular,
+                    value.specular.x,
+                    value.specular.y,
+                    value.specular.z
+                ));
             }
         }
     }
@@ -159,14 +193,40 @@ impl Shader {
         let constant = self.get_uniform_location(format!("{}.constant", name).as_str());
         let linear = self.get_uniform_location(format!("{}.linear", name).as_str());
         let quadratic = self.get_uniform_location(format!("{}.quadratic", name).as_str());
-        
-        if position != -1 || ambient != -1 || diffuse != -1 || specular != -1 ||
-            constant != -1 || linear != -1 || quadratic != -1 {
-            unsafe { 
-                gl_call!(gl::Uniform3f(position, value.position.x, value.position.y, value.position.z));
-                gl_call!(gl::Uniform3f(ambient, value.ambient.x, value.ambient.y, value.ambient.z));
-                gl_call!(gl::Uniform3f(diffuse, value.diffuse.x, value.diffuse.y, value.diffuse.z));
-                gl_call!(gl::Uniform3f(specular, value.specular.x, value.specular.y, value.specular.z));
+
+        if position != -1
+            || ambient != -1
+            || diffuse != -1
+            || specular != -1
+            || constant != -1
+            || linear != -1
+            || quadratic != -1
+        {
+            unsafe {
+                gl_call!(gl::Uniform3f(
+                    position,
+                    value.position.x,
+                    value.position.y,
+                    value.position.z
+                ));
+                gl_call!(gl::Uniform3f(
+                    ambient,
+                    value.ambient.x,
+                    value.ambient.y,
+                    value.ambient.z
+                ));
+                gl_call!(gl::Uniform3f(
+                    diffuse,
+                    value.diffuse.x,
+                    value.diffuse.y,
+                    value.diffuse.z
+                ));
+                gl_call!(gl::Uniform3f(
+                    specular,
+                    value.specular.x,
+                    value.specular.y,
+                    value.specular.z
+                ));
                 gl_call!(gl::Uniform1f(constant, value.constant));
                 gl_call!(gl::Uniform1f(linear, value.linear));
                 gl_call!(gl::Uniform1f(quadratic, value.quadratic));
@@ -184,11 +244,15 @@ impl Shader {
             }
 
             unsafe {
-                gl_call!(gl::UniformMatrix4fv(location, value.len() as i32, gl::FALSE, float_data.as_ptr()));
+                gl_call!(gl::UniformMatrix4fv(
+                    location,
+                    value.len() as i32,
+                    gl::FALSE,
+                    float_data.as_ptr()
+                ));
             }
         }
     }
-
 }
 
 pub fn init_shader_program(file_path: &str) -> u32 {
@@ -196,10 +260,10 @@ pub fn init_shader_program(file_path: &str) -> u32 {
 
     let vs_cstr = CString::new(vs_source).expect("Failed to convert vs source to C string");
     let fs_cstr = CString::new(fs_source).expect("Failed to convert fs source to C string");
-    
+
     unsafe {
         let shader = gl::CreateProgram();
-        
+
         // Vertex Shader
         let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
         gl::ShaderSource(vertex_shader, 1, &vs_cstr.as_ptr(), ptr::null());
@@ -211,18 +275,22 @@ pub fn init_shader_program(file_path: &str) -> u32 {
         gl::ShaderSource(fragment_shader, 1, &fs_cstr.as_ptr(), ptr::null());
         compile_shader(fragment_shader);
         gl::AttachShader(shader, fragment_shader);
-        
+
         // optional geometry shader
         let geometry_shader = if let Some(gs_source) = gs_source {
             let gs_cstr = CString::new(gs_source).expect("Failed to convert gs source to C string");
             let geometry_shader = gl::CreateShader(gl::GEOMETRY_SHADER);
-            gl_call!(gl::ShaderSource(geometry_shader, 1, &gs_cstr.as_ptr(), ptr::null()));
+            gl_call!(gl::ShaderSource(
+                geometry_shader,
+                1,
+                &gs_cstr.as_ptr(),
+                ptr::null()
+            ));
             compile_shader(geometry_shader);
             Some(geometry_shader)
         } else {
             None
         };
-
 
         gl_call!(gl::LinkProgram(shader));
 
@@ -251,7 +319,7 @@ fn extract_shader_sources(file_path: &str) -> (String, Option<String>, String) {
                 current_shader = Some("VERTEX_SHADER".to_string());
                 shader_sources.insert("VERTEX_SHADER".to_string(), String::new());
             }
-                "// FRAGMENT_SHADER" => {
+            "// FRAGMENT_SHADER" => {
                 println!("Located fragment shader, extracting now...");
                 current_shader = Some("FRAGMENT_SHADER".to_string());
                 shader_sources.insert("FRAGMENT_SHADER".to_string(), String::new());
@@ -263,21 +331,19 @@ fn extract_shader_sources(file_path: &str) -> (String, Option<String>, String) {
             }
             _ => {
                 if let Some(ref shader_type) = current_shader {
-                    shader_sources
-                        .entry(shader_type.clone())
-                        .and_modify( |src| {
-                            src.push_str(line);
-                            src.push('\n');
-                        });
+                    shader_sources.entry(shader_type.clone()).and_modify(|src| {
+                        src.push_str(line);
+                        src.push('\n');
+                    });
                 }
             }
         }
     }
 
     (
-        shader_sources.remove("VERTEX_SHADER").unwrap(), 
+        shader_sources.remove("VERTEX_SHADER").unwrap(),
         shader_sources.remove("GEOMETRY_SHADER"),
-        shader_sources.remove("FRAGMENT_SHADER").unwrap()
+        shader_sources.remove("FRAGMENT_SHADER").unwrap(),
     )
 }
 
@@ -285,14 +351,22 @@ fn compile_shader(input: u32) {
     unsafe {
         gl_call!(gl::CompileShader(input));
 
-        let mut success:i32 = 0;
+        let mut success: i32 = 0;
         let mut info_log = vec![0u8; 512];
 
         gl_call!(gl::GetShaderiv(input, gl::COMPILE_STATUS, &mut success));
 
         if success == 0 {
-            gl_call!(gl::GetShaderInfoLog(input, 512, core::ptr::null_mut(), info_log.as_mut_ptr() as *mut i8));
-            println!("Problem compiling shader: {:?}", String::from_utf8_lossy(&info_log));
+            gl_call!(gl::GetShaderInfoLog(
+                input,
+                512,
+                core::ptr::null_mut(),
+                info_log.as_mut_ptr() as *mut i8
+            ));
+            println!(
+                "Problem compiling shader: {:?}",
+                String::from_utf8_lossy(&info_log)
+            );
         }
     }
 }

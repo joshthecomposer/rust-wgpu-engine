@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 #[derive(Debug)]
 pub struct SparseSet<T> {
     pub dense: Vec<Entry<T>>,
-    pub sparse: Vec<usize>
+    pub sparse: Vec<usize>,
 }
 
 #[derive(Debug)]
@@ -34,10 +34,11 @@ impl<T> Entry<T> {
 impl<T> SparseSet<T> {
     // create a new sparseset with a given capacity
     pub fn with_capacity(size: usize) -> Self {
-
         let mut sparse = Vec::with_capacity(size);
         #[allow(clippy::uninit_vec)]
-        unsafe { sparse.set_len(size) }
+        unsafe {
+            sparse.set_len(size)
+        }
 
         SparseSet {
             dense: Vec::with_capacity(size),
@@ -85,7 +86,7 @@ impl<T> SparseSet<T> {
             None
         }
     }
-    
+
     // get two mutable references to two distinct values. Safe guard against the same value
     pub fn get_pair_mut(&mut self, key1: usize, key2: usize) -> Option<(&mut T, &mut T)> {
         if key1 == key2 {
@@ -129,10 +130,7 @@ impl<T> SparseSet<T> {
             return false;
         }
         let n = self.dense.len();
-        self.dense.push(Entry {
-            key,
-            value,
-        });
+        self.dense.push(Entry { key, value });
         self.sparse[key] = n;
         true
     }

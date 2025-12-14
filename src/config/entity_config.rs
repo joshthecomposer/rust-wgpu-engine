@@ -1,9 +1,15 @@
-use std::{collections::HashMap, fs::{read_to_string, write}};
+use std::{
+    collections::HashMap,
+    fs::{read_to_string, write},
+};
 
 use glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
-use crate::{debug::gizmos::Cylinder, enums_types::{AnimationType, EntityType, Faction, HitboxShape, SoundType}};
+use crate::{
+    debug::gizmos::Cylinder,
+    enums_types::{AnimationType, EntityType, Faction, HitboxShape, SoundType},
+};
 
 #[derive(Clone, Deserialize, Debug, Serialize)]
 pub struct ItemBones {
@@ -13,7 +19,7 @@ pub struct ItemBones {
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct EntityConfig {
-    pub entity_types: HashMap<String, EntityTypeHelper>
+    pub entity_types: HashMap<String, EntityTypeHelper>,
 }
 
 impl EntityConfig {
@@ -27,13 +33,13 @@ impl EntityConfig {
     pub fn write_to_file(&self, file_name: &str) {
         println!("writing entity type data to {}", file_name);
 
-        let json_string = serde_json::to_string_pretty(self).expect("Failed to serialize entity type data");
+        let json_string =
+            serde_json::to_string_pretty(self).expect("Failed to serialize entity type data");
         write(file_name, json_string).expect("Failed to write entity type file");
 
         println!("Completed writing entity type data to {}", file_name);
     }
 }
-
 
 // =============================================================
 // Helpers
@@ -91,13 +97,16 @@ impl EntityTypeHelper {
             bone_path: None,
             animation_properties: None,
             item_bones: None,
-            aggro_range: if ui_helper.aggro_range > 0.0 { Some(ui_helper.aggro_range) } else { None },
+            aggro_range: if ui_helper.aggro_range > 0.0 {
+                Some(ui_helper.aggro_range)
+            } else {
+                None
+            },
             hitbox: HitboxShape::BoundingBox,
             total_mass: None,
         }
     }
 }
-
 
 // This is currently for ImGUI saving a new entity type.
 #[derive(Deserialize, Debug)]
@@ -132,7 +141,7 @@ impl Default for UiEntityTypeHelper {
 
             r: 0.0,
             h: 0.0,
-            hx: 0.0, 
+            hx: 0.0,
             hy: 0.0,
             hz: 0.0,
         }

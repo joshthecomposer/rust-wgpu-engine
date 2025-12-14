@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use glam::{vec3, Vec3};
 
+#[rustfmt::skip]
 pub const UNIT_CUBE_VERTICES: [f32; 6 * 6 * 8] = [
     // positions            // tex coords       // normals
     // Front face
@@ -53,6 +54,7 @@ pub const UNIT_CUBE_VERTICES: [f32; 6 * 6 * 8] = [
 ];
 
 
+#[rustfmt::skip]
 pub const BASIC_QUAD_VERTICES: [f32; 30] = [
     // Positions       // Texture Coords
     -1.0,  1.0, 0.0,   0.0, 1.0,
@@ -145,6 +147,7 @@ pub const FACES_CUBEMAP:[&str; 6] = [
 
 
 
+#[rustfmt::skip]
 pub const SKYBOX_VERTICES:[f32; 24] = [
 		-1.0, -1.0,  1.0,
 		 1.0, -1.0,  1.0,
@@ -156,6 +159,7 @@ pub const SKYBOX_VERTICES:[f32; 24] = [
 		-1.0,  1.0, -1.0
 ];
 
+#[rustfmt::skip]
 pub const SKYBOX_INDICES:[u32; 36] = [
 		// Right
 		1, 2, 6,
@@ -188,6 +192,7 @@ pub const SHADOW_WIDTH:i32 = 2560;
 pub const SHADOW_HEIGHT:i32 = 2560;
 
 
+#[rustfmt::skip]
 pub const GROUND_PLANE:[f32; 36] = [
         // positions         // normals         
          100.0, 0.0,  100.0,  0.0, 1.0, 0.0,  

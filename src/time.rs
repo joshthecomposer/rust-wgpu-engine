@@ -35,7 +35,9 @@ impl Time {
     pub fn begin_frame(&mut self, glfw_time: f32) {
         self.now = glfw_time;
         let mut frame_dt = self.now - self.last;
-        if frame_dt > self.max_frame_dt { frame_dt = self.max_frame_dt; }
+        if frame_dt > self.max_frame_dt {
+            frame_dt = self.max_frame_dt;
+        }
         self.last = self.now;
 
         frame_dt = frame_dt.clamp(0.0, self.fixed_dt * 4.0);
@@ -54,7 +56,9 @@ impl Time {
     }
 
     pub fn begin_fixed_step(&mut self) {
-        if !self.did_step { self.did_step = true; }
+        if !self.did_step {
+            self.did_step = true;
+        }
         self.steps_this_frame += 1;
     }
 
@@ -65,7 +69,4 @@ impl Time {
     pub fn end_frame(&mut self) {
         self.alpha = (self.accumulator / self.fixed_dt).clamp(0.0, 1.0);
     }
-
-
 }
-

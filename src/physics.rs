@@ -2,8 +2,12 @@ use glam::{Quat, Vec3};
 use nalgebra::Vector3;
 use rapier3d::prelude::*;
 
-use crate::{entity_manager::EntityManager, enums_types::{PhysicsHandle, Transform}, util::data_structure::HashMapGetPair};
-use crate::{some_data::{GROUP_PLAYER, GROUP_TERRAIN}};
+use crate::some_data::{GROUP_PLAYER, GROUP_TERRAIN};
+use crate::{
+    entity_manager::EntityManager,
+    enums_types::{PhysicsHandle, Transform},
+    util::data_structure::HashMapGetPair,
+};
 
 pub struct PhysicsState {
     pub pipeline: PhysicsPipeline,
@@ -23,7 +27,7 @@ pub struct PhysicsState {
 
     // accumulator stuff
     pub accumulator: f32,
-    pub fixed_dt: f32, 
+    pub fixed_dt: f32,
 }
 
 impl PhysicsState {
@@ -43,10 +47,9 @@ impl PhysicsState {
             query_pipeline: Some(QueryPipeline::new()),
             physics_hooks: (),
             event_handler: (),
-            
+
             accumulator: 0.0,
             fixed_dt: 1.0 / 60.0,
-            
         }
     }
 
@@ -81,7 +84,8 @@ pub fn jump_to_height(rb: &mut RigidBody, h: f32, gravity: f32) {
 }
 
 pub fn sync_transforms_from_physics(em: &mut EntityManager, ps: &PhysicsState) {
-    let mut updates: Vec<(usize, glam::Vec3, glam::Quat)> = Vec::with_capacity(em.physics_handles.len());
+    let mut updates: Vec<(usize, glam::Vec3, glam::Quat)> =
+        Vec::with_capacity(em.physics_handles.len());
 
     for ph in em.physics_handles.iter() {
         let id = ph.key();
@@ -106,11 +110,14 @@ pub fn sync_transforms_from_physics(em: &mut EntityManager, ps: &PhysicsState) {
             // keep existing t.scale as-is
         } else {
             panic!("SOmething didn't have a transform");
-            em.transforms.insert(id, Transform {
-                position: pos,
-                rotation: rot,
-                scale: glam::Vec3::splat(1.0), // or preserve a known scale (e.g., Vec3::ONE)
-            });
+            em.transforms.insert(
+                id,
+                Transform {
+                    position: pos,
+                    rotation: rot,
+                    scale: glam::Vec3::splat(1.0), // or preserve a known scale (e.g., Vec3::ONE)
+                },
+            );
         }
     }
 }
@@ -132,24 +139,26 @@ pub fn push_weapon_kinematics_from_bones(em: &mut EntityManager, ps: &mut Physic
             let (a1, a2) = animator.animations.get_pair(&cur, &next).unwrap();
             a1.get_raw_global_bone_transform_by_name_blended(&rh, skel, pm, a2, blend)
         } else {
-            animator.animations.get(&cur).unwrap()
+            animator
+                .animations
+                .get(&cur)
+                .unwrap()
                 .get_raw_global_bone_transform_by_name(&rh, skel, pm)
         };
 
         if let (Some(m), Some(ph)) = (bone_m, em.physics_handles.get(wid)) {
             //let (_s, rot, pos) = m.to_scale_rotation_translation();
 
-            let corr = em.local_corrections
-                .get(wid)
-                .cloned()
-                .unwrap_or(Transform {
-                    position: glam::Vec3::ZERO,
-                    rotation: glam::Quat::IDENTITY,
-                    scale:    glam::Vec3::ONE,
-                });
+            let corr = em.local_corrections.get(wid).cloned().unwrap_or(Transform {
+                position: glam::Vec3::ZERO,
+                rotation: glam::Quat::IDENTITY,
+                scale: glam::Vec3::ONE,
+            });
 
             let corr_m = glam::Mat4::from_scale_rotation_translation(
-                corr.scale, corr.rotation, corr.position
+                corr.scale,
+                corr.rotation,
+                corr.position,
             );
 
             // Apply correction in bone space
@@ -184,7 +193,7 @@ pub fn push_static_kinematics(em: &EntityManager, ps: &mut PhysicsState) {
 
             let iso = rapier3d::na::Isometry::from_parts(
                 rapier3d::na::Translation3::new(gt.position.x, gt.position.y, gt.position.z),
-                rapier3d::na::UnitQuaternion::from_quaternion(gt.rotation.into())
+                rapier3d::na::UnitQuaternion::from_quaternion(gt.rotation.into()),
             );
 
             rb.set_next_kinematic_position(iso);
@@ -208,11 +217,11 @@ pub fn sync_collider_transforms_with_physics(em: &mut EntityManager, ps: &mut Ph
         let r = iso.rotation;
 
         let center = Vec3::new(t.x, t.y, t.z);
-        let rot    = Quat::from_xyzw(r.i, r.j, r.k, r.w);
+        let rot = Quat::from_xyzw(r.i, r.j, r.k, r.w);
 
         let shape = collider.shape();
 
-        let mut gizmo_pos   = center;
+        let mut gizmo_pos = center;
         let mut gizmo_scale = Vec3::ONE;
 
         if let Some(cuboid) = shape.as_cuboid() {
@@ -249,7 +258,7 @@ pub fn grounding_solver(em: &mut EntityManager, ps: &PhysicsState) {
         em.get_ids_for_type("TrashGuy"),
         em.get_ids_for_type("MooseMan"),
     ]
-        .concat();
+    .concat();
 
     for id in ids.iter() {
         let ph = em.physics_handles.get(*id).unwrap();
@@ -264,17 +273,23 @@ pub fn grounding_solver(em: &mut EntityManager, ps: &PhysicsState) {
         let gs = em.grounded_states.get_mut(*id).unwrap();
         let position = trans.position;
 
-        let ray = Ray::new(point![position.x, position.y + 0.02, position.z], vector![0.0, -1.0, 0.0]);
+        let ray = Ray::new(
+            point![position.x, position.y + 0.02, position.z],
+            vector![0.0, -1.0, 0.0],
+        );
 
         let filter = QueryFilter::default()
-            .groups(InteractionGroups::new(GROUP_PLAYER.into(), GROUP_TERRAIN.into()))
+            .groups(InteractionGroups::new(
+                GROUP_PLAYER.into(),
+                GROUP_TERRAIN.into(),
+            ))
             .exclude_rigid_body(rb_handle)
             .exclude_sensors()
             .into();
 
         let dist = match gs.is_grounded {
             true => gs.ray_length_grounded,
-            false => gs.ray_length_airborn
+            false => gs.ray_length_airborn,
         };
 
         let prev = gs.is_grounded;

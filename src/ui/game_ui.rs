@@ -1,12 +1,22 @@
-use std::{collections::{HashMap, HashSet}, ffi::c_void};
+use std::{
+    collections::{HashMap, HashSet},
+    ffi::c_void,
+};
 
 use glam::{Vec2, Vec4};
 use image::GenericImageView;
 use winit::{event::MouseButton, keyboard::KeyCode};
 
-use crate::{entity_manager::EntityManager, enums_types::CameraState, gl_call, input::InputState, platform::CursorMode, shaders::Shader};
+use crate::{
+    entity_manager::EntityManager, enums_types::CameraState, gl_call, input::InputState,
+    platform::CursorMode, shaders::Shader,
+};
 
-use super::{color::hex_to_vec4, font::FontManager, message_queue::{MessageQueue, UiMessage}};
+use super::{
+    color::hex_to_vec4,
+    font::FontManager,
+    message_queue::{MessageQueue, UiMessage},
+};
 
 pub struct TextureCache {
     pub map: HashMap<String, u32>,
@@ -14,7 +24,9 @@ pub struct TextureCache {
 
 impl TextureCache {
     pub fn new() -> Self {
-        Self { map: HashMap::new() }
+        Self {
+            map: HashMap::new(),
+        }
     }
 
     pub fn get_or_load(&mut self, path: &str) -> u32 {
@@ -41,7 +53,9 @@ pub struct GameUiContext {
 impl GameUiContext {
     pub fn new() -> Self {
         let mut font_manager = FontManager::new();
-        font_manager.load_chars("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:,.!?()[]{}<> ");
+        font_manager.load_chars(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:,.!?()[]{}<> ",
+        );
         font_manager.setup_buffers();
 
         let mut vao = 0;
@@ -55,18 +69,44 @@ impl GameUiContext {
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, vbo));
 
             // Just allocate enough space once — data will be updated with glBufferSubData.
-            gl_call!(gl::BufferData(gl::ARRAY_BUFFER, 1024 * 1024, std::ptr::null(), gl::DYNAMIC_DRAW));
+            gl_call!(gl::BufferData(
+                gl::ARRAY_BUFFER,
+                1024 * 1024,
+                std::ptr::null(),
+                gl::DYNAMIC_DRAW
+            ));
 
             let stride = 9 * 4;
 
             gl_call!(gl::EnableVertexAttribArray(0));
-            gl_call!(gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, std::ptr::null()));
+            gl_call!(gl::VertexAttribPointer(
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                std::ptr::null()
+            ));
 
             gl_call!(gl::EnableVertexAttribArray(1));
-            gl_call!(gl::VertexAttribPointer(1, 2, gl::FLOAT, gl::FALSE, stride, (3 * 4) as *const _));
+            gl_call!(gl::VertexAttribPointer(
+                1,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (3 * 4) as *const _
+            ));
 
             gl_call!(gl::EnableVertexAttribArray(2));
-            gl_call!(gl::VertexAttribPointer(2, 4, gl::FLOAT, gl::FALSE, stride, (5 * 4) as *const _));
+            gl_call!(gl::VertexAttribPointer(
+                2,
+                4,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (5 * 4) as *const _
+            ));
         }
 
         Self {
@@ -91,13 +131,27 @@ pub struct Rect {
     pub texture_id: Option<u32>,
 }
 
-pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, font_shader: &Shader, mq: &mut MessageQueue, paused: &mut bool, cm: CursorMode, cs: &CameraState, ui_ctx: &mut GameUiContext, render_gizmos: &mut bool, input: &mut InputState, em: &mut EntityManager) {
+pub fn do_ui(
+    fb_width: f32,
+    fb_height: f32,
+    mouse_pos: Vec2,
+    shader: &Shader,
+    font_shader: &Shader,
+    mq: &mut MessageQueue,
+    paused: &mut bool,
+    cm: CursorMode,
+    cs: &CameraState,
+    ui_ctx: &mut GameUiContext,
+    render_gizmos: &mut bool,
+    input: &mut InputState,
+    em: &mut EntityManager,
+) {
     let mut rects = vec![];
     // =============================================================
     // PAUSE PANEL
     // =============================================================
     if *paused {
-        let mut w = fb_width  * 0.25;
+        let mut w = fb_width * 0.25;
         let h = fb_height * 0.45;
 
         let main_container = Rect {
@@ -109,7 +163,7 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
             text: "".to_string(),
             texture_id: None,
         };
-        
+
         rects.push(main_container.clone());
 
         let button_h = main_container.h * 0.15;
@@ -122,22 +176,70 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
         let gap = 15.0; // Pixels
 
         y -= gap;
-        if button("Quit Game", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, None, input) {
+        if button(
+            "Quit Game",
+            x,
+            y,
+            w,
+            button_h,
+            mouse_pos,
+            mq,
+            &mut rects,
+            cm,
+            None,
+            input,
+        ) {
             mq.send(UiMessage::WindowShouldClose);
         }
 
         y -= button_h + gap;
-        if button("Save Player Data", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, None, input) {
+        if button(
+            "Save Player Data",
+            x,
+            y,
+            w,
+            button_h,
+            mouse_pos,
+            mq,
+            &mut rects,
+            cm,
+            None,
+            input,
+        ) {
             em.serialize_entity_data("config/player_data.json");
         }
 
         y -= button_h + gap;
-        if button("Reload World Data", x, y, w, button_h, mouse_pos, mq, &mut rects, cm, None, input) {
+        if button(
+            "Reload World Data",
+            x,
+            y,
+            w,
+            button_h,
+            mouse_pos,
+            mq,
+            &mut rects,
+            cm,
+            None,
+            input,
+        ) {
             mq.send(UiMessage::ReloadWorldData);
         }
 
         y -= button_h + gap;
-        if button("Gizmo Rendering", x, y, w, button_h, mouse_pos, mq, &mut rects, cm,None, input) {
+        if button(
+            "Gizmo Rendering",
+            x,
+            y,
+            w,
+            button_h,
+            mouse_pos,
+            mq,
+            &mut rects,
+            cm,
+            None,
+            input,
+        ) {
             *render_gizmos = !*render_gizmos;
         }
 
@@ -146,7 +248,9 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
         let ex = (main_container.x + main_container.w) - (exit_size + gap);
         let ey = main_container.y + gap;
 
-        if button("X", ex, ey, exit_size, exit_size, mouse_pos, mq, &mut rects, cm, None, input) {
+        if button(
+            "X", ex, ey, exit_size, exit_size, mouse_pos, mq, &mut rects, cm, None, input,
+        ) {
             //mq.send(UiMessage::PauseToggle);
             *paused = false;
         }
@@ -187,15 +291,15 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
     //         match i {
     //             0 => {
     //                 if button(
-    //                     &label, 
-    //                     x, 
-    //                     y, 
-    //                     button_w, 
-    //                     button_h, 
-    //                     mouse_pos, 
-    //                     mq, 
-    //                     &mut rects, 
-    //                     cm, 
+    //                     &label,
+    //                     x,
+    //                     y,
+    //                     button_w,
+    //                     button_h,
+    //                     mouse_pos,
+    //                     mq,
+    //                     &mut rects,
+    //                     cm,
     //                     Some(
     //                         ui_ctx.tex_cache.get_or_load("resources/textures/guy.png")
     //                     ),
@@ -206,15 +310,15 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
     //             },
     //             1 => {
     //                 if button(
-    //                     &label, 
-    //                     x, 
-    //                     y, 
-    //                     button_w, 
-    //                     button_h, 
-    //                     mouse_pos, 
-    //                     mq, 
-    //                     &mut rects, 
-    //                     cm, 
+    //                     &label,
+    //                     x,
+    //                     y,
+    //                     button_w,
+    //                     button_h,
+    //                     mouse_pos,
+    //                     mq,
+    //                     &mut rects,
+    //                     cm,
     //                     Some(
     //                         ui_ctx.tex_cache.get_or_load("resources/textures/tree.png")
     //                     ),
@@ -225,15 +329,15 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
     //             },
     //             2 => {
     //                 if button(
-    //                     &label, 
-    //                     x, 
-    //                     y, 
-    //                     button_w, 
-    //                     button_h, 
-    //                     mouse_pos, 
-    //                     mq, 
-    //                     &mut rects, 
-    //                     cm, 
+    //                     &label,
+    //                     x,
+    //                     y,
+    //                     button_w,
+    //                     button_h,
+    //                     mouse_pos,
+    //                     mq,
+    //                     &mut rects,
+    //                     cm,
     //                     Some(
     //                         ui_ctx.tex_cache.get_or_load("resources/textures/moose.png")
     //                     ),
@@ -244,15 +348,15 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
     //             }
     //             _ => {
     //                 if button(
-    //                     &label, 
-    //                     x, 
-    //                     y, 
-    //                     button_w, 
-    //                     button_h, 
-    //                     mouse_pos, 
-    //                     mq, 
-    //                     &mut rects, 
-    //                     cm, 
+    //                     &label,
+    //                     x,
+    //                     y,
+    //                     button_w,
+    //                     button_h,
+    //                     mouse_pos,
+    //                     mq,
+    //                     &mut rects,
+    //                     cm,
     //                     None,
     //                     input,
     //                 ) {
@@ -273,7 +377,14 @@ pub fn do_ui(fb_width: f32, fb_height: f32, mouse_pos: Vec2, shader: &Shader, fo
 // =============================================================
 // Rendering
 // =============================================================
-fn draw_rects(rects: Vec<Rect>, shader: &Shader, fb_width: f32, fb_height: f32, font_shader: &Shader, ui_ctx: &mut GameUiContext) {
+fn draw_rects(
+    rects: Vec<Rect>,
+    shader: &Shader,
+    fb_width: f32,
+    fb_height: f32,
+    font_shader: &Shader,
+    ui_ctx: &mut GameUiContext,
+) {
     unsafe {
         gl_call!(gl::Enable(gl::BLEND));
         gl_call!(gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
@@ -292,19 +403,16 @@ fn draw_rects(rects: Vec<Rect>, shader: &Shader, fb_width: f32, fb_height: f32, 
         let y1 = 1.0 - ((rect.y + rect.h) / fb_height) * 2.0;
 
         let c = rect.color.to_array();
-        
+
         unsafe {
             let verts = &mut ui_ctx.quad_vertices;
 
             let new_verts = vec![
                 // pos          //uv         // color
-                x0, y0, 0.0,    0.0, 0.0,    c[0], c[1], c[2], c[3],
-                x1, y0, 0.0,    1.0, 0.0,    c[0], c[1], c[2], c[3],
-                x1, y1, 0.0,    1.0, 1.0,    c[0], c[1], c[2], c[3],
-
-                x1, y1, 0.0,    1.0, 1.0,    c[0], c[1], c[2], c[3],
-                x0, y1, 0.0,    0.0, 1.0,    c[0], c[1], c[2], c[3],
-                x0, y0, 0.0,    0.0, 0.0,    c[0], c[1], c[2], c[3],
+                x0, y0, 0.0, 0.0, 0.0, c[0], c[1], c[2], c[3], x1, y0, 0.0, 1.0, 0.0, c[0], c[1],
+                c[2], c[3], x1, y1, 0.0, 1.0, 1.0, c[0], c[1], c[2], c[3], x1, y1, 0.0, 1.0, 1.0,
+                c[0], c[1], c[2], c[3], x0, y1, 0.0, 0.0, 1.0, c[0], c[1], c[2], c[3], x0, y0, 0.0,
+                0.0, 0.0, c[0], c[1], c[2], c[3],
             ];
 
             verts.copy_from_slice(&new_verts);
@@ -336,8 +444,14 @@ fn draw_rects(rects: Vec<Rect>, shader: &Shader, fb_width: f32, fb_height: f32, 
 
                 let scale = target_font_height / ui_ctx.font_manager.font_pixel_size;
 
-                ui_ctx.font_manager.render_phrase_centered(&rect.text, rect, fb_width, fb_height, font_shader, scale);
-
+                ui_ctx.font_manager.render_phrase_centered(
+                    &rect.text,
+                    rect,
+                    fb_width,
+                    fb_height,
+                    font_shader,
+                    scale,
+                );
             }
         }
     }
@@ -362,9 +476,8 @@ pub fn button(
     rects: &mut Vec<Rect>,
     cm: CursorMode,
     texture_id: Option<u32>,
-    input: &mut InputState
+    input: &mut InputState,
 ) -> bool {
-
     let color_900 = hex_to_vec4("#1c1917");
     let color_800 = hex_to_vec4("#292524");
     let mut clicked = false;
@@ -391,14 +504,14 @@ pub fn button(
             clicked = true;
         }
     } else if cm == CursorMode::Normal {
-        hovered = mouse_pos.x >= x
-            && mouse_pos.y >= y
-            && mouse_pos.x <= x + w
-            && mouse_pos.y <= y + h;
+        hovered =
+            mouse_pos.x >= x && mouse_pos.y >= y && mouse_pos.x <= x + w && mouse_pos.y <= y + h;
 
         clicked = hovered && input.left_mouse_just_pressed();
 
-        if clicked { input.mouse_current.remove(&MouseButton::Left); }
+        if clicked {
+            input.mouse_current.remove(&MouseButton::Left);
+        }
     }
 
     final_color = if hovered { color_800 } else { color_900 };
@@ -416,7 +529,7 @@ pub fn button(
     clicked
 }
 
-fn create_2d_texture(path: &str) -> u32 { 
+fn create_2d_texture(path: &str) -> u32 {
     let mut texture_id = 0;
 
     unsafe {
@@ -424,7 +537,7 @@ fn create_2d_texture(path: &str) -> u32 {
 
         let img = match image::open(path) {
             Ok(data) => Some(data),
-            Err(_) => panic!("Failed to load 2D GameUI image")
+            Err(_) => panic!("Failed to load 2D GameUI image"),
         };
 
         if let Some(img) = img {
@@ -434,26 +547,40 @@ fn create_2d_texture(path: &str) -> u32 {
 
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture_id));
             gl_call!(gl::TexImage2D(
-                gl::TEXTURE_2D, 
-                0, 
-                gl::RGBA as i32, 
-                img_width as i32, 
-                img_height as i32, 
-                0, 
-                gl::RGBA, 
-                gl::UNSIGNED_BYTE, 
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA as i32,
+                img_width as i32,
+                img_height as i32,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
                 raw.as_ptr() as *const c_void
             ));
 
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::NEAREST as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::NEAREST as i32
+            ));
             gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
         };
-
     }
 
     texture_id
 }
-

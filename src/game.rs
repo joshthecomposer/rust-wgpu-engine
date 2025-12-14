@@ -85,9 +85,7 @@ impl Game {
         self.time.begin_frame(now_seconds);
 
         // Mouse lock / cursor mode
-        if self.paused 
-            || self.world.camera.move_state == CameraState::Locked 
-            || self.world.camera.move_state == CameraState::SlintSandbox {
+        if self.paused || self.world.camera.move_state == CameraState::Locked {
             self.platform.window.set_cursor_visible(true);
             let _ = self.platform.window.set_cursor_grab(CursorGrabMode::None);
             self.platform.cursor_mode = CursorMode::Normal;
@@ -255,11 +253,11 @@ impl Game {
 
             WindowEvent::KeyboardInput {
                 event:
-                KeyEvent {
-                    physical_key,
-                    state,
-                    ..
-                },
+                    KeyEvent {
+                        physical_key,
+                        state,
+                        ..
+                    },
                 ..
             } => {
                 if let PhysicalKey::Code(code) = physical_key {
@@ -289,8 +287,7 @@ impl Game {
                                 }
                             }
                             CameraState::Third => CameraState::Locked,
-                            CameraState::Locked => CameraState::SlintSandbox,
-                            CameraState::SlintSandbox => CameraState::Free,
+                            CameraState::Locked => CameraState::Free,
                         };
                     }
                 }
@@ -319,10 +316,10 @@ impl Game {
             match msg {
                 UiMessage::WindowShouldClose => {
                     self.should_quit = true;
-                },
+                }
                 UiMessage::RenderStagedEmitters { do_it } => {
                     self.world.particles.render_staged_emitters = *do_it;
-                },
+                }
                 UiMessage::ReloadWorldData => {
                     let mut world = World::new();
                     let mut physics = PhysicsState::new();
@@ -331,7 +328,8 @@ impl Game {
 
                     // Cleanup 3d sounds
                     {
-                        let keys: Vec<usize> = self.sound.active_3d_sounds.keys().cloned().collect();
+                        let keys: Vec<usize> =
+                            self.sound.active_3d_sounds.keys().cloned().collect();
 
                         for id in keys {
                             self.sound.cleanup_entity_sounds(id);
@@ -340,7 +338,8 @@ impl Game {
 
                     // Cleanup 2d sounds
                     {
-                        let sounds: Vec<SoundType> = self.sound.active_sounds.keys().cloned().collect();
+                        let sounds: Vec<SoundType> =
+                            self.sound.active_sounds.keys().cloned().collect();
 
                         for sound in sounds {
                             self.sound.stop_sound(&sound);
@@ -350,7 +349,7 @@ impl Game {
                     self.world = world;
                     self.physics = physics;
                 }
-                _ => {},
+                _ => {}
             }
         }
 
@@ -378,14 +377,14 @@ impl Game {
         );
 
         self.imgui_manager.draw(
-            &mut self.platform.window, 
-            self.platform.fb_width as f32, 
-            self.platform.fb_height as f32, 
-            self.time.dt, 
-            &mut self.world.lights, 
-            &mut self.renderer, 
-            &mut self.sound, 
-            &self.world.camera, 
+            &mut self.platform.window,
+            self.platform.fb_width as f32,
+            self.platform.fb_height as f32,
+            self.time.dt,
+            &mut self.world.lights,
+            &mut self.renderer,
+            &mut self.sound,
+            &self.world.camera,
             &mut self.world.ecs,
             &mut self.physics,
             &mut self.input,
@@ -394,7 +393,12 @@ impl Game {
         );
 
         if self.paused {
-            self.game_ui.render(self.renderer.shaders.get_mut(&ShaderType::UiOverlay).unwrap());
+            self.game_ui.render(
+                self.renderer
+                    .shaders
+                    .get_mut(&ShaderType::UiOverlay)
+                    .unwrap(),
+            );
         }
 
         self.platform

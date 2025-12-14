@@ -1,4 +1,7 @@
-use crate::{camera::Camera, config::world_data::WorldData, entity_manager::EntityManager, lights::Lights, particles::ParticleSystem};
+use crate::{
+    camera::Camera, config::world_data::WorldData, entity_manager::EntityManager, lights::Lights,
+    particles::ParticleSystem,
+};
 
 pub struct World {
     pub ecs: EntityManager,

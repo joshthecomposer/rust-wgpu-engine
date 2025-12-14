@@ -1,11 +1,26 @@
 #![allow(clippy::useless_vec)]
+use core::f32;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
 use rapier3d::prelude::Cuboid;
-use core::f32;
-use std::{any::Any, collections::HashMap, ffi::c_void, mem::{self, offset_of}, path::Path, ptr, str::Lines};
+use std::{
+    any::Any,
+    collections::HashMap,
+    ffi::c_void,
+    mem::{self, offset_of},
+    path::Path,
+    ptr,
+    str::Lines,
+};
 
-use crate::{enums_types::{AnimationType, FrameActivation, TextureProfile, TextureType, ANIMATION_EPSILON}, gl_call, shaders::Shader, some_data::MAX_BONE_INFLUENCE, sound::sound_manager::{ContinuousSound, OneShot}, util::data_structure::HashMapGetPairMut};
+use crate::{
+    enums_types::{AnimationType, FrameActivation, TextureProfile, TextureType, ANIMATION_EPSILON},
+    gl_call,
+    shaders::Shader,
+    some_data::MAX_BONE_INFLUENCE,
+    sound::sound_manager::{ContinuousSound, OneShot},
+    util::data_structure::HashMapGetPairMut,
+};
 
 #[derive(Debug, Clone)]
 #[repr(C)]
@@ -87,10 +102,10 @@ impl Model {
     /// Convenience: get by "type" using a fixed mapping
     pub fn get_tex_by_type(&self, tex_type: &str) -> Option<&Texture> {
         match tex_type {
-            "Diffuse"  => self.textures[0].as_ref(),
+            "Diffuse" => self.textures[0].as_ref(),
             "Specular" => self.textures[1].as_ref(),
             "Emissive" => self.textures[2].as_ref(),
-            "Opacity"  => self.textures[3].as_ref(),
+            "Opacity" => self.textures[3].as_ref(),
             _ => None,
         }
     }
@@ -105,7 +120,7 @@ impl Model {
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo));
 
             gl_call!(gl::BufferData(
-                gl::ARRAY_BUFFER, 
+                gl::ARRAY_BUFFER,
                 (mem::size_of::<Vertex>() * self.vertices.len()) as isize,
                 self.vertices.as_ptr().cast(),
                 gl::STATIC_DRAW,
@@ -121,47 +136,46 @@ impl Model {
 
             gl_call!(gl::EnableVertexAttribArray(0));
             gl_call!(gl::VertexAttribPointer(
-                0, 
-                3, 
-                gl::FLOAT, 
-                gl::FALSE, 
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
                 mem::size_of::<Vertex>() as i32,
                 ptr::null(),
             ));
 
             gl_call!(gl::EnableVertexAttribArray(1));
             gl_call!(gl::VertexAttribPointer(
-                1, 
-                3, 
-                gl::FLOAT, 
-                gl::FALSE, 
+                1,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
                 mem::size_of::<Vertex>() as i32,
                 offset_of!(Vertex, normal) as *const _
             ));
 
             gl_call!(gl::EnableVertexAttribArray(2));
             gl_call!(gl::VertexAttribPointer(
-                2, 
-                2, 
-                gl::FLOAT, 
-                gl::FALSE, 
-                mem::size_of::<Vertex>() as i32, 
+                2,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as i32,
                 offset_of!(Vertex, uv) as *const _
             ));
 
-
             gl_call!(gl::EnableVertexAttribArray(3));
             gl_call!(gl::VertexAttribPointer(
-                3, 
-                4, 
-                gl::FLOAT, 
-                gl::FALSE, 
-                mem::size_of::<Vertex>() as i32, 
+                3,
+                4,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as i32,
                 offset_of!(Vertex, base_color) as *const _
             ));
 
             gl_call!(gl::EnableVertexAttribArray(4));
-            gl_call!(gl::VertexAttribIPointer( 
+            gl_call!(gl::VertexAttribIPointer(
                 4,
                 4,
                 gl::INT,
@@ -189,18 +203,33 @@ impl Model {
             shader.set_bool("has_opacity_texture", false);
         } else {
             shader.set_bool("use_base_color", false);
-            if let Some(diff) = self.get_tex(1) { // Diffuse
-                unsafe { gl::ActiveTexture(gl::TEXTURE1); gl::BindTexture(gl::TEXTURE_2D, diff.id); }
+            if let Some(diff) = self.get_tex(1) {
+                // Diffuse
+                unsafe {
+                    gl::ActiveTexture(gl::TEXTURE1);
+                    gl::BindTexture(gl::TEXTURE_2D, diff.id);
+                }
             }
-            if let Some(spec) = self.get_tex(2) { // Specular
-                unsafe { gl::ActiveTexture(gl::TEXTURE2); gl::BindTexture(gl::TEXTURE_2D, spec.id); }
+            if let Some(spec) = self.get_tex(2) {
+                // Specular
+                unsafe {
+                    gl::ActiveTexture(gl::TEXTURE2);
+                    gl::BindTexture(gl::TEXTURE_2D, spec.id);
+                }
             }
-            if let Some(emis) = self.get_tex(3) { // Emissive
-                unsafe { gl::ActiveTexture(gl::TEXTURE3); gl::BindTexture(gl::TEXTURE_2D, emis.id); }
+            if let Some(emis) = self.get_tex(3) {
+                // Emissive
+                unsafe {
+                    gl::ActiveTexture(gl::TEXTURE3);
+                    gl::BindTexture(gl::TEXTURE_2D, emis.id);
+                }
             }
             if let Some(opac) = self.get_tex(8) {
                 shader.set_bool("has_opacity_texture", true);
-                unsafe { gl::ActiveTexture(gl::TEXTURE4); gl::BindTexture(gl::TEXTURE_2D, opac.id); }
+                unsafe {
+                    gl::ActiveTexture(gl::TEXTURE4);
+                    gl::BindTexture(gl::TEXTURE_2D, opac.id);
+                }
             } else {
                 shader.set_bool("has_opacity_texture", false);
             }
@@ -209,10 +238,10 @@ impl Model {
         unsafe {
             gl_call!(gl::BindVertexArray(self.vao));
             gl_call!(gl::DrawElements(
-                gl::TRIANGLES, 
-                self.indices.len() as i32, 
-                gl::UNSIGNED_INT, 
-                ptr::null(), 
+                gl::TRIANGLES,
+                self.indices.len() as i32,
+                gl::UNSIGNED_INT,
+                ptr::null(),
             ));
 
             shader.set_bool("has_opacity_texture", false);
@@ -289,7 +318,7 @@ impl Animator {
         self.animations
             .get(&self.current_animation)
             .or_else(|| self.animations.get(&AnimationType::Idle))
-            //.or_else(|| self.animations.values().next())
+        //.or_else(|| self.animations.values().next())
     }
 
     pub fn set_current_animation(&mut self, input: AnimationType) {
@@ -327,17 +356,15 @@ impl Animator {
         let curr_key = self.current_animation.clone();
         let next_key = self.next_animation.clone();
 
-
         if curr_key != next_key {
             if let Some((current, next)) = self.animations.get_pair_mut(&curr_key, &next_key) {
-                current.update(skellington, Some(next), self.blend_factor, dt,);
+                current.update(skellington, Some(next), self.blend_factor, dt);
             }
         } else if let Some(current) = self.animations.get_mut(&curr_key) {
             current.update(skellington, None, self.blend_factor, dt);
         }
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Animation {
@@ -360,7 +387,6 @@ pub struct Animation {
 
 impl Animation {
     pub fn default() -> Self {
-
         Self {
             duration: 0.0,
             ticks_per_second: 0.0,
@@ -387,29 +413,30 @@ impl Animation {
         global_inverse_transform: Mat4,
     ) {
         let delta = self.current_time % self.duration;
-        let (local_position, local_rot, local_scale) = self.get_bone_local_transform(skeleton, delta);
-        let local_transform = Mat4::from_scale_rotation_translation(local_scale, local_rot, local_position);
+        let (local_position, local_rot, local_scale) =
+            self.get_bone_local_transform(skeleton, delta);
+        let local_transform =
+            Mat4::from_scale_rotation_translation(local_scale, local_rot, local_position);
         let global_transform = parent_transform * local_transform;
 
-        self.current_pose[skeleton.id as usize] =
-            match 0 {
-                0 => global_inverse_transform * global_transform * skeleton.offset,
-                1 => global_transform * skeleton.offset * global_inverse_transform,
-                2 => global_transform * skeleton.offset,
-                3 => global_inverse_transform * global_transform,
-                4 => global_inverse_transform * skeleton.offset * global_transform,
-                5 => global_transform * global_inverse_transform * skeleton.offset,
-                10 => Mat4::IDENTITY,
-                _ => global_inverse_transform * global_transform * skeleton.offset,
-            };
+        self.current_pose[skeleton.id as usize] = match 0 {
+            0 => global_inverse_transform * global_transform * skeleton.offset,
+            1 => global_transform * skeleton.offset * global_inverse_transform,
+            2 => global_transform * skeleton.offset,
+            3 => global_inverse_transform * global_transform,
+            4 => global_inverse_transform * skeleton.offset * global_transform,
+            5 => global_transform * global_inverse_transform * skeleton.offset,
+            10 => Mat4::IDENTITY,
+            _ => global_inverse_transform * global_transform * skeleton.offset,
+        };
 
         for child in skeleton.children.iter_mut() {
             self.calculate_pose(child, global_transform, global_inverse_transform);
         }
     }
 
-    // The idea is that at blend factor 0.0 we are at the self/current animation. 
-    // At blend factor 1.0 we are fully at the "other" animation. 
+    // The idea is that at blend factor 0.0 we are at the self/current animation.
+    // At blend factor 1.0 we are fully at the "other" animation.
     // At that point the current animation should be switched to the "other"
     pub fn calculate_pose_blended(
         &mut self,
@@ -429,31 +456,36 @@ impl Animation {
         let final_rot = rot1.slerp(rot2, blend_factor);
         let final_scale = scale1.lerp(scale2, blend_factor);
 
-        let local_transform = Mat4::from_scale_rotation_translation(final_scale, final_rot, final_pos);
+        let local_transform =
+            Mat4::from_scale_rotation_translation(final_scale, final_rot, final_pos);
         let global_transform = parent_transform * local_transform;
 
-        self.current_pose[skeleton.id as usize] =
-            match 0 {
-                0 => global_inverse_transform * global_transform * skeleton.offset,
-                1 => global_transform * skeleton.offset * global_inverse_transform,
-                2 => global_transform * skeleton.offset,
-                3 => global_inverse_transform * global_transform,
-                4 => global_inverse_transform * skeleton.offset * global_transform,
-                5 => global_transform * global_inverse_transform * skeleton.offset,
-                10 => Mat4::IDENTITY,
-                _ => global_inverse_transform * global_transform * skeleton.offset,
-            };
+        self.current_pose[skeleton.id as usize] = match 0 {
+            0 => global_inverse_transform * global_transform * skeleton.offset,
+            1 => global_transform * skeleton.offset * global_inverse_transform,
+            2 => global_transform * skeleton.offset,
+            3 => global_inverse_transform * global_transform,
+            4 => global_inverse_transform * skeleton.offset * global_transform,
+            5 => global_transform * global_inverse_transform * skeleton.offset,
+            10 => Mat4::IDENTITY,
+            _ => global_inverse_transform * global_transform * skeleton.offset,
+        };
 
         for child in skeleton.children.iter_mut() {
-            self.calculate_pose_blended(child, global_transform, global_inverse_transform, other_animation, blend_factor);
-
+            self.calculate_pose_blended(
+                child,
+                global_transform,
+                global_inverse_transform,
+                other_animation,
+                blend_factor,
+            );
         }
     }
 
     fn get_bone_local_transform(&self, skeleton: &Bone, delta: f32) -> (Vec3, Quat, Vec3) {
         let btt = match self.bone_transforms.get(&skeleton.name) {
             Some(name) => name,
-            _=> {
+            _ => {
                 dbg!(skeleton);
                 panic!("skeleton name not found")
             }
@@ -493,7 +525,11 @@ impl Animation {
             let interpolated_rotation = prev_rotation.slerp(next_rotation, fraction);
             // Mat4::from_scale_rotation_translation(interpolated_scale, interpolated_rotation, interpolated_position)
 
-            (interpolated_position, interpolated_rotation, interpolated_scale)
+            (
+                interpolated_position,
+                interpolated_rotation,
+                interpolated_scale,
+            )
         }
     }
 
@@ -515,7 +551,9 @@ impl Animation {
             let local = Mat4::from_scale_rotation_translation(scale, rot, pos);
             let next_parent = parent_transform * local;
 
-            if let Some(found) = self.get_raw_global_bone_transform_by_name(bone_name, child, next_parent) {
+            if let Some(found) =
+                self.get_raw_global_bone_transform_by_name(bone_name, child, next_parent)
+            {
                 return Some(found);
             }
         }
@@ -571,10 +609,15 @@ impl Animation {
         None
     }
 
-    pub fn update(&mut self, skellington: &mut Bone, other_animation: Option<&mut Animation>, blend_factor: f32, dt: f32) {
-        
-        if let Some(hold_frame) = self.hold_frame  {
-            if self.current_segment.get() == hold_frame && self.do_hold{
+    pub fn update(
+        &mut self,
+        skellington: &mut Bone,
+        other_animation: Option<&mut Animation>,
+        blend_factor: f32,
+        dt: f32,
+    ) {
+        if let Some(hold_frame) = self.hold_frame {
+            if self.current_segment.get() == hold_frame && self.do_hold {
                 return;
             }
         }
@@ -590,16 +633,16 @@ impl Animation {
         }
 
         // self.calculate_pose(
-        //     skellington, 
+        //     skellington,
         //     Mat4::IDENTITY,
-        //     Mat4::IDENTITY, 
+        //     Mat4::IDENTITY,
         // );
 
         if let Some(other_animation) = other_animation {
             self.calculate_pose_blended(
-                skellington, 
+                skellington,
                 Mat4::IDENTITY,
-                Mat4::IDENTITY, 
+                Mat4::IDENTITY,
                 other_animation,
                 blend_factor,
             );
@@ -609,11 +652,7 @@ impl Animation {
                 other_animation.current_time = 0.0;
             }
         } else {
-            self.calculate_pose(
-                skellington, 
-                Mat4::IDENTITY,
-                Mat4::IDENTITY, 
-            );
+            self.calculate_pose(skellington, Mat4::IDENTITY, Mat4::IDENTITY);
         }
     }
 }
@@ -648,7 +687,6 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
     let mut bone_idx = 0;
     let mut bone_count: u32 = 0;
 
-
     // =============================================================
     // Get Starting Bones
     // ============================================================
@@ -672,7 +710,13 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
             "BONE_NAME:" => {
                 let name = parts[1].to_string();
                 dbg!(&name);
-                let parsed_parent: i32 = lines.next().unwrap().split_whitespace().collect::<Vec<&str>>()[1].parse().unwrap();
+                let parsed_parent: i32 = lines
+                    .next()
+                    .unwrap()
+                    .split_whitespace()
+                    .collect::<Vec<&str>>()[1]
+                    .parse()
+                    .unwrap();
 
                 let parent_index = match parsed_parent {
                     -1 => None,
@@ -708,12 +752,10 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
     let mut model_animation_join = vec![];
 
     for b in &bones_no_children {
-        model_animation_join.push(
-            BoneJoinInfo {
-                name: b.name.clone(),
-                // offset: b.offset,
-            }
-        );
+        model_animation_join.push(BoneJoinInfo {
+            name: b.name.clone(),
+            // offset: b.offset,
+        });
 
         animation.current_pose.push(b.offset);
         assert!(model_animation_join[b.id as usize].name == b.name);
@@ -724,7 +766,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
 
     let mut animator = Animator::new();
     let mut ticks_per_second = 0.0;
-    
+
     // THis assumes we always have ANIMATION_DATA after bone data.
     while let Some(line) = lines.next() {
         let parts: Vec<&str> = line.split_whitespace().collect();
@@ -744,18 +786,22 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                     animation.model_animation_join = model_animation_join.clone();
                     animation.ticks_per_second = ticks_per_second;
 
-                    if current_anim_str == "Death" 
-                        || current_anim_str == "Slash" 
-                        || current_anim_str == "Slash2" 
+                    if current_anim_str == "Death"
+                        || current_anim_str == "Slash"
+                        || current_anim_str == "Slash2"
                         || current_anim_str == "DashF"
-                        || current_anim_str == "Jump" 
-                        || current_anim_str == "Flinch" 
-                        || current_anim_str == "Block" {
+                        || current_anim_str == "Jump"
+                        || current_anim_str == "Flinch"
+                        || current_anim_str == "Block"
+                    {
                         println!("Found {}, setting looping to false", &current_anim_str);
                         animation.looping = false;
                     }
 
-                    animator.animations.insert(AnimationType::from_str(current_anim_str).unwrap(), animation.clone());
+                    animator.animations.insert(
+                        AnimationType::from_str(current_anim_str).unwrap(),
+                        animation.clone(),
+                    );
                 }
 
                 animation = Animation::default();
@@ -767,16 +813,12 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                     animation.current_pose.push(b.offset);
                 }
             }
-            "DURATION:" => {
-                animation.duration = parts[1].parse().unwrap()
-            }
-            "FPS:" => {
-                ticks_per_second = parts[1].parse().unwrap()
-            }
+            "DURATION:" => animation.duration = parts[1].parse().unwrap(),
+            "FPS:" => ticks_per_second = parts[1].parse().unwrap(),
             "TIMESTAMP:" => {
                 let time_stamp = parts[1].parse().unwrap();
 
-                // let mut skipped_bones = HashSet::new(); 
+                // let mut skipped_bones = HashSet::new();
 
                 for i in 0..bone_count {
                     let bone_name = model_animation_join[i as usize].name.clone();
@@ -808,13 +850,10 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                     track.rotation_timestamps.push(time_stamp);
                     track.scale_timestamps.push(time_stamp);
 
-
                     track.positions.push(position);
                     track.rotations.push(rotation);
                     track.scales.push(scale);
-
                 }
-
             }
             _ => {}
         }
@@ -822,31 +861,35 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
 
     animation.model_animation_join = model_animation_join.clone();
     animation.ticks_per_second = ticks_per_second;
-    
+
     animator.set_current_animation(AnimationType::from_str(current_anim_str).unwrap());
     animator.set_next_animation(AnimationType::from_str(current_anim_str).unwrap());
-    animator.animations.insert(AnimationType::from_str(current_anim_str).unwrap(), animation.clone());
+    animator.animations.insert(
+        AnimationType::from_str(current_anim_str).unwrap(),
+        animation.clone(),
+    );
 
     if !current_anim_str.is_empty() {
         animation.model_animation_join = model_animation_join.clone();
         animation.ticks_per_second = ticks_per_second;
 
-        if current_anim_str == "Death" 
-            || current_anim_str == "Slash" 
-            || current_anim_str == "Slash2" 
+        if current_anim_str == "Death"
+            || current_anim_str == "Slash"
+            || current_anim_str == "Slash2"
             || current_anim_str == "DashF"
-            || current_anim_str == "Flinch" 
+            || current_anim_str == "Flinch"
             || current_anim_str == "Jump"
-            || current_anim_str == "Block" {
-                println!("Found {}, setting looping to false", &current_anim_str);
-                animation.looping = false;
+            || current_anim_str == "Block"
+        {
+            println!("Found {}, setting looping to false", &current_anim_str);
+            animation.looping = false;
         }
 
-    animator.animations.insert(
-        AnimationType::from_str(current_anim_str).unwrap(),
-        animation.clone(),
-    );
-}
+        animator.animations.insert(
+            AnimationType::from_str(current_anim_str).unwrap(),
+            animation.clone(),
+        );
+    }
 
     for (_, animation) in animator.animations.iter_mut() {
         for (_, track) in animation.bone_transforms.iter_mut() {
@@ -881,12 +924,10 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
     model.directory = directory.to_string();
     model.full_path = file_path.to_string();
 
-    let mut use_color_for_texture = false;   // header toggle (if present)
-    let mut saw_any_color = false;           // infer from data
+    let mut use_color_for_texture = false; // header toggle (if present)
+    let mut saw_any_color = false; // infer from data
 
     let mut texture_prof = TextureProfile::BroadDefault;
-
-
 
     while let Some(line) = lines.next() {
         let parts: Vec<&str> = line.split_whitespace().collect();
@@ -897,16 +938,16 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
 
         match parts[0] {
             "MESH_DATA" => {
-                    println!("Found the beginning of skeleton data, beginning parse.");
+                println!("Found the beginning of skeleton data, beginning parse.");
             }
             "USE_COLOR_FOR_TEXTURE" => {}
             "TEXTURE_PROFILE:" => {
-                texture_prof = TextureProfile::from_str(parts[1]).unwrap_or(TextureProfile::BroadDefault);
+                texture_prof =
+                    TextureProfile::from_str(parts[1]).unwrap_or(TextureProfile::BroadDefault);
             }
             "MEME" => {}
             "VERT:" => {
                 let position = parse_vec3(lines.next().unwrap());
-                
 
                 let normal = parse_vec3(lines.next().unwrap());
                 let uv = parse_vec2(lines.next().unwrap());
@@ -975,7 +1016,12 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
             }
             "INDEX_COUNT:" => {
                 let index_count: u32 = parts[1].parse().unwrap();
-                let indices: Vec<u32> = lines.next().unwrap().split_whitespace().map(|n| n.parse().unwrap()).collect();
+                let indices: Vec<u32> = lines
+                    .next()
+                    .unwrap()
+                    .split_whitespace()
+                    .map(|n| n.parse().unwrap())
+                    .collect();
 
                 dbg!(indices.len());
                 dbg!(index_count);
@@ -988,11 +1034,21 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
             }
             "TEXTURE_SPECULAR:" => {
                 let path = parts[1].to_string();
-                texture_from_file(&mut model, path, TextureType::Specular, texture_prof.clone());
+                texture_from_file(
+                    &mut model,
+                    path,
+                    TextureType::Specular,
+                    texture_prof.clone(),
+                );
             }
             "TEXTURE_EMISSIVE:" => {
                 let path = parts[1].to_string();
-                texture_from_file(&mut model, path, TextureType::Emissive, texture_prof.clone());
+                texture_from_file(
+                    &mut model,
+                    path,
+                    TextureType::Emissive,
+                    texture_prof.clone(),
+                );
             }
             "TEXTURE_OPACITY:" => {
                 let path = parts[1].to_string();
@@ -1009,7 +1065,12 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
     model
 }
 
-pub fn texture_from_file(model: &mut Model, path: String, texture_type: TextureType, texture_prof: TextureProfile) {
+pub fn texture_from_file(
+    model: &mut Model,
+    path: String,
+    texture_type: TextureType,
+    texture_prof: TextureProfile,
+) {
     println!("texture is {}", &path);
     let file_name = model.directory.clone() + "/" + path.as_str();
 
@@ -1025,24 +1086,20 @@ pub fn texture_from_file(model: &mut Model, path: String, texture_type: TextureT
             Err(_) => {
                 if texture_type == TextureType::Diffuse {
                     // TODO: Parse BSDF color instead or something.
-                    let mut imgbuf = ImageBuffer::new(1,1);
-                    let color_u8 = [
-                        198,
-                        198,
-                        198,
-                        255,
-                    ];
+                    let mut imgbuf = ImageBuffer::new(1, 1);
+                    let color_u8 = [198, 198, 198, 255];
 
                     for pixel in imgbuf.pixels_mut() {
                         *pixel = Rgba(color_u8);
                     }
 
-                    let color_path = format!("{:.3}-{:.3}-{:.3}.png" ,color_u8[0], color_u8[1], color_u8[2]);
+                    let color_path = format!(
+                        "{:.3}-{:.3}-{:.3}.png",
+                        color_u8[0], color_u8[1], color_u8[2]
+                    );
                     let save_loc = format!("{}/{}", model.directory, color_path);
 
-                    imgbuf
-                        .save(save_loc)
-                        .expect("Failed to save texture image");
+                    imgbuf.save(save_loc).expect("Failed to save texture image");
 
                     Some(DynamicImage::ImageRgba8(imgbuf))
                 } else {
@@ -1058,39 +1115,87 @@ pub fn texture_from_file(model: &mut Model, path: String, texture_type: TextureT
 
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture_id));
             gl_call!(gl::TexImage2D(
-                gl::TEXTURE_2D, 
-                0, 
-                gl::RGBA as i32, 
-                img_width as i32, 
-                img_height as i32, 
-                0, 
-                gl::RGBA, 
-                gl::UNSIGNED_BYTE, 
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA as i32,
+                img_width as i32,
+                img_height as i32,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
                 raw.as_ptr() as *const c_void
             ));
 
             match texture_prof {
                 TextureProfile::DecalCrisp => {
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32));
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_WRAP_S,
+                        gl::CLAMP_TO_EDGE as i32
+                    ));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_WRAP_T,
+                        gl::CLAMP_TO_EDGE as i32
+                    ));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_MIN_FILTER,
+                        gl::NEAREST as i32
+                    ));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_MAG_FILTER,
+                        gl::NEAREST as i32
+                    ));
                     // gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
-                }, 
+                }
                 TextureProfile::BroadDefault => {
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32));
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32));
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST_MIPMAP_LINEAR as i32));
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_WRAP_S,
+                        gl::REPEAT as i32
+                    ));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_WRAP_T,
+                        gl::REPEAT as i32
+                    ));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_MIN_FILTER,
+                        gl::NEAREST_MIPMAP_LINEAR as i32
+                    ));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_MAG_FILTER,
+                        gl::NEAREST as i32
+                    ));
                     gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
-                },
+                }
                 TextureProfile::AlphaMasked => {
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32));
-                    gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_WRAP_S,
+                        gl::CLAMP_TO_EDGE as i32
+                    ));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_WRAP_T,
+                        gl::CLAMP_TO_EDGE as i32
+                    ));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_MIN_FILTER,
+                        gl::LINEAR_MIPMAP_LINEAR as i32
+                    ));
+                    gl_call!(gl::TexParameteri(
+                        gl::TEXTURE_2D,
+                        gl::TEXTURE_MAG_FILTER,
+                        gl::LINEAR as i32
+                    ));
                     gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
-                },
+                }
             }
 
             let texture = Texture {
@@ -1140,7 +1245,7 @@ fn parse_bone_offset(lines: &mut Lines<'_>) -> Mat4 {
 
 fn parse_vec4(input: &str) -> Vec4 {
     let parts: Vec<&str> = input.split_whitespace().collect();
-    Vec4::new( 
+    Vec4::new(
         parts[0].parse().unwrap(),
         parts[1].parse().unwrap(),
         parts[2].parse().unwrap(),
@@ -1150,7 +1255,7 @@ fn parse_vec4(input: &str) -> Vec4 {
 
 fn parse_vec3(input: &str) -> Vec3 {
     let parts: Vec<&str> = input.split_whitespace().collect();
-    Vec3::new( 
+    Vec3::new(
         parts[0].parse().unwrap(),
         parts[1].parse::<f32>().unwrap(),
         parts[2].parse().unwrap(),
@@ -1159,7 +1264,7 @@ fn parse_vec3(input: &str) -> Vec3 {
 
 fn parse_vec2(input: &str) -> Vec2 {
     let parts: Vec<&str> = input.split_whitespace().collect();
-    Vec2::new( 
+    Vec2::new(
         parts[0].parse::<f32>().unwrap(),
         parts[1].parse::<f32>().unwrap(),
     )
@@ -1188,16 +1293,12 @@ fn build_bone_hierarchy_top_down(bones: Vec<Bone>) -> Bone {
         .iter()
         .find(|b| b.parent_index.is_none())
         .expect("No root bone found!")
-    .id;
+        .id;
 
     build_tree_node(root_id, &bones, &children_of)
 }
 
-fn build_tree_node(
-    bone_id: u32,
-    bones: &[Bone],
-    children_of: &[Vec<u32>],
-) -> Bone {
+fn build_tree_node(bone_id: u32, bones: &[Bone], children_of: &[Vec<u32>]) -> Bone {
     let original = &bones[bone_id as usize];
     let mut node = Bone {
         id: original.id,

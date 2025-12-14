@@ -1,6 +1,19 @@
 use glam::{vec3, Mat4, Vec3};
 
-use crate::{animation::animation::Animator, entity_manager::EntityManager, enums_types::{AnimationType, AttackState, EmitterName, EntityType, Faction, PlayerState, SimState, SimStateController, SoundType, ANIMATION_EPSILON}, input::InputState, particles::ParticleSystem, physics::PhysicsState, some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY}, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{
+    animation::animation::Animator,
+    entity_manager::EntityManager,
+    enums_types::{
+        AnimationType, AttackState, EmitterName, EntityType, Faction, PlayerState, SimState,
+        SimStateController, SoundType, ANIMATION_EPSILON,
+    },
+    input::InputState,
+    particles::ParticleSystem,
+    physics::PhysicsState,
+    some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY},
+    sound::sound_manager::SoundManager,
+    util::data_structure::HashMapGetPairMut,
+};
 
 pub fn enemy_sim_state_machine(
     entity_id: usize,
@@ -13,12 +26,12 @@ pub fn enemy_sim_state_machine(
     // ==================================================================================
     // BLACKBOARD DATA
     // ==================================================================================
-    let controller  = em.simstate_controllers.get_mut(entity_id).unwrap();
-    let animator    = em.animators.get_mut(entity_id).unwrap();
-    let entity_pos  = em.transforms.get(entity_id).unwrap().position;
+    let controller = em.simstate_controllers.get_mut(entity_id).unwrap();
+    let animator = em.animators.get_mut(entity_id).unwrap();
+    let entity_pos = em.transforms.get(entity_id).unwrap().position;
     let destination = em.destinations.get_mut(entity_id).unwrap();
     let entity_type = em.entity_types.get(entity_id).unwrap();
-        
+
     let player_id = match em.factions.iter().find(|f| *f.value() == "Player") {
         Some(e) => Some(e.key()),
         None => None,
@@ -33,35 +46,35 @@ pub fn enemy_sim_state_machine(
         return;
     };
 
-
-    let health      = em.healths.get(entity_id).unwrap();
-    let ph          = em.physics_handles.get(entity_id).unwrap();
-    let rb          = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
-    let yaw         = em.yaws.get(entity_id).unwrap();
+    let health = em.healths.get(entity_id).unwrap();
+    let ph = em.physics_handles.get(entity_id).unwrap();
+    let rb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
+    let yaw = em.yaws.get(entity_id).unwrap();
     let aggro_range = em.aggro_ranges.get(entity_id).unwrap();
-    let transform   = em.transforms.get(entity_id).unwrap();
-    let player_pos  = em.transforms.get(player_id.unwrap()).unwrap().position;
+    let transform = em.transforms.get(entity_id).unwrap();
+    let player_pos = em.transforms.get(player_id.unwrap()).unwrap().position;
 
     let kb = em.knockbacks.get_mut(entity_id);
 
     let entity_cyl = ps.collider_set.get(ph.collider).unwrap();
-    
+
     let active_weapon_id = match em.active_items.get(entity_id) {
         Some(id) => Some(id.right_hand.unwrap()),
         None => None,
     };
 
-    let can_attack = animator.animations.get(&AnimationType::Slash).is_some() && active_weapon_id.is_some();
+    let can_attack =
+        animator.animations.get(&AnimationType::Slash).is_some() && active_weapon_id.is_some();
 
     let weapon_length = if let Some(awid) = active_weapon_id {
         *em.model_heights.get(awid).unwrap()
-    } else { 
-        0.0 
+    } else {
+        0.0
     };
 
     let attack_length = weapon_length + entity_cyl.shape().as_capsule().unwrap().radius;
     let within_weapon_length = entity_pos.distance(player_pos) <= attack_length;
-    let within_aggro_range = entity_pos.distance(player_pos)   <= *aggro_range;
+    let within_aggro_range = entity_pos.distance(player_pos) <= *aggro_range;
     let fov_threshold = 0.5;
 
     let can_see_player = {
@@ -95,13 +108,18 @@ pub fn enemy_sim_state_machine(
                 }
 
                 entity_non_combat_transition(controller, SimState::Waiting, animator, true);
-            },
+            }
             SimState::Waiting => {
                 controller.time_in_state += dt;
                 if let Some(kb) = kb {
                     if kb.ttl > 0.0 && kb.flinch {
                         kb.flinch = false;
-                        entity_non_combat_transition(controller, SimState::Flinching, animator, false);
+                        entity_non_combat_transition(
+                            controller,
+                            SimState::Flinching,
+                            animator,
+                            false,
+                        );
                         reset_combat(controller, animator);
                         break 'ns;
                     }
@@ -109,18 +127,23 @@ pub fn enemy_sim_state_machine(
 
                 if can_see_player {
                     entity_non_combat_transition(controller, SimState::Aggro, animator, false);
-                    break 'ns
+                    break 'ns;
                 }
 
                 *destination = entity_pos;
-            },
+            }
             SimState::Aggro => {
                 controller.time_in_state += dt;
 
                 if let Some(kb) = kb {
-                    if kb.ttl > 0.0 && kb.flinch  {
+                    if kb.ttl > 0.0 && kb.flinch {
                         kb.flinch = false;
-                        entity_non_combat_transition(controller, SimState::Flinching, animator, false);
+                        entity_non_combat_transition(
+                            controller,
+                            SimState::Flinching,
+                            animator,
+                            false,
+                        );
                         reset_combat(controller, animator);
                         break 'ns;
                     }
@@ -136,14 +159,19 @@ pub fn enemy_sim_state_machine(
                 }
 
                 *destination = player_pos;
-            },
+            }
             SimState::Combat => {
                 controller.time_in_state += dt;
 
                 if let Some(kb) = kb {
-                    if kb.ttl > 0.0 && kb.flinch  {
+                    if kb.ttl > 0.0 && kb.flinch {
                         kb.flinch = false;
-                        entity_non_combat_transition(controller, SimState::Flinching, animator, false);
+                        entity_non_combat_transition(
+                            controller,
+                            SimState::Flinching,
+                            animator,
+                            false,
+                        );
                         reset_combat(controller, animator);
                         break 'ns;
                     }
@@ -151,7 +179,7 @@ pub fn enemy_sim_state_machine(
 
                 *destination = player_pos;
                 entity_combat_state_machine(controller, animator, within_weapon_length);
-            },
+            }
             SimState::Flinching => {
                 controller.time_in_state += dt;
 
@@ -160,7 +188,7 @@ pub fn enemy_sim_state_machine(
                 }
 
                 *destination = entity_pos;
-            },
+            }
             SimState::Dying => {
                 controller.time_in_state += dt;
                 rb.set_enabled_rotations(true, true, true, true);
@@ -179,25 +207,39 @@ pub fn enemy_sim_state_machine(
                 if controller.time_in_state >= 3.0 {
                     entity_non_combat_transition(controller, SimState::Dead, animator, false);
                 }
-            },
+            }
             SimState::Dead => {
-
-                let model_transform = Mat4::from_scale_rotation_translation(transform.scale, transform.rotation, transform.position);
+                let model_transform = Mat4::from_scale_rotation_translation(
+                    transform.scale,
+                    transform.rotation,
+                    transform.position,
+                );
                 let skellington = em.skellingtons.get_mut(entity_id).unwrap();
 
                 let bone_names: Vec<String> = {
-                    let anim = animator.animations.get(&animator.current_animation).unwrap();
-                    anim.model_animation_join.iter().map(|b| b.name.clone()).collect()
+                    let anim = animator
+                        .animations
+                        .get(&animator.current_animation)
+                        .unwrap();
+                    anim.model_animation_join
+                        .iter()
+                        .map(|b| b.name.clone())
+                        .collect()
                 };
 
-                let anim = animator.animations.get_mut(&animator.current_animation).unwrap();
+                let anim = animator
+                    .animations
+                    .get_mut(&animator.current_animation)
+                    .unwrap();
 
-                for bone_name in bone_names{
-                    if let Some(bone_world_model_space) = anim.get_raw_global_bone_transform_by_name(
-                        &bone_name,
-                        skellington,
-                        Mat4::IDENTITY,
-                    ) {
+                for bone_name in bone_names {
+                    if let Some(bone_world_model_space) = anim
+                        .get_raw_global_bone_transform_by_name(
+                            &bone_name,
+                            skellington,
+                            Mat4::IDENTITY,
+                        )
+                    {
                         let bone_world_space = model_transform * bone_world_model_space;
                         let position = bone_world_space.w_axis.truncate();
 
@@ -205,28 +247,26 @@ pub fn enemy_sim_state_machine(
                         particles.spawn_oneshot_emitter("BodyPoof", position, None);
                     }
                 }
-                
+
                 em.entity_trashcan.push(entity_id);
-            },
+            }
             SimState::Dancing => {
                 // If put in this state you're stuck there.
-            },
+            }
             SimState::Blocking => {
                 unreachable!("An entity shouldn't get to the blocking state right now.");
-            },
+            }
         }
     }
 }
 
-fn entity_combat_state_machine(
-    c: &mut SimStateController,
-    a: &mut Animator,
-    in_range: bool,
-) {
-
-    let (a1, a2) = a.animations.get_pair_mut(&AnimationType::Slash, &AnimationType::Slash2).unwrap();
+fn entity_combat_state_machine(c: &mut SimStateController, a: &mut Animator, in_range: bool) {
+    let (a1, a2) = a
+        .animations
+        .get_pair_mut(&AnimationType::Slash, &AnimationType::Slash2)
+        .unwrap();
     let current = &a.current_animation;
-    
+
     // reset anims
     match current {
         AnimationType::Slash => a2.current_time = 0.0,
@@ -240,42 +280,41 @@ fn entity_combat_state_machine(
                 if a1.current_time >= a1.duration - ANIMATION_EPSILON {
                     if in_range {
                         entity_combat_transition(c, AttackState::Attack2, a, false);
-                        break 'ns
+                        break 'ns;
                     } else {
                         entity_non_combat_transition(c, SimState::Aggro, a, false);
-                        break 'ns
+                        break 'ns;
                     }
                 }
 
                 if a1.current_segment.get() >= 16 {
                     if in_range {
                         entity_combat_transition(c, AttackState::Attack2, a, false);
-                        break 'ns
+                        break 'ns;
                     }
                 }
-            },
+            }
             AttackState::Attack2 => {
                 if a2.current_time >= a2.duration - ANIMATION_EPSILON {
                     if in_range {
                         entity_combat_transition(c, AttackState::Attack1, a, false);
                     } else {
                         entity_non_combat_transition(c, SimState::Aggro, a, false);
-                        break 'ns
+                        break 'ns;
                     }
                 }
-            },
-            AttackState::Attack3 => {
-            },
+            }
+            AttackState::Attack3 => {}
         }
     }
 }
 
 fn entity_combat_transition(
-    c: &mut SimStateController, 
-    next_state: AttackState, 
+    c: &mut SimStateController,
+    next_state: AttackState,
     a: &mut Animator,
     reset_anim: bool,
-){
+) {
     let anim = match next_state {
         AttackState::Attack1 => AnimationType::Slash,
         AttackState::Attack2 => AnimationType::Slash2,
@@ -295,11 +334,11 @@ fn entity_combat_transition(
     }
 }
 
-fn reset_combat (
-    c: &mut SimStateController, 
-    a: &mut Animator,
-) {
-    if let Some((a1, a2)) = a.animations.get_pair_mut(&AnimationType::Slash, &AnimationType::Slash2) {
+fn reset_combat(c: &mut SimStateController, a: &mut Animator) {
+    if let Some((a1, a2)) = a
+        .animations
+        .get_pair_mut(&AnimationType::Slash, &AnimationType::Slash2)
+    {
         c.attack_state = AttackState::Attack1;
         a1.current_time = 0.0;
         a2.current_time = 0.0;
@@ -307,22 +346,22 @@ fn reset_combat (
 }
 
 fn entity_non_combat_transition(
-    c: &mut SimStateController, 
-    next_state: SimState, 
+    c: &mut SimStateController,
+    next_state: SimState,
     a: &mut Animator,
     reset_anim: bool,
-){
+) {
     let anim = match next_state {
-            SimState::Init => AnimationType::Idle,
-            SimState::Waiting => AnimationType::Idle,
-            SimState::Aggro => AnimationType::Run,
-            SimState::Dying => AnimationType::Idle,
-            SimState::Dead => AnimationType::Idle,
-            // going from non-combat to combat
-            SimState::Combat => AnimationType::Slash,
-            SimState::Flinching => AnimationType::Flinch,
-            SimState::Dancing => AnimationType::Dance,
-            SimState::Blocking => AnimationType::Block,
+        SimState::Init => AnimationType::Idle,
+        SimState::Waiting => AnimationType::Idle,
+        SimState::Aggro => AnimationType::Run,
+        SimState::Dying => AnimationType::Idle,
+        SimState::Dead => AnimationType::Idle,
+        // going from non-combat to combat
+        SimState::Combat => AnimationType::Slash,
+        SimState::Flinching => AnimationType::Flinch,
+        SimState::Dancing => AnimationType::Dance,
+        SimState::Blocking => AnimationType::Block,
     };
 
     c.state = next_state;

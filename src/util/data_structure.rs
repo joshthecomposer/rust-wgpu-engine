@@ -17,9 +17,7 @@ impl<K: Eq + Hash, V> HashMapGetPairMut<K, V> for HashMap<K, V> {
         };
 
         // safety: we ensure v1 and v2 are different by checking k1 != k2
-        unsafe {
-            Some((&mut *v1_ptr, &mut *v2_ptr))
-        }
+        unsafe { Some((&mut *v1_ptr, &mut *v2_ptr)) }
     }
 }
 

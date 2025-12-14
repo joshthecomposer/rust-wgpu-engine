@@ -1,12 +1,12 @@
 #![allow(non_camel_case_types)]
 extern crate libc;
-use libc::{c_int, c_void, c_char, c_uint};
+use libc::{c_char, c_int, c_uint, c_void};
 
 pub type FMOD_STUDIO_SYSTEM = *mut c_void;
 pub type FMOD_STUDIO_BANK = *mut c_void;
 pub type FMOD_STUDIO_EVENTDESCRIPTION = *mut c_void;
 pub type FMOD_RESULT = c_int;
-pub const FMOD_STUDIO_INIT_NORMAL:u32 = 0;
+pub const FMOD_STUDIO_INIT_NORMAL: u32 = 0;
 pub const FMOD_INIT_3D_RIGHTHANDED: u32 = 0x00000010;
 pub const FMOD_INIT_NORMAL: u32 = 0;
 pub const FMOD_VERSION: u32 = 0x00020214;
@@ -40,18 +40,14 @@ pub struct FMOD_3D_ATTRIBUTES {
 #[link(name = "fmodstudio")]
 extern "C" {
 
-    pub fn FMOD_Debug_Initialize(
-        flags: u32,
-        mode: u32,
-        file: *const c_char,
-    ) -> FMOD_RESULT;
+    pub fn FMOD_Debug_Initialize(flags: u32, mode: u32, file: *const c_char) -> FMOD_RESULT;
 
     pub fn FMOD_Studio_System_Update(system: FMOD_STUDIO_SYSTEM) -> FMOD_RESULT;
 
     pub fn FMOD_Studio_System_Create(
-        system: *mut FMOD_STUDIO_SYSTEM, 
-        headerversion: c_uint
-        ) -> FMOD_RESULT;
+        system: *mut FMOD_STUDIO_SYSTEM,
+        headerversion: c_uint,
+    ) -> FMOD_RESULT;
 
     pub fn FMOD_Studio_System_Initialize(
         system: FMOD_STUDIO_SYSTEM,
@@ -66,22 +62,21 @@ extern "C" {
         filename: *const c_char,
         flags: c_int,
         bank: *mut FMOD_STUDIO_BANK,
-        )-> FMOD_RESULT;
+    ) -> FMOD_RESULT;
 
     pub fn FMOD_Studio_System_GetEvent(
         system: FMOD_STUDIO_SYSTEM,
         path: *const c_char,
         event: *mut FMOD_STUDIO_EVENTDESCRIPTION,
-        ) -> FMOD_RESULT;
+    ) -> FMOD_RESULT;
 
     pub fn FMOD_Studio_EventDescription_CreateInstance(
         eventDescription: FMOD_STUDIO_EVENTDESCRIPTION,
         eventInstance: *mut FMOD_STUDIO_EVENTINSTANCE,
     ) -> FMOD_RESULT;
 
-    pub fn FMOD_Studio_EventInstance_Start(
-        eventInstance: FMOD_STUDIO_EVENTINSTANCE,
-    ) -> FMOD_RESULT;
+    pub fn FMOD_Studio_EventInstance_Start(eventInstance: FMOD_STUDIO_EVENTINSTANCE)
+        -> FMOD_RESULT;
 
     pub fn FMOD_Studio_EventInstance_Release(
         eventInstance: FMOD_STUDIO_EVENTINSTANCE,
@@ -89,8 +84,8 @@ extern "C" {
 
     pub fn FMOD_Studio_EventInstance_Stop(
         eventInstance: FMOD_STUDIO_EVENTINSTANCE,
-        mode: FMOD_STUDIO_STOP_MODE, 
-        ) -> FMOD_RESULT;
+        mode: FMOD_STUDIO_STOP_MODE,
+    ) -> FMOD_RESULT;
 
     pub fn FMOD_Studio_EventInstance_SetParameterByName(
         event: FMOD_STUDIO_EVENTINSTANCE,

@@ -1,7 +1,11 @@
 #![allow(clippy::too_many_arguments, unused_must_use)]
 
 use core::f32;
-use std::{collections::{HashMap, HashSet}, path::Path, time::UNIX_EPOCH};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+    time::UNIX_EPOCH,
+};
 
 use gl::ActiveShaderProgram;
 use glam::{Mat4, Quat, Vec3};
@@ -11,7 +15,32 @@ use rand_chacha::ChaCha8Rng;
 use rapier3d::prelude::*;
 use winit::keyboard::KeyCode;
 
-use crate::{animation::{self, animation::{Animation, Animator, Bone, Model}}, config::{entity_config::{AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper}, factions_config::FactionsConfig, world_data::{EntityInstance, WorldData}}, debug::gizmos::{Cuboid, Cylinder, Pill}, enums_types::{ActiveItem, AnimationType, AttackState, EntityType, EquipSlot, Faction, FrameActivation, GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect}, input::InputState, physics::{self, PhysicsState}, some_data::{GRAVITY, GROUP_PLAYER}, sound::sound_manager::{ContinuousSound, OneShot, SoundManager}, sparse_set::{Entry, SparseSet}, terrain::{self, Terrain}};
+use crate::{
+    animation::{
+        self,
+        animation::{Animation, Animator, Bone, Model},
+    },
+    config::{
+        entity_config::{
+            AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper,
+        },
+        factions_config::FactionsConfig,
+        world_data::{EntityInstance, WorldData},
+    },
+    debug::gizmos::{Cuboid, Cylinder, Pill},
+    enums_types::{
+        ActiveItem, AnimationType, AttackState, EntityType, EquipSlot, Faction, FrameActivation,
+        GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle,
+        PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform,
+        VisualEffect,
+    },
+    input::InputState,
+    physics::{self, PhysicsState},
+    some_data::{GRAVITY, GROUP_PLAYER},
+    sound::sound_manager::{ContinuousSound, OneShot, SoundManager},
+    sparse_set::{Entry, SparseSet},
+    terrain::{self, Terrain},
+};
 
 pub struct EntityManager {
     pub next_entity_id: usize,
@@ -111,10 +140,12 @@ impl EntityManager {
             model_heights: SparseSet::with_capacity(max_entities),
             grounded_states: SparseSet::with_capacity(max_entities),
             cleanup_timer: SparseSet::with_capacity(max_entities),
-            
+
             // TODO: Probably just return the entity_types here instead of accessing them like this
-            entity_type_register: EntityConfig::load_from_file("config/entity_config.json").entity_types,
-            faction_register: FactionsConfig::load_from_file("config/factions_config.json").factions,
+            entity_type_register: EntityConfig::load_from_file("config/entity_config.json")
+                .entity_types,
+            faction_register: FactionsConfig::load_from_file("config/factions_config.json")
+                .factions,
             serializable_world_data: wd,
         }
     }
@@ -130,18 +161,17 @@ impl EntityManager {
         load_terrain(self, ps);
     }
 
-    pub fn populate_inventory(&mut self, parent_id: usize, instance: &EntityInstance, ps: &mut PhysicsState) {
+    pub fn populate_inventory(
+        &mut self,
+        parent_id: usize,
+        instance: &EntityInstance,
+        ps: &mut PhysicsState,
+    ) {
         if let Some(weapons_list) = &instance.weapons {
             for weapon in weapons_list.iter() {
-                let weapon_id = self.create_entity(
-                    weapon, 
-                    ps,
-                );
-                
-                self.hitsets.insert(
-                    weapon_id,
-                    HashSet::new(),
-                );
+                let weapon_id = self.create_entity(weapon, ps);
+
+                self.hitsets.insert(weapon_id, HashSet::new());
 
                 self.owners.insert(weapon_id, parent_id);
 
@@ -150,7 +180,7 @@ impl EntityManager {
                         if !inv.contains(&weapon_id) {
                             inv.push(weapon_id);
                         }
-                    },
+                    }
                     None => {
                         let inv = vec![weapon_id];
                         self.inventories.insert(parent_id, inv);
@@ -160,10 +190,13 @@ impl EntityManager {
                 match self.active_items.get_mut(parent_id) {
                     Some(_) => (),
                     None => {
-                        self.active_items.insert(parent_id, ActiveItem {
-                            right_hand: Some(weapon_id),
-                            left_hand: None,
-                        });
+                        self.active_items.insert(
+                            parent_id,
+                            ActiveItem {
+                                right_hand: Some(weapon_id),
+                                left_hand: None,
+                            },
+                        );
 
                         if let Some(inv) = self.inventories.get_mut(parent_id) {
                             inv.retain(|v| *v != weapon_id);
@@ -172,16 +205,11 @@ impl EntityManager {
                         self.is_equipped.insert(weapon_id, true);
                     }
                 }
-
             }
         }
     }
 
-    pub fn create_entity(
-        &mut self, 
-        instance: &EntityInstance, 
-        ps: &mut PhysicsState,
-    ) -> usize {
+    pub fn create_entity(&mut self, instance: &EntityInstance, ps: &mut PhysicsState) -> usize {
         let parent_id = self.next_entity_id;
 
         let archetype = match self.entity_type_register.get(&instance.entity_type) {
@@ -193,36 +221,43 @@ impl EntityManager {
         };
         let position = instance.position;
         let rotation = instance.rotation;
-        let scale    = archetype.scale_correction;
+        let scale = archetype.scale_correction;
 
         match instance.faction.as_str() {
             "Player" => {
-                self.player_controllers.insert(parent_id, PlayerController {
-                    state: PlayerState::Init,
-                    attack_state: AttackState::Attack1,
-                    time_in_state: 0.0,
-                });
-            },
+                self.player_controllers.insert(
+                    parent_id,
+                    PlayerController {
+                        state: PlayerState::Init,
+                        attack_state: AttackState::Attack1,
+                        time_in_state: 0.0,
+                    },
+                );
+            }
             "Enemy" => {
-                self.simstate_controllers.insert(parent_id, SimStateController { 
-                    state: SimState::Init, 
-                    attack_state: AttackState::Attack1, 
-                    time_in_state: 0.0,
-                    target_time: 0.0, 
-                });
+                self.simstate_controllers.insert(
+                    parent_id,
+                    SimStateController {
+                        state: SimState::Init,
+                        attack_state: AttackState::Attack1,
+                        time_in_state: 0.0,
+                        target_time: 0.0,
+                    },
+                );
 
                 self.destinations.insert(parent_id, position);
 
                 if let Some(ar) = archetype.aggro_range {
                     self.aggro_ranges.insert(parent_id, ar);
                 }
-            },
-            _=> ()
+            }
+            _ => (),
         }
 
         self.factions.insert(parent_id, instance.faction.clone());
         self.faction_register.insert(instance.faction.clone());
-        self.entity_types.insert(parent_id, instance.entity_type.clone());
+        self.entity_types
+            .insert(parent_id, instance.entity_type.clone());
         self.yaws.insert(parent_id, 0.0);
 
         if let Some(health) = instance.health {
@@ -234,7 +269,13 @@ impl EntityManager {
         }
 
         if let Some(jump_height) = instance.jump_height {
-            self.jump_heights.insert(parent_id, JumpHeight { desired: jump_height, precalculated: None });
+            self.jump_heights.insert(
+                parent_id,
+                JumpHeight {
+                    desired: jump_height,
+                    precalculated: None,
+                },
+            );
         }
 
         if let Some(total_mass) = archetype.total_mass {
@@ -253,8 +294,11 @@ impl EntityManager {
         self.transforms.insert(parent_id, transform.clone());
 
         // CHECK FOR BONES
-        let model = if let (Some(bone_path), Some(anim_props)) = (&archetype.bone_path, &archetype.animation_properties) {
-            let (skellington, mut animator, animation) = animation::animation::import_bone_data(bone_path, false);
+        let model = if let (Some(bone_path), Some(anim_props)) =
+            (&archetype.bone_path, &archetype.animation_properties)
+        {
+            let (skellington, mut animator, animation) =
+                animation::animation::import_bone_data(bone_path, false);
 
             for prop in anim_props {
                 if let Some(anim) = animator.animations.get_mut(&prop.name) {
@@ -285,10 +329,14 @@ impl EntityManager {
                 }
             }
 
-            let model = self.models.iter()
+            let model = self
+                .models
+                .iter()
                 .find(|m| m.value().full_path == *archetype.mesh_path)
                 .map(|m| m.value().clone())
-                .unwrap_or_else(|| animation::animation::import_model_data(&archetype.mesh_path, &animation));
+                .unwrap_or_else(|| {
+                    animation::animation::import_model_data(&archetype.mesh_path, &animation)
+                });
 
             let rotator = Rotator {
                 cur_rot: instance.rotation,
@@ -304,10 +352,17 @@ impl EntityManager {
 
             model
         } else {
-            let model = self.models.iter()
+            let model = self
+                .models
+                .iter()
                 .find(|m| m.value().full_path == *archetype.mesh_path)
                 .map(|m| m.value().clone())
-                .unwrap_or_else(|| animation::animation::import_model_data(&archetype.mesh_path, &Animation::default()));
+                .unwrap_or_else(|| {
+                    animation::animation::import_model_data(
+                        &archetype.mesh_path,
+                        &Animation::default(),
+                    )
+                });
 
             self.models.insert(parent_id, model.clone());
 
@@ -316,71 +371,45 @@ impl EntityManager {
 
         self.prev_transforms.insert(parent_id, transform);
         self.factions.insert(parent_id, instance.faction.clone());
-        self.entity_types.insert(parent_id, instance.entity_type.clone());
+        self.entity_types
+            .insert(parent_id, instance.entity_type.clone());
 
         if let Some(ib) = &archetype.item_bones {
             self.item_bones.insert(parent_id, ib.clone());
         }
 
-        self.local_corrections.insert(parent_id, Transform {
-            position: glam::Vec3::splat(0.0),
-            scale: glam::Vec3::splat(1.0),
-            rotation: archetype.rot_correction,
-        });
-        
+        self.local_corrections.insert(
+            parent_id,
+            Transform {
+                position: glam::Vec3::splat(0.0),
+                scale: glam::Vec3::splat(1.0),
+                rotation: archetype.rot_correction,
+            },
+        );
+
         self.next_entity_id += 1;
 
         match archetype.hitbox {
             HitboxShape::Cylinder { r, h } => {
-                self.create_cylinder_hitbox(
-                    r,
-                    h,
-                    position, 
-                    scale, 
-                    rotation, 
-                    parent_id, 
-                    ps
-                );
-            },
+                self.create_cylinder_hitbox(r, h, position, scale, rotation, parent_id, ps);
+            }
             HitboxShape::Pill { r, h } => {
-                self.create_pill_hitbox(
-                    r,
-                    h,
-                    position, 
-                    scale, 
-                    rotation, 
-                    parent_id, 
-                    ps
-                );
-            },
+                self.create_pill_hitbox(r, h, position, scale, rotation, parent_id, ps);
+            }
             HitboxShape::BoundingBox => {
-                self.create_bounding_hitbox(
-                    &model,
-                    position,
-                    scale,
-                    rotation,
-                    parent_id,
-                    ps,
-                );
-            },
+                self.create_bounding_hitbox(&model, position, scale, rotation, parent_id, ps);
+            }
             HitboxShape::Mesh => {
-                self.create_mesh_based_hitbox(
-                    &model,
-                    position,
-                    scale,
-                    rotation,
-                    parent_id,
-                    ps,
-                );
-            },
-            _ => ()
+                self.create_mesh_based_hitbox(&model, position, scale, rotation, parent_id, ps);
+            }
+            _ => (),
         }
 
         parent_id
     }
 
     pub fn create_pill_hitbox(
-        &mut self, 
+        &mut self,
         r: f32,
         h: f32,
         position: Vec3,
@@ -403,7 +432,6 @@ impl EntityManager {
         //    .enabled_rotations(true, true, true)
         //    .build();
 
-
         let capsule_total_height = h;
         let capsule_half_height = (capsule_total_height - 2.0 * r) / 2.0;
 
@@ -414,7 +442,7 @@ impl EntityManager {
             .active_collision_types(ActiveCollisionTypes::all())
             // TODO: This is a hacky way to fix the fact that colliders are centered at half height
             // by default. Likely there is a better way to fix this?
-            .translation(vector![0.0, capsule_half_height + r, 0.0]) 
+            .translation(vector![0.0, capsule_half_height + r, 0.0])
             .restitution(0.0)
             .restitution_combine_rule(CoefficientCombineRule::Min)
             .friction(2.0)
@@ -429,11 +457,9 @@ impl EntityManager {
 
         let body_handle = ps.rigid_body_set.insert(body);
 
-        let collider_handle = ps.collider_set.insert_with_parent(
-            collider,
-            body_handle,
-            &mut ps.rigid_body_set,
-        );
+        let collider_handle =
+            ps.collider_set
+                .insert_with_parent(collider, body_handle, &mut ps.rigid_body_set);
 
         // calculating the jump height based on mass
         {
@@ -443,7 +469,7 @@ impl EntityManager {
                 let initial_velocity = (2.0 * GRAVITY.abs() * jump_height.desired).sqrt();
                 let impulse = glam::vec3(0.0, body.mass() * initial_velocity, 0.0);
 
-                jump_height.precalculated = Some(impulse.into()); 
+                jump_height.precalculated = Some(impulse.into());
             }
         }
 
@@ -456,39 +482,47 @@ impl EntityManager {
 
         self.physics_handles.insert(parent_id, physics_handle);
 
-        
-
         let collider_model = Pill {
             r,
             h: capsule_total_height,
-        }.create_model(12, 5, offset);
+        }
+        .create_model(12, 5, offset);
 
-        self.collider_transforms.insert(parent_id, Transform {
-            position: pill_pos,
-            rotation: Quat::IDENTITY,
-            scale: Vec3::splat(1.0),
-        });
-        self.prev_collider_transforms.insert(parent_id, Transform {
-            position: pill_pos,
-            rotation: Quat::IDENTITY,
-            scale: Vec3::splat(1.0),
-        });
+        self.collider_transforms.insert(
+            parent_id,
+            Transform {
+                position: pill_pos,
+                rotation: Quat::IDENTITY,
+                scale: Vec3::splat(1.0),
+            },
+        );
+        self.prev_collider_transforms.insert(
+            parent_id,
+            Transform {
+                position: pill_pos,
+                rotation: Quat::IDENTITY,
+                scale: Vec3::splat(1.0),
+            },
+        );
         self.collider_gizmos.insert(parent_id, collider_model);
 
-        self.grounded_states.insert(parent_id, GroundedState {
-            was_grouned: false,
-            is_grounded: false,
-            just_left: false,
-            just_landed: false,
-            ray_length_grounded: 0.25,
-            ray_length_airborn: 0.06,
-        });
+        self.grounded_states.insert(
+            parent_id,
+            GroundedState {
+                was_grouned: false,
+                is_grounded: false,
+                just_left: false,
+                just_landed: false,
+                ray_length_grounded: 0.25,
+                ray_length_airborn: 0.06,
+            },
+        );
 
         self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
     pub fn create_cylinder_hitbox(
-        &mut self, 
+        &mut self,
         r: f32,
         h: f32,
         position: Vec3,
@@ -497,51 +531,52 @@ impl EntityManager {
         parent_id: usize,
         ps: &mut PhysicsState,
     ) {
-        let cyl = Cylinder {
-            r,
-            h,
-        };
+        let cyl = Cylinder { r, h };
 
         let cyl_mod = cyl.create_model(10);
 
         self.collider_gizmos.insert(parent_id, cyl_mod);
-        self.collider_transforms.insert(parent_id, Transform {
-            position,
-            rotation: Quat::IDENTITY,
-            scale,
-        });
-        self.prev_collider_transforms.insert(parent_id, Transform {
-            position,
-            rotation: Quat::IDENTITY,
-            scale,
-        });
+        self.collider_transforms.insert(
+            parent_id,
+            Transform {
+                position,
+                rotation: Quat::IDENTITY,
+                scale,
+            },
+        );
+        self.prev_collider_transforms.insert(
+            parent_id,
+            Transform {
+                position,
+                rotation: Quat::IDENTITY,
+                scale,
+            },
+        );
 
         let iso: Isometry<f32> = (position, rotation).into();
 
-        let body = RigidBodyBuilder::fixed()
-            .position(iso)
-            .build();
-
+        let body = RigidBodyBuilder::fixed().position(iso).build();
 
         let collider = ColliderBuilder::cylinder(h * 0.5, r)
             .active_collision_types(ActiveCollisionTypes::all())
             .build();
 
         let body_handle = ps.rigid_body_set.insert(body);
-        let collider_handle = ps.collider_set.insert_with_parent(
-            collider,
-            body_handle,
-            &mut ps.rigid_body_set,
-        );
-        
+        let collider_handle =
+            ps.collider_set
+                .insert_with_parent(collider, body_handle, &mut ps.rigid_body_set);
+
         // set body massA
 
-        self.physics_handles.insert(parent_id, PhysicsHandle {
-            rigid_body: body_handle,
-            collider: collider_handle,
+        self.physics_handles.insert(
+            parent_id,
+            PhysicsHandle {
+                rigid_body: body_handle,
+                collider: collider_handle,
 
-            og_rb_type: RigidBodyType::Fixed,
-        });
+                og_rb_type: RigidBodyType::Fixed,
+            },
+        );
 
         self.collider_to_entity.insert(collider_handle, parent_id);
     }
@@ -581,7 +616,6 @@ impl EntityManager {
         self.collider_gizmos.insert(parent_id, cuboid_model);
         self.model_heights.insert(parent_id, size.y);
 
-
         // PHYSICS PASS
         let iso: Isometry<f32> = (position, rotation).into();
 
@@ -600,29 +634,35 @@ impl EntityManager {
             .build();
 
         let body_handle = ps.rigid_body_set.insert(body);
-        let collider_handle = ps.collider_set.insert_with_parent(
-            collider,
-            body_handle,
-            &mut ps.rigid_body_set,
+        let collider_handle =
+            ps.collider_set
+                .insert_with_parent(collider, body_handle, &mut ps.rigid_body_set);
+        self.physics_handles.insert(
+            parent_id,
+            PhysicsHandle {
+                rigid_body: body_handle,
+                collider: collider_handle,
+
+                og_rb_type: RigidBodyType::KinematicPositionBased,
+            },
         );
-        self.physics_handles.insert(parent_id, PhysicsHandle {
-            rigid_body: body_handle,
-            collider: collider_handle,
 
-            og_rb_type: RigidBodyType::KinematicPositionBased,
-        });
-
-        
-        self.collider_transforms.insert(parent_id, Transform {
-            position: center,
-            rotation: Quat::IDENTITY,
-            scale,
-        });
-        self.prev_collider_transforms.insert(parent_id, Transform {
-            position: center,
-            rotation: Quat::IDENTITY,
-            scale,
-        });
+        self.collider_transforms.insert(
+            parent_id,
+            Transform {
+                position: center,
+                rotation: Quat::IDENTITY,
+                scale,
+            },
+        );
+        self.prev_collider_transforms.insert(
+            parent_id,
+            Transform {
+                position: center,
+                rotation: Quat::IDENTITY,
+                scale,
+            },
+        );
 
         self.collider_to_entity.insert(collider_handle, parent_id);
     }
@@ -636,61 +676,71 @@ impl EntityManager {
         parent_id: usize,
         ps: &mut PhysicsState,
     ) {
-
         // Process vertices into arrays
-        let vertices: Vec<Point3<f32>> = model.vertices
-            .iter()
-            .map(|v| v.position.into())
-            .collect();
-        
-        let indices: Vec<[u32; 3]> = model.indices
+        let vertices: Vec<Point3<f32>> = model.vertices.iter().map(|v| v.position.into()).collect();
+
+        let indices: Vec<[u32; 3]> = model
+            .indices
             .chunks(3)
             .map(|chunk| [chunk[0], chunk[1], chunk[2]])
             .collect();
 
-        self.collider_transforms.insert(parent_id, Transform {
-            position,
-            rotation: Quat::IDENTITY,
-            scale,
-        });
-        self.prev_collider_transforms.insert(parent_id, Transform {
-            position,
-            rotation: Quat::IDENTITY,
-            scale,
-        });
+        self.collider_transforms.insert(
+            parent_id,
+            Transform {
+                position,
+                rotation: Quat::IDENTITY,
+                scale,
+            },
+        );
+        self.prev_collider_transforms.insert(
+            parent_id,
+            Transform {
+                position,
+                rotation: Quat::IDENTITY,
+                scale,
+            },
+        );
 
         let iso: Isometry<f32> = (position, rotation).into();
 
-        let body = RigidBodyBuilder::fixed()
-            .position(iso)
-            .build();
+        let body = RigidBodyBuilder::fixed().position(iso).build();
 
-        let collider = ColliderBuilder::trimesh(vertices, indices).unwrap()
+        let collider = ColliderBuilder::trimesh(vertices, indices)
+            .unwrap()
             .active_collision_types(ActiveCollisionTypes::all())
             .build();
 
         let body_handle = ps.rigid_body_set.insert(body);
-        let collider_handle = ps.collider_set.insert_with_parent(
-            collider,
-            body_handle,
-            &mut ps.rigid_body_set,
+        let collider_handle =
+            ps.collider_set
+                .insert_with_parent(collider, body_handle, &mut ps.rigid_body_set);
+
+        self.physics_handles.insert(
+            parent_id,
+            PhysicsHandle {
+                rigid_body: body_handle,
+                collider: collider_handle,
+
+                og_rb_type: RigidBodyType::Fixed,
+            },
         );
-
-        self.physics_handles.insert(parent_id, PhysicsHandle {
-            rigid_body: body_handle,
-            collider: collider_handle,
-
-            og_rb_type: RigidBodyType::Fixed,
-        });
 
         self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
-    pub fn update(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState, input: &mut InputState, dt: f32) {
+    pub fn update(
+        &mut self,
+        sm: &mut SoundManager,
+        ps: &mut PhysicsState,
+        input: &mut InputState,
+        dt: f32,
+    ) {
         for o in self.cleanup_timer.iter_mut() {
             o.value += dt;
 
-            if o.value >= 300.0 { // seconds
+            if o.value >= 300.0 {
+                // seconds
                 self.entity_trashcan.push(o.key());
             }
         }
@@ -722,7 +772,7 @@ impl EntityManager {
             self.collider_gizmos.remove(*id);
             self.collider_transforms.remove(*id);
             self.prev_collider_transforms.remove(*id);
-            
+
             // remove the ownership relation from the inventory item_bones
             if let Some(inv) = self.inventories.get(*id) {
                 for i in inv.iter() {
@@ -754,7 +804,7 @@ impl EntityManager {
             self.active_items.remove(*id);
 
             self.owners.remove(*id);
-            
+
             // find the equipped flags to drop
             self.is_equipped.remove(*id);
 
@@ -789,74 +839,73 @@ impl EntityManager {
     }
 
     pub fn get_ids_for_faction(&self, faction: &str) -> Vec<usize> {
-        let result: Vec<usize> = self.factions
+        let result: Vec<usize> = self
+            .factions
             .iter()
-            .filter_map(|f|
+            .filter_map(|f| {
                 if *f.value() == faction {
                     Some(f.key())
                 } else {
                     None
                 }
-            )
+            })
             .collect();
 
         result
     }
 
     pub fn get_ids_for_type(&self, entity_type: &str) -> Vec<usize> {
-        let result: Vec<usize> = self.entity_types
+        let result: Vec<usize> = self
+            .entity_types
             .iter()
-            .filter_map(|f|
+            .filter_map(|f| {
                 if f.value() == entity_type {
                     Some(f.key())
                 } else {
                     None
                 }
-            )
+            })
             .collect();
 
         result
     }
 
     pub fn player_get_ids_for_state(&self, state: PlayerState) -> Vec<usize> {
-        let result: Vec<usize> = self.player_controllers
+        let result: Vec<usize> = self
+            .player_controllers
             .iter()
-            .filter_map(|f|
+            .filter_map(|f| {
                 if f.value().state == state {
                     Some(f.key())
                 } else {
                     None
                 }
-            )
+            })
             .collect();
 
         result
-
     }
 
     pub fn enemy_get_ids_for_state(&self, state: SimState) -> Vec<usize> {
-        let result: Vec<usize> = self.simstate_controllers
+        let result: Vec<usize> = self
+            .simstate_controllers
             .iter()
-            .filter_map(|f|
+            .filter_map(|f| {
                 if f.value().state == state {
                     Some(f.key())
                 } else {
                     None
                 }
-            )
+            })
             .collect();
 
         result
-
     }
 
     pub fn get_all_orphaned_weapon_ids(&self) -> Vec<usize> {
         self.factions
             .iter()
-            .filter(|w_type| {
-                *w_type.value() == "Item"
-                && self.owners.get(w_type.key()).is_none()
-            })
+            .filter(|w_type| *w_type.value() == "Item" && self.owners.get(w_type.key()).is_none())
             .map(|e| e.key())
             .collect::<Vec<usize>>()
     }
@@ -866,8 +915,8 @@ impl EntityManager {
             .iter()
             .filter(|w_type| {
                 *w_type.value() == "Item"
-                && self.owners.get(w_type.key()).is_some()
-                && self.is_equipped.get(w_type.key()).is_none()
+                    && self.owners.get(w_type.key()).is_some()
+                    && self.is_equipped.get(w_type.key()).is_none()
             })
             .map(|e| e.key())
             .collect::<Vec<usize>>()
@@ -915,7 +964,9 @@ impl EntityManager {
         let mut wd = WorldData { entities: vec![] };
 
         for etype in self.entity_types.iter() {
-            if etype.value() == "Terrain" { continue; }
+            if etype.value() == "Terrain" {
+                continue;
+            }
 
             let id = etype.key();
 
@@ -930,7 +981,7 @@ impl EntityManager {
 
             let jump_height = match self.jump_heights.get(id) {
                 Some(jh) => Some(jh.desired),
-                _=> None,
+                _ => None,
             };
 
             let instance = EntityInstance {
@@ -973,7 +1024,7 @@ impl EntityManager {
                     position: Vec3::splat(0.0),
                     rotation: Quat::IDENTITY,
                     weapons: None,
-                    base_speed: None, 
+                    base_speed: None,
                     jump_height: None,
                     health: None,
                     cleanup_timer: None,
@@ -991,7 +1042,10 @@ impl EntityManager {
             .unwrap()
             .as_millis();
 
-        match std::fs::copy("config/entity_config.json", format!("config/archive/entity_config/{}_entity_config.json", now)) {
+        match std::fs::copy(
+            "config/entity_config.json",
+            format!("config/archive/entity_config/{}_entity_config.json", now),
+        ) {
             Ok(_) => (),
             Err(e) => panic!("Failure: {}", e),
         }
@@ -1015,7 +1069,9 @@ impl EntityManager {
         }
 
         if self.entity_type_register.contains_key(&data.entity_type) {
-            eprintln!("[Error] Cannot register this entity type, it would overwrite an existing one.");
+            eprintln!(
+                "[Error] Cannot register this entity type, it would overwrite an existing one."
+            );
             return;
         }
 
@@ -1033,14 +1089,17 @@ impl EntityManager {
             Err(_) => {
                 println!("Failed to open mesh file: {}", data.mesh_path);
                 return;
-            },
+            }
         };
-        
 
         match file_data.contains("ANIMATION_DATA") {
-            true => { 
-                let new_mesh_path = base_path.join(&format!("animated/{}/mesh.txt", &data.entity_type));
-                let new_texture_path = base_path.join(&format!("animated/{}/{}", &data.entity_type, &texture_file_name));
+            true => {
+                let new_mesh_path =
+                    base_path.join(&format!("animated/{}/mesh.txt", &data.entity_type));
+                let new_texture_path = base_path.join(&format!(
+                    "animated/{}/{}",
+                    &data.entity_type, &texture_file_name
+                ));
                 std::fs::create_dir_all(&new_mesh_path.parent().unwrap());
                 std::fs::create_dir_all(&new_texture_path.parent().unwrap());
 
@@ -1049,10 +1108,14 @@ impl EntityManager {
 
                 etype.bone_path = Some(new_mesh_path.clone().to_string_lossy().to_string());
                 etype.mesh_path = new_mesh_path.clone().to_string_lossy().to_string();
-            },
-            false => { 
-                let new_mesh_path = base_path.join(&format!("static/{}/mesh.txt", &data.entity_type));
-                let new_texture_path = base_path.join(&format!("static/{}/{}", &data.entity_type, &texture_file_name));
+            }
+            false => {
+                let new_mesh_path =
+                    base_path.join(&format!("static/{}/mesh.txt", &data.entity_type));
+                let new_texture_path = base_path.join(&format!(
+                    "static/{}/{}",
+                    &data.entity_type, &texture_file_name
+                ));
 
                 std::fs::create_dir_all(&new_mesh_path.parent().unwrap());
                 std::fs::create_dir_all(&new_texture_path.parent().unwrap());
@@ -1062,7 +1125,7 @@ impl EntityManager {
 
                 etype.bone_path = None;
                 etype.mesh_path = new_mesh_path.clone().to_string_lossy().to_string();
-            },
+            }
         }
 
         if etype.bone_path.is_some() {
@@ -1070,25 +1133,24 @@ impl EntityManager {
             let mut anim_props = vec![];
             while let Some(line) = lines.next() {
                 let parts: Vec<&str> = line.split_whitespace().collect();
-                
-                if parts.is_empty() { continue; }
+
+                if parts.is_empty() {
+                    continue;
+                }
 
                 match parts[0] {
-                    "ANIMATION_DATA" => {
+                    "ANIMATION_DATA" => {}
+                    "ANIMATION_NAME:" => match parts[1].trim() {
+                        "Idle" => anim_props.push(AnimationPropHelper {
+                            name: AnimationType::Idle,
+                            one_shots: HashMap::new(),
+                            continuous_sounds: vec![],
+                            hurtbox_activation: vec![],
+                            hold_frame: None,
+                        }),
+                        _ => {}
                     },
-                    "ANIMATION_NAME:" => {
-                        match parts[1].trim() {
-                            "Idle" => { anim_props.push(AnimationPropHelper { 
-                                name: AnimationType::Idle,
-                                one_shots: HashMap::new(),
-                                continuous_sounds: vec![],
-                                hurtbox_activation: vec![],
-                                hold_frame: None,
-                            })},
-                            _ => {},
-                        }
-                    }
-                    _=> (),
+                    _ => (),
                 }
             }
 
@@ -1110,27 +1172,38 @@ impl EntityManager {
 
         match data.hitbox.as_str() {
             "Cylinder" => {
-                etype.hitbox = HitboxShape::Cylinder { r: data.r, h: data.h };
-            },
-            "Pill"  => {
-                etype.hitbox = HitboxShape::Pill { r: data.r, h: data.h };
-            },
+                etype.hitbox = HitboxShape::Cylinder {
+                    r: data.r,
+                    h: data.h,
+                };
+            }
+            "Pill" => {
+                etype.hitbox = HitboxShape::Pill {
+                    r: data.r,
+                    h: data.h,
+                };
+            }
             "BoundingBox" => {
                 etype.hitbox = HitboxShape::BoundingBox;
-            },
+            }
             "Mesh" => {
                 etype.hitbox = HitboxShape::Mesh;
-            },
+            }
             "Sphere" => {
                 etype.hitbox = HitboxShape::Sphere { r: data.r };
-            },
+            }
             "BoxDim" => {
-                etype.hitbox = HitboxShape::BoxDim { hx: data.hx, hy: data.hy, hz: data.hz }
-            },
+                etype.hitbox = HitboxShape::BoxDim {
+                    hx: data.hx,
+                    hy: data.hy,
+                    hz: data.hz,
+                }
+            }
             _ => etype.hitbox = HitboxShape::Mesh,
         }
-        
-        self.entity_type_register.insert(data.entity_type.clone(), etype);
+
+        self.entity_type_register
+            .insert(data.entity_type.clone(), etype);
         let ec = EntityConfig {
             entity_types: self.entity_type_register.clone(),
         };
@@ -1159,7 +1232,9 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     //let path = "resources/textures/brushes/testing.png";
     //let path = "resources/textures/brushes/mountain.png";
     let path = "resources/textures/brushes/blendertest.png";
-    let img = image::open(path).expect("Failed to load terrain image").to_luma8();
+    let img = image::open(path)
+        .expect("Failed to load terrain image")
+        .to_luma8();
     let (width, height) = img.dimensions();
     let y_amplitude = 25.0;
     let mut terrain = Terrain::from_height_map(y_amplitude, width, height, &img);
@@ -1176,17 +1251,24 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
         scale: Vec3::splat(1.0),
     };
 
-    entity_manager.transforms.insert(entity_manager.next_entity_id, terrain_trans.clone(), );
+    entity_manager
+        .transforms
+        .insert(entity_manager.next_entity_id, terrain_trans.clone());
     //TODO: load this dynamically potentially
-    entity_manager.factions.insert(entity_manager.next_entity_id, "World".to_string());
+    entity_manager
+        .factions
+        .insert(entity_manager.next_entity_id, "World".to_string());
     entity_manager.faction_register.insert("World".to_string());
-    entity_manager.entity_types.insert(entity_manager.next_entity_id, "Terrain".to_string());
+    entity_manager
+        .entity_types
+        .insert(entity_manager.next_entity_id, "Terrain".to_string());
 
-    entity_manager.collider_transforms.insert(entity_manager.next_entity_id, terrain_trans.clone());
+    entity_manager
+        .collider_transforms
+        .insert(entity_manager.next_entity_id, terrain_trans.clone());
 
     let iso: Isometry<f32> = (terrain_trans.position, terrain_trans.rotation).into();
-    let body = RigidBodyBuilder::fixed().position(iso)
-        .build();
+    let body = RigidBodyBuilder::fixed().position(iso).build();
 
     // Process vertices into arrays
     //let vertices: Vec<Point3<f32>> = model.vertices
@@ -1201,11 +1283,10 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
 
     //let (heights, nrows, ncols) = Terrain::heights_from_image(y_amplitude, &img, width, height);
 
-
     //let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
     //let terrain_collider = ColliderBuilder::trimesh(vertices, indices).unwrap();
     //let terrain_collider = ColliderBuilder::heightfield(
-    //    heights, 
+    //    heights,
     //    Vector3::new((ncols - 1) as f32, 1.0, (nrows - 1) as f32)
     //).build();
     // let terrain_collider = ColliderBuilder::cuboid(50.0, 0.5, 50.0).build();
@@ -1218,8 +1299,10 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     //);
     terrain::insert_chunked_terrain_colliders(
         &model,
-        width, height,
-        128, 128, // how big is each chunk
+        width,
+        height,
+        128,
+        128, // how big is each chunk
         body_handle,
         &mut physics_state.collider_set,
         &mut physics_state.rigid_body_set,
@@ -1230,7 +1313,9 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     //    collider: collider_handle,
     //});
 
-    entity_manager.models.insert(entity_manager.next_entity_id, model);
+    entity_manager
+        .models
+        .insert(entity_manager.next_entity_id, model);
 
     entity_manager.next_entity_id += 1;
 }

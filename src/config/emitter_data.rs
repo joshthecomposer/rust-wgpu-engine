@@ -1,12 +1,20 @@
+use crate::{
+    enums_types::{EmitterName, EntityType, Faction},
+    gl_call,
+};
 use core::fmt;
-use std::{collections::{HashMap, HashSet}, fmt::Display, fs::{read_to_string, write}, hash::Hash, ptr::hash};
 use glam::{Quat, Vec2, Vec3, Vec4};
 use image::{GenericImageView, Rgba};
-use serde_json::ser::Formatter;
-use toml::value::{Table, Value, Array};
 use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
-use crate::{enums_types::{EmitterName, EntityType, Faction}, gl_call};
-
+use serde_json::ser::Formatter;
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    fs::{read_to_string, write},
+    hash::Hash,
+    ptr::hash,
+};
+use toml::value::{Array, Table, Value};
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct EmitterData {
@@ -24,7 +32,8 @@ impl EmitterData {
     pub fn write_to_file(&self, file_name: &str) {
         println!("writing emitter data to {}", &file_name);
 
-        let json_string = serde_json::to_string_pretty(self).expect("Failed to serialize emitter data");
+        let json_string =
+            serde_json::to_string_pretty(self).expect("Failed to serialize emitter data");
         write(file_name, json_string).expect("Failed to write emitter data");
 
         println!("Completed writing emitter data to {}", &file_name);
@@ -70,7 +79,7 @@ where
 {
     let path = match Option::<String>::deserialize(deserializer)? {
         Some(path) => path,
-        None       => return Ok(None)
+        None => return Ok(None),
     };
 
     let mut tex = 0;
@@ -80,10 +89,26 @@ where
     unsafe {
         gl_call!(gl::GenTextures(1, &mut tex));
         gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
-        gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32));
-        gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
-        gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
-        gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
+        gl_call!(gl::TexParameteri(
+            gl::TEXTURE_2D,
+            gl::TEXTURE_MIN_FILTER,
+            gl::LINEAR as i32
+        ));
+        gl_call!(gl::TexParameteri(
+            gl::TEXTURE_2D,
+            gl::TEXTURE_MAG_FILTER,
+            gl::LINEAR as i32
+        ));
+        gl_call!(gl::TexParameteri(
+            gl::TEXTURE_2D,
+            gl::TEXTURE_WRAP_S,
+            gl::CLAMP_TO_EDGE as i32
+        ));
+        gl_call!(gl::TexParameteri(
+            gl::TEXTURE_2D,
+            gl::TEXTURE_WRAP_T,
+            gl::CLAMP_TO_EDGE as i32
+        ));
 
         let img = match image::open(path) {
             Ok(img) => img,
@@ -129,17 +154,17 @@ pub struct UiEmitterBlackboard {
     pub radial_speed: [f32; 2],
     pub up_speed: [f32; 2],
     pub jitter: [f32; 2],
-    
-    pub base_alpha: [f32; 2], // start alpha
+
+    pub base_alpha: [f32; 2],  // start alpha
     pub alpha_multiplier: f32, // where we end up
-    pub alpha_power: f32, // Curve shape 1.0 is linear
-    
+    pub alpha_power: f32,      // Curve shape 1.0 is linear
+
     pub base_scale: [f32; 2],
     pub scale_multiplier: f32, // Where we end up in the lifetime
-    pub scale_power: f32, // curve shape 1.0 is linear
+    pub scale_power: f32,      // curve shape 1.0 is linear
 
     pub direction: [f32; 3],
-    
+
     // !!! Having a value > 0 makes this a continuous emitter !!!
     pub pps: i32,
 }

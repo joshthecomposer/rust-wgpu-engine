@@ -4,9 +4,7 @@ use glam::{vec3, Mat4, Vec3};
 use winit::{dpi::PhysicalPosition, keyboard::KeyCode};
 
 use crate::{
-    entity_manager::EntityManager,
-    enums_types::{CameraState},
-    input::{InputState},
+    entity_manager::EntityManager, enums_types::CameraState, input::InputState,
     physics::PhysicsState,
 };
 
@@ -149,11 +147,11 @@ impl Camera {
                     self.forward = (self.target - self.position).normalize();
                 }
             }
-            CameraState::Locked | CameraState::SlintSandbox => {
+            CameraState::Locked => {
                 self.target = self.locked_target;
                 self.position = self.locked_position;
                 self.forward = (self.target - self.position).normalize();
-            },
+            }
         }
 
         self.right = self.forward.cross(vec3(0.0, 1.0, 0.0)).normalize();
@@ -161,15 +159,10 @@ impl Camera {
 
         self.process_key_event(dt, input);
 
-        self.projection = glam::Mat4::perspective_rh_gl(
-            self.fovy,
-            aspect,
-            self.z_near,
-            self.z_far,
-        );
+        self.projection = glam::Mat4::perspective_rh_gl(self.fovy, aspect, self.z_near, self.z_far);
 
         match self.move_state {
-            CameraState::Free | CameraState::Locked | CameraState::SlintSandbox => {
+            CameraState::Free | CameraState::Locked => {
                 let p = self.prev_pos.lerp(self.position, alpha);
                 let f = self.prev_forward.lerp(self.forward, alpha).normalize();
                 let r = f.cross(glam::Vec3::Y).normalize();
@@ -198,8 +191,7 @@ impl Camera {
 
     pub fn process_mouse_input(&mut self, dx: f64, dy: f64) {
         match self.move_state {
-            CameraState::Locked => {
-            },
+            CameraState::Locked => {}
             CameraState::Third => {
                 let mut x_offset = dx as f64;
                 let mut y_offset = dy as f64; // invert y
@@ -213,7 +205,7 @@ impl Camera {
                 self.clamp_angles();
 
                 self.update_direction_from_angles();
-            },
+            }
             CameraState::Free => {
                 let mut x_offset = dx as f64;
                 let mut y_offset = -dy as f64; // invert y
@@ -227,8 +219,7 @@ impl Camera {
                 self.clamp_angles();
 
                 self.update_direction_from_angles();
-            },
-            CameraState::SlintSandbox => {},
+            }
         }
     }
 
@@ -237,14 +228,9 @@ impl Camera {
         let ypos = position.y;
 
         match self.move_state {
-            CameraState::Free => {
-            }
-            CameraState::Third => {
-            }
-            CameraState::Locked => {
-            }
-            CameraState::SlintSandbox => {
-            }
+            CameraState::Free => {}
+            CameraState::Third => {}
+            CameraState::Locked => {}
         }
     }
 

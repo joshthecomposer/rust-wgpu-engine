@@ -6,7 +6,7 @@ use crate::animation::animation::{Model, Vertex};
 pub struct Cuboid {
     pub w: f32,
     pub h: f32,
-    pub d: f32
+    pub d: f32,
 }
 
 impl Cuboid {
@@ -35,31 +35,26 @@ impl Cuboid {
             Vertex::new(Vec3::new(max_x, max_y, min_z), px),
             Vertex::new(Vec3::new(max_x, max_y, max_z), px),
             Vertex::new(Vec3::new(max_x, min_y, max_z), px),
-
             // Left (-X)
             Vertex::new(Vec3::new(min_x, min_y, max_z), nx),
             Vertex::new(Vec3::new(min_x, max_y, max_z), nx),
             Vertex::new(Vec3::new(min_x, max_y, min_z), nx),
             Vertex::new(Vec3::new(min_x, min_y, min_z), nx),
-
             // Top (+Y)
             Vertex::new(Vec3::new(min_x, max_y, min_z), py),
             Vertex::new(Vec3::new(min_x, max_y, max_z), py),
             Vertex::new(Vec3::new(max_x, max_y, max_z), py),
             Vertex::new(Vec3::new(max_x, max_y, min_z), py),
-
             // Bottom (-Y)
             Vertex::new(Vec3::new(min_x, min_y, max_z), ny),
             Vertex::new(Vec3::new(min_x, min_y, min_z), ny),
             Vertex::new(Vec3::new(max_x, min_y, min_z), ny),
             Vertex::new(Vec3::new(max_x, min_y, max_z), ny),
-
             // Front (+Z)
             Vertex::new(Vec3::new(max_x, min_y, max_z), pz),
             Vertex::new(Vec3::new(max_x, max_y, max_z), pz),
             Vertex::new(Vec3::new(min_x, max_y, max_z), pz),
             Vertex::new(Vec3::new(min_x, min_y, max_z), pz),
-
             // Back (-Z)
             Vertex::new(Vec3::new(min_x, min_y, min_z), nz),
             Vertex::new(Vec3::new(min_x, max_y, min_z), nz),
@@ -68,12 +63,12 @@ impl Cuboid {
         ];
 
         let indices = vec![
-            0, 1, 2,  0, 2, 3,       // Right
-            4, 5, 6,  4, 6, 7,       // Left
-            8, 9,10,  8,10,11,       // Top
-            12,13,14, 12,14,15,      // Bottom
-            16,17,18, 16,18,19,      // Front
-            20,21,22, 20,22,23,      // Back
+            0, 1, 2, 0, 2, 3, // Right
+            4, 5, 6, 4, 6, 7, // Left
+            8, 9, 10, 8, 10, 11, // Top
+            12, 13, 14, 12, 14, 15, // Bottom
+            16, 17, 18, 16, 18, 19, // Front
+            20, 21, 22, 20, 22, 23, // Back
         ];
 
         cuboid.vertices = vertices;
@@ -126,7 +121,7 @@ impl Cylinder {
         // top ring
         let top_ring_start = vertices.len() as u32;
         for i in 0..segments {
-            let theta = i as f32 *angle_step;
+            let theta = i as f32 * angle_step;
             let x = self.r * theta.cos();
             let z = self.r * theta.sin();
 
@@ -215,15 +210,24 @@ impl Pill {
 
             let base = vertices.len() as u32;
 
-            vertices.push(Vertex::new(Vec3::new(x0, cylinder_bottom + offset, z0), normal0));
-            vertices.push(Vertex::new(Vec3::new(x0, cylinder_top + offset, z0), normal0));
-            vertices.push(Vertex::new(Vec3::new(x1, cylinder_top + offset, z1), normal1));
-            vertices.push(Vertex::new(Vec3::new(x1, cylinder_bottom + offset, z1), normal1));
+            vertices.push(Vertex::new(
+                Vec3::new(x0, cylinder_bottom + offset, z0),
+                normal0,
+            ));
+            vertices.push(Vertex::new(
+                Vec3::new(x0, cylinder_top + offset, z0),
+                normal0,
+            ));
+            vertices.push(Vertex::new(
+                Vec3::new(x1, cylinder_top + offset, z1),
+                normal1,
+            ));
+            vertices.push(Vertex::new(
+                Vec3::new(x1, cylinder_bottom + offset, z1),
+                normal1,
+            ));
 
-            indices.extend_from_slice(&[
-                base, base + 1, base + 2,
-                base, base + 2, base + 3,
-            ]);
+            indices.extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
         }
 
         // === Hemispheres (top and bottom) ===
@@ -268,14 +272,22 @@ impl Pill {
                     if hemisphere_sign < 0.0 {
                         // bottom hemisphere
                         indices.extend_from_slice(&[
-                            base + i0, base + i2, base + i1,
-                            base + i1, base + i2, base + i3,
+                            base + i0,
+                            base + i2,
+                            base + i1,
+                            base + i1,
+                            base + i2,
+                            base + i3,
                         ]);
                     } else {
                         // top hemisphere
                         indices.extend_from_slice(&[
-                            base + i0, base + i1, base + i2,
-                            base + i1, base + i3, base + i2,
+                            base + i0,
+                            base + i1,
+                            base + i2,
+                            base + i1,
+                            base + i3,
+                            base + i2,
                         ]);
                     }
                 }

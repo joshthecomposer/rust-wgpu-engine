@@ -50,7 +50,7 @@ impl Platform {
             .with_alpha_size(8)
             .with_depth_size(24)
             .with_stencil_size(8);
-            //.with_multisampling(16);
+        //.with_multisampling(16);
 
         let display_builder = DisplayBuilder::new()
             .with_preference(ApiPreference::FallbackEgl) // Prefer desktop GL
@@ -109,7 +109,7 @@ impl Platform {
             display.get_proc_address(&std::ffi::CString::new(symbol).unwrap()) as *const _
         });
 
-        unsafe { gl_call!(gl::Enable(gl::MULTISAMPLE)) }; 
+        unsafe { gl_call!(gl::Enable(gl::MULTISAMPLE)) };
 
         let size = window.inner_size();
 

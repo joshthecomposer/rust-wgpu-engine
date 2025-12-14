@@ -347,9 +347,8 @@ impl GameUiManager {
             ));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
         }
-        
-        self.draw_overlay(shader);
 
+        self.draw_overlay(shader);
     }
 
     /// Draw the UI overlay on screen.

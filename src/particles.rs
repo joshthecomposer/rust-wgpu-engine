@@ -6,7 +6,14 @@ use image::{GenericImageView, Rgba};
 use rand::{rng, Rng};
 use rapier3d::parry::utils::hashmap::HashMap;
 
-use crate::{camera::Camera, config::emitter_data::{EmitterBlackboard, EmitterData, UiEmitterBlackboard}, enums_types::EmitterName, gl_call, lights::Lights, shaders::Shader};
+use crate::{
+    camera::Camera,
+    config::emitter_data::{EmitterBlackboard, EmitterData, UiEmitterBlackboard},
+    enums_types::EmitterName,
+    gl_call,
+    lights::Lights,
+    shaders::Shader,
+};
 
 #[derive(Debug)]
 pub struct Emitter {
@@ -79,9 +86,9 @@ impl Emitter {
             gravity: 0.0,
 
             alpha_powers: vec![], // Curve shape
-            alphas: vec![], // Current
-            base_alphas: vec![], // beginning
-            end_alphas: vec![], // end goal
+            alphas: vec![],       // Current
+            base_alphas: vec![],  // beginning
+            end_alphas: vec![],   // end goal
 
             scale_powers: vec![],
             scales: vec![],
@@ -124,7 +131,7 @@ impl Emitter {
             // ====================================================
             let scale_t = t_norm.powf(self.scale_powers[i]);
             let start_factor = self.base_scales[i];
-            let end_factor   = self.end_scales[i];
+            let end_factor = self.end_scales[i];
             let factor = start_factor + (end_factor - start_factor) * scale_t;
             let scale = self.scales[i] * factor;
 
@@ -138,7 +145,9 @@ impl Emitter {
             );
             let inv_view_rot = view_rot.transpose();
             let model_rot = Mat4::from_mat3(inv_view_rot);
-            let model = Mat4::from_translation(self.positions[i]) * model_rot * Mat4::from_scale(Vec3::splat(scale));
+            let model = Mat4::from_translation(self.positions[i])
+                * model_rot
+                * Mat4::from_scale(Vec3::splat(scale));
             //let model = Mat4::from_scale_rotation_translation(scale, , self.positions[i]);
 
             matrices.push(model);
@@ -233,7 +242,12 @@ impl Emitter {
             // gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
             // gl::Disable(gl::CULL_FACE);
             // gl::Disable(gl::DEPTH_TEST);
-            gl_call!(gl::DrawArraysInstanced(gl::TRIANGLES, 0, 6, self.count as i32));
+            gl_call!(gl::DrawArraysInstanced(
+                gl::TRIANGLES,
+                0,
+                6,
+                self.count as i32
+            ));
             gl_call!(gl::BindVertexArray(0));
             //                     gl::Enable(gl::CULL_FACE);
             //                     gl::Enable(gl::DEPTH_TEST);
@@ -282,13 +296,8 @@ impl ParticleSystem {
 
         let quad_vertices: [f32; 30] = [
             // coords            // tex_coords
-            -1.0,  1.0, 0.0,     0.0, 1.0,
-            -1.0, -1.0, 0.0,     0.0, 0.0,
-            1.0, -1.0, 0.0,     1.0, 0.0,
-
-            -1.0,  1.0, 0.0,     0.0, 1.0,
-            1.0, -1.0, 0.0,     1.0, 0.0,
-            1.0,  1.0, 0.0,     1.0, 1.0,
+            -1.0, 1.0, 0.0, 0.0, 1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0, 0.0, 1.0, 0.0, -1.0,
+            1.0, 0.0, 0.0, 1.0, 1.0, -1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0,
         ];
 
         unsafe {
@@ -307,10 +316,24 @@ impl ParticleSystem {
             let stride = (5 * std::mem::size_of::<f32>()) as i32;
 
             gl_call!(gl::EnableVertexAttribArray(0));
-            gl_call!(gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, stride, std::ptr::null()));
+            gl_call!(gl::VertexAttribPointer(
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                std::ptr::null()
+            ));
 
             gl_call!(gl::EnableVertexAttribArray(1));
-            gl_call!(gl::VertexAttribPointer(1, 2, gl::FLOAT, gl::FALSE, stride, (3 * std::mem::size_of::<f32>()) as *const _));
+            gl_call!(gl::VertexAttribPointer(
+                1,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (3 * std::mem::size_of::<f32>()) as *const _
+            ));
 
             // Unbind
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
@@ -349,10 +372,26 @@ impl ParticleSystem {
         unsafe {
             gl_call!(gl::GenTextures(1, &mut tex));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32));
-            gl_call!(gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
 
             let img = match image::open(path) {
                 Ok(img) => img,
@@ -379,11 +418,7 @@ impl ParticleSystem {
         tex
     }
 
-    pub fn spawn_oneshot_editor_emitter(
-        &mut self, 
-        ed: &EmitterBlackboard,
-        origin: Vec3,
-    ) -> usize {
+    pub fn spawn_oneshot_editor_emitter(&mut self, ed: &EmitterBlackboard, origin: Vec3) -> usize {
         let mut emitter = Emitter::new();
 
         emitter.texture = match &ed.texture_path {
@@ -395,7 +430,7 @@ impl ParticleSystem {
                     self.registered_textures.insert(path.to_string(), tex);
                     Some(tex)
                 }
-            },
+            }
             None => None,
         };
 
@@ -415,7 +450,7 @@ impl ParticleSystem {
         emitter.editor_blackboard = Some(ed.clone());
 
         emitter.name = ed.name.clone();
-        emitter.texture_has_alpha = ed.texture_has_alpha; 
+        emitter.texture_has_alpha = ed.texture_has_alpha;
         // emitter.colors = ed.colors.clone();
         let current_id = self.next_staged_id;
         let staged_emitter = StagedEmitter {
@@ -429,7 +464,7 @@ impl ParticleSystem {
     }
 
     pub fn spawn_oneshot_emitter(
-        &mut self, 
+        &mut self,
         emitter_name: &str,
         origin: Vec3,
         direction: Option<Vec3>,
@@ -450,7 +485,7 @@ impl ParticleSystem {
                     self.registered_textures.insert(path.to_string(), tex);
                     Some(tex)
                 }
-            },
+            }
             None => None,
         };
 
@@ -478,11 +513,7 @@ impl ParticleSystem {
         self.staged_emitters.retain(|se| se.emitter.alive);
     }
 
-    fn update_emitter(
-        emitter: &mut Emitter,
-        dt: f32,
-        emitter_data: &EmitterData,
-    ) {
+    fn update_emitter(emitter: &mut Emitter, dt: f32, emitter_data: &EmitterData) {
         let gravity = Vec3::new(0.0, emitter.gravity, 0.0);
 
         let def: EmitterBlackboard = if let Some(bb) = &emitter.editor_blackboard {
@@ -591,8 +622,8 @@ impl ParticleSystem {
     }
 
     pub fn calculate_particle_data(
-        ed: &EmitterBlackboard, 
-        origin: Vec3, 
+        ed: &EmitterBlackboard,
+        origin: Vec3,
         direction: Option<Vec3>,
         emitter: &mut Emitter,
     ) {
@@ -630,7 +661,7 @@ impl ParticleSystem {
 
             let radius = if ed.radius_rand.x >= ed.radius_rand.y {
                 ed.radius_rand.x
-            } else { 
+            } else {
                 rng.random_range(ed.radius_rand.x..=ed.radius_rand.y)
             };
 
@@ -665,10 +696,7 @@ impl ParticleSystem {
             };
             let jitter_local = jitter_dir * jitter_amount;
 
-            let local_velocity =
-            local_dir * radial_speed +
-            Vec3::Y * up_speed +
-            jitter_local;
+            let local_velocity = local_dir * radial_speed + Vec3::Y * up_speed + jitter_local;
 
             // Rotate velocity into world space
             let velocity = rot * local_velocity;
@@ -753,5 +781,4 @@ impl ParticleSystem {
             }
         }
     }
-
 }

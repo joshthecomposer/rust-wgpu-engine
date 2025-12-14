@@ -12,7 +12,6 @@ macro_rules! gl_call {
 #[cfg(feature = "gl_debug")]
 pub fn gl_log_call(function: &str, file: &str, line: u32) -> bool {
     unsafe {
-
         let mut had_error = false;
         loop {
             let err = gl::GetError();
@@ -52,5 +51,7 @@ macro_rules! gl_call {
 }
 
 pub fn incr_draw_call() {
-    unsafe { DRAW_CALLS += 1; }
+    unsafe {
+        DRAW_CALLS += 1;
+    }
 }

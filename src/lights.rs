@@ -12,20 +12,103 @@ pub struct PointStrength {
 }
 
 pub const POINT_STRENGTHS: [(u32, PointStrength); 12] = [
-    (7, PointStrength { constant: 1.0, linear: 0.7, quadratic: 1.8 }),
-    (13, PointStrength { constant: 1.0, linear: 0.35, quadratic: 0.44 }),
-    (20, PointStrength { constant: 1.0, linear: 0.22, quadratic: 0.20 }),
-    (32, PointStrength { constant: 1.0, linear: 0.14, quadratic: 0.07 }),
-    (50, PointStrength { constant: 1.0, linear: 0.09, quadratic: 0.032 }),
-    (65, PointStrength { constant: 1.0, linear: 0.07, quadratic: 0.017 }),
-    (100, PointStrength { constant: 1.0, linear: 0.045, quadratic: 0.0075 }),
-    (160, PointStrength { constant: 1.0, linear: 0.027, quadratic: 0.0028 }),
-    (200, PointStrength { constant: 1.0, linear: 0.022, quadratic: 0.0019 }),
-    (325, PointStrength { constant: 1.0, linear: 0.014, quadratic: 0.0007 }),
-    (600, PointStrength { constant: 1.0, linear: 0.007, quadratic: 0.0002 }),
-    (3250, PointStrength { constant: 1.0, linear: 0.0014, quadratic: 0.000007 }),
+    (
+        7,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.7,
+            quadratic: 1.8,
+        },
+    ),
+    (
+        13,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.35,
+            quadratic: 0.44,
+        },
+    ),
+    (
+        20,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.22,
+            quadratic: 0.20,
+        },
+    ),
+    (
+        32,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.14,
+            quadratic: 0.07,
+        },
+    ),
+    (
+        50,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.09,
+            quadratic: 0.032,
+        },
+    ),
+    (
+        65,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.07,
+            quadratic: 0.017,
+        },
+    ),
+    (
+        100,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.045,
+            quadratic: 0.0075,
+        },
+    ),
+    (
+        160,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.027,
+            quadratic: 0.0028,
+        },
+    ),
+    (
+        200,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.022,
+            quadratic: 0.0019,
+        },
+    ),
+    (
+        325,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.014,
+            quadratic: 0.0007,
+        },
+    ),
+    (
+        600,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.007,
+            quadratic: 0.0002,
+        },
+    ),
+    (
+        3250,
+        PointStrength {
+            constant: 1.0,
+            linear: 0.0014,
+            quadratic: 0.000007,
+        },
+    ),
 ];
-    
 
 pub struct PointLight {
     pub position: Vec3,
@@ -35,7 +118,7 @@ pub struct PointLight {
     pub specular: Vec3,
 
     pub constant: f32,
-    pub linear: f32, 
+    pub linear: f32,
     pub quadratic: f32,
 }
 
@@ -44,7 +127,7 @@ impl PointLight {
         position: Vec3,
         ambient: Vec3,
         diffuse: Vec3,
-        specular: Vec3
+        specular: Vec3,
     ) -> Self {
         Self {
             position,
@@ -80,7 +163,7 @@ impl DirLight {
         Self {
             direction,
             view_pos,
-            ambient, 
+            ambient,
             diffuse,
             specular,
 
@@ -103,7 +186,6 @@ impl DirLight {
             specular: WHITE,
 
             distance,
-
         }
     }
 }
@@ -119,8 +201,8 @@ pub struct Lights {
     pub near: f32,
     pub far: f32,
     pub bounds: f32,
-    
-    pub bias_scalar: f32
+
+    pub bias_scalar: f32,
 }
 
 impl Lights {
@@ -160,6 +242,5 @@ impl Lights {
         }
     }
 
-    pub fn debug_render() {
-    }
+    pub fn debug_render() {}
 }

@@ -19,9 +19,7 @@ pub struct MessageQueue {
 
 impl MessageQueue {
     pub fn new() -> Self {
-        Self {
-            queue: Vec::new(),
-        }
+        Self { queue: Vec::new() }
     }
 
     pub fn send(&mut self, msg: UiMessage) {

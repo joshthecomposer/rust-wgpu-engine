@@ -1,9 +1,28 @@
 use std::borrow::Cow;
 
 use glam::{Mat4, Quat, Vec3};
-use imgui::{sys::{ImGuiKey, ImGuiKey_Backspace}, Drag, Io, Ui};
+use imgui::{
+    sys::{ImGuiKey, ImGuiKey_Backspace},
+    Drag, Io, Ui,
+};
 
-use crate::{animation::animation::Animator, camera::Camera, config::{entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{
+    animation::animation::Animator,
+    camera::Camera,
+    config::{
+        entity_config::{EntityTypeHelper, UiEntityTypeHelper},
+        world_data::{EntityInstance, WorldData},
+    },
+    entity_manager::EntityManager,
+    enums_types::{CameraState, EntityType, Faction, SoundType},
+    gl_call,
+    input::InputState,
+    lights::Lights,
+    physics::PhysicsState,
+    renderer::Renderer,
+    sound::sound_manager::SoundManager,
+    util::data_structure::HashMapGetPairMut,
+};
 
 pub struct EntityEditor {
     pub entity_type_index: usize,
@@ -21,34 +40,36 @@ pub struct EntityEditor {
 
 impl EntityEditor {
     pub fn draw(
-        &mut self, 
-        ui: &mut Ui, 
+        &mut self,
+        ui: &mut Ui,
         em: &mut EntityManager,
         ps: &mut PhysicsState,
         rdr: &mut Renderer,
         lm: &mut Lights,
         sm: &mut SoundManager,
-        input:  &mut InputState,
-        size: &[f32; 2]
+        input: &mut InputState,
+        size: &[f32; 2],
     ) {
         ui.window("Entity Editor")
             .size([500.0, size[1]], imgui::Condition::FirstUseEver)
             .position([0.0, 0.0], imgui::Condition::FirstUseEver)
             .build(|| {
                 // Hoist the vars!
-                let mut entity_types: Vec<String> = em.entity_type_register
-                    .keys()
-                    .map(|k| k.clone())
-                    .collect();
+                let mut entity_types: Vec<String> =
+                    em.entity_type_register.keys().map(|k| k.clone()).collect();
 
-                let mut factions: Vec<String> = em.faction_register
-                    .iter()
-                    .cloned()
-                    .collect();
+                let mut factions: Vec<String> = em.faction_register.iter().cloned().collect();
 
-                let hb_types: Vec<&str> = vec!["Cylinder", "Pill", "BoxDim", "Sphere", "Mesh", "BoundingBox"];
+                let hb_types: Vec<&str> = vec![
+                    "Cylinder",
+                    "Pill",
+                    "BoxDim",
+                    "Sphere",
+                    "Mesh",
+                    "BoundingBox",
+                ];
 
-                let maybe_player_entry = em.factions.iter().find(|e| *e.value() == "Player" );
+                let maybe_player_entry = em.factions.iter().find(|e| *e.value() == "Player");
                 // ===================== Player =====================
                 match maybe_player_entry {
                     Some(player) => {
@@ -56,15 +77,18 @@ impl EntityEditor {
                         let transform = em.transforms.get(player_id).unwrap();
                         let controller = em.player_controllers.get(player_id).unwrap();
                         let animator = em.animators.get(player_id).unwrap();
-                        
+
                         ui.separator();
                         ui.text("Player Data:");
                         ui.separator();
-                        ui.text(format!("Position: x: {} y: {} z: {}", transform.position.x, transform.position.y, transform.position.z));
+                        ui.text(format!(
+                            "Position: x: {} y: {} z: {}",
+                            transform.position.x, transform.position.y, transform.position.z
+                        ));
                         ui.text(format!("Player State: {}", controller.state));
                         ui.text(format!("Attack State: {}", controller.attack_state));
                         ui.text(format!("Current Animation: {}", animator.current_animation));
-                    },
+                    }
                     None => (),
                 }
 
@@ -82,24 +106,19 @@ impl EntityEditor {
                 if ui.slider("Dir Light Z", -1.0, 1.0, &mut lm.dir_light.direction.z) {
                     lm.dir_light.view_pos.z = lm.dir_light.direction.z * lm.dir_light.distance;
                 };
-                if ui.slider("Dir Light distance", 0.0, 100.0, &mut lm.dir_light.distance) {
-                };
+                if ui.slider("Dir Light distance", 0.0, 100.0, &mut lm.dir_light.distance) {};
 
                 ui.checkbox("Shadow Debug", &mut rdr.shadow_debug);
 
-                if ui.slider("Ortho Near", 0.0, 10.0, &mut lm.near) {
-                };
-                if ui.slider("Ortho Far", 0.0, 500.0, &mut lm.far) {
-                };
-                if ui.slider("Bounds", 0.0, 100.0, &mut lm.bounds) {
-                };
+                if ui.slider("Ortho Near", 0.0, 10.0, &mut lm.near) {};
+                if ui.slider("Ortho Far", 0.0, 500.0, &mut lm.far) {};
+                if ui.slider("Bounds", 0.0, 100.0, &mut lm.bounds) {};
 
                 if Drag::new("Bias Scalar")
                     .speed(0.0001)
                     .display_format("%.6f")
                     .build(ui, &mut lm.bias_scalar)
-                {
-                }
+                {}
 
                 lm.dir_light.view_pos.x = lm.dir_light.direction.x * lm.dir_light.distance;
                 lm.dir_light.view_pos.y = lm.dir_light.direction.y * lm.dir_light.distance;
@@ -124,9 +143,15 @@ impl EntityEditor {
 
                 // ===================== bloom stuff =====================
 
-                if Drag::new("Exposure").speed(0.01).build(ui, &mut rdr.exposure) {};
+                if Drag::new("Exposure")
+                    .speed(0.01)
+                    .build(ui, &mut rdr.exposure)
+                {};
                 if ui.checkbox("Do HDR", &mut rdr.do_hdr) {};
-                if Drag::new("Bloom Strength").speed(0.01).build(ui, &mut rdr.bloom_strength) {};
+                if Drag::new("Bloom Strength")
+                    .speed(0.01)
+                    .build(ui, &mut rdr.bloom_strength)
+                {};
 
                 // ===================== Entity Editing =====================
                 ui.separator();
@@ -146,14 +171,25 @@ impl EntityEditor {
                         ));
 
                         let mut position = [trans.position.x, trans.position.y, trans.position.z];
-                        let mut rotation = [trans.rotation.x, trans.rotation.y, trans.rotation.z, trans.rotation.w];
+                        let mut rotation = [
+                            trans.rotation.x,
+                            trans.rotation.y,
+                            trans.rotation.z,
+                            trans.rotation.w,
+                        ];
 
                         // position
-                        if Drag::new("Position").speed(0.1).build_array(ui, &mut position) {};
+                        if Drag::new("Position")
+                            .speed(0.1)
+                            .build_array(ui, &mut position)
+                        {};
                         trans.position = Vec3::from(position);
 
                         // rotation
-                        if Drag::new("Rotation").speed(0.1).build_array(ui, &mut rotation) {};
+                        if Drag::new("Rotation")
+                            .speed(0.1)
+                            .build_array(ui, &mut rotation)
+                        {};
                         trans.rotation = Quat::from_slice(&rotation);
                     }
                 }
@@ -187,19 +223,13 @@ impl EntityEditor {
                     |s| Cow::Borrowed(&s),
                 );
 
-                ui.combo(
-                    "Factions",
-                    &mut self.faction_index,
-                    &factions,
-                    |s| Cow::Borrowed(&s),
-                );
+                ui.combo("Factions", &mut self.faction_index, &factions, |s| {
+                    Cow::Borrowed(&s)
+                });
 
-                ui.combo(
-                    "Weapon",
-                    &mut self.weapon_type_index,
-                    &entity_types,
-                    |s| Cow::Borrowed(&s),
-                );
+                ui.combo("Weapon", &mut self.weapon_type_index, &entity_types, |s| {
+                    Cow::Borrowed(&s)
+                });
 
                 if ui.checkbox("Include Weapon", &mut self.include_weapon) {
                     println!("Clicked Create Mode");
@@ -208,23 +238,20 @@ impl EntityEditor {
                 let selected_type = &entity_types[self.entity_type_index];
                 let selected_faction = &factions[self.faction_index];
 
-                ui.input_float("Base Speed", &mut self.base_speed)
-                    .build();
+                ui.input_float("Base Speed", &mut self.base_speed).build();
 
                 let weapons = if self.include_weapon {
-                    Some(vec![
-                        EntityInstance {
-                            entity_type: entity_types[self.weapon_type_index].clone(),
-                            faction: "Item".to_string(),
-                            position: Vec3::splat(0.0),
-                            rotation: Quat::IDENTITY,
-                            base_speed: None,
-                            jump_height: None,
-                            health: None,
-                            weapons: None,
-                            cleanup_timer: None,
-                        }
-                    ])
+                    Some(vec![EntityInstance {
+                        entity_type: entity_types[self.weapon_type_index].clone(),
+                        faction: "Item".to_string(),
+                        position: Vec3::splat(0.0),
+                        rotation: Quat::IDENTITY,
+                        base_speed: None,
+                        jump_height: None,
+                        health: None,
+                        weapons: None,
+                        cleanup_timer: None,
+                    }])
                 } else {
                     None
                 };
@@ -248,10 +275,7 @@ impl EntityEditor {
                         cleanup_timer: None,
                     };
 
-                    let parent_id = em.create_entity(
-                        &instance,
-                        ps,
-                    );
+                    let parent_id = em.create_entity(&instance, ps);
                     em.populate_inventory(parent_id, &instance, ps);
                     self.create_mode = false;
                 }
@@ -268,9 +292,15 @@ impl EntityEditor {
                 ui.input_text("Entity Type", &mut self.new_archetype.entity_type)
                     .build();
 
-                if Drag::new("Rot Correction").speed(0.1).build_array(ui, &mut self.new_archetype.rot_correction) {};
+                if Drag::new("Rot Correction")
+                    .speed(0.1)
+                    .build_array(ui, &mut self.new_archetype.rot_correction)
+                {};
 
-                if Drag::new("Scale Correction").speed(0.1).build_array(ui, &mut self.new_archetype.scale_correction) {};
+                if Drag::new("Scale Correction")
+                    .speed(0.1)
+                    .build_array(ui, &mut self.new_archetype.scale_correction)
+                {};
 
                 ui.input_text("Model Data Path", &mut self.new_archetype.mesh_path)
                     .build();
@@ -284,14 +314,12 @@ impl EntityEditor {
                 ui.input_float("Total Mass", &mut self.new_archetype.total_mass)
                     .build();
 
-
                 ui.combo(
                     "Hitbox Types",
                     &mut self.hitbox_type_index,
                     &hb_types,
                     |s| Cow::Borrowed(*s),
                 );
-
 
                 match hb_types[self.hitbox_type_index] {
                     "Cylinder" | "Pill" => {
@@ -304,20 +332,17 @@ impl EntityEditor {
 
                         ui.input_float("HB Height", &mut self.new_archetype.h)
                             .build();
-                    },
+                    }
                     "BoxDim" => {
                         self.new_archetype.r = 0.0;
                         self.new_archetype.h = 0.0;
 
-                        ui.input_float("Half X", &mut self.new_archetype.hx)
-                            .build();
+                        ui.input_float("Half X", &mut self.new_archetype.hx).build();
 
-                        ui.input_float("Half Y", &mut self.new_archetype.hy)
-                            .build();
+                        ui.input_float("Half Y", &mut self.new_archetype.hy).build();
 
-                        ui.input_float("Half Z", &mut self.new_archetype.hz)
-                            .build();
-                    },
+                        ui.input_float("Half Z", &mut self.new_archetype.hz).build();
+                    }
                     "Sphere" => {
                         self.new_archetype.h = 0.0;
                         self.new_archetype.hx = 0.0;
@@ -326,15 +351,15 @@ impl EntityEditor {
 
                         ui.input_float("HB Radius", &mut self.new_archetype.r)
                             .build();
-                    },
+                    }
                     "Mesh" | "BoundingBox" => {
                         self.new_archetype.r = 0.0;
                         self.new_archetype.h = 0.0;
                         self.new_archetype.hx = 0.0;
                         self.new_archetype.hy = 0.0;
                         self.new_archetype.hz = 0.0;
-                    },
-                    _=> {},
+                    }
+                    _ => {}
                 }
 
                 self.new_archetype.hitbox = hb_types[self.hitbox_type_index].to_string();
@@ -358,7 +383,6 @@ impl EntityEditor {
                     em.remove_entity_type_definition(&entity_types[self.remove_entity_type_idx]);
                     entity_types.remove(self.remove_entity_type_idx);
                 }
-
             });
     }
 }

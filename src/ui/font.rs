@@ -43,13 +43,15 @@ impl FontManager {
         let scale = Scale::uniform(self.font_pixel_size);
         let v_metrics = font.v_metrics(scale);
 
-
         for c in phrase.chars() {
             if self.glyphs.contains_key(&c) {
                 continue;
             }
 
-            let glyph = font.glyph(c).scaled(scale).positioned(point(0.0, v_metrics.ascent));
+            let glyph = font
+                .glyph(c)
+                .scaled(scale)
+                .positioned(point(0.0, v_metrics.ascent));
             let h_metrics = glyph.unpositioned().h_metrics();
             let advance = h_metrics.advance_width;
 
@@ -89,24 +91,30 @@ impl FontManager {
                     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
                 }
 
-                self.glyphs.insert(c, GlyphInfo {
-                    texture: tex,
-                    width: width as u32,
-                    height: height as u32,
-                    advance,
-                    bearing_x,
-                    bearing_y: -bearing_y,
-                });
+                self.glyphs.insert(
+                    c,
+                    GlyphInfo {
+                        texture: tex,
+                        width: width as u32,
+                        height: height as u32,
+                        advance,
+                        bearing_x,
+                        bearing_y: -bearing_y,
+                    },
+                );
             } else {
                 // Handle space or invisible glyphs
-                self.glyphs.insert(c, GlyphInfo {
-                    texture: 0, // No texture needed
-                    width: 0,
-                    height: 0,
-                    advance,
-                    bearing_x: 0.0,
-                    bearing_y: 0.0,
-                });
+                self.glyphs.insert(
+                    c,
+                    GlyphInfo {
+                        texture: 0, // No texture needed
+                        width: 0,
+                        height: 0,
+                        advance,
+                        bearing_x: 0.0,
+                        bearing_y: 0.0,
+                    },
+                );
             }
         }
     }
@@ -125,10 +133,24 @@ impl FontManager {
                 gl::DYNAMIC_DRAW,
             );
 
-            gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 5 * std::mem::size_of::<f32>() as i32, std::ptr::null());
+            gl::VertexAttribPointer(
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                5 * std::mem::size_of::<f32>() as i32,
+                std::ptr::null(),
+            );
             gl::EnableVertexAttribArray(0);
 
-            gl::VertexAttribPointer(1, 2, gl::FLOAT, gl::FALSE, 5 * std::mem::size_of::<f32>() as i32, (3 * std::mem::size_of::<f32>()) as *const _);
+            gl::VertexAttribPointer(
+                1,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                5 * std::mem::size_of::<f32>() as i32,
+                (3 * std::mem::size_of::<f32>()) as *const _,
+            );
             gl::EnableVertexAttribArray(1);
 
             gl::BindBuffer(gl::ARRAY_BUFFER, 0);
@@ -136,7 +158,16 @@ impl FontManager {
         }
     }
 
-    pub fn render_phrase(&self, phrase: &str, x: f32, y: f32, fb_width: f32, fb_height: f32, shader: &Shader, scale: f32) {
+    pub fn render_phrase(
+        &self,
+        phrase: &str,
+        x: f32,
+        y: f32,
+        fb_width: f32,
+        fb_height: f32,
+        shader: &Shader,
+        scale: f32,
+    ) {
         shader.activate();
 
         unsafe {
@@ -164,12 +195,8 @@ impl FontManager {
                 let y1 = 1.0 - (ypos + h) * sy;
 
                 let vertices: [f32; 30] = [
-                    x0, y0, 0.0, 0.0, 0.0,
-                    x0, y1, 0.0, 0.0, 1.0,
-                    x1, y1, 0.0, 1.0, 1.0,
-                    x0, y0, 0.0, 0.0, 0.0,
-                    x1, y1, 0.0, 1.0, 1.0,
-                    x1, y0, 0.0, 1.0, 0.0,
+                    x0, y0, 0.0, 0.0, 0.0, x0, y1, 0.0, 0.0, 1.0, x1, y1, 0.0, 1.0, 1.0, x0, y0,
+                    0.0, 0.0, 0.0, x1, y1, 0.0, 1.0, 1.0, x1, y0, 0.0, 1.0, 0.0,
                 ];
 
                 unsafe {
@@ -217,10 +244,7 @@ impl FontManager {
 
         let text_x = rect.x + (rect.w - text_width) / 2.0;
 
-        let first_glyph = phrase
-            .chars()
-            .filter_map(|c| self.glyphs.get(&c))
-            .next();
+        let first_glyph = phrase.chars().filter_map(|c| self.glyphs.get(&c)).next();
 
         let text_y = if let Some(g) = first_glyph {
             rect.y + (rect.h / 2.0) + ((g.bearing_y - g.height as f32 / 2.0) * scale)
@@ -230,6 +254,4 @@ impl FontManager {
 
         self.render_phrase(phrase, text_x, text_y, fb_width, fb_height, shader, scale);
     }
-
 }
-

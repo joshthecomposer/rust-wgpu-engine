@@ -8,4 +8,3 @@ pub fn update(em: &mut EntityManager, dt: f32) {
         animator.update(skellington, dt);
     }
 }
-

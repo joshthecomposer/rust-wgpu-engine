@@ -2,18 +2,43 @@ use std::{borrow::Cow, ffi::CString};
 
 use glam::{Mat4, Quat, Vec3};
 use glutin::prelude::GlDisplay;
-use imgui::{sys::{ImGuiKey, ImGuiKey_Backspace}, Drag, Io, Ui};
+use imgui::{
+    sys::{ImGuiKey, ImGuiKey_Backspace},
+    Drag, Io, Ui,
+};
 
 use imgui::{Context as ImguiContext, Key};
 use winit::{
-    event::{
-        ElementState, Ime, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent
-    },
+    event::{ElementState, Ime, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
     window::Window,
 };
 
-use crate::{animation::animation::Animator, camera::Camera, config::{entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, particles::ParticleSystem, physics::PhysicsState, platform::Platform, renderer::Renderer, sound::sound_manager::SoundManager, ui::{imgui::{entity_editor::EntityEditor, particle_editor::ParticleEditor, player_data::PlayerData}, message_queue::MessageQueue}, util::data_structure::HashMapGetPairMut};
+use crate::{
+    animation::animation::Animator,
+    camera::Camera,
+    config::{
+        entity_config::{EntityTypeHelper, UiEntityTypeHelper},
+        world_data::{EntityInstance, WorldData},
+    },
+    entity_manager::EntityManager,
+    enums_types::{CameraState, EntityType, Faction, SoundType},
+    gl_call,
+    input::InputState,
+    lights::Lights,
+    particles::ParticleSystem,
+    physics::PhysicsState,
+    platform::Platform,
+    renderer::Renderer,
+    sound::sound_manager::SoundManager,
+    ui::{
+        imgui::{
+            entity_editor::EntityEditor, particle_editor::ParticleEditor, player_data::PlayerData,
+        },
+        message_queue::MessageQueue,
+    },
+    util::data_structure::HashMapGetPairMut,
+};
 
 pub struct ImguiManager {
     pub imgui: imgui::Context,
@@ -61,7 +86,7 @@ impl ImguiManager {
             WindowEvent::MouseInput { state, button, .. } => {
                 let pressed = *state == ElementState::Pressed;
                 match button {
-                    MouseButton::Left =>  io.mouse_down[0] = pressed,
+                    MouseButton::Left => io.mouse_down[0] = pressed,
                     MouseButton::Right => io.mouse_down[1] = pressed,
                     MouseButton::Middle => io.mouse_down[2] = pressed,
                     _ => {}
@@ -92,9 +117,9 @@ impl ImguiManager {
                     io.add_input_character(ch);
                 }
             }
-           //WindowEvent::ReceivedCharacter(ch) => {
-           //    io.add_input_character(*ch);
-           //}
+            //WindowEvent::ReceivedCharacter(ch) => {
+            //    io.add_input_character(*ch);
+            //}
 
             // Key press / release
             WindowEvent::KeyboardInput { event, .. } => {
@@ -109,7 +134,6 @@ impl ImguiManager {
                         }
                     }
                 }
-
 
                 if let PhysicalKey::Code(code) = event.physical_key {
                     // Map some keys ImGui cares about
@@ -151,25 +175,25 @@ impl ImguiManager {
     }
 
     pub fn draw(
-        &mut self, 
-        window: &mut Window, 
-        width: f32, 
-        height: f32, 
-        delta: f32, 
-        lm: &mut Lights, 
-        rdr: &mut Renderer, 
-        sm: &mut SoundManager, 
-        camera: &Camera, 
-        em: &mut EntityManager, 
-        ps: &mut PhysicsState, 
+        &mut self,
+        window: &mut Window,
+        width: f32,
+        height: f32,
+        delta: f32,
+        lm: &mut Lights,
+        rdr: &mut Renderer,
+        sm: &mut SoundManager,
+        camera: &Camera,
+        em: &mut EntityManager,
+        ps: &mut PhysicsState,
         input: &mut InputState,
         particles: &mut ParticleSystem,
         message_queue: &mut MessageQueue,
     ) {
         {
-            let io          = self.imgui.io_mut();
+            let io = self.imgui.io_mut();
             io.display_size = [width, height];
-            io.delta_time   = delta;
+            io.delta_time = delta;
         }
 
         {
@@ -177,8 +201,21 @@ impl ImguiManager {
 
             // BUILD WINDOWS
             if camera.move_state == CameraState::Locked {
-                self.entity_editor.draw(ui, em, ps, rdr, lm, sm, input, &[width, height]);
-                self.particle_editor.draw(ui, em, ps, rdr, lm, sm, input, &[width, height], particles, delta, message_queue);
+                self.entity_editor
+                    .draw(ui, em, ps, rdr, lm, sm, input, &[width, height]);
+                self.particle_editor.draw(
+                    ui,
+                    em,
+                    ps,
+                    rdr,
+                    lm,
+                    sm,
+                    input,
+                    &[width, height],
+                    particles,
+                    delta,
+                    message_queue,
+                );
             } else {
                 //self.player_data.draw(ui, em, &[width, height]);
             }
@@ -189,6 +226,5 @@ impl ImguiManager {
         if draw_data.total_vtx_count > 0 {
             self.renderer.render(&mut self.imgui);
         }
-
     }
 }

@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use std::fs::read_to_string;
 
-use glam::{vec2, Vec3, Vec4};
 use glam::vec3;
+use glam::{vec2, Vec3, Vec4};
 use image::{ImageBuffer, Rgba};
 
 use crate::animation::animation::{texture_from_file, Model, Vertex};
@@ -13,7 +13,7 @@ use crate::{enums_types::CellType, shaders::Shader};
 #[derive(Debug)]
 pub struct GridCell {
     pub id: usize,
-    pub position:  Vec3,
+    pub position: Vec3,
     pub width: f32,
     // used to determine if this is traversable in A*
     pub blocked: bool,
@@ -36,7 +36,7 @@ pub struct Grid {
 impl Grid {
     pub fn new(width: usize, height: usize, cell_size: f32) -> Grid {
         Grid {
-            cells: Vec::with_capacity(width * height) ,
+            cells: Vec::with_capacity(width * height),
             next_cell_id: 0,
             model: Model::new(),
             cell_size,
@@ -59,12 +59,12 @@ impl Grid {
                 let index = y * grid_width + x;
                 let cell = grid.cells.get_mut(index).expect("grid cell didn't exist");
                 match c {
-                    '0'=> { cell.cell_type = CellType::Grass },
-                    'S'=> { cell.cell_type = CellType::Path },
-                    'T'=> { cell.cell_type = CellType::Tree },
-                    'X'=> { cell.cell_type = CellType::Path },
-                    'E'=> { cell.cell_type = CellType::Path },
-                    _  => { cell.cell_type = CellType::Grass },
+                    '0' => cell.cell_type = CellType::Grass,
+                    'S' => cell.cell_type = CellType::Path,
+                    'T' => cell.cell_type = CellType::Tree,
+                    'X' => cell.cell_type = CellType::Path,
+                    'E' => cell.cell_type = CellType::Path,
+                    _ => cell.cell_type = CellType::Grass,
                 }
             }
         }
@@ -83,7 +83,12 @@ impl Grid {
         let mut model = self.generate_grid_mesh();
         model.directory = "resources/textures".to_string();
 
-        texture_from_file(&mut model, "half_dark_half_light.png".to_string(), TextureType::Diffuse, TextureProfile::BroadDefault);
+        texture_from_file(
+            &mut model,
+            "half_dark_half_light.png".to_string(),
+            TextureType::Diffuse,
+            TextureProfile::BroadDefault,
+        );
         self.model = model;
     }
 
@@ -101,16 +106,15 @@ impl Grid {
                 let x = (col as f32 * self.cell_size) - (total_width / 2.0);
                 let z = (row as f32 * self.cell_size) - (total_height / 2.0);
 
-
                 let (bl, br, tr, tl) = if dark {
                     (
                         vec2(0.0, 0.0),
                         vec2(0.5, 0.0),
                         vec2(0.5, 1.0),
-                        vec2(0.0, 1.0)
+                        vec2(0.0, 1.0),
                     )
                 } else {
-                    ( 
+                    (
                         vec2(0.5, 0.0),
                         vec2(1.0, 0.0),
                         vec2(1.0, 1.0),
@@ -122,12 +126,39 @@ impl Grid {
 
                 let base_index = vertices.len() as u32;
 
-
                 // Add vertices for the cell
-                vertices.push(Vertex { position: vec3(x, 0.0, z), normal: vec3(0.0, 1.0, 0.0), uv: bl, bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE], base_color: Vec4::splat(1.0) });
-                vertices.push(Vertex { position: vec3(x + self.cell_size, 0.0, z), normal: vec3(0.0, 1.0, 0.0), uv: br,bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE], base_color: Vec4::splat(1.0) });
-                vertices.push(Vertex { position: vec3(x + self.cell_size, 0.0, z + self.cell_size), normal: vec3(0.0, 1.0, 0.0), uv: tr, bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE], base_color: Vec4::splat(1.0) });
-                vertices.push(Vertex { position: vec3(x, 0.0, z + self.cell_size), normal: vec3(0.0, 1.0, 0.0), uv: tl, bone_ids: [-1; MAX_BONE_INFLUENCE], bone_weights: [0.0; MAX_BONE_INFLUENCE], base_color: Vec4::splat(1.0) });
+                vertices.push(Vertex {
+                    position: vec3(x, 0.0, z),
+                    normal: vec3(0.0, 1.0, 0.0),
+                    uv: bl,
+                    bone_ids: [-1; MAX_BONE_INFLUENCE],
+                    bone_weights: [0.0; MAX_BONE_INFLUENCE],
+                    base_color: Vec4::splat(1.0),
+                });
+                vertices.push(Vertex {
+                    position: vec3(x + self.cell_size, 0.0, z),
+                    normal: vec3(0.0, 1.0, 0.0),
+                    uv: br,
+                    bone_ids: [-1; MAX_BONE_INFLUENCE],
+                    bone_weights: [0.0; MAX_BONE_INFLUENCE],
+                    base_color: Vec4::splat(1.0),
+                });
+                vertices.push(Vertex {
+                    position: vec3(x + self.cell_size, 0.0, z + self.cell_size),
+                    normal: vec3(0.0, 1.0, 0.0),
+                    uv: tr,
+                    bone_ids: [-1; MAX_BONE_INFLUENCE],
+                    bone_weights: [0.0; MAX_BONE_INFLUENCE],
+                    base_color: Vec4::splat(1.0),
+                });
+                vertices.push(Vertex {
+                    position: vec3(x, 0.0, z + self.cell_size),
+                    normal: vec3(0.0, 1.0, 0.0),
+                    uv: tl,
+                    bone_ids: [-1; MAX_BONE_INFLUENCE],
+                    bone_weights: [0.0; MAX_BONE_INFLUENCE],
+                    base_color: Vec4::splat(1.0),
+                });
 
                 // Add indices for two triangles
                 // flipped winding
@@ -151,7 +182,7 @@ impl Grid {
                 let cell = GridCell {
                     id: self.next_cell_id,
                     position: vec3(x + (self.cell_size / 2.0), 0.0, z + (self.cell_size / 2.0)),
-                    width: self.cell_size, 
+                    width: self.cell_size,
                     blocked: false,
                     adjacent_cells: vec![],
                     cell_type: CellType::Grass,
@@ -160,10 +191,10 @@ impl Grid {
                 self.cells.push(cell);
                 self.next_cell_id += 1;
             }
-            
+
             if self.width % 2 == 0 {
                 dark = !dark;
-            } 
+            }
         }
 
         model.vertices.append(&mut vertices);
@@ -200,7 +231,7 @@ impl Grid {
 
         // TODO: If you are out of bounds do something else, like a -1 or something to signify.
         let cell_id = cell_z * self.width + cell_x + 1;
-        
+
         self.cells.get(cell_id)
     }
 
@@ -223,5 +254,4 @@ impl Grid {
             .save("resources/textures/grid_height.png")
             .expect("Failed to save grid height");
     }
-
 }

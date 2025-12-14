@@ -1,9 +1,31 @@
 use std::borrow::Cow;
 
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
-use imgui::{sys::{ImGuiKey, ImGuiKey_Backspace}, Drag, Io, Ui};
+use imgui::{
+    sys::{ImGuiKey, ImGuiKey_Backspace},
+    Drag, Io, Ui,
+};
 
-use crate::{animation::animation::Animator, camera::Camera, config::{emitter_data::{EmitterBlackboard, UiEmitterBlackboard}, entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, particles::ParticleSystem, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, ui::message_queue::{MessageQueue, UiMessage}, util::data_structure::HashMapGetPairMut};
+use crate::{
+    animation::animation::Animator,
+    camera::Camera,
+    config::{
+        emitter_data::{EmitterBlackboard, UiEmitterBlackboard},
+        entity_config::{EntityTypeHelper, UiEntityTypeHelper},
+        world_data::{EntityInstance, WorldData},
+    },
+    entity_manager::EntityManager,
+    enums_types::{CameraState, EntityType, Faction, SoundType},
+    gl_call,
+    input::InputState,
+    lights::Lights,
+    particles::ParticleSystem,
+    physics::PhysicsState,
+    renderer::Renderer,
+    sound::sound_manager::SoundManager,
+    ui::message_queue::{MessageQueue, UiMessage},
+    util::data_structure::HashMapGetPairMut,
+};
 
 pub struct ParticleEditor {
     pub new_emitters: Vec<UiEmitterBlackboard>,
@@ -22,14 +44,14 @@ pub struct ParticleEditor {
 
 impl ParticleEditor {
     pub fn draw(
-        &mut self, 
-        ui: &mut Ui, 
+        &mut self,
+        ui: &mut Ui,
         em: &mut EntityManager,
         ps: &mut PhysicsState,
         rdr: &mut Renderer,
         lm: &mut Lights,
         sm: &mut SoundManager,
-        input:  &mut InputState,
+        input: &mut InputState,
         size: &[f32; 2],
         particles: &mut ParticleSystem,
         dt: f32,
@@ -48,12 +70,9 @@ impl ParticleEditor {
 
                 emitter_types.sort_unstable();
 
-                ui.combo(
-                    "Emitter Types",
-                    &mut self.em_idx,
-                    &emitter_types,
-                    |s| Cow::Borrowed(&s),
-                );
+                ui.combo("Emitter Types", &mut self.em_idx, &emitter_types, |s| {
+                    Cow::Borrowed(&s)
+                });
 
                 ui.separator();
                 ui.text("Create a new Emitter ");
@@ -75,21 +94,47 @@ impl ParticleEditor {
                         input.ray_just_hit = false;
                     }
 
-                    if Drag::new("Emitter Position").speed(0.1).build_array(ui, &mut self.new_pos) {};
-                    if Drag::new("Emitter Direction").speed(0.1).build_array(ui, &mut new_emitter.direction) {};
+                    if Drag::new("Emitter Position")
+                        .speed(0.1)
+                        .build_array(ui, &mut self.new_pos)
+                    {};
+                    if Drag::new("Emitter Direction")
+                        .speed(0.1)
+                        .build_array(ui, &mut new_emitter.direction)
+                    {};
 
-                    ui.input_text("Emitter Name", &mut new_emitter.name)
-                        .build();
+                    ui.input_text("Emitter Name", &mut new_emitter.name).build();
 
-                    if Drag::new("Angle Range").speed(0.1).build_array(ui, &mut new_emitter.angle_rand) {};
-                    if Drag::new("Radius Range").speed(0.1).build_array(ui, &mut new_emitter.radius_rand) {};
-                    if Drag::new("Jitter").speed(0.1).build_array(ui, &mut new_emitter.jitter) {};
+                    if Drag::new("Angle Range")
+                        .speed(0.1)
+                        .build_array(ui, &mut new_emitter.angle_rand)
+                    {};
+                    if Drag::new("Radius Range")
+                        .speed(0.1)
+                        .build_array(ui, &mut new_emitter.radius_rand)
+                    {};
+                    if Drag::new("Jitter")
+                        .speed(0.1)
+                        .build_array(ui, &mut new_emitter.jitter)
+                    {};
 
-                    if Drag::new("Gravity").speed(0.1).build(ui, &mut new_emitter.gravity) {};
+                    if Drag::new("Gravity")
+                        .speed(0.1)
+                        .build(ui, &mut new_emitter.gravity)
+                    {};
 
-                    if Drag::new("Radial Speed").speed(0.1).build_array(ui, &mut new_emitter.radial_speed) {};
-                    if Drag::new("Upward Speed").speed(0.1).build_array(ui, &mut new_emitter.up_speed) {};
-                    if Drag::new("Particle Lifetime").speed(0.01).build_array(ui, &mut new_emitter.particle_lifetime) {};
+                    if Drag::new("Radial Speed")
+                        .speed(0.1)
+                        .build_array(ui, &mut new_emitter.radial_speed)
+                    {};
+                    if Drag::new("Upward Speed")
+                        .speed(0.1)
+                        .build_array(ui, &mut new_emitter.up_speed)
+                    {};
+                    if Drag::new("Particle Lifetime")
+                        .speed(0.01)
+                        .build_array(ui, &mut new_emitter.particle_lifetime)
+                    {};
                     //if Drag::new("Particle Scale").speed(0.001).build_array(ui, &mut new_emitter.particle_scale) {};
 
                     ui.input_int("Particle Count", &mut new_emitter.particle_count)
@@ -98,12 +143,15 @@ impl ParticleEditor {
                     ui.input_int("PPS (continuous emitter)", &mut new_emitter.pps)
                         .build();
 
-                    if Drag::new("Particle Color").speed(0.01).build_array(ui, &mut self.current_color) {};
+                    if Drag::new("Particle Color")
+                        .speed(0.01)
+                        .build_array(ui, &mut self.current_color)
+                    {};
 
                     if ui.button("Add color") {
                         let base = Vec4::from_array(self.current_color);
-                        let rgb  = base.truncate() * self.color_intensity; // Vec3
-                        let a    = base.w; // keep alpha
+                        let rgb = base.truncate() * self.color_intensity; // Vec3
+                        let a = base.w; // keep alpha
 
                         new_emitter.colors.push([rgb.x, rgb.y, rgb.z, a]);
                     }
@@ -119,22 +167,20 @@ impl ParticleEditor {
                         preview_rgb.x, // now in [0,1] but same hue
                         preview_rgb.y,
                         preview_rgb.z,
-                        base.w,        // or 1.0 if you want
+                        base.w, // or 1.0 if you want
                     ];
 
                     ui.color_button("##new color preview", preview);
 
-                    if Drag::new("Color Intensity").speed(0.1).build(ui, &mut self.color_intensity) {};
+                    if Drag::new("Color Intensity")
+                        .speed(0.1)
+                        .build(ui, &mut self.color_intensity)
+                    {};
 
-                    ui.combo(
-                        "Colors",
-                        &mut self.clr_idx,
-                        &new_emitter.colors,
-                        |c| {
-                            let label = format!("{:.2}, {:.2}, {:.2}, {:.2}", c[0], c[1], c[2], c[3]);
-                            Cow::Owned(label)
-                        },
-                    );
+                    ui.combo("Colors", &mut self.clr_idx, &new_emitter.colors, |c| {
+                        let label = format!("{:.2}, {:.2}, {:.2}, {:.2}", c[0], c[1], c[2], c[3]);
+                        Cow::Owned(label)
+                    });
 
                     if let Some(color) = new_emitter.colors.get(self.clr_idx) {
                         ui.color_button(
@@ -156,14 +202,35 @@ impl ParticleEditor {
 
                     ui.checkbox("Texture Has Alpha", &mut new_emitter.texture_has_alpha);
 
+                    if Drag::new("Start Alpha")
+                        .speed(0.01)
+                        .build_array(ui, &mut new_emitter.base_alpha)
+                    {};
+                    if Drag::new("Alpha Multiplier")
+                        .speed(0.01)
+                        .build(ui, &mut new_emitter.alpha_multiplier)
+                    {};
+                    ui.slider(
+                        "Alpha Curve (1.0 is linear)",
+                        0.0,
+                        1.0,
+                        &mut new_emitter.alpha_power,
+                    );
 
-                    if Drag::new("Start Alpha").speed(0.01).build_array(ui, &mut new_emitter.base_alpha) {};
-                    if Drag::new("Alpha Multiplier").speed(0.01).build(ui, &mut new_emitter.alpha_multiplier) {};
-                    ui.slider("Alpha Curve (1.0 is linear)", 0.0, 1.0, &mut new_emitter.alpha_power);
-
-                    if Drag::new("Start Scale").speed(0.001).build_array(ui, &mut new_emitter.base_scale) {};
-                    if Drag::new("Scale Multiplier").speed(0.001).build(ui, &mut new_emitter.scale_multiplier) {};
-                    ui.slider("Scale Curve (1.0 is linear)", 0.0, 1.0, &mut new_emitter.scale_power);
+                    if Drag::new("Start Scale")
+                        .speed(0.001)
+                        .build_array(ui, &mut new_emitter.base_scale)
+                    {};
+                    if Drag::new("Scale Multiplier")
+                        .speed(0.001)
+                        .build(ui, &mut new_emitter.scale_multiplier)
+                    {};
+                    ui.slider(
+                        "Scale Curve (1.0 is linear)",
+                        0.0,
+                        1.0,
+                        &mut new_emitter.scale_power,
+                    );
 
                     id_token.pop();
                     ui.separator();
@@ -178,16 +245,19 @@ impl ParticleEditor {
                     let id_token = ui.push_id(format!("{}", i));
 
                     let final_colors: Vec<Vec4> = if new_emitter.colors.len() > 0 {
-                        new_emitter.colors.iter().map(|arr| Vec4::from_array(*arr)).collect()
+                        new_emitter
+                            .colors
+                            .iter()
+                            .map(|arr| Vec4::from_array(*arr))
+                            .collect()
                     } else {
                         let v = Vec4::from_array(self.current_color);
-                        vec![ 
-                            Vec4::new(
-                                v.x * self.color_intensity,
-                                v.y * self.color_intensity,
-                                v.z * self.color_intensity,
-                                1.0,)
-                        ]
+                        vec![Vec4::new(
+                            v.x * self.color_intensity,
+                            v.y * self.color_intensity,
+                            v.z * self.color_intensity,
+                            1.0,
+                        )]
                     };
 
                     let texture_path = if new_emitter.texture_path.is_empty() {
@@ -256,26 +326,30 @@ impl ParticleEditor {
                                 self.did_render = true;
                             }
                         }
-                    } 
+                    }
 
                     self.payloads.push(payload);
 
                     id_token.pop();
                 }
 
-
-
                 if ui.checkbox("Render Emitters", &mut self.do_render) {
-                    message_queue.send(UiMessage::RenderStagedEmitters { do_it: self.do_render })
+                    message_queue.send(UiMessage::RenderStagedEmitters {
+                        do_it: self.do_render,
+                    })
                 };
-
 
                 if ui.button("Save ") {
                     for payload in self.payloads.iter() {
                         if !payload.name.is_empty() {
                             if !emitter_types.contains(&payload.name) {
-                                particles.emitter_data.one_shot_data.insert(payload.name.clone(), payload.clone());
-                                particles.emitter_data.write_to_file("config/particle_emitters.toml");
+                                particles
+                                    .emitter_data
+                                    .one_shot_data
+                                    .insert(payload.name.clone(), payload.clone());
+                                particles
+                                    .emitter_data
+                                    .write_to_file("config/particle_emitters.toml");
                             } else {
                                 eprintln!("[Warning] emitter not saved, name was already taken.");
                             }
@@ -288,9 +362,6 @@ impl ParticleEditor {
                     self.did_render = false;
                 }
                 self.timer += dt;
-
-
-
             });
     }
 }
@@ -298,7 +369,7 @@ impl ParticleEditor {
 impl Default for ParticleEditor {
     fn default() -> Self {
         Self {
-            new_emitters: vec![ UiEmitterBlackboard::default() ],
+            new_emitters: vec![UiEmitterBlackboard::default()],
 
             em_idx: 0,
             new_pos: [0.0, 0.0, 0.0],
