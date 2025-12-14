@@ -1,38 +1,41 @@
-//! Game UI Manager - manages the Slint-based game UI (pause menu, HUD, etc.)
-//!
 //! This is separate from EngineUiManager which handles the engine/editor UI.
-//! GameUiManager creates its own MinimalSoftwareWindow for independent rendering.
 
-use std::cell::Cell;
 use std::rc::Rc;
 
 use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgbaColor};
 use slint::platform::PointerEventButton;
 use slint::platform::WindowEvent as SlintWindowEvent;
-use slint::{ComponentHandle, LogicalPosition, PhysicalSize};
+use slint::{LogicalPosition, PhysicalSize};
 use winit::event::WindowEvent;
 
 use crate::entity_manager::EntityManager;
 use crate::gl_call;
 use crate::input::InputState;
 use crate::shaders::Shader;
-use crate::ui::message_queue::{MessageQueue, UiMessage};
+use crate::ui::game::views::{PauseMenuContext, PauseMenuView};
+use crate::ui::message_queue::MessageQueue;
 
-slint::include_modules!();
-
-/// Context for pause menu update - contains mutable references to game state
-pub struct PauseMenuContext<'a> {
+/// View-specific data for the pause menu.
+pub struct PauseMenuData<'a> {
     pub paused: &'a mut bool,
     pub render_gizmos: &'a mut bool,
+}
+
+/// Context for GameUiManager::update() - contains all state that UI views may need.
+/// This is the public API that game.rs uses; view-specific contexts are internal.
+pub struct GameUiUpdateContext<'a> {
+    // shared across all views
     pub message_queue: &'a mut MessageQueue,
     pub entity_manager: &'a EntityManager,
+
+    // view-specific data (grouped)
+    pub pause_menu: PauseMenuData<'a>,
 }
 
 /// Manages the Slint-based game UI as an overlay on top of the OpenGL scene.
 /// Uses software rendering to a pixel buffer, which is then uploaded to a GL texture.
 pub struct GameUiManager {
     window: Rc<MinimalSoftwareWindow>,
-    game_ui: GameUI,
     pixel_buffer: Vec<PremultipliedRgbaColor>,
     width: u32,
     height: u32,
@@ -41,29 +44,19 @@ pub struct GameUiManager {
     needs_texture_resize: bool,
     overlay_vao: u32,
     overlay_vbo: u32,
-    // Callback state (using Cell for interior mutability in callbacks)
-    close_pending: Rc<Cell<bool>>,
-    gizmo_pending: Rc<Cell<bool>>,
-    reload_pending: Rc<Cell<bool>>,
-    save_pending: Rc<Cell<bool>>,
-    quit_pending: Rc<Cell<bool>>,
+    // UI views
+    pause_menu_view: PauseMenuView,
 }
 
 impl GameUiManager {
     /// Create a new GameUiManager. Must be called AFTER EngineUiManager (platform must be initialized).
     pub fn new(width: u32, height: u32) -> Self {
-        // Create the GameUI component - this creates a new window via the platform
-        let game_ui = GameUI::new().unwrap();
-
-        // Get the window that was created for this component
-        let window = crate::ui::slint_platform::get_last_created_window()
-            .expect("Expected window to be created for GameUI");
-        window.set_size(PhysicalSize::new(width, height));
+        let (pause_menu_view, window) = PauseMenuView::new(width, height);
 
         let pixel_count = (width * height) as usize;
         let pixel_buffer = vec![PremultipliedRgbaColor::default(); pixel_count];
 
-        // Create GL texture
+        // create GL texture
         let gl_texture = unsafe {
             let mut tex = 0u32;
             gl_call!(gl::GenTextures(1, &mut tex));
@@ -103,7 +96,7 @@ impl GameUiManager {
             tex
         };
 
-        // Create VAO/VBO for fullscreen quad overlay
+        // create VAO/VBO for fullscreen quad overlay
         let (overlay_vao, overlay_vbo) = unsafe {
             let mut vao = 0u32;
             let mut vbo = 0u32;
@@ -146,53 +139,8 @@ impl GameUiManager {
             (vao, vbo)
         };
 
-        // Create callback state cells
-        let close_pending = Rc::new(Cell::new(false));
-        let gizmo_pending = Rc::new(Cell::new(false));
-        let reload_pending = Rc::new(Cell::new(false));
-        let save_pending = Rc::new(Cell::new(false));
-        let quit_pending = Rc::new(Cell::new(false));
-
-        // Set up callbacks
-        {
-            let close = close_pending.clone();
-            game_ui.on_close_clicked(move || {
-                println!("[GameUI] Close clicked!");
-                close.set(true);
-            });
-        }
-        {
-            let gizmo = gizmo_pending.clone();
-            game_ui.on_gizmo_clicked(move || {
-                println!("[GameUI] Gizmo clicked!");
-                gizmo.set(true);
-            });
-        }
-        {
-            let reload = reload_pending.clone();
-            game_ui.on_reload_world_clicked(move || {
-                println!("[GameUI] Reload clicked!");
-                reload.set(true);
-            });
-        }
-        {
-            let save = save_pending.clone();
-            game_ui.on_save_player_clicked(move || {
-                println!("[GameUI] Save clicked!");
-                save.set(true);
-            });
-        }
-        {
-            let quit = quit_pending.clone();
-            game_ui.on_quit_clicked(move || {
-                println!("[GameUI] Quit clicked!");
-                quit.set(true);
-            });
-        }
-
         Self {
             window,
-            game_ui,
             pixel_buffer,
             width,
             height,
@@ -201,11 +149,7 @@ impl GameUiManager {
             needs_texture_resize: false,
             overlay_vao,
             overlay_vbo,
-            close_pending,
-            gizmo_pending,
-            reload_pending,
-            save_pending,
-            quit_pending,
+            pause_menu_view,
         }
     }
 
@@ -271,38 +215,17 @@ impl GameUiManager {
         self.needs_texture_resize = true;
     }
 
-    /// Update the UI each frame. Handles all pause menu actions internally.
-    pub fn update(&mut self, ctx: PauseMenuContext) {
-        self.game_ui.set_show_pause_menu(*ctx.paused);
-
-        // Process Slint timers and animations FIRST so callbacks can execute
+    /// Update the UI each frame. Delegates to individual view components.
+    pub fn update(&mut self, ctx: GameUiUpdateContext) {
         slint::platform::update_timers_and_animations();
 
-        // Handle close menu
-        if self.close_pending.replace(false) {
-            *ctx.paused = false;
-        }
-
-        // Handle toggle gizmo rendering
-        if self.gizmo_pending.replace(false) {
-            *ctx.render_gizmos = !*ctx.render_gizmos;
-        }
-
-        // Handle reload world data
-        if self.reload_pending.replace(false) {
-            ctx.message_queue.send(UiMessage::ReloadWorldData);
-        }
-
-        // Handle save player data
-        if self.save_pending.replace(false) {
-            ctx.entity_manager
-                .serialize_entity_data("config/player_data.json");
-        }
-
-        // Handle quit game
-        if self.quit_pending.replace(false) {
-            ctx.message_queue.send(UiMessage::WindowShouldClose);
-        }
+        let pause_ctx = PauseMenuContext {
+            paused: ctx.pause_menu.paused,
+            render_gizmos: ctx.pause_menu.render_gizmos,
+            message_queue: ctx.message_queue,
+            entity_manager: ctx.entity_manager,
+        };
+        self.pause_menu_view.update(pause_ctx);
     }
 
     /// Render the UI to the internal pixel buffer and upload to GL texture.
