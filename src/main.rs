@@ -35,6 +35,7 @@ use std::{
     path::Path,
 };
 
+use config::game_config::GameConfig;
 use game::Game;
 
 use glam::Quat;
@@ -119,9 +120,16 @@ impl ApplicationHandler for App {
 }
 
 fn main() {
-    let (platform, event_loop) = Platform::new("Spaghetti engine", 1280, 720, false);
+    let config = GameConfig::load_or_create_default("config/game_config.json");
 
-    let game = Game::new(platform);
+    let (platform, event_loop) = Platform::new(
+        &config.game_title,
+        config.win_width as u32,
+        config.win_height as u32,
+        config.vsync,
+    );
+
+    let game = Game::new(platform, config);
     let mut app = App::new(game);
 
     event_loop.run_app(&mut app).expect("event loop error");

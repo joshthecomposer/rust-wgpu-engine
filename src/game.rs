@@ -43,9 +43,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(platform: Platform) -> Self {
-        let config = GameConfig::load_from_file("config/game_config.json");
-
+    pub fn new(platform: Platform, config: GameConfig) -> Self {
         let start_seconds = 0.0;
         let time = Time::new(60.0, start_seconds);
 
