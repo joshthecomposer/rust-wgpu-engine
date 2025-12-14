@@ -38,7 +38,7 @@ pub struct Game {
     // imgui_manager: ImguiManager,
     pub paused: bool,
     message_queue: MessageQueue,
-    engine_ui: EngineUiManager,
+    //engine_ui: EngineUiManager,
     game_ui: GameUiManager,
     pub should_quit: bool,
     imgui_manager: ImguiManager,
@@ -74,7 +74,7 @@ impl Game {
             ui,
             paused: false,
             message_queue: MessageQueue::new(),
-            engine_ui,
+            //engine_ui,
             game_ui,
             should_quit: false,
             imgui_manager,
@@ -197,24 +197,12 @@ impl Game {
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
-        self.engine_ui.handle_window_event(&event, &mut self.input);
-
+        self.game_ui.handle_window_event(event, &mut self.input);
         self.imgui_manager.handle_imgui_event(event);
-
-        // Forward events to game UI when paused
-        if self.paused {
-            self.game_ui.handle_window_event(&event, &mut self.input);
-        }
-
-        // Process events for the game (keyboard, mouse, etc.)
-
-        // TODO: Currently we always process game events regardless of UI consumption.
-        // however, if Slint UI has focused elements we may want to skip game input
         match event {
             WindowEvent::Resized(size) => {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
-                self.game_ui.resize(size.width, size.height);
             }
 
             WindowEvent::DroppedFile(path) => {
@@ -366,26 +354,6 @@ impl Game {
             }
         }
 
-        let screen_size = glam::vec2(
-            self.platform.fb_width as f32,
-            self.platform.fb_height as f32,
-        );
-
-        self.engine_ui.update(
-            &mut self.world.ecs,
-            self.world.camera.move_state,
-            &mut self.world.lights,
-            &mut self.renderer,
-            &mut self.sound,
-            &mut self.input,
-            &mut self.physics,
-            &self.world.camera,
-            screen_size,
-            &mut self.world.particles,
-            self.time.dt,
-            &mut self.message_queue,
-        );
-
         // Update game UI (pause menu) and handle actions
         self.game_ui.update(PauseMenuContext {
             paused: &mut self.paused,
@@ -423,11 +391,6 @@ impl Game {
             &mut self.input,
             &mut self.world.particles,
             &mut self.message_queue,
-        );
-
-        self.engine_ui.render(
-            self.renderer.shaders.get_mut(&ShaderType::UiOverlay).unwrap(),
-            &self.world.camera,
         );
 
         if self.paused {

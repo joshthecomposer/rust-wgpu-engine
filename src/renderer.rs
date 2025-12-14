@@ -1035,6 +1035,7 @@ impl Renderer {
                 gl::FRAMEBUFFER,
                 *self.fbos.get(&FboType::DepthMap).unwrap()
             ));
+            gl_call!(gl::Enable(gl::DEPTH_TEST));
             gl_call!(gl::Clear(gl::DEPTH_BUFFER_BIT));
             // Render scene
             gl_call!(gl::Enable(CULL_FACE));
