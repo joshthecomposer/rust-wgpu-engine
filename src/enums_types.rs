@@ -186,6 +186,7 @@ pub enum CameraState {
     Free,
     Third,
     Locked,
+    SlintSandbox,
 }
 
 #[derive(Clone, Debug)]

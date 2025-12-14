@@ -15,6 +15,7 @@ use winit::event::WindowEvent;
 use crate::entity_manager::EntityManager;
 use crate::gl_call;
 use crate::input::InputState;
+use crate::shaders::Shader;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 
 slint::include_modules!();
@@ -305,7 +306,7 @@ impl GameUiManager {
     }
 
     /// Render the UI to the internal pixel buffer and upload to GL texture.
-    pub fn render(&mut self) {
+    pub fn render(&mut self, shader: &mut Shader) {
         if self.needs_texture_resize {
             unsafe {
                 gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.gl_texture));
@@ -346,6 +347,9 @@ impl GameUiManager {
             ));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
         }
+        
+        self.draw_overlay(shader);
+
     }
 
     /// Draw the UI overlay on screen.

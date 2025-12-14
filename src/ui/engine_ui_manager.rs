@@ -19,8 +19,10 @@ use crate::lights::Lights;
 use crate::particles::ParticleSystem;
 use crate::physics::PhysicsState;
 use crate::renderer::Renderer;
+use crate::shaders::Shader;
 use crate::some_data::GROUP_TERRAIN;
 use crate::sound::sound_manager::SoundManager;
+use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::ui::slint_platform::init_slint_platform;
 
 slint::include_modules!();
@@ -67,6 +69,7 @@ pub struct EngineUiManager {
     overlay_vao: u32,
     overlay_vbo: u32,
     ui_consumed_click: bool,
+
     // Particle editor state (for Slint-based editor, mirroring old ImGui behavior)
     particle_timer: f32,
     particle_did_render: bool,
@@ -216,9 +219,9 @@ impl EngineUiManager {
         let player_panel = (10.0, 10.0, 330.0, player_panel_height);
 
         if x >= player_panel.0
-            && x <= player_panel.0 + player_panel.2
-            && y >= player_panel.1
-            && y <= player_panel.1 + player_panel.3
+        && x <= player_panel.0 + player_panel.2
+        && y >= player_panel.1
+        && y <= player_panel.1 + player_panel.3
         {
             return true;
         }
@@ -228,9 +231,9 @@ impl EngineUiManager {
             let editor_panel = (10.0, editor_y, 390.0, 500.0);
 
             if x >= editor_panel.0
-                && x <= editor_panel.0 + editor_panel.2
-                && y >= editor_panel.1
-                && y <= editor_panel.1 + editor_panel.3
+            && x <= editor_panel.0 + editor_panel.2
+            && y >= editor_panel.1
+            && y <= editor_panel.1 + editor_panel.3
             {
                 return true;
             }
@@ -249,9 +252,9 @@ impl EngineUiManager {
             let particle_panel = (panel_x, 10.0, 420.0, panel_height);
 
             if x >= particle_panel.0
-                && x <= particle_panel.0 + particle_panel.2
-                && y >= particle_panel.1
-                && y <= particle_panel.1 + particle_panel.3
+            && x <= particle_panel.0 + particle_panel.2
+            && y >= particle_panel.1
+            && y <= particle_panel.1 + particle_panel.3
             {
                 return true;
             }
@@ -363,6 +366,7 @@ impl EngineUiManager {
         screen_size: Vec2,
         particles: &mut ParticleSystem,
         dt: f32,
+        message_queue: &mut MessageQueue,
     ) {
         self.update_player_data(em);
 
@@ -381,7 +385,7 @@ impl EngineUiManager {
             }
 
             self.update_entity_editor(em, lights, renderer, sound_manager);
-            self.update_particle_editor(particles, input, dt);
+            self.update_particle_editor(particles, input, dt, message_queue);
 
             if self.editor_state.create_mode {
                 if let Some(hit_pos) = last_terrain_hit {
@@ -725,6 +729,7 @@ impl EngineUiManager {
         particles: &mut ParticleSystem,
         _input: &mut InputState,
         dt: f32,
+        message_queue: &mut MessageQueue,
     ) {
         let mut emitter_types: Vec<String> = particles
             .emitter_data
@@ -760,7 +765,11 @@ impl EngineUiManager {
 
         let do_render = self.engine_ui.get_pe_do_render();
         let just_enabled = do_render && !self.last_pe_do_render;
-        particles.render_staged_emitters = do_render;
+        let changed = do_render != self.last_pe_do_render;
+
+        if changed {
+            message_queue.send(UiMessage::RenderStagedEmitters {do_it: do_render});
+        }
 
         if do_render {
             let origin = Vec3::new(
@@ -823,46 +832,52 @@ impl EngineUiManager {
 
     /// Render the UI to the internal pixel buffer and upload to GL texture.
     /// Call this after update() but before drawing the overlay.
-    pub fn render(&mut self) {
-        // resize GL texture if needed
-        if self.needs_texture_resize {
-            unsafe {
-                gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.gl_texture));
-                gl_call!(gl::TexImage2D(
-                    gl::TEXTURE_2D,
-                    0,
-                    gl::RGBA as i32,
-                    self.width as i32,
-                    self.height as i32,
-                    0,
-                    gl::RGBA,
-                    gl::UNSIGNED_BYTE,
-                    std::ptr::null(),
-                ));
-                gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            }
-            self.needs_texture_resize = false;
-        }
+    pub fn render(&mut self, shader: &mut Shader, camera: &Camera) {
+        match camera.move_state {
+            CameraState::SlintSandbox => {
+                if self.needs_texture_resize {
+                    unsafe {
+                        gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.gl_texture));
+                        gl_call!(gl::TexImage2D(
+                            gl::TEXTURE_2D,
+                            0,
+                            gl::RGBA as i32,
+                            self.width as i32,
+                            self.height as i32,
+                            0,
+                            gl::RGBA,
+                            gl::UNSIGNED_BYTE,
+                            std::ptr::null(),
+                        ));
+                        gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+                    }
+                    self.needs_texture_resize = false;
+                }
 
-        self.window.draw_if_needed(|renderer| {
-            renderer.render(&mut self.pixel_buffer, self.width as usize);
-        });
+                self.window.draw_if_needed(|renderer| {
+                    renderer.render(&mut self.pixel_buffer, self.width as usize);
+                });
 
-        // upload to GL texture
-        unsafe {
-            gl::BindTexture(gl::TEXTURE_2D, self.gl_texture);
-            gl::TexSubImage2D(
-                gl::TEXTURE_2D,
-                0,
-                0,
-                0,
-                self.width as i32,
-                self.height as i32,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                self.pixel_buffer.as_ptr() as *const _,
-            );
-            gl::BindTexture(gl::TEXTURE_2D, 0);
+                // upload to GL texture
+                unsafe {
+                    gl::BindTexture(gl::TEXTURE_2D, self.gl_texture);
+                    gl::TexSubImage2D(
+                        gl::TEXTURE_2D,
+                        0,
+                        0,
+                        0,
+                        self.width as i32,
+                        self.height as i32,
+                        gl::RGBA,
+                        gl::UNSIGNED_BYTE,
+                        self.pixel_buffer.as_ptr() as *const _,
+                    );
+                    gl::BindTexture(gl::TEXTURE_2D, 0);
+                }
+
+                self.draw_overlay(shader);
+            },
+            _ => {},
         }
     }
 

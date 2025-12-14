@@ -149,11 +149,11 @@ impl Camera {
                     self.forward = (self.target - self.position).normalize();
                 }
             }
-            CameraState::Locked => {
+            CameraState::Locked | CameraState::SlintSandbox => {
                 self.target = self.locked_target;
                 self.position = self.locked_position;
                 self.forward = (self.target - self.position).normalize();
-            }
+            },
         }
 
         self.right = self.forward.cross(vec3(0.0, 1.0, 0.0)).normalize();
@@ -169,7 +169,7 @@ impl Camera {
         );
 
         match self.move_state {
-            CameraState::Free | CameraState::Locked => {
+            CameraState::Free | CameraState::Locked | CameraState::SlintSandbox => {
                 let p = self.prev_pos.lerp(self.position, alpha);
                 let f = self.prev_forward.lerp(self.forward, alpha).normalize();
                 let r = f.cross(glam::Vec3::Y).normalize();
@@ -228,6 +228,7 @@ impl Camera {
 
                 self.update_direction_from_angles();
             },
+            CameraState::SlintSandbox => {},
         }
     }
 
@@ -241,7 +242,8 @@ impl Camera {
             CameraState::Third => {
             }
             CameraState::Locked => {
-                
+            }
+            CameraState::SlintSandbox => {
             }
         }
     }

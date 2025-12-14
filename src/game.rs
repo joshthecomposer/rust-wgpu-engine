@@ -20,6 +20,7 @@ use crate::time::Time;
 use crate::ui::engine_ui_manager::EngineUiManager;
 use crate::ui::game_ui::{do_ui, GameUiContext};
 use crate::ui::game_ui_manager::{GameUiManager, PauseMenuContext};
+use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
 use crate::world::World;
@@ -39,7 +40,8 @@ pub struct Game {
     message_queue: MessageQueue,
     engine_ui: EngineUiManager,
     game_ui: GameUiManager,
-    should_quit: bool,
+    pub should_quit: bool,
+    imgui_manager: ImguiManager,
 }
 
 impl Game {
@@ -61,6 +63,8 @@ impl Game {
         // GameUiManager must be created AFTER EngineUiManager (platform must be initialized first)
         let game_ui = GameUiManager::new(platform.fb_width, platform.fb_height);
 
+        let imgui_manager = ImguiManager::new(&platform);
+
         Self {
             platform,
             time,
@@ -75,19 +79,17 @@ impl Game {
             engine_ui,
             game_ui,
             should_quit: false,
+            imgui_manager,
         }
-    }
-
-    /// Returns true if the game should quit (e.g., user clicked Quit Game button)
-    pub fn should_quit(&self) -> bool {
-        self.should_quit
     }
 
     pub fn tick(&mut self, now_seconds: f32) {
         self.time.begin_frame(now_seconds);
 
         // Mouse lock / cursor mode
-        if self.paused || self.world.camera.move_state == CameraState::Locked {
+        if self.paused 
+            || self.world.camera.move_state == CameraState::Locked 
+            || self.world.camera.move_state == CameraState::SlintSandbox {
             self.platform.window.set_cursor_visible(true);
             let _ = self.platform.window.set_cursor_grab(CursorGrabMode::None);
             self.platform.cursor_mode = CursorMode::Normal;
@@ -197,7 +199,9 @@ impl Game {
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
-        let _ui_consumed = self.engine_ui.handle_window_event(&event, &mut self.input);
+        self.engine_ui.handle_window_event(&event, &mut self.input);
+
+        self.imgui_manager.handle_imgui_event(event);
 
         // Forward events to game UI when paused
         if self.paused {
@@ -205,13 +209,33 @@ impl Game {
         }
 
         // Process events for the game (keyboard, mouse, etc.)
-        // Note: Currently we always process game events regardless of UI consumption.
-        // If Slint UI has focused elements (e.g., text input), you may want to skip game input.
+
+        // TODO: Currently we always process game events regardless of UI consumption.
+        // however, if Slint UI has focused elements we may want to skip game input
         match event {
             WindowEvent::Resized(size) => {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
                 self.game_ui.resize(size.width, size.height);
+            }
+
+            WindowEvent::DroppedFile(path) => {
+                let path = Path::new(path);
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    match ext {
+                        "txt" => {
+                            self.imgui_manager.entity_editor.new_archetype.mesh_path =
+                                path.to_string_lossy().into_owned();
+                        }
+                        "png" | "jpg" | "jpeg" => {
+                            self.imgui_manager.entity_editor.new_archetype.texture_path =
+                                path.to_string_lossy().into_owned();
+                            self.imgui_manager.particle_editor.staged_texture =
+                                path.to_string_lossy().into_owned();
+                        }
+                        _ => {}
+                    }
+                }
             }
 
             WindowEvent::CloseRequested => {}
@@ -223,35 +247,39 @@ impl Game {
                 self.input.mouse_pos_current = glam::vec2(position.x as f32, position.y as f32);
             }
 
-            WindowEvent::MouseInput { state, button, .. } => match state {
-                ElementState::Pressed => {
-                    self.input.mouse_current.insert(*button);
+            WindowEvent::MouseInput { state, button, .. } => {
+                let io = self.imgui_manager.imgui.io();
+                if !io.want_capture_mouse {
+                    let fb = glam::vec2(
+                        self.platform.fb_width as f32,
+                        self.platform.fb_height as f32,
+                    );
+
+                    input::handle_mouse_input(
+                        *button,
+                        *state,
+                        fb,
+                        &self.world.camera,
+                        &mut self.world.ecs,
+                        &mut self.input,
+                        &mut self.physics,
+                    );
                 }
-                ElementState::Released => {
-                    self.input.mouse_current.remove(button);
-                }
-            },
+            }
 
             WindowEvent::KeyboardInput {
                 event:
-                    KeyEvent {
-                        physical_key,
-                        state,
-                        ..
-                    },
+                KeyEvent {
+                    physical_key,
+                    state,
+                    ..
+                },
                 ..
             } => {
                 if let PhysicalKey::Code(code) = physical_key {
                     let keycode: KeyCode = *code;
 
-                    match state {
-                        ElementState::Pressed => {
-                            self.input.keys_current.insert(keycode);
-                        }
-                        ElementState::Released => {
-                            self.input.keys_current.remove(&keycode);
-                        }
-                    }
+                    input::handle_keyboard_input(keycode, *state, &mut self.input);
 
                     if keycode == KeyCode::Escape && *state == ElementState::Pressed {
                         self.paused = !self.paused;
@@ -275,7 +303,8 @@ impl Game {
                                 }
                             }
                             CameraState::Third => CameraState::Locked,
-                            CameraState::Locked => CameraState::Free,
+                            CameraState::Locked => CameraState::SlintSandbox,
+                            CameraState::SlintSandbox => CameraState::Free,
                         };
                     }
                 }
@@ -300,42 +329,50 @@ impl Game {
 
         let msgs = self.message_queue.drain();
 
-        if msgs.contains(&UiMessage::WindowShouldClose) {
-            self.should_quit = true;
-        }
+        for msg in msgs.iter() {
+            match msg {
+                UiMessage::WindowShouldClose => {
+                    self.should_quit = true;
+                },
+                UiMessage::RenderStagedEmitters { do_it } => {
+                    self.world.particles.render_staged_emitters = *do_it;
+                },
+                UiMessage::ReloadWorldData => {
+                    let mut world = World::new();
+                    let mut physics = PhysicsState::new();
 
-        if msgs.contains(&UiMessage::ReloadWorldData) {
-            let mut world = World::new();
-            let mut physics = PhysicsState::new();
+                    world.ecs.populate_entity_data(&mut physics);
 
-            world.ecs.populate_entity_data(&mut physics);
+                    // Cleanup 3d sounds
+                    {
+                        let keys: Vec<usize> = self.sound.active_3d_sounds.keys().cloned().collect();
 
-            // Cleanup 3d sounds
-            {
-                let keys: Vec<usize> = self.sound.active_3d_sounds.keys().cloned().collect();
+                        for id in keys {
+                            self.sound.cleanup_entity_sounds(id);
+                        }
+                    }
 
-                for id in keys {
-                    self.sound.cleanup_entity_sounds(id);
+                    // Cleanup 2d sounds
+                    {
+                        let sounds: Vec<SoundType> = self.sound.active_sounds.keys().cloned().collect();
+
+                        for sound in sounds {
+                            self.sound.stop_sound(&sound);
+                        }
+                    }
+
+                    self.world = world;
+                    self.physics = physics;
                 }
+                _ => {},
             }
-
-            // Cleanup 2d sounds
-            {
-                let sounds: Vec<SoundType> = self.sound.active_sounds.keys().cloned().collect();
-
-                for sound in sounds {
-                    self.sound.stop_sound(&sound);
-                }
-            }
-
-            self.world = world;
-            self.physics = physics;
         }
 
         let screen_size = glam::vec2(
             self.platform.fb_width as f32,
             self.platform.fb_height as f32,
         );
+
         self.engine_ui.update(
             &mut self.world.ecs,
             self.world.camera.move_state,
@@ -348,6 +385,7 @@ impl Game {
             screen_size,
             &mut self.world.particles,
             self.time.dt,
+            &mut self.message_queue,
         );
 
         // Update game UI (pause menu) and handle actions
@@ -360,8 +398,6 @@ impl Game {
     }
 
     pub fn render(&mut self) {
-        // unsafe { gl::Enable(gl::FRAMEBUFFER_SRGB); }
-
         self.renderer.draw(
             &self.world.ecs,
             &mut self.world.camera,
@@ -375,53 +411,29 @@ impl Game {
             &mut self.world.particles,
         );
 
-        // Fix for mac scaled pixels garbage.
-        let logical_size = self.platform.window.inner_size();
-        let win_w = logical_size.width as f32;
-        let win_h = logical_size.height as f32;
-
-        let fb_w = self.platform.fb_width as f32;
-        let fb_h = self.platform.fb_height as f32;
-
-        let sx = fb_w as f32 / win_w as f32;
-        let sy = fb_h as f32 / win_h as f32;
-
-        let mouse_fb = glam::vec2(
-            self.input.mouse_pos_current.x * sx,
-            self.input.mouse_pos_current.y * sy,
-        );
-
-        let (ui_shader, font_shader) = self
-            .renderer
-            .shaders
-            .get_pair_mut(&ShaderType::GameUi, &ShaderType::Text)
-            .unwrap();
-
-        do_ui(
-            self.platform.fb_width as f32,
-            self.platform.fb_height as f32,
-            mouse_fb,
-            ui_shader,
-            font_shader,
-            &mut self.message_queue,
-            &mut self.paused,
-            self.platform.cursor_mode,
-            &self.world.camera.move_state,
-            &mut self.ui,
-            &mut self.renderer.render_gizmos,
-            &mut self.input,
+        self.imgui_manager.draw(
+            &mut self.platform.window, 
+            self.platform.fb_width as f32, 
+            self.platform.fb_height as f32, 
+            self.time.dt, 
+            &mut self.world.lights, 
+            &mut self.renderer, 
+            &mut self.sound, 
+            &self.world.camera, 
             &mut self.world.ecs,
+            &mut self.physics,
+            &mut self.input,
+            &mut self.world.particles,
+            &mut self.message_queue,
         );
 
-        // Render Slint UI overlays
-        self.engine_ui.render();
-        let ui_overlay_shader = self.renderer.shaders.get(&ShaderType::UiOverlay).unwrap();
-        self.engine_ui.draw_overlay(ui_overlay_shader);
+        self.engine_ui.render(
+            self.renderer.shaders.get_mut(&ShaderType::UiOverlay).unwrap(),
+            &self.world.camera,
+        );
 
-        // Render game UI (pause menu) overlay when paused
         if self.paused {
-            self.game_ui.render();
-            self.game_ui.draw_overlay(ui_overlay_shader);
+            self.game_ui.render(self.renderer.shaders.get_mut(&ShaderType::UiOverlay).unwrap());
         }
 
         self.platform

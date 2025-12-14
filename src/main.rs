@@ -90,8 +90,7 @@ impl ApplicationHandler for App {
         let now = self.start.elapsed().as_secs_f32();
         self.game.tick(now);
 
-        // Check if game wants to quit
-        if self.game.should_quit() {
+        if self.game.should_quit {
             event_loop.exit();
             return;
         }
@@ -119,7 +118,7 @@ impl ApplicationHandler for App {
 }
 
 fn main() {
-    let (platform, event_loop) = Platform::new("Spaghetti engine", 1280, 720, false);
+    let (platform, event_loop) = Platform::new("Spaghetti engine", 1920, 1080, false);
 
     let game = Game::new(platform);
     let mut app = App::new(game);
