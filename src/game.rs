@@ -19,7 +19,7 @@ use crate::state_machines::state_machine_system;
 use crate::time::Time;
 use crate::ui::engine_ui_manager::EngineUiManager;
 use crate::ui::game_ui::{do_ui, GameUiContext};
-use crate::ui::game_ui_manager::{GameUiManager, PauseMenuContext};
+use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PauseMenuData};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::util::data_structure::{HashMapGetPair, HashMapGetPairMut};
@@ -353,12 +353,14 @@ impl Game {
             }
         }
 
-        // Update game UI (pause menu) and handle actions
-        self.game_ui.update(PauseMenuContext {
-            paused: &mut self.paused,
-            render_gizmos: &mut self.renderer.render_gizmos,
+        // update game UI (pause menu, etc.) and handle actions
+        self.game_ui.update(GameUiUpdateContext {
             message_queue: &mut self.message_queue,
             entity_manager: &self.world.ecs,
+            pause_menu: PauseMenuData {
+                paused: &mut self.paused,
+                render_gizmos: &mut self.renderer.render_gizmos,
+            },
         });
     }
 
