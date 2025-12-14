@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use imgui::{sys::{ImGuiKey, ImGuiKey_Backspace}, Drag, Io, Ui};
 
-use crate::{animation::animation::Animator, camera::Camera, config::{emitter_data::{EmitterBlackboard, UiEmitterBlackboard}, entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, particles::ParticleSystem, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, util::data_structure::HashMapGetPairMut};
+use crate::{animation::animation::Animator, camera::Camera, config::{emitter_data::{EmitterBlackboard, UiEmitterBlackboard}, entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, particles::ParticleSystem, physics::PhysicsState, renderer::Renderer, sound::sound_manager::SoundManager, ui::message_queue::{MessageQueue, UiMessage}, util::data_structure::HashMapGetPairMut};
 
 pub struct ParticleEditor {
     pub new_emitters: Vec<UiEmitterBlackboard>,
@@ -33,6 +33,7 @@ impl ParticleEditor {
         size: &[f32; 2],
         particles: &mut ParticleSystem,
         dt: f32,
+        message_queue: &mut MessageQueue,
     ) {
         ui.window("Particle Editor")
             .size([500.0, size[1]], imgui::Condition::FirstUseEver)
@@ -88,7 +89,7 @@ impl ParticleEditor {
 
                     if Drag::new("Radial Speed").speed(0.1).build_array(ui, &mut new_emitter.radial_speed) {};
                     if Drag::new("Upward Speed").speed(0.1).build_array(ui, &mut new_emitter.up_speed) {};
-                    if Drag::new("Particle Lifetime").speed(0.1).build_array(ui, &mut new_emitter.particle_lifetime) {};
+                    if Drag::new("Particle Lifetime").speed(0.01).build_array(ui, &mut new_emitter.particle_lifetime) {};
                     //if Drag::new("Particle Scale").speed(0.001).build_array(ui, &mut new_emitter.particle_scale) {};
 
                     ui.input_int("Particle Count", &mut new_emitter.particle_count)
@@ -264,8 +265,10 @@ impl ParticleEditor {
 
 
 
-                ui.checkbox("Render Emitters", &mut self.do_render);
-                particles.render_staged_emitters = self.do_render;
+                if ui.checkbox("Render Emitters", &mut self.do_render) {
+                    message_queue.send(UiMessage::RenderStagedEmitters { do_it: self.do_render })
+                };
+
 
                 if ui.button("Save ") {
                     for payload in self.payloads.iter() {

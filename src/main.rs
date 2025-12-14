@@ -91,8 +91,7 @@ impl ApplicationHandler for App {
         let now = self.start.elapsed().as_secs_f32();
         self.game.tick(now);
 
-        // Check if game wants to quit
-        if self.game.should_quit() {
+        if self.game.should_quit {
             event_loop.exit();
             return;
         }

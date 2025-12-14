@@ -13,7 +13,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{animation::animation::Animator, camera::Camera, config::{entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, particles::ParticleSystem, physics::PhysicsState, platform::Platform, renderer::Renderer, sound::sound_manager::SoundManager, ui::imgui_deprecated::{entity_editor::EntityEditor, particle_editor::ParticleEditor, player_data::PlayerData}, util::data_structure::HashMapGetPairMut};
+use crate::{animation::animation::Animator, camera::Camera, config::{entity_config::{EntityTypeHelper, UiEntityTypeHelper}, world_data::{EntityInstance, WorldData}}, entity_manager::EntityManager, enums_types::{CameraState, EntityType, Faction, SoundType}, gl_call, input::InputState, lights::Lights, particles::ParticleSystem, physics::PhysicsState, platform::Platform, renderer::Renderer, sound::sound_manager::SoundManager, ui::{imgui::{entity_editor::EntityEditor, particle_editor::ParticleEditor, player_data::PlayerData}, message_queue::MessageQueue}, util::data_structure::HashMapGetPairMut};
 
 pub struct ImguiManager {
     pub imgui: imgui::Context,
@@ -164,6 +164,7 @@ impl ImguiManager {
         ps: &mut PhysicsState, 
         input: &mut InputState,
         particles: &mut ParticleSystem,
+        message_queue: &mut MessageQueue,
     ) {
         {
             let io          = self.imgui.io_mut();
@@ -177,9 +178,9 @@ impl ImguiManager {
             // BUILD WINDOWS
             if camera.move_state == CameraState::Locked {
                 self.entity_editor.draw(ui, em, ps, rdr, lm, sm, input, &[width, height]);
-                self.particle_editor.draw(ui, em, ps, rdr, lm, sm, input, &[width, height], particles, delta);
+                self.particle_editor.draw(ui, em, ps, rdr, lm, sm, input, &[width, height], particles, delta, message_queue);
             } else {
-                self.player_data.draw(ui, em, &[width, height]);
+                //self.player_data.draw(ui, em, &[width, height]);
             }
         }
 
