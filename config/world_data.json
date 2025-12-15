@@ -4,15 +4,15 @@
       "entity_type": "TrashGuy",
       "faction": "Player",
       "position": [
-        -31.222769,
-        0.4072181,
-        -9.20572
+        -32.834538,
+        0.36338425,
+        -8.414044
       ],
       "rotation": [
         0.0,
-        0.41786706,
+        0.031410754,
         0.0,
-        0.9085082
+        0.9995066
       ],
       "weapons": [
         {
@@ -42,21 +42,42 @@
       "cleanup_timer": null
     },
     {
-      "entity_type": "BareBush1",
-      "faction": "World",
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
       "position": [
-        4.332,
-        0.431,
-        41.451
+        11.594356,
+        0.19453251,
+        17.980871
       ],
       "rotation": [
         0.0,
-        0.8533829,
+        -0.56703925,
         0.0,
-        0.5212846
+        0.8236907
       ],
-      "weapons": null,
-      "base_speed": 4.5,
+      "weapons": [
+        {
+          "entity_type": "DoubleAxe",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null,
+          "cleanup_timer": null
+        }
+      ],
+      "base_speed": 5.0,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
@@ -82,32 +103,32 @@
       "cleanup_timer": null
     },
     {
-      "entity_type": "BareBush1",
+      "entity_type": "Mountain10",
       "faction": "World",
       "position": [
-        27.452484,
-        0.3,
-        26.343
+        44.601,
+        0.0,
+        47.859
       ],
       "rotation": [
         0.0,
+        0.19206065,
         0.0,
-        0.0,
-        1.0
+        0.9813831
       ],
       "weapons": null,
-      "base_speed": 4.5,
+      "base_speed": null,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
     },
     {
-      "entity_type": "BareBush1",
+      "entity_type": "Mountain1",
       "faction": "World",
       "position": [
-        25.231373,
-        0.287,
-        36.40288
+        29.080818,
+        0.0,
+        57.433
       ],
       "rotation": [
         0.0,
@@ -116,27 +137,7 @@
         1.0
       ],
       "weapons": null,
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0,
-      "cleanup_timer": null
-    },
-    {
-      "entity_type": "TubeGuy",
-      "faction": "Enemy",
-      "position": [
-        15.095726,
-        0.5115217,
-        34.62082
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "weapons": null,
-      "base_speed": 4.5,
+      "base_speed": null,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
@@ -182,31 +183,11 @@
       "cleanup_timer": null
     },
     {
-      "entity_type": "Cactus1",
-      "faction": "World",
-      "position": [
-        14.792028,
-        0.2,
-        23.944645
-      ],
-      "rotation": [
-        0.0,
-        0.59742266,
-        0.0,
-        0.80192655
-      ],
-      "weapons": null,
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0,
-      "cleanup_timer": null
-    },
-    {
       "entity_type": "TrashGuy",
       "faction": "Enemy",
       "position": [
         -0.08790874,
-        0.34742987,
+        0.34743,
         17.763706
       ],
       "rotation": [
@@ -243,42 +224,21 @@
       "cleanup_timer": null
     },
     {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
+      "entity_type": "Mountain2",
+      "faction": "World",
       "position": [
-        11.594356,
-        0.19456398,
-        17.980864
+        6.553,
+        0.0,
+        54.058
       ],
       "rotation": [
         0.0,
-        -0.56703925,
+        -0.1970564,
         0.0,
-        0.8236907
+        0.98039216
       ],
-      "weapons": [
-        {
-          "entity_type": "DoubleAxe",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null,
-          "cleanup_timer": null
-        }
-      ],
-      "base_speed": 5.0,
+      "weapons": null,
+      "base_speed": null,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
