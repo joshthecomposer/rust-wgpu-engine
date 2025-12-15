@@ -9,14 +9,16 @@ use crate::ui::message_queue::{MessageQueue, UiMessage};
 
 slint::include_modules!();
 
-/// Context passed to PauseMenuView::update() containing mutable references to game state.
-/// This allows the pause menu to modify game state directly (e.g., toggle pause, gizmos)
-/// and send messages to other systems via the message queue.
+/// Context passed to PauseMenuView::update().
+/// Contains mutable refs for state the pause menu can modify,
+/// and a message queue for global messages (quit, reload world).
 pub struct PauseMenuContext<'a> {
     pub paused: &'a mut bool,
     pub render_gizmos: &'a mut bool,
-    pub message_queue: &'a mut MessageQueue,
+
     pub entity_manager: &'a EntityManager,
+
+    pub message_queue: &'a mut MessageQueue,
 }
 
 /// Manages the Slint PauseMenu component and its callbacks
@@ -113,34 +115,60 @@ impl PauseMenuView {
         }
     }
 
-    /// Update the pause menu. Handles visibility and processes callbacks.
+    /// Update the pause menu view.
+    ///
+    /// This method:
+    /// - Updates the pause menu visibility based on the paused state
+    /// - Processes pending UI callbacks (close, gizmo toggle, reload, save, quit)
+    /// - Directly modifies state via context refs for view-specific actions
+    /// - Sends global messages for cross-system actions (quit, reload world)
     pub fn update(&mut self, ctx: PauseMenuContext) {
         self.pause_menu.set_show_pause_menu(*ctx.paused);
 
-        // handle close menu
+        self.handle_unpause(ctx.paused);
+        self.handle_toggle_gizmos(ctx.render_gizmos);
+        self.handle_reload_world(ctx.message_queue);
+        self.handle_save_player_data(ctx.entity_manager);
+        self.handle_quit(ctx.message_queue);
+    }
+
+    /// Handle unpause action by directly modifying the paused state.
+    /// This is a view-specific action, so we modify state directly via context ref.
+    fn handle_unpause(&self, paused: &mut bool) {
         if self.close_pending.replace(false) {
-            *ctx.paused = false;
+            *paused = false;
         }
+    }
 
-        // handle toggle gizmo rendering
+    /// Handle gizmo rendering toggle by directly modifying the render_gizmos state.
+    /// This is a view-specific action, so we modify state directly via context ref.
+    fn handle_toggle_gizmos(&self, render_gizmos: &mut bool) {
         if self.gizmo_pending.replace(false) {
-            *ctx.render_gizmos = !*ctx.render_gizmos;
+            *render_gizmos = !*render_gizmos;
         }
+    }
 
-        // handle reload world data
+    /// Handle world reload by sending a global message to the message queue.
+    /// This is a global action that requires coordination across systems.
+    fn handle_reload_world(&self, message_queue: &mut MessageQueue) {
         if self.reload_pending.replace(false) {
-            ctx.message_queue.send(UiMessage::ReloadWorldData);
+            message_queue.send(UiMessage::ReloadWorldData);
         }
+    }
 
-        // handle save player data
+    /// Handle player data save by directly calling the entity manager.
+    /// This is a view-specific action that doesn't require global coordination.
+    fn handle_save_player_data(&self, entity_manager: &EntityManager) {
         if self.save_pending.replace(false) {
-            ctx.entity_manager
-                .serialize_entity_data("config/player_data.json");
+            entity_manager.serialize_entity_data("config/player_data.json");
         }
+    }
 
-        // handle quit game
+    /// Handle quit action by sending a global message to the message queue.
+    /// This is a global action that requires coordination with the event loop.
+    fn handle_quit(&self, message_queue: &mut MessageQueue) {
         if self.quit_pending.replace(false) {
-            ctx.message_queue.send(UiMessage::WindowShouldClose);
+            message_queue.send(UiMessage::WindowShouldClose);
         }
     }
 }

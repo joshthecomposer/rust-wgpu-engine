@@ -216,14 +216,15 @@ impl GameUiManager {
     }
 
     /// Update the UI each frame. Delegates to individual view components.
+    /// Views handle their own logic and directly modify state via context refs.
     pub fn update(&mut self, ctx: GameUiUpdateContext) {
         slint::platform::update_timers_and_animations();
 
         let pause_ctx = PauseMenuContext {
             paused: ctx.pause_menu.paused,
             render_gizmos: ctx.pause_menu.render_gizmos,
-            message_queue: ctx.message_queue,
             entity_manager: ctx.entity_manager,
+            message_queue: ctx.message_queue,
         };
         self.pause_menu_view.update(pause_ctx);
     }

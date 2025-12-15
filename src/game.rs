@@ -353,7 +353,8 @@ impl Game {
             }
         }
 
-        // update game UI (pause menu, etc.) and handle actions
+        // update game UI (pause menu, etc.)
+        // views handle their own logic and directly modify state via context refs
         self.game_ui.update(GameUiUpdateContext {
             message_queue: &mut self.message_queue,
             entity_manager: &self.world.ecs,

@@ -1,14 +1,12 @@
-use std::collections::{vec_deque::Drain, VecDeque};
-
-use glam::Vec3;
-
-use crate::config::emitter_data::EmitterBlackboard;
-
+//! Central message queue for UI -> Game communication.
+//!
+//! This queue handles global messages that need to be processed by the game loop.
+//! View-specific actions are handled directly within their views via context refs.
+//!
 #[derive(PartialEq)]
 pub enum UiMessage {
     LeftMouseClicked,
     WindowShouldClose,
-    PauseToggle,
     ReloadWorldData,
     RenderStagedEmitters { do_it: bool },
 }
