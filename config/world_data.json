@@ -4,15 +4,15 @@
       "entity_type": "TrashGuy",
       "faction": "Player",
       "position": [
-        -5.336336,
-        0.27304554,
-        -4.3870654
+        34.245834,
+        0.47162437,
+        45.429756
       ],
       "rotation": [
         0.0,
-        0.7472185,
+        -0.94322264,
         0.0,
-        0.6645785
+        0.33216116
       ],
       "weapons": [
         {
@@ -357,6 +357,170 @@
       ],
       "weapons": null,
       "base_speed": null,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        -12.05867,
+        0.3730464,
+        -17.781916
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": [
+        {
+          "entity_type": "DoubleAxe",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null,
+          "cleanup_timer": null
+        }
+      ],
+      "base_speed": 3.0,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        -11.062347,
+        0.4048015,
+        -17.78236
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": [
+        {
+          "entity_type": "DoubleAxe",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null,
+          "cleanup_timer": null
+        }
+      ],
+      "base_speed": 3.0,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        -11.560504,
+        0.38602448,
+        -17.781895
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": [
+        {
+          "entity_type": "DoubleAxe",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null,
+          "cleanup_timer": null
+        }
+      ],
+      "base_speed": 3.0,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "TrashGuy",
+      "faction": "Enemy",
+      "position": [
+        -12.556837,
+        0.35459268,
+        -17.781923
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": [
+        {
+          "entity_type": "DoubleAxe",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "jump_height": null,
+          "cleanup_timer": null
+        }
+      ],
+      "base_speed": 3.0,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null

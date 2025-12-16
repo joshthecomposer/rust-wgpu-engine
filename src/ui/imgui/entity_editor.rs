@@ -36,6 +36,7 @@ pub struct EntityEditor {
     pub new_archetype: UiEntityTypeHelper,
     pub new_faction: String,
     pub base_speed: f32,
+    pub new_entity_count: i32,
 }
 
 impl EntityEditor {
@@ -242,22 +243,6 @@ impl EntityEditor {
 
                 ui.input_float("Base Speed", &mut self.base_speed).build();
 
-                let weapons = if self.include_weapon {
-                    Some(vec![EntityInstance {
-                        entity_type: entity_types[self.weapon_type_index].clone(),
-                        faction: "Item".to_string(),
-                        position: Vec3::splat(0.0),
-                        rotation: Quat::IDENTITY,
-                        base_speed: None,
-                        jump_height: None,
-                        health: None,
-                        weapons: None,
-                        cleanup_timer: None,
-                    }])
-                } else {
-                    None
-                };
-
                 let speed = if self.base_speed <= 0.0 {
                     None
                 } else {
@@ -265,22 +250,42 @@ impl EntityEditor {
                 };
 
                 if self.create_mode {
-                    let instance = EntityInstance {
-                        entity_type: selected_type.to_string(),
-                        faction: selected_faction.to_string(),
-                        position: input.ray_pos,
-                        rotation: Quat::IDENTITY,
-                        weapons,
-                        base_speed: speed,
-                        jump_height: Some(1.0),
-                        health: Some(100.0),
-                        cleanup_timer: None,
-                    };
+                    for _ in 0..self.new_entity_count {
+                        let weapons = if self.include_weapon {
+                            Some(vec![EntityInstance {
+                                entity_type: entity_types[self.weapon_type_index].clone(),
+                                faction: "Item".to_string(),
+                                position: Vec3::splat(0.0),
+                                rotation: Quat::IDENTITY,
+                                base_speed: None,
+                                jump_height: None,
+                                health: None,
+                                weapons: None,
+                                cleanup_timer: None,
+                            }])
+                        } else {
+                            None
+                        };
+                        let instance = EntityInstance {
+                            entity_type: selected_type.to_string(),
+                            faction: selected_faction.to_string(),
+                            position: input.ray_pos,
+                            rotation: Quat::IDENTITY,
+                            weapons,
+                            base_speed: speed,
+                            jump_height: Some(1.0),
+                            health: Some(100.0),
+                            cleanup_timer: None,
+                        };
 
-                    let parent_id = em.create_entity(&instance, ps);
-                    em.populate_inventory(parent_id, &instance, ps);
-                    self.create_mode = false;
+                        let parent_id = em.create_entity(&instance, ps);
+                        em.populate_inventory(parent_id, &instance, ps);
+                        self.create_mode = false;
+                    }
                 }
+
+                ui.input_int("How many to spawn?", &mut self.new_entity_count)
+                    .build();
 
                 if ui.checkbox("Create Mode", &mut self.create_mode) {
                     println!("Clicked Create Mode");

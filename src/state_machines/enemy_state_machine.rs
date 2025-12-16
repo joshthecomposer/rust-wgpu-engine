@@ -10,8 +10,8 @@ use crate::{
     input::InputState,
     particles::ParticleSystem,
     physics::PhysicsState,
-    some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY},
     sound::sound_manager::SoundManager,
+    util::constants::{DECREASED_GRAVITY_SCALAR, GRAVITY},
     util::data_structure::HashMapGetPairMut,
 };
 
@@ -32,6 +32,9 @@ pub fn enemy_sim_state_machine(
     let destination = em.destinations.get_mut(entity_id).unwrap();
     let entity_type = em.entity_types.get(entity_id).unwrap();
 
+    // TODO: iterating over the whole array to find the player ID is bad and removes all benefits
+    // of the ECS. we should fetch the player_id (and any other common data) once per frame and
+    // pass them down through the pipeline as a struct of references or something similar.
     let player_id = match em.factions.iter().find(|f| *f.value() == "Player") {
         Some(e) => Some(e.key()),
         None => None,

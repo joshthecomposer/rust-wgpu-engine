@@ -36,10 +36,10 @@ use crate::{
     },
     input::InputState,
     physics::{self, PhysicsState},
-    some_data::{GRAVITY, GROUP_PLAYER},
     sound::sound_manager::{ContinuousSound, OneShot, SoundManager},
     sparse_set::{Entry, SparseSet},
     terrain::{self, Terrain},
+    util::constants::{GRAVITY, GROUP_PLAYER},
 };
 
 pub struct EntityManager {
@@ -219,6 +219,7 @@ impl EntityManager {
                 panic!();
             }
         };
+
         let position = instance.position;
         let rotation = instance.rotation;
         let scale = archetype.scale_correction;
@@ -256,8 +257,6 @@ impl EntityManager {
 
         self.factions.insert(parent_id, instance.faction.clone());
         self.faction_register.insert(instance.faction.clone());
-        self.entity_types
-            .insert(parent_id, instance.entity_type.clone());
         self.yaws.insert(parent_id, 0.0);
 
         if let Some(health) = instance.health {
@@ -297,8 +296,22 @@ impl EntityManager {
         let model = if let (Some(bone_path), Some(anim_props)) =
             (&archetype.bone_path, &archetype.animation_properties)
         {
-            let (skellington, mut animator, animation) =
-                animation::animation::import_bone_data(bone_path, false);
+            //let (skellington, mut animator, animation) =
+            //animation::animation::import_bone_data(bone_path, false);
+            let (skellington, mut animator, animation) = if let Some(already_type) = self
+                .entity_types
+                .iter()
+                .find(|e| *e.value() == instance.entity_type)
+                .map(|e| e.key())
+            {
+                let skell = self.skellingtons.get(already_type).unwrap().clone();
+                let animator = self.animators.get(already_type).unwrap().clone();
+                let animation = animator.animations.iter().next().unwrap().1.clone();
+
+                (skell, animator, animation)
+            } else {
+                animation::data_loader::import_bone_data(bone_path, false)
+            };
 
             for prop in anim_props {
                 if let Some(anim) = animator.animations.get_mut(&prop.name) {
@@ -335,7 +348,7 @@ impl EntityManager {
                 .find(|m| m.value().full_path == *archetype.mesh_path)
                 .map(|m| m.value().clone())
                 .unwrap_or_else(|| {
-                    animation::animation::import_model_data(&archetype.mesh_path, &animation)
+                    animation::data_loader::import_model_data(&archetype.mesh_path, &animation)
                 });
 
             let rotator = Rotator {
@@ -358,7 +371,7 @@ impl EntityManager {
                 .find(|m| m.value().full_path == *archetype.mesh_path)
                 .map(|m| m.value().clone())
                 .unwrap_or_else(|| {
-                    animation::animation::import_model_data(
+                    animation::data_loader::import_model_data(
                         &archetype.mesh_path,
                         &Animation::default(),
                     )
@@ -368,6 +381,9 @@ impl EntityManager {
 
             model
         };
+
+        self.entity_types
+            .insert(parent_id, instance.entity_type.clone());
 
         self.prev_transforms.insert(parent_id, transform);
         self.factions.insert(parent_id, instance.faction.clone());
@@ -868,6 +884,19 @@ impl EntityManager {
             .collect();
 
         result
+    }
+
+    pub fn get_ids_by_type(&self) -> HashMap<String, Vec<usize>> {
+        let mut map: HashMap<String, Vec<usize>> = HashMap::new();
+
+        for entry in self.entity_types.iter() {
+            let id = entry.key();
+            let ty = &entry.value;
+
+            map.entry(ty.clone()).or_default().push(id);
+        }
+
+        map
     }
 
     pub fn player_get_ids_for_state(&self, state: PlayerState) -> Vec<usize> {

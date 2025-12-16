@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use glam::{vec3, Vec3};
 
-use crate::{some_data::WHITE, sparse_set::SparseSet};
+use crate::{sparse_set::SparseSet, util::constants::WHITE};
 
 pub struct PointStrength {
     pub constant: f32,
