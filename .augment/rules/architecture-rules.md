@@ -13,16 +13,36 @@ type: "always_apply"
 
 ## Architecture Patterns
 
-### UI Managers
-- UI managers (EngineUiManager, GameUiManager) handle their own logic internally
-- Use context structs to pass mutable references to game state (e.g., `PauseMenuContext`)
-- Managers should encapsulate action handling rather than returning action flags for callers to process
+### UI Views and Managers
+- `GameUiManager` orchestrates UI views (pause menu, HUD, etc.)
+- Each view (e.g., `PauseMenuView`) handles its own logic internally
+- Views receive a context struct with mutable refs to state they can modify
+- Views directly modify state via context refs - no action flags returned to callers
 - Slint UI uses software rendering to pixel buffers, then uploads to GL textures
 - Each Slint component gets its own `MinimalSoftwareWindow`
 
+### UI Event Handling Pattern
+```
+game.rs                    GameUiManager              PauseMenuView
+   |                            |                          |
+   |-- GameUiUpdateContext ---->|                          |
+   |   (mutable refs to state)  |-- PauseMenuContext ----->|
+   |                            |   (mutable refs)         |
+   |                            |                          |-- directly modifies state
+   |                            |                          |-- sends global messages
+   |<-- global messages only ---|<-------------------------|
+```
+
+1. **game.rs passes mutable refs** via `GameUiUpdateContext` (paused, render_gizmos, etc.)
+2. **Views directly modify state** for view-specific actions (unpause, toggle gizmos)
+3. **Views send messages** only for global/cross-system actions (quit, reload world)
+4. **game.rs handles only global messages** - never view-specific logic
+
 ### Message Queue
-- Use `MessageQueue` for cross-system communication (e.g., `UiMessage::WindowShouldClose`)
+- Use `MessageQueue` for **global messages only** (e.g., `WindowShouldClose`, `ReloadWorldData`)
+- Do NOT use for view-specific actions - those should modify state directly via context refs
 - Messages are processed in the game loop's tick/update phase
+- Keep `UiMessage` enum lean - only truly global events belong here
 
 ### Entity Manager
 - ECS-like architecture with component hashmaps (transforms, animators, etc.)
@@ -40,6 +60,16 @@ type: "always_apply"
 - Use lowercase comments (e.g., `// create a new window` not `// Create a new window`)
 - Prefer `&mut` references in context structs over returning action flags
 - Keep game.rs lean - delegate logic to managers and systems
+- Prefer self-documenting helper methods over inline comments:
+  ```rust
+  // bad: inline comments
+  if self.close_pending.replace(false) {
+      *ctx.paused = false; // unpause
+  }
+
+  // good: helper method
+  self.handle_unpause(ctx.paused);
+  ```
 
 ### OpenGL Calls
 - **Always wrap OpenGL calls in the `gl_call!` macro** for error checking
