@@ -292,7 +292,7 @@ impl BoneTransformTrack {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Animator {
     pub current_animation: AnimationType,
     pub next_animation: AnimationType,

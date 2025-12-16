@@ -72,6 +72,7 @@ impl ImguiManager {
                 new_archetype: UiEntityTypeHelper::default(),
                 new_faction: String::new(),
                 base_speed: 0.0,
+                new_entity_count: 1,
             },
             particle_editor: ParticleEditor::default(),
             player_data: PlayerData {},

@@ -219,6 +219,7 @@ impl EntityManager {
                 panic!();
             }
         };
+
         let position = instance.position;
         let rotation = instance.rotation;
         let scale = archetype.scale_correction;
@@ -256,8 +257,6 @@ impl EntityManager {
 
         self.factions.insert(parent_id, instance.faction.clone());
         self.faction_register.insert(instance.faction.clone());
-        self.entity_types
-            .insert(parent_id, instance.entity_type.clone());
         self.yaws.insert(parent_id, 0.0);
 
         if let Some(health) = instance.health {
@@ -297,8 +296,22 @@ impl EntityManager {
         let model = if let (Some(bone_path), Some(anim_props)) =
             (&archetype.bone_path, &archetype.animation_properties)
         {
-            let (skellington, mut animator, animation) =
-                animation::animation::import_bone_data(bone_path, false);
+            //let (skellington, mut animator, animation) =
+            //animation::animation::import_bone_data(bone_path, false);
+            let (skellington, mut animator, animation) = if let Some(already_type) = self
+                .entity_types
+                .iter()
+                .find(|e| *e.value() == instance.entity_type)
+                .map(|e| e.key())
+            {
+                let skell = self.skellingtons.get(already_type).unwrap().clone();
+                let animator = self.animators.get(already_type).unwrap().clone();
+                let animation = animator.animations.iter().next().unwrap().1.clone();
+
+                (skell, animator, animation)
+            } else {
+                animation::animation::import_bone_data(bone_path, false)
+            };
 
             for prop in anim_props {
                 if let Some(anim) = animator.animations.get_mut(&prop.name) {
@@ -368,6 +381,9 @@ impl EntityManager {
 
             model
         };
+
+        self.entity_types
+            .insert(parent_id, instance.entity_type.clone());
 
         self.prev_transforms.insert(parent_id, transform);
         self.factions.insert(parent_id, instance.faction.clone());
