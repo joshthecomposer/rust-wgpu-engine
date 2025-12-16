@@ -60,6 +60,9 @@ pub struct Renderer {
     pub exposure: f32,
     pub do_hdr: bool,
     pub bloom_strength: f32,
+
+    pub quad_vao: u32,
+    pub quad_vbo: u32,
 }
 
 impl Renderer {
@@ -582,7 +585,7 @@ impl Renderer {
             opaque: Self::make_solid_texture(255, 255, 255, 255),
         };
 
-        Self {
+        let mut renderer = Self {
             shaders,
             vaos,
             fbos,
@@ -602,7 +605,14 @@ impl Renderer {
             exposure: 1.5,
             do_hdr: true,
             bloom_strength: 0.1,
-        }
+
+            quad_vao: 0,
+            quad_vbo: 0,
+        };
+
+        renderer.ensure_quad();
+
+        renderer
     }
 
     pub fn draw(
@@ -1159,28 +1169,29 @@ impl Renderer {
         }
     }
 
-    pub fn render_quad(&self) {
-        let mut vao = 0;
-        let mut vbo = 0;
+    fn ensure_quad(&mut self) {
+        if self.quad_vao != 0 {
+            return;
+        }
 
         let quad_vertices: [f32; 30] = BASIC_QUAD_VERTICES;
 
         unsafe {
-            gl_call!(gl::GenVertexArrays(1, &mut vao));
-            gl_call!(gl::GenBuffers(1, &mut vbo));
-            gl_call!(gl::BindVertexArray(vao));
+            gl_call!(gl::GenVertexArrays(1, &mut self.quad_vao));
+            gl_call!(gl::GenBuffers(1, &mut self.quad_vbo));
 
-            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, vbo));
+            gl_call!(gl::BindVertexArray(self.quad_vao));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.quad_vbo));
+
             gl_call!(gl::BufferData(
                 gl::ARRAY_BUFFER,
                 (quad_vertices.len() * std::mem::size_of::<f32>()) as isize,
-                quad_vertices.as_ptr() as *const _,
+                quad_vertices.as_ptr().cast(),
                 gl::STATIC_DRAW
             ));
 
             let stride = (5 * std::mem::size_of::<f32>()) as i32;
 
-            // Position Attribute
             gl_call!(gl::EnableVertexAttribArray(0));
             gl_call!(gl::VertexAttribPointer(
                 0,
@@ -1191,7 +1202,6 @@ impl Renderer {
                 std::ptr::null()
             ));
 
-            // Texture Coordinate Attribute
             gl_call!(gl::EnableVertexAttribArray(1));
             gl_call!(gl::VertexAttribPointer(
                 1,
@@ -1205,10 +1215,11 @@ impl Renderer {
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
             gl_call!(gl::BindVertexArray(0));
         }
+    }
 
-        // Draw the quad
+    pub fn render_quad(&self) {
         unsafe {
-            gl_call!(gl::BindVertexArray(vao));
+            gl_call!(gl::BindVertexArray(self.quad_vao));
             gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
             gl_call!(gl::BindVertexArray(0));
         }
