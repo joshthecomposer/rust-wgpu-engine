@@ -1,5 +1,9 @@
-import { Theme } from "components/theme.slint";
 import { RunicButton } from "components/menu_button.slint";
+import { RunicWindow } from "components/runic_window.slint";
+import { RunicCloseButton } from "components/runic_close_button.slint";
+import { RunicWindowHeader } from "components/runic_window_header.slint";
+import { RunicMenuSeparator } from "components/runic_menu_separator.slint";
+import { RunicFooterLabel } from "components/runic_footer_label.slint";
 
 export component PauseMenu inherits Window {
     background: transparent;
@@ -14,207 +18,63 @@ export component PauseMenu inherits Window {
     callback quit_clicked();
 
     // ==================== PAUSE MENU ====================
-    if show-pause-menu: Rectangle {
+    if show-pause-menu: RunicWindow {
+        window-width: 420px;
+        window-height: 400px;
+
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: 420px;
-        height: 400px;
 
-        // outer shadow layer
-        Rectangle {
-            x: 4px;
-            y: 4px;
-            width: parent.width;
-            height: parent.height;
-            background: #000000.with-alpha(0.6);
+        // close button (×) in top-right
+        RunicCloseButton {
+            x: parent.width - self.width - 12px;
+            y: 12px;
+            clicked => { root.close_clicked(); }
         }
 
-        // main modal container
-        Rectangle {
+        // header section
+        RunicWindowHeader {
+            y: 24px;
             width: parent.width;
-            height: parent.height;
-            background: Theme.deep-void;
-            border-width: 2px;
-            border-color: Theme.stone-light;
+            title: "SYSTEM MENU";
+        }
 
-            // corner decorations (top-left)
-            Rectangle {
-                x: -4px;
-                y: -4px;
-                width: 14px;
-                height: 2px;
-                background: Theme.runic-gold;
-            }
-            Rectangle {
-                x: -4px;
-                y: -4px;
-                width: 2px;
-                height: 14px;
-                background: Theme.runic-gold;
+        // button container
+        VerticalLayout {
+            x: 24px;
+            y: 100px;
+            width: parent.width - 48px;
+            spacing: 16px;
+
+            RunicButton {
+                label: "GIZMO RENDERING";
+                clicked => { root.gizmo_clicked(); }
             }
 
-            // corner decorations (top-right)
-            Rectangle {
-                x: parent.width - 10px;
-                y: -4px;
-                width: 14px;
-                height: 2px;
-                background: Theme.runic-gold;
-            }
-            Rectangle {
-                x: parent.width + 2px;
-                y: -4px;
-                width: 2px;
-                height: 14px;
-                background: Theme.runic-gold;
+            RunicButton {
+                label: "RELOAD WORLD DATA";
+                clicked => { root.reload_world_clicked(); }
             }
 
-            // corner decorations (bottom-left)
-            Rectangle {
-                x: -4px;
-                y: parent.height + 2px;
-                width: 14px;
-                height: 2px;
-                background: Theme.runic-gold;
-            }
-            Rectangle {
-                x: -4px;
-                y: parent.height - 10px;
-                width: 2px;
-                height: 14px;
-                background: Theme.runic-gold;
+            RunicButton {
+                label: "SAVE PLAYER DATA";
+                clicked => { root.save_player_clicked(); }
             }
 
-            // corner decorations (bottom-right)
-            Rectangle {
-                x: parent.width - 10px;
-                y: parent.height + 2px;
-                width: 14px;
-                height: 2px;
-                background: Theme.runic-gold;
+            RunicMenuSeparator { }
+
+            RunicButton {
+                label: "QUIT GAME";
+                danger: true;
+                clicked => { root.quit_clicked(); }
             }
-            Rectangle {
-                x: parent.width + 2px;
-                y: parent.height - 10px;
-                width: 2px;
-                height: 14px;
-                background: Theme.runic-gold;
-            }
+        }
 
-            // close button (×) in top-right
-            Rectangle {
-                x: parent.width - self.width - 12px;
-                y: 12px;
-                width: 20px;
-                height: 20px;
-                background: transparent;
-
-                close-touch := TouchArea {
-                    clicked => { root.close_clicked(); }
-                }
-
-                Text {
-                    text: "×";
-                    color: close-touch.has-hover ? Theme.runic-gold : Theme.stone-light;
-                    font-size: 18px;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                }
-            }
-
-            // header section
-            VerticalLayout {
-                x: 0;
-                y: 24px;
-                width: parent.width;
-                alignment: start;
-                spacing: 0;
-
-                // title
-                Text {
-                    text: "SYSTEM MENU";
-                    color: Theme.highlight;
-                    font-size: 18px;
-                    font-weight: 700;
-                    letter-spacing: 4px;
-                    horizontal-alignment: center;
-                }
-
-                // underline
-                Rectangle {
-                    x: (parent.width - self.width) / 2;
-                    height: 1px;
-                    width: 160px;
-                    background: Theme.stone-light;
-                }
-
-                // diamond decoration
-                Rectangle {
-                    height: 16px;
-                    Text {
-                        width: parent.width;
-                        text: "◆";
-                        color: Theme.runic-gold;
-                        font-size: 10px;
-                        horizontal-alignment: center;
-                        vertical-alignment: center;
-                    }
-                }
-            }
-
-            // button container
-            VerticalLayout {
-                x: 24px;
-                y: 100px;
-                width: parent.width - 48px;
-                spacing: 16px;
-
-                RunicButton {
-                    label: "GIZMO RENDERING";
-                    clicked => { root.gizmo_clicked(); }
-                }
-
-                RunicButton {
-                    label: "RELOAD WORLD DATA";
-                    clicked => { root.reload_world_clicked(); }
-                }
-
-                RunicButton {
-                    label: "SAVE PLAYER DATA";
-                    clicked => { root.save_player_clicked(); }
-                }
-
-                // separator
-                Rectangle {
-                    height: 1px;
-                    background: Theme.stone-dark;
-                    Rectangle {
-                        y: 1px;
-                        width: parent.width;
-                        height: 1px;
-                        background: Theme.stone-light.with-alpha(0.4);
-                    }
-                }
-
-                RunicButton {
-                    label: "QUIT GAME";
-                    danger: true;
-                    clicked => { root.quit_clicked(); }
-                }
-            }
-
-            // footer version text
-            Text {
-                x: 0;
-                y: parent.height - 28px;
-                width: parent.width;
-                text: "BUILD " + build-version;
-                color: Theme.muted-scrawl;
-                font-size: 10px;
-                letter-spacing: 2px;
-                horizontal-alignment: center;
-            }
+        // footer version text
+        RunicFooterLabel {
+            y: parent.height - 28px;
+            width: parent.width;
+            value: build-version;
         }
     }
 }
-
