@@ -23,13 +23,13 @@ use crate::{
     physics::PhysicsState,
     platform::Platform,
     shaders::Shader,
-    some_data::{
-        BASIC_QUAD_VERTICES, FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH,
-        SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES,
-    },
     sound::{
         fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR},
         sound_manager::SoundManager,
+    },
+    util::constants::{
+        BASIC_QUAD_VERTICES, FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH,
+        SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES,
     },
 };
 

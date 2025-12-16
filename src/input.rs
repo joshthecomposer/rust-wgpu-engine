@@ -13,7 +13,7 @@ use crate::{
     entity_manager::EntityManager,
     enums_types::{AnimationType, CameraState, Faction},
     physics::PhysicsState,
-    some_data::GROUP_TERRAIN,
+    util::constants::GROUP_TERRAIN,
 };
 
 pub struct InputState {

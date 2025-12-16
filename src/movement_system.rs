@@ -16,8 +16,8 @@ use crate::{
     },
     input::InputState,
     physics::PhysicsState,
-    some_data::{FREEFALL_DELAY, GRAVITY},
     terrain::Terrain,
+    util::constants::{FREEFALL_DELAY, GRAVITY},
 };
 
 pub fn update(

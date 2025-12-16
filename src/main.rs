@@ -12,7 +12,6 @@ mod lights;
 mod macros;
 mod movement_system;
 mod renderer;
-mod some_data;
 mod sound;
 mod sparse_set;
 mod terrain;

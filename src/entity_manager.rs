@@ -36,10 +36,10 @@ use crate::{
     },
     input::InputState,
     physics::{self, PhysicsState},
-    some_data::{GRAVITY, GROUP_PLAYER},
     sound::sound_manager::{ContinuousSound, OneShot, SoundManager},
     sparse_set::{Entry, SparseSet},
     terrain::{self, Terrain},
+    util::constants::{GRAVITY, GROUP_PLAYER},
 };
 
 pub struct EntityManager {

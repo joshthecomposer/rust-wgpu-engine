@@ -8,7 +8,7 @@ use image::{ImageBuffer, Rgba};
 use crate::animation::animation::{Model, Vertex};
 use crate::animation::data_loader::texture_from_file;
 use crate::enums_types::{TextureProfile, TextureType};
-use crate::some_data::MAX_BONE_INFLUENCE;
+use crate::util::constants::MAX_BONE_INFLUENCE;
 use crate::{enums_types::CellType, shaders::Shader};
 
 #[derive(Debug)]

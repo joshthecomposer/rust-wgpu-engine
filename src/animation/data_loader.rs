@@ -9,7 +9,7 @@ use crate::{
     },
     enums_types::{AnimationType, TextureProfile, TextureType},
     gl_call,
-    some_data::MAX_BONE_INFLUENCE,
+    util::constants::MAX_BONE_INFLUENCE,
 };
 
 pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Animation) {

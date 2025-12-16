@@ -10,8 +10,8 @@ use crate::{
     input::InputState,
     particles::ParticleSystem,
     physics::PhysicsState,
-    some_data::{DECREASED_GRAVITY_SCALAR, GRAVITY},
     sound::sound_manager::SoundManager,
+    util::constants::{DECREASED_GRAVITY_SCALAR, GRAVITY},
     util::data_structure::HashMapGetPairMut,
 };
 

@@ -17,8 +17,8 @@ use crate::{
     enums_types::{AnimationType, FrameActivation, TextureProfile, TextureType, ANIMATION_EPSILON},
     gl_call,
     shaders::Shader,
-    some_data::MAX_BONE_INFLUENCE,
     sound::sound_manager::{ContinuousSound, OneShot},
+    util::constants::MAX_BONE_INFLUENCE,
     util::data_structure::HashMapGetPairMut,
 };
 

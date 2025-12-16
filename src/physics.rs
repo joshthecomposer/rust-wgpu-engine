@@ -2,7 +2,7 @@ use glam::{Quat, Vec3};
 use nalgebra::Vector3;
 use rapier3d::prelude::*;
 
-use crate::some_data::{GROUP_PLAYER, GROUP_TERRAIN};
+use crate::util::constants::{GROUP_PLAYER, GROUP_TERRAIN};
 use crate::{
     entity_manager::EntityManager,
     enums_types::{PhysicsHandle, Transform},
