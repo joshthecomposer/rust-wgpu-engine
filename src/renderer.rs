@@ -82,14 +82,27 @@ impl Renderer {
         unsafe {
             gl::Uniform1i(loc, 1);
         }
-        let model_shader = Shader::new("resources/shaders/color_for_texture.glsl");
-        model_shader.activate();
-        model_shader.set_int("material.Diffuse", 1);
-        model_shader.set_int("material.Specular", 2);
-        model_shader.set_int("material.Emissive", 3);
-        model_shader.set_int("material.Opacity", 4);
-        model_shader.set_int("shadow_map", 7);
-        model_shader.set_int("skybox", 10);
+
+        // Static model
+        let static_model_shader = Shader::new("resources/shaders/model/static_model.glsl");
+        static_model_shader.activate();
+        static_model_shader.set_int("material.Diffuse", 1);
+        static_model_shader.set_int("material.Specular", 2);
+        static_model_shader.set_int("material.Emissive", 3);
+        static_model_shader.set_int("material.Opacity", 4);
+        static_model_shader.set_int("shadow_map", 7);
+        static_model_shader.set_int("skybox", 10);
+
+        // Animated model shader
+        let animated_model_shader = Shader::new("resources/shaders/model/animated_model.glsl");
+        animated_model_shader.activate();
+        animated_model_shader.set_int("material.Diffuse", 1);
+        animated_model_shader.set_int("material.Specular", 2);
+        animated_model_shader.set_int("material.Emissive", 3);
+        animated_model_shader.set_int("material.Opacity", 4);
+        animated_model_shader.set_int("shadow_map", 7);
+        animated_model_shader.set_int("skybox", 10);
+
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
         let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");
@@ -547,7 +560,7 @@ impl Renderer {
         ui_overlay_shader.activate();
         ui_overlay_shader.set_int("ui_texture", 0);
 
-        shaders.insert(ShaderType::Model, model_shader);
+        //shaders.insert(ShaderType::Model, model_shader);
         shaders.insert(ShaderType::Skybox, skybox_shader);
         shaders.insert(ShaderType::DebugLight, debug_light_shader);
         shaders.insert(ShaderType::Depth, depth_shader);
@@ -559,6 +572,8 @@ impl Renderer {
         shaders.insert(ShaderType::UiOverlay, ui_overlay_shader);
         shaders.insert(ShaderType::HDR, hdr_shader);
         shaders.insert(ShaderType::Blur, blur_shader);
+        shaders.insert(ShaderType::StaticModel, static_model_shader);
+        shaders.insert(ShaderType::AnimatedModel, animated_model_shader);
 
         // DEFAULT TEXTURES
         let defaults = DefaultTextures {
@@ -603,7 +618,41 @@ impl Renderer {
         alpha: f32,
         particles: &mut ParticleSystem,
     ) {
-        self.shadow_pass(em, camera, light_manager, fb_width, fb_height, ps, alpha);
+        let item_ids = em.get_ids_for_faction("Item");
+        let world_ids = em.get_ids_for_faction("World");
+
+        let enemy_ids = em.get_ids_for_faction("Enemy");
+        let player_ids = em.get_ids_for_faction("Player");
+
+        let static_ids = vec![item_ids, world_ids].concat();
+        let animated_ids = vec![enemy_ids, player_ids].concat();
+
+        // static pass
+        self.shadow_pass(
+            em,
+            camera,
+            light_manager,
+            fb_width,
+            fb_height,
+            ps,
+            alpha,
+            static_ids,
+            false,
+        );
+
+        // anim pass
+        self.shadow_pass(
+            em,
+            camera,
+            light_manager,
+            fb_width,
+            fb_height,
+            ps,
+            alpha,
+            animated_ids,
+            true,
+        );
+
         if self.shadow_debug {
             return;
         }
@@ -809,7 +858,7 @@ impl Renderer {
             gl::ActiveTexture(gl::TEXTURE10);
             gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
         }
-        let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
+        let shader = self.shaders.get_mut(&ShaderType::StaticModel).unwrap();
         shader.activate();
 
         for &is_alpha_pass in &[false, true] {
@@ -1002,6 +1051,8 @@ impl Renderer {
         fb_height: u32,
         ps: &PhysicsState,
         alpha: f32,
+        ids: Vec<usize>,
+        is_animated: bool,
     ) {
         let shader = self.shaders.get_mut(&ShaderType::Depth).unwrap();
         let near_plane = light_manager.near;
@@ -1042,7 +1093,7 @@ impl Renderer {
             gl_call!(gl::Enable(CULL_FACE));
             //gl_call!(gl::CullFace(gl::BACK));
             gl::CullFace(gl::FRONT);
-            self.render_sample_depth(em, ps, alpha);
+            self.render_sample_depth(em, ps, alpha, ids, is_animated);
             gl_call!(gl::CullFace(gl::BACK));
             gl_call!(gl::Disable(CULL_FACE));
             // End render
@@ -1061,27 +1112,31 @@ impl Renderer {
         }
     }
 
-    fn render_sample_depth(&mut self, em: &EntityManager, ps: &PhysicsState, alpha: f32) {
+    fn render_sample_depth(
+        &mut self,
+        em: &EntityManager,
+        ps: &PhysicsState,
+        alpha: f32,
+        ids: Vec<usize>,
+        is_animated: bool,
+    ) {
         let shader = self.shaders.get(&ShaderType::Depth).unwrap();
         shader.activate();
+        shader.set_bool("is_animated", is_animated);
 
-        for id in em.entity_types.iter() {
-            if em.is_equipped.get(id.key()).is_none() && em.owners.get(id.key()).is_some() {
-                continue;
-            }
-            match em.animators.get(id.key()) {
-                Some(animator) => {
-                    let animation = animator.get_current_animation().unwrap();
-                    shader.set_bool("is_animated", true);
-                    shader.set_mat4_array("bone_transforms", &animation.current_pose);
-                }
-                _ => {
-                    shader.set_bool("is_animated", false);
+        for id in ids {
+            if is_animated {
+                let animator = em.animators.get(id).unwrap();
+                let animation = animator.get_current_animation().unwrap();
+                shader.set_mat4_array("bone_transforms", &animation.current_pose);
+            } else {
+                if em.is_equipped.get(id).is_none() && em.owners.get(id).is_some() {
+                    continue;
                 }
             }
 
-            let model = em.models.get(id.key()).unwrap();
-            let trans = Self::render_transform(em, id.key(), alpha);
+            let model = em.models.get(id).unwrap();
+            let trans = Self::render_transform(em, id, alpha);
             //let trans = em.transforms.get(model.key()).unwrap();
 
             let model_model =

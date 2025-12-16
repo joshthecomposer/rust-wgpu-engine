@@ -59,6 +59,8 @@ pub enum ShaderType {
     UiOverlay,
     HDR,
     Blur,
+    StaticModel,
+    AnimatedModel,
 }
 
 /// A struct to carry some rotation state for blending between rotations smoothly
