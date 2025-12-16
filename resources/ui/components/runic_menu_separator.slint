@@ -1,0 +1,15 @@
+// double-line separator for grouping runic menu actions
+import { Theme } from "theme.slint";
+
+export component RunicMenuSeparator inherits Rectangle {
+    height: 1px;
+    background: Theme.stone-dark;
+
+    Rectangle {
+        y: 1px;
+        width: parent.width;
+        height: 1px;
+        background: Theme.stone-light.with-alpha(0.4);
+    }
+}
+
