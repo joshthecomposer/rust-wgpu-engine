@@ -310,7 +310,7 @@ impl EntityManager {
 
                 (skell, animator, animation)
             } else {
-                animation::animation::import_bone_data(bone_path, false)
+                animation::data_loader::import_bone_data(bone_path, false)
             };
 
             for prop in anim_props {
@@ -348,7 +348,7 @@ impl EntityManager {
                 .find(|m| m.value().full_path == *archetype.mesh_path)
                 .map(|m| m.value().clone())
                 .unwrap_or_else(|| {
-                    animation::animation::import_model_data(&archetype.mesh_path, &animation)
+                    animation::data_loader::import_model_data(&archetype.mesh_path, &animation)
                 });
 
             let rotator = Rotator {
@@ -371,7 +371,7 @@ impl EntityManager {
                 .find(|m| m.value().full_path == *archetype.mesh_path)
                 .map(|m| m.value().clone())
                 .unwrap_or_else(|| {
-                    animation::animation::import_model_data(
+                    animation::data_loader::import_model_data(
                         &archetype.mesh_path,
                         &Animation::default(),
                     )

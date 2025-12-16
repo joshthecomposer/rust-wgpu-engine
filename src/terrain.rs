@@ -9,7 +9,10 @@ use rapier3d::prelude::{
 };
 
 use crate::{
-    animation::animation::{texture_from_file, Model, Vertex},
+    animation::{
+        animation::{Model, Vertex},
+        data_loader::texture_from_file,
+    },
     enums_types::{TextureProfile, TextureType},
     some_data::{GROUP_TERRAIN, MAX_BONE_INFLUENCE},
 };
