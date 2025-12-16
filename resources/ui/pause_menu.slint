@@ -4,9 +4,11 @@ import { RunicCloseButton } from "components/runic_close_button.slint";
 import { RunicWindowHeader } from "components/runic_window_header.slint";
 import { RunicMenuSeparator } from "components/runic_menu_separator.slint";
 import { RunicFooterLabel } from "components/runic_footer_label.slint";
+import { Theme } from "components/theme.slint";
 
 export component PauseMenu inherits Window {
     background: transparent;
+    default-font-family: Theme.font-family;
 
     in property <bool> show-pause-menu: false;
     in property <string> build-version: "v0.0.1a";

@@ -18,6 +18,12 @@ export component RunicWindowHeader inherits VerticalLayout {
         horizontal-alignment: center;
     }
 
+    // spacer between title and underline
+    Rectangle {
+        height: 8px;
+        background: transparent;
+    }
+
     Rectangle {
         x: (parent.width - self.width) / 2;
         height: 1px;
