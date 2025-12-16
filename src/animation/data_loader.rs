@@ -142,6 +142,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                 }
 
                 animation = Animation::default();
+                animation.bone_tracks = vec![BoneTransformTrack::default(); bone_count as usize];
                 current_anim_str = parts[1].trim();
 
                 dbg!(&current_anim_str);
@@ -158,12 +159,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                 // let mut skipped_bones = HashSet::new();
 
                 for i in 0..bone_count {
-                    let bone_name = model_animation_join[i as usize].name.clone();
-
-                    let track = animation
-                        .bone_transforms
-                        .entry(bone_name.clone())
-                        .or_insert_with(BoneTransformTrack::default);
+                    let track = &mut animation.bone_tracks[i as usize];
 
                     let mut position = parse_vec3(lines.next().unwrap());
                     let mut rotation = parse_quat(lines.next().unwrap());
@@ -229,19 +225,22 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
     }
 
     for (_, animation) in animator.animations.iter_mut() {
-        for (_, track) in animation.bone_transforms.iter_mut() {
-            track.positions.remove(0);
-            track.position_timestamps.remove(0);
-            track.rotations.remove(0);
-            track.rotation_timestamps.remove(0);
-            track.scales.remove(0);
-            track.scale_timestamps.remove(0);
+        for track in animation.bone_tracks.iter_mut() {
+            if !track.positions.is_empty() {
+                track.positions.remove(0);
+                track.position_timestamps.remove(0);
+                track.rotations.remove(0);
+                track.rotation_timestamps.remove(0);
+                track.scales.remove(0);
+                track.scale_timestamps.remove(0);
+            }
         }
     }
 
     for b in &bones_no_children {
-        if !animation.bone_transforms.contains_key(&b.name) {
-            eprintln!("WARN: no track for bone {:?}", b.name);
+        let t = &animation.bone_tracks[b.id as usize];
+        if t.positions.is_empty() || t.rotations.is_empty() || t.scales.is_empty() {
+            eprintln!("WARN: empty track for bone {:?}", b.name);
         }
     }
 

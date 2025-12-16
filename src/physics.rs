@@ -3,6 +3,7 @@ use nalgebra::Vector3;
 use rapier3d::prelude::*;
 
 use crate::util::constants::{GROUP_PLAYER, GROUP_TERRAIN};
+use crate::util::data_structure::HashMapGetPairMut;
 use crate::{
     entity_manager::EntityManager,
     enums_types::{PhysicsHandle, Transform},
@@ -125,7 +126,7 @@ pub fn sync_transforms_from_physics(em: &mut EntityManager, ps: &PhysicsState) {
 pub fn push_weapon_kinematics_from_bones(em: &mut EntityManager, ps: &mut PhysicsState) {
     for wid in em.get_active_weapon_ids() {
         let parent = *em.owners.get(wid).unwrap();
-        let animator = em.animators.get(parent).unwrap();
+        let animator = em.animators.get_mut(parent).unwrap();
         let cur = animator.current_animation.clone();
         let next = animator.next_animation.clone();
         let blend = animator.blend_factor;
@@ -136,12 +137,12 @@ pub fn push_weapon_kinematics_from_bones(em: &mut EntityManager, ps: &mut Physic
         let rh = em.item_bones.get(parent).unwrap().rh_name.clone();
 
         let bone_m = if blend > 0.0 && cur != next {
-            let (a1, a2) = animator.animations.get_pair(&cur, &next).unwrap();
+            let (a1, a2) = animator.animations.get_pair_mut(&cur, &next).unwrap();
             a1.get_raw_global_bone_transform_by_name_blended(&rh, skel, pm, a2, blend)
         } else {
             animator
                 .animations
-                .get(&cur)
+                .get_mut(&cur)
                 .unwrap()
                 .get_raw_global_bone_transform_by_name(&rh, skel, pm)
         };

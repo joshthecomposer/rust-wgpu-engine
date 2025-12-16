@@ -371,7 +371,8 @@ pub struct Animation {
     pub duration: f32,
     pub ticks_per_second: f32,
     pub model_animation_join: Vec<BoneJoinInfo>,
-    pub bone_transforms: HashMap<String, BoneTransformTrack>,
+    // The index is the bone ID.
+    pub bone_tracks: Vec<BoneTransformTrack>,
     pub current_pose: Vec<Mat4>,
 
     pub current_segment: std::cell::Cell<u32>,
@@ -391,7 +392,7 @@ impl Animation {
             duration: 0.0,
             ticks_per_second: 0.0,
             model_animation_join: vec![],
-            bone_transforms: HashMap::new(),
+            bone_tracks: vec![],
             current_pose: vec![],
 
             current_segment: std::cell::Cell::new(0),
@@ -528,59 +529,41 @@ impl Animation {
         }
     }
 
-    fn get_bone_local_transform(&self, skeleton: &Bone, delta: f32) -> (Vec3, Quat, Vec3) {
-        let btt = match self.bone_transforms.get(&skeleton.name) {
-            Some(name) => name,
-            _ => {
-                dbg!(skeleton);
-                panic!("skeleton name not found")
-            }
-        };
+    fn get_bone_local_transform(&mut self, skeleton: &Bone, delta: f32) -> (Vec3, Quat, Vec3) {
+        let btt = &self.bone_tracks[skeleton.id as usize];
 
         let (segment, fraction) = get_time_fraction(&btt.position_timestamps, delta);
-
         self.current_segment.set(segment);
 
         if segment == 0 {
-            // Use the first keyframe
-            let position = btt.positions[0];
-            let rotation = btt.rotations[0];
-            let scale = btt.scales[0];
-
-            // Mat4::from_scale_rotation_translation(scale, rotation, position)
-            (position, rotation, scale)
-        } else {
-            // Get the two keyframes to interpolate between
-            let prev_idx = segment - 1;
-            let next_idx = segment.min(btt.positions.len() as u32 - 1); // Prevent out-of-bounds
-
-            let prev_position = btt.positions[prev_idx as usize];
-            let next_position = btt.positions[next_idx as usize];
-
-            let prev_rotation = btt.rotations[prev_idx as usize];
-            let next_rotation = btt.rotations[next_idx as usize];
-
-            let prev_scale = btt.scales[prev_idx as usize];
-            let next_scale = btt.scales[next_idx as usize];
-
-            // Perform linear interpolation for position and scale
-            let interpolated_position = prev_position.lerp(next_position, fraction);
-            let interpolated_scale = prev_scale.lerp(next_scale, fraction);
-
-            // Perform spherical interpolation (slerp) for rotation (bone rotation)
-            let interpolated_rotation = prev_rotation.slerp(next_rotation, fraction);
-            // Mat4::from_scale_rotation_translation(interpolated_scale, interpolated_rotation, interpolated_position)
-
-            (
-                interpolated_position,
-                interpolated_rotation,
-                interpolated_scale,
-            )
+            return (btt.positions[0], btt.rotations[0], btt.scales[0]);
         }
+
+        let prev_idx = (segment - 1) as usize;
+        let next_idx = (segment as usize).min(btt.positions.len().saturating_sub(1));
+
+        let prev_position = btt.positions[prev_idx];
+        let next_position = btt.positions[next_idx];
+
+        let prev_rotation = btt.rotations[prev_idx];
+        let next_rotation = btt.rotations[next_idx];
+
+        let prev_scale = btt.scales[prev_idx];
+        let next_scale = btt.scales[next_idx];
+
+        let interpolated_position = prev_position.lerp(next_position, fraction);
+        let interpolated_scale = prev_scale.lerp(next_scale, fraction);
+        let interpolated_rotation = prev_rotation.slerp(next_rotation, fraction);
+
+        (
+            interpolated_position,
+            interpolated_rotation,
+            interpolated_scale,
+        )
     }
 
     pub fn get_raw_global_bone_transform_by_name(
-        &self,
+        &mut self,
         bone_name: &str,
         skeleton: &Bone,
         parent_transform: Mat4,
@@ -608,11 +591,11 @@ impl Animation {
     }
 
     pub fn get_raw_global_bone_transform_by_name_blended(
-        &self,
+        &mut self,
         bone_name: &str,
         skeleton: &Bone,
         parent_transform: Mat4,
-        other_animation: &Animation,
+        other_animation: &mut Animation,
         blend_factor: f32,
     ) -> Option<Mat4> {
         let delta1 = self.current_time % self.duration;
