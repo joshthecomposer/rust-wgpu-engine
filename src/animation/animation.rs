@@ -702,20 +702,33 @@ impl Animation {
     }
 }
 
-pub fn get_time_fraction(times: &[f32], dt: f32) -> (u32, f32) {
-    let mut segment = 0;
+pub fn get_time_fraction(times: &[f32], t: f32) -> (u32, f32) {
+    debug_assert!(!times.is_empty());
 
-    while dt > times[segment] {
-        segment += 1;
+    // segment = first index where times[i] >= t
+    let segment = times.partition_point(|&x| x < t);
+
+    // if before/at the first key, lock to first segment.
+    if segment == 0 {
+        return (0, 0.0);
     }
 
-    if segment == 0 {
-        return (0, 0.0); // Avoid accessing times[-1], return first segment with no interpolation
+    // if past the last key, clamp to the last segment.
+    if segment >= times.len() {
+        let last = (times.len() - 1) as u32;
+        return (last, 0.0);
     }
 
     let start = times[segment - 1];
     let end = times[segment];
-    let frac = (dt - start) / (end - start);
+
+    // don't allow duplicate timestamps
+    let denom = end - start;
+    let frac = if denom.abs() > f32::EPSILON {
+        (t - start) / denom
+    } else {
+        0.0
+    };
 
     (segment as u32, frac)
 }
