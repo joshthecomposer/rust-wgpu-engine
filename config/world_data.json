@@ -4,15 +4,15 @@
       "entity_type": "TrashGuy",
       "faction": "Player",
       "position": [
-        -32.834538,
-        0.36338425,
-        -8.414044
+        -33.462185,
+        0.32557297,
+        -8.529199
       ],
       "rotation": [
         0.0,
-        0.031410754,
+        -0.7682835,
         0.0,
-        0.9995066
+        0.6401097
       ],
       "weapons": [
         {
@@ -45,9 +45,9 @@
       "entity_type": "TrashGuy",
       "faction": "Enemy",
       "position": [
-        11.594356,
-        0.19453251,
-        17.980871
+        11.594355,
+        0.19453156,
+        17.980873
       ],
       "rotation": [
         0.0,
@@ -236,6 +236,26 @@
         -0.1970564,
         0.0,
         0.98039216
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "Mountain4",
+      "faction": "World",
+      "position": [
+        -13.924,
+        0.3949318,
+        48.978
+      ],
+      "rotation": [
+        0.0,
+        0.44945684,
+        0.0,
+        0.893302
       ],
       "weapons": null,
       "base_speed": null,
