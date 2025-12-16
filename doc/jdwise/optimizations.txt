@@ -1,0 +1,34 @@
+Animation things to do:
+- Instancing + per-instance bone palettes (SSBO/TBO)
+	* Batch by (mesh/material/rig/pass), upload instance models + bone palettes once, 1 draw per batch per pass.
+
+- Animation LOD (update rate + complexity)
+	* Far guys: update at 10–30 Hz, interpolate root / key bones, or hold last pose.
+	* Far guys: skip blend layers / IK / additive, reduce bone count if possible.
+
+- Multithreading pose evaluation
+	* Split entities into chunks per batch/type, compute bone globals in worker threads, join, then do one GPU upload per batch.
+
+- Use TRS locals (Vec3 + Quat + scale) for recursion; matrix only at the end
+	* Avoid mat4×mat4 up the hierarchy; convert to final skinning matrices after globals are known.
+
+- Compress final palette format
+	* Store/upload affine 3×4 (12 floats) instead of mat4 (16 floats).
+
+- Compute shader posing (only do this if still CPU bound)
+	* GPU computes bone palettes into SSBO; vertex shader skins by gl_InstanceID.
+
+DON'T FORGET:
+- Per-pass reuse: upload bone palettes once per batch, use same SSBO for shadow + main.
+- Cull before pose: don’t evaluate animation for off-screen entities (frustum + distance).
+	* for this we would keep the animation time and the AnimationType but we wouldn't calc 
+	  the poses..
+
+ECS Things to do:
+- Determine what data is "fetched often" and fetch it once at the beginning of the game loop. (Player ID is one). 
+	* this could be a struct of references with a lifetime that is passed through the pipeline.
+
+- Split systems into a READ phase and a WRITE (command) phase.
+	* read components, produce an "intent", then apply mutations in one place.
+	* the message queues are great for this.
+	* this makes multithreading easier to conceptualize.

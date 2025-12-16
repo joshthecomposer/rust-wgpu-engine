@@ -17,7 +17,6 @@ mod sound;
 mod sparse_set;
 mod terrain;
 mod ui;
-mod uniforms;
 // mod deprecated;
 mod combat_system;
 mod game;
