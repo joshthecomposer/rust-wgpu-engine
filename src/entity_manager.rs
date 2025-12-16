@@ -1231,12 +1231,13 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     //let path = "resources/textures/brushes/301B1.png";
     //let path = "resources/textures/brushes/testing.png";
     //let path = "resources/textures/brushes/mountain.png";
-    let path = "resources/textures/brushes/blendertest.png";
+    //let path = "resources/textures/brushes/blendertest.png";
+    let path = "resources/textures/small_terrain.png";
     let img = image::open(path)
         .expect("Failed to load terrain image")
         .to_luma8();
     let (width, height) = img.dimensions();
-    let y_amplitude = 25.0;
+    let y_amplitude = 2.5;
     let mut terrain = Terrain::from_height_map(y_amplitude, width, height, &img);
     //let mut terrain = Terrain::from_height_map("resources/textures/solid-black-100-100.png");
     //let mut terrain = Terrain::from_height_map("resources/textures/brushes/NvF5e.jpg");

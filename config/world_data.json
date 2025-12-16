@@ -4,15 +4,15 @@
       "entity_type": "TrashGuy",
       "faction": "Player",
       "position": [
-        28.08722,
-        3.2706547,
-        16.94664
+        -5.336336,
+        0.27304554,
+        -4.3870654
       ],
       "rotation": [
         0.0,
-        0.15298587,
+        0.7472185,
         0.0,
-        0.9882284
+        0.6645785
       ],
       "weapons": [
         {
@@ -42,21 +42,21 @@
       "cleanup_timer": null
     },
     {
-      "entity_type": "BareBush1",
+      "entity_type": "Mountain3",
       "faction": "World",
       "position": [
-        14.33226,
-        3.230503,
-        53.451126
+        -27.729,
+        0.0,
+        38.88
       ],
       "rotation": [
         0.0,
-        0.8533829,
+        -0.4269808,
         0.0,
-        0.5212846
+        0.9042607
       ],
       "weapons": null,
-      "base_speed": 4.5,
+      "base_speed": null,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
@@ -65,9 +65,9 @@
       "entity_type": "Rock1",
       "faction": "World",
       "position": [
-        43.784,
-        -1.0294113,
-        50.318836
+        18.684,
+        1.071,
+        -9.081
       ],
       "rotation": [
         0.0,
@@ -82,122 +82,41 @@
       "cleanup_timer": null
     },
     {
-      "entity_type": "BareBush1",
+      "entity_type": "Mountain10",
       "faction": "World",
       "position": [
-        27.452484,
-        3.695,
-        26.343
+        36.701,
+        0.4,
+        48.459
       ],
       "rotation": [
         0.0,
+        0.33717293,
         0.0,
-        0.0,
-        1.0
+        0.9414428
       ],
       "weapons": null,
-      "base_speed": 4.5,
+      "base_speed": null,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
     },
     {
-      "entity_type": "BareBush1",
+      "entity_type": "Mountain1",
       "faction": "World",
       "position": [
-        25.231373,
-        2.6865692,
-        36.40288
+        22.881,
+        -0.8,
+        57.133
       ],
       "rotation": [
         0.0,
+        -0.13881147,
         0.0,
-        0.0,
-        1.0
+        0.9903189
       ],
       "weapons": null,
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0,
-      "cleanup_timer": null
-    },
-    {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
-      "position": [
-        81.23914,
-        -3.187411,
-        93.28294
-      ],
-      "rotation": [
-        0.0,
-        -0.945504,
-        0.0,
-        0.3256104
-      ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null,
-          "cleanup_timer": null
-        }
-      ],
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0,
-      "cleanup_timer": null
-    },
-    {
-      "entity_type": "TubeGuy",
-      "faction": "Enemy",
-      "position": [
-        27.092432,
-        3.2672682,
-        31.118546
-      ],
-      "rotation": [
-        0.0,
-        -0.7650094,
-        0.0,
-        0.6440191
-      ],
-      "weapons": null,
-      "base_speed": 4.5,
-      "health": 100.0,
-      "jump_height": 1.0,
-      "cleanup_timer": null
-    },
-    {
-      "entity_type": "TubeGuy",
-      "faction": "Enemy",
-      "position": [
-        54.410175,
-        -2.0377274,
-        75.08826
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "weapons": null,
-      "base_speed": 4.5,
+      "base_speed": null,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
@@ -206,9 +125,9 @@
       "entity_type": "Cactus1",
       "faction": "World",
       "position": [
-        64.78309,
-        -2.893,
-        45.983414
+        10.983,
+        0.207,
+        4.183
       ],
       "rotation": [
         0.0,
@@ -226,9 +145,9 @@
       "entity_type": "SphereRock",
       "faction": "World",
       "position": [
-        95.572426,
-        -4.955,
-        72.99782
+        -4.128,
+        13.045,
+        -52.802
       ],
       "rotation": [
         0.0,
@@ -243,113 +162,132 @@
       "cleanup_timer": null
     },
     {
-      "entity_type": "Cactus1",
+      "entity_type": "Mountain2",
       "faction": "World",
       "position": [
-        14.792028,
-        4.4,
-        23.944645
+        -34.705,
+        -3.123,
+        -29.253
       ],
       "rotation": [
         0.0,
-        0.59742266,
+        0.31800994,
         0.0,
-        0.80192655
+        0.9480874
       ],
       "weapons": null,
-      "base_speed": 4.5,
+      "base_speed": null,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
     },
     {
-      "entity_type": "OrcSword",
-      "faction": "Item",
+      "entity_type": "Mountain4",
+      "faction": "World",
       "position": [
-        78.77189,
-        -1.743166,
-        26.752895
+        -14.224,
+        -0.005,
+        53.678
       ],
       "rotation": [
-        -0.5784156,
-        -0.48140392,
-        -0.46877682,
-        -0.46253
+        0.0,
+        0.48855007,
+        0.0,
+        0.8725359
       ],
       "weapons": null,
       "base_speed": null,
-      "health": null,
-      "jump_height": null,
-      "cleanup_timer": null
-    },
-    {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
-      "position": [
-        51.714245,
-        -1.9011575,
-        69.386856
-      ],
-      "rotation": [
-        0.0,
-        -0.51226956,
-        0.0,
-        0.85882473
-      ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null,
-          "cleanup_timer": null
-        }
-      ],
-      "base_speed": 4.5,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
     },
     {
-      "entity_type": "DoubleAxe",
-      "faction": "Item",
+      "entity_type": "Mountain2",
+      "faction": "World",
       "position": [
-        99.10567,
-        -3.653961,
-        41.307243
+        3.453,
+        0.0,
+        55.658
       ],
       "rotation": [
-        0.17793596,
-        0.24207312,
-        -0.6647654,
-        -0.6839783
+        0.0,
+        -0.1188631,
+        0.0,
+        0.9929107
       ],
       "weapons": null,
       "base_speed": null,
-      "health": null,
-      "jump_height": null,
-      "cleanup_timer": 197.01268
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
     },
     {
-      "entity_type": "TrashGuy",
-      "faction": "Enemy",
+      "entity_type": "Mountain6",
+      "faction": "World",
       "position": [
-        68.51802,
-        -3.0409253,
-        71.58757
+        52.111,
+        0.0,
+        27.244
+      ],
+      "rotation": [
+        0.0,
+        -0.109883636,
+        0.0,
+        0.9939445
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "Mountain7",
+      "faction": "World",
+      "position": [
+        48.811,
+        0.0,
+        -4.156
+      ],
+      "rotation": [
+        0.0,
+        -0.6120726,
+        0.0,
+        0.7908016
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "Mountain8",
+      "faction": "World",
+      "position": [
+        25.111,
+        0.0,
+        -41.156
+      ],
+      "rotation": [
+        0.0,
+        -0.23545732,
+        0.0,
+        0.9718847
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "Mountain9",
+      "faction": "World",
+      "position": [
+        -6.16,
+        0.42217445,
+        -51.589
       ],
       "rotation": [
         0.0,
@@ -357,52 +295,71 @@
         0.0,
         1.0
       ],
-      "weapons": [
-        {
-          "entity_type": "DoubleAxe",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "jump_height": null,
-          "cleanup_timer": null
-        }
-      ],
-      "base_speed": 4.5,
+      "weapons": null,
+      "base_speed": null,
       "health": 100.0,
       "jump_height": 1.0,
       "cleanup_timer": null
     },
     {
-      "entity_type": "DoubleAxe",
-      "faction": "Item",
+      "entity_type": "Mountain1",
+      "faction": "World",
       "position": [
-        78.53721,
-        -2.1961331,
-        32.462486
+        -20.322,
+        0.06,
+        -43.817
       ],
       "rotation": [
-        0.68143666,
-        -0.7035116,
-        -0.17626224,
-        0.09821996
+        0.0,
+        0.272293,
+        0.0,
+        0.9622144
       ],
       "weapons": null,
       "base_speed": null,
-      "health": null,
-      "jump_height": null,
-      "cleanup_timer": 175.03471
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "Mountain7",
+      "faction": "World",
+      "position": [
+        -44.242,
+        -0.132,
+        5.173
+      ],
+      "rotation": [
+        0.0,
+        0.7087046,
+        0.0,
+        0.70550543
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "Mountain4",
+      "faction": "World",
+      "position": [
+        -42.418,
+        0.4071045,
+        29.768
+      ],
+      "rotation": [
+        0.0,
+        0.28175876,
+        0.0,
+        0.9594853
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "jump_height": 1.0,
+      "cleanup_timer": null
     }
   ]
 }

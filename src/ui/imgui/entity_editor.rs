@@ -58,6 +58,8 @@ impl EntityEditor {
                 let mut entity_types: Vec<String> =
                     em.entity_type_register.keys().map(|k| k.clone()).collect();
 
+                entity_types.sort_unstable();
+
                 let mut factions: Vec<String> = em.faction_register.iter().cloned().collect();
 
                 let hb_types: Vec<&str> = vec![
@@ -187,7 +189,7 @@ impl EntityEditor {
 
                         // rotation
                         if Drag::new("Rotation")
-                            .speed(0.1)
+                            .speed(0.01)
                             .build_array(ui, &mut rotation)
                         {};
                         trans.rotation = Quat::from_slice(&rotation);

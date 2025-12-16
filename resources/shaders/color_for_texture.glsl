@@ -142,7 +142,7 @@ vec4 calculate_directional_light() {
 
     // ----- DIFFUSE/ALBEDO SOURCE -----
     // If using base_color: take RGBA from uniform.
-    // Else: sample the Diffuse texture with your LOD logic.
+    // Else: sample the Diffuse texture with LOD logic.
     vec3 tex_color;
     float alpha;
     if (use_base_color) {
@@ -153,7 +153,7 @@ vec4 calculate_directional_light() {
         float lod = clamp((view_dist - 5.0) / 5.0, 0.0, 30.0);
         vec4 tex_sample = textureLod(material.Diffuse, TexCoords, lod);
 
-        // keep your “transparent becomes white” safety
+        // keep “transparent becomes white” safety
         vec3 safe_color = mix(vec3(1.0), tex_sample.rgb, tex_sample.a);
         tex_color = safe_color;
         alpha     = tex_sample.a;
