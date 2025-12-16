@@ -886,6 +886,19 @@ impl EntityManager {
         result
     }
 
+    pub fn get_ids_by_type(&self) -> HashMap<String, Vec<usize>> {
+        let mut map: HashMap<String, Vec<usize>> = HashMap::new();
+
+        for entry in self.entity_types.iter() {
+            let id = entry.key();
+            let ty = &entry.value;
+
+            map.entry(ty.clone()).or_default().push(id);
+        }
+
+        map
+    }
+
     pub fn player_get_ids_for_state(&self, state: PlayerState) -> Vec<usize> {
         let result: Vec<usize> = self
             .player_controllers

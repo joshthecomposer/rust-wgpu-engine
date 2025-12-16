@@ -618,40 +618,20 @@ impl Renderer {
         alpha: f32,
         particles: &mut ParticleSystem,
     ) {
-        let item_ids = em.get_ids_for_faction("Item");
-        let world_ids = em.get_ids_for_faction("World");
+        let ids_by_type = em.get_ids_by_type();
 
-        let enemy_ids = em.get_ids_for_faction("Enemy");
-        let player_ids = em.get_ids_for_faction("Player");
+        self.shadow_begin(camera, light_manager);
 
-        let static_ids = vec![item_ids, world_ids].concat();
-        let animated_ids = vec![enemy_ids, player_ids].concat();
+        for (_, ids) in ids_by_type.iter() {
+            if ids.is_empty() {
+                continue;
+            }
 
-        // static pass
-        self.shadow_pass(
-            em,
-            camera,
-            light_manager,
-            fb_width,
-            fb_height,
-            ps,
-            alpha,
-            &static_ids,
-            false,
-        );
+            let is_animated = em.animators.contains(*ids.first().unwrap());
+            self.shadow_draw_bucket(em, ps, alpha, ids, is_animated);
+        }
 
-        // anim pass
-        self.shadow_pass(
-            em,
-            camera,
-            light_manager,
-            fb_width,
-            fb_height,
-            ps,
-            alpha,
-            &animated_ids,
-            true,
-        );
+        self.shadow_end();
 
         if self.shadow_debug {
             return;
@@ -662,7 +642,7 @@ impl Renderer {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_fbo));
             gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
 
-            gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
+            //gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
             gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
         }
 
@@ -671,31 +651,24 @@ impl Renderer {
             let gizmo_ids = em.get_gizmo_ids();
             self.gizmo_pass(camera, em, gizmo_ids, ps, alpha);
         }
-        // static pass
-        self.model_pass(
-            camera,
-            em,
-            light_manager,
-            ps,
-            alpha,
-            particles,
-            sound_manager,
-            &static_ids,
-            false,
-        );
 
-        // anim pass
-        self.model_pass(
-            camera,
-            em,
-            light_manager,
-            ps,
-            alpha,
-            particles,
-            sound_manager,
-            &animated_ids,
-            true,
-        );
+        for (_, ids) in ids_by_type.iter() {
+            if ids.len() > 0 {
+                let is_animated = em.animators.contains(*ids.first().unwrap());
+
+                self.model_pass(
+                    camera,
+                    em,
+                    light_manager,
+                    ps,
+                    alpha,
+                    particles,
+                    sound_manager,
+                    &ids,
+                    is_animated,
+                );
+            }
+        }
 
         particles.render(
             self.shaders.get_mut(&ShaderType::Particles).unwrap(),
@@ -1054,42 +1027,33 @@ impl Renderer {
         }
     }
 
-    fn shadow_pass(
-        &mut self,
-        em: &EntityManager,
-        camera: &mut Camera,
-        light_manager: &Lights,
-        fb_width: u32,
-        fb_height: u32,
-        ps: &PhysicsState,
-        alpha: f32,
-        ids: &Vec<usize>,
-        is_animated: bool,
-    ) {
+    fn shadow_begin(&mut self, camera: &mut Camera, light_manager: &Lights) {
         let shader = self.shaders.get_mut(&ShaderType::Depth).unwrap();
+
         let near_plane = light_manager.near;
         let far_plane = light_manager.far;
         let half_bound = light_manager.bounds;
 
-        let bound_l = -half_bound;
-        let bound_r = half_bound;
-        let bound_b = -half_bound;
-        let bound_t = half_bound;
-
-        // Calculate dir_light pos
         let light_dir = light_manager.dir_light.direction.normalize();
         let light_distance = light_manager.dir_light.distance;
+
         let camera_forward = camera.forward.normalize();
         let shadow_push = half_bound * 1.2;
         let shadow_center = camera.position + camera_forward * shadow_push;
-
         let light_pos = shadow_center + light_dir * light_distance;
 
-        let light_projection =
-            Mat4::orthographic_rh_gl(bound_l, bound_r, bound_b, bound_t, near_plane, far_plane);
+        let light_projection = Mat4::orthographic_rh_gl(
+            -half_bound,
+            half_bound,
+            -half_bound,
+            half_bound,
+            near_plane,
+            far_plane,
+        );
         let light_view = Mat4::look_at_rh(light_pos, shadow_center, vec3(0.0, 1.0, 0.0));
 
         camera.light_space = light_projection * light_view;
+
         shader.activate();
         shader.set_mat4("light_space_mat", camera.light_space);
 
@@ -1101,26 +1065,28 @@ impl Renderer {
             ));
             gl_call!(gl::Enable(gl::DEPTH_TEST));
             gl_call!(gl::Clear(gl::DEPTH_BUFFER_BIT));
-            // Render scene
+
             gl_call!(gl::Enable(CULL_FACE));
-            //gl_call!(gl::CullFace(gl::BACK));
-            gl::CullFace(gl::FRONT);
-            self.render_sample_depth(em, ps, alpha, ids, is_animated);
+            gl_call!(gl::CullFace(gl::FRONT));
+        }
+    }
+
+    fn shadow_draw_bucket(
+        &mut self,
+        em: &EntityManager,
+        ps: &PhysicsState,
+        alpha: f32,
+        ids: &Vec<usize>,
+        is_animated: bool,
+    ) {
+        self.render_sample_depth(em, ps, alpha, ids, is_animated);
+    }
+
+    fn shadow_end(&mut self) {
+        unsafe {
             gl_call!(gl::CullFace(gl::BACK));
             gl_call!(gl::Disable(CULL_FACE));
-            // End render
-        }
-
-        // Render only shadow from light point of view if true
-        if self.shadow_debug {
-            unsafe {
-                let depth_debug_quad = self.shaders.get(&ShaderType::DebugShadowMap).unwrap();
-                depth_debug_quad.activate();
-                gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-                gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-            }
-            self.render_quad();
-            return;
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
         }
     }
 
