@@ -14,6 +14,7 @@ use crate::input::InputState;
 use crate::shaders::Shader;
 use crate::ui::game::views::{PauseMenuContext, PauseMenuView};
 use crate::ui::message_queue::MessageQueue;
+use crate::ui::slint_platform::init_slint_platform;
 
 /// View-specific data for the pause menu.
 pub struct PauseMenuData<'a> {
@@ -49,8 +50,11 @@ pub struct GameUiManager {
 }
 
 impl GameUiManager {
-    /// Create a new GameUiManager. Must be called AFTER EngineUiManager (platform must be initialized).
+    /// Create a new GameUiManager and initialize the Slint platform for game UI.
     pub fn new(width: u32, height: u32) -> Self {
+        // initialize the Slint platform before creating any Slint components
+        init_slint_platform(width, height);
+
         let (pause_menu_view, window) = PauseMenuView::new(width, height);
 
         let pixel_count = (width * height) as usize;

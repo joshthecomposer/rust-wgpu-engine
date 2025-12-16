@@ -15,7 +15,6 @@ use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
-use crate::ui::engine_ui_manager::EngineUiManager;
 use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PauseMenuData};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
@@ -33,7 +32,6 @@ pub struct Game {
     // imgui_manager: ImguiManager,
     pub paused: bool,
     message_queue: MessageQueue,
-    //engine_ui: EngineUiManager,
     game_ui: GameUiManager,
     pub should_quit: bool,
     imgui_manager: ImguiManager,
@@ -51,8 +49,6 @@ impl Game {
 
         let renderer = Renderer::new(&platform);
         let sound = SoundManager::new(&config);
-        let engine_ui = EngineUiManager::new(platform.fb_width, platform.fb_height);
-        // GameUiManager must be created AFTER EngineUiManager (platform must be initialized first)
         let game_ui = GameUiManager::new(platform.fb_width, platform.fb_height);
 
         let imgui_manager = ImguiManager::new(&platform);
@@ -67,7 +63,6 @@ impl Game {
             input: InputState::new(),
             paused: false,
             message_queue: MessageQueue::new(),
-            //engine_ui,
             game_ui,
             should_quit: false,
             imgui_manager,
