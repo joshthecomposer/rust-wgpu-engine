@@ -1,6 +1,6 @@
 use std::{ffi::c_void, path::Path, str::Lines};
 
-use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
+use glam::{Affine3A, Mat4, Quat, Vec2, Vec3, Vec4};
 use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
 
 use crate::{
@@ -94,7 +94,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
             // offset: b.offset,
         });
 
-        animation.current_pose.push(b.offset);
+        animation.current_pose.push(Mat4::from(b.offset));
         assert!(model_animation_join[b.id as usize].name == b.name);
         assert!(model_animation_join.len() == animation.current_pose.len());
 
@@ -147,7 +147,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                 dbg!(&current_anim_str);
 
                 for b in &bones_no_children {
-                    animation.current_pose.push(b.offset);
+                    animation.current_pose.push(Mat4::from(b.offset));
                 }
             }
             "DURATION:" => animation.duration = parts[1].parse().unwrap(),
@@ -571,13 +571,17 @@ pub fn texture_from_file(
     }
 }
 
-fn parse_bone_offset(lines: &mut Lines<'_>) -> Mat4 {
-    Mat4 {
+fn parse_bone_offset(lines: &mut Lines<'_>) -> Affine3A {
+    let m = Mat4 {
         x_axis: parse_vec4(lines.next().unwrap()),
         y_axis: parse_vec4(lines.next().unwrap()),
         z_axis: parse_vec4(lines.next().unwrap()),
         w_axis: parse_vec4(lines.next().unwrap()),
-    }
+    };
+
+    // This assumes the matrix is an affine transform (no perspective),
+    // which should be true for inverse bind matrices.
+    Affine3A::from_mat4(m)
 }
 
 fn parse_vec4(input: &str) -> Vec4 {
