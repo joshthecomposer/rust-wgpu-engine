@@ -3,11 +3,6 @@ type: "agent_requested"
 description: "used when working on any slint ui"
 ---
 
-Here's the markdown you can add to your rules (e.g., in `.augment/rules/ui-implementation.md` or a new file):
-
----
-
-```markdown
 ## Slint Component Reuse Policy
 
 ### 1. Search before creating
