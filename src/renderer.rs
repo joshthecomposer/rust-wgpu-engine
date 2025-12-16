@@ -636,7 +636,7 @@ impl Renderer {
             fb_height,
             ps,
             alpha,
-            static_ids,
+            &static_ids,
             false,
         );
 
@@ -649,7 +649,7 @@ impl Renderer {
             fb_height,
             ps,
             alpha,
-            animated_ids,
+            &animated_ids,
             true,
         );
 
@@ -671,6 +671,7 @@ impl Renderer {
             let gizmo_ids = em.get_gizmo_ids();
             self.gizmo_pass(camera, em, gizmo_ids, ps, alpha);
         }
+        // static pass
         self.model_pass(
             camera,
             em,
@@ -679,6 +680,21 @@ impl Renderer {
             alpha,
             particles,
             sound_manager,
+            &static_ids,
+            false,
+        );
+
+        // anim pass
+        self.model_pass(
+            camera,
+            em,
+            light_manager,
+            ps,
+            alpha,
+            particles,
+            sound_manager,
+            &animated_ids,
+            true,
         );
 
         particles.render(
@@ -834,6 +850,8 @@ impl Renderer {
         alpha: f32,
         particles: &mut ParticleSystem,
         sound_manager: &mut SoundManager,
+        ids: &Vec<usize>,
+        is_animated: bool,
     ) {
         unsafe {
             gl_call!(gl::Enable(gl::DEPTH_TEST));
@@ -858,7 +876,12 @@ impl Renderer {
             gl::ActiveTexture(gl::TEXTURE10);
             gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
         }
-        let shader = self.shaders.get_mut(&ShaderType::StaticModel).unwrap();
+
+        let shader = match is_animated {
+            true => self.shaders.get_mut(&ShaderType::AnimatedModel).unwrap(),
+            false => self.shaders.get_mut(&ShaderType::StaticModel).unwrap(),
+        };
+
         shader.activate();
 
         for &is_alpha_pass in &[false, true] {
@@ -872,16 +895,17 @@ impl Renderer {
             shader.set_float("bias_scalar", light_manager.bias_scalar);
             shader.set_vec3("view_position", camera.position);
             shader.set_int("skybox", 10);
+            shader.set_bool("is_animated", is_animated);
 
-            for id in em.entity_types.iter() {
-                let is_selected = em.selected.contains(&id.key());
-                if em.is_equipped.get(id.key()).is_none() && em.owners.get(id.key()).is_some() {
+            for id in ids.iter() {
+                let is_selected = em.selected.contains(&id);
+                if em.is_equipped.get(*id).is_none() && em.owners.get(*id).is_some() {
                     continue;
                 }
                 shader.set_bool("selection_fresnel", is_selected);
 
-                let model = em.models.get(id.key()).unwrap();
-                let trans = Self::render_transform(em, id.key(), alpha);
+                let model = em.models.get(*id).unwrap();
+                let trans = Self::render_transform(em, *id, alpha);
 
                 let forward = trans.rotation * Vec3::Z;
                 let m_mat = Mat4::from_scale_rotation_translation(
@@ -889,78 +913,66 @@ impl Renderer {
                     trans.rotation,
                     trans.position,
                 );
+                shader.set_mat4("model", m_mat);
 
-                match em.animators.get(id.key()) {
-                    Some(animator) => {
-                        let animation = animator.get_current_animation().unwrap();
-                        let bonez = em.skellingtons.get(id.key()).unwrap();
+                if is_animated {
+                    let animator = em.animators.get(*id).unwrap();
+                    let animation = animator.get_current_animation().unwrap();
+                    let bonez = em.skellingtons.get(*id).unwrap();
 
-                        for os in animation.one_shots.iter() {
-                            if animation.current_segment.get() == os.segment {
-                                if !os.triggered.get() {
-                                    sound_manager.play_sound_3d(
-                                        os.sound_type.clone(),
-                                        &trans.position,
-                                        id.key(),
-                                    );
-                                    particles.spawn_oneshot_emitter(
-                                        "DesertStep",
-                                        trans.position,
-                                        None,
-                                    );
-                                    os.triggered.set(true);
-                                }
-                            } else {
-                                os.triggered.set(false);
-                            }
-                        }
+                    shader.set_mat4_array("bone_transforms", &animation.current_pose);
 
-                        for cs in animation.continuous_sounds.iter() {
-                            if !cs.playing.get() {
+                    for os in animation.one_shots.iter() {
+                        if animation.current_segment.get() == os.segment {
+                            if !os.triggered.get() {
                                 sound_manager.play_sound_3d(
-                                    cs.sound_type.clone(),
+                                    os.sound_type.clone(),
                                     &trans.position,
-                                    id.key(),
+                                    *id,
                                 );
-                                cs.playing.set(true);
+                                particles.spawn_oneshot_emitter("DesertStep", trans.position, None);
+                                os.triggered.set(true);
                             }
+                        } else {
+                            os.triggered.set(false);
                         }
-
-                        if let Some(fa) = &animation.hurtbox_activation {
-                            if fa.segment_range.contains(&animation.current_segment.get()) {
-                                if !fa.triggered.get() {
-                                    fa.triggered.set(true);
-
-                                    //if let Some(bone_world_model_space) = animation.get_raw_global_bone_transform_by_name(
-                                    //    "Bone.029.L",
-                                    //    bonez,
-                                    //    Mat4::IDENTITY,
-                                    //) {
-                                    //    let bone_world_space = m_mat * bone_world_model_space;
-                                    //    let position = bone_world_space.w_axis.truncate();
-
-                                    //    particles.spawn_oneshot_emitter("ShootyPart", position, Some(forward));
-                                    //    particles.spawn_oneshot_emitter("SmokeyPart", position, Some(forward));
-                                    //}
-                                }
-                            } else {
-                                fa.triggered.set(false);
-                            }
-                        }
-
-                        shader.set_bool("is_animated", true);
-                        shader.set_mat4_array("bone_transforms", &animation.current_pose);
                     }
-                    _ => {
-                        shader.set_bool("is_animated", false);
+
+                    for cs in animation.continuous_sounds.iter() {
+                        if !cs.playing.get() {
+                            sound_manager.play_sound_3d(
+                                cs.sound_type.clone(),
+                                &trans.position,
+                                *id,
+                            );
+                            cs.playing.set(true);
+                        }
+                    }
+
+                    if let Some(fa) = &animation.hurtbox_activation {
+                        if fa.segment_range.contains(&animation.current_segment.get()) {
+                            if !fa.triggered.get() {
+                                fa.triggered.set(true);
+
+                                //if let Some(bone_world_model_space) = animation.get_raw_global_bone_transform_by_name(
+                                //    "Bone.029.L",
+                                //    bonez,
+                                //    Mat4::IDENTITY,
+                                //) {
+                                //    let bone_world_space = m_mat * bone_world_model_space;
+                                //    let position = bone_world_space.w_axis.truncate();
+
+                                //    particles.spawn_oneshot_emitter("ShootyPart", position, Some(forward));
+                                //    particles.spawn_oneshot_emitter("SmokeyPart", position, Some(forward));
+                                //}
+                            }
+                        } else {
+                            fa.triggered.set(false);
+                        }
                     }
                 }
 
-                shader.set_mat4("model", m_mat);
                 unsafe {
-                    // gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-                    // gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-                    // shader.set_int("shadow_map", 0);
                     model.draw(shader);
                     gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
                 }
@@ -1051,7 +1063,7 @@ impl Renderer {
         fb_height: u32,
         ps: &PhysicsState,
         alpha: f32,
-        ids: Vec<usize>,
+        ids: &Vec<usize>,
         is_animated: bool,
     ) {
         let shader = self.shaders.get_mut(&ShaderType::Depth).unwrap();
@@ -1117,7 +1129,7 @@ impl Renderer {
         em: &EntityManager,
         ps: &PhysicsState,
         alpha: f32,
-        ids: Vec<usize>,
+        ids: &Vec<usize>,
         is_animated: bool,
     ) {
         let shader = self.shaders.get(&ShaderType::Depth).unwrap();
@@ -1126,17 +1138,17 @@ impl Renderer {
 
         for id in ids {
             if is_animated {
-                let animator = em.animators.get(id).unwrap();
+                let animator = em.animators.get(*id).unwrap();
                 let animation = animator.get_current_animation().unwrap();
                 shader.set_mat4_array("bone_transforms", &animation.current_pose);
             } else {
-                if em.is_equipped.get(id).is_none() && em.owners.get(id).is_some() {
+                if em.is_equipped.get(*id).is_none() && em.owners.get(*id).is_some() {
                     continue;
                 }
             }
 
-            let model = em.models.get(id).unwrap();
-            let trans = Self::render_transform(em, id, alpha);
+            let model = em.models.get(*id).unwrap();
+            let trans = Self::render_transform(em, *id, alpha);
             //let trans = em.transforms.get(model.key()).unwrap();
 
             let model_model =
