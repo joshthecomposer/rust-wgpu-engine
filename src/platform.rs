@@ -33,6 +33,7 @@ pub struct Platform {
     pub surface: Surface<WindowSurface>,
     pub fb_width: u32,
     pub fb_height: u32,
+    pub scale_factor: f64,
     pub cursor_mode: CursorMode,
     pub display: Display,
 }
@@ -112,6 +113,7 @@ impl Platform {
         unsafe { gl_call!(gl::Enable(gl::MULTISAMPLE)) };
 
         let size = window.inner_size();
+        let scale_factor = window.scale_factor();
 
         (
             Self {
@@ -120,6 +122,7 @@ impl Platform {
                 surface,
                 fb_width: size.width,
                 fb_height: size.height,
+                scale_factor,
                 cursor_mode: CursorMode::Hidden,
                 display,
             },

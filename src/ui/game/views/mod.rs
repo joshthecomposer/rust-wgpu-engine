@@ -1,3 +1,5 @@
-pub mod pause_menu;
+pub mod game_root;
+mod pause_menu;
+mod player_hud;
 
-pub use pause_menu::{PauseMenuContext, PauseMenuView};
+pub use game_root::{GameRootContext, GameRootView};

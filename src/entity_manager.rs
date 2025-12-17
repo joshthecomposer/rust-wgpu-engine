@@ -82,6 +82,11 @@ pub struct EntityManager {
     pub yaws: SparseSet<f32>,
     pub knockbacks: SparseSet<Knockback>,
     pub healths: SparseSet<f32>,
+    pub max_healths: SparseSet<f32>,
+    pub manas: SparseSet<f32>,
+    pub max_manas: SparseSet<f32>,
+    pub levels: SparseSet<u32>,
+    pub names: SparseSet<String>,
     pub base_speeds: SparseSet<f32>,
     pub aggro_ranges: SparseSet<f32>,
     pub jump_heights: SparseSet<JumpHeight>,
@@ -133,6 +138,11 @@ impl EntityManager {
             yaws: SparseSet::with_capacity(max_entities),
             knockbacks: SparseSet::with_capacity(max_entities),
             healths: SparseSet::with_capacity(max_entities),
+            max_healths: SparseSet::with_capacity(max_entities),
+            manas: SparseSet::with_capacity(max_entities),
+            max_manas: SparseSet::with_capacity(max_entities),
+            levels: SparseSet::with_capacity(max_entities),
+            names: SparseSet::with_capacity(max_entities),
             base_speeds: SparseSet::with_capacity(max_entities),
             aggro_ranges: SparseSet::with_capacity(max_entities),
             jump_heights: SparseSet::with_capacity(max_entities),
@@ -261,6 +271,26 @@ impl EntityManager {
 
         if let Some(health) = instance.health {
             self.healths.insert(parent_id, health);
+        }
+
+        if let Some(max_health) = instance.max_health {
+            self.max_healths.insert(parent_id, max_health);
+        }
+
+        if let Some(mana) = instance.mana {
+            self.manas.insert(parent_id, mana);
+        }
+
+        if let Some(max_mana) = instance.max_mana {
+            self.max_manas.insert(parent_id, max_mana);
+        }
+
+        if let Some(level) = instance.level {
+            self.levels.insert(parent_id, level);
+        }
+
+        if let Some(name) = &instance.name {
+            self.names.insert(parent_id, name.clone());
         }
 
         if let Some(base_speed) = instance.base_speed {
@@ -870,6 +900,14 @@ impl EntityManager {
         result
     }
 
+    /// Returns the entity ID of the player, if one exists.
+    pub fn get_player_id(&self) -> Option<usize> {
+        self.factions
+            .iter()
+            .find(|f| *f.value() == "Player")
+            .map(|f| f.key())
+    }
+
     pub fn get_ids_for_type(&self, entity_type: &str) -> Vec<usize> {
         let result: Vec<usize> = self
             .entity_types
@@ -1022,6 +1060,11 @@ impl EntityManager {
                 base_speed: self.base_speeds.get(id).copied(),
                 jump_height,
                 health: self.healths.get(id).copied(),
+                max_health: self.max_healths.get(id).copied(),
+                mana: self.manas.get(id).copied(),
+                max_mana: self.max_manas.get(id).copied(),
+                level: self.levels.get(id).copied(),
+                name: self.names.get(id).cloned(),
                 cleanup_timer: self.cleanup_timer.get(id).copied(),
             };
 
@@ -1056,6 +1099,11 @@ impl EntityManager {
                     base_speed: None,
                     jump_height: None,
                     health: None,
+                    max_health: None,
+                    mana: None,
+                    max_mana: None,
+                    level: None,
+                    name: None,
                     cleanup_timer: None,
                 });
             }

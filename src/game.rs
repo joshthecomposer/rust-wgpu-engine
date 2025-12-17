@@ -15,7 +15,7 @@ use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
-use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PauseMenuData};
+use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PortraitRenderContext};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::world::World;
@@ -49,7 +49,11 @@ impl Game {
 
         let renderer = Renderer::new(&platform);
         let sound = SoundManager::new(&config);
-        let game_ui = GameUiManager::new(platform.fb_width, platform.fb_height);
+        let game_ui = GameUiManager::new(
+            platform.fb_width,
+            platform.fb_height,
+            platform.scale_factor as f32,
+        );
 
         let imgui_manager = ImguiManager::new(&platform);
 
@@ -189,6 +193,16 @@ impl Game {
             WindowEvent::Resized(size) => {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
+            }
+
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                // keep platform scale factor in sync and update framebuffer size from window
+                self.platform.scale_factor = *scale_factor;
+                let size = self.platform.window.inner_size();
+                self.platform.fb_width = size.width;
+                self.platform.fb_height = size.height;
+                // resize Slint game UI to match new framebuffer size
+                self.game_ui.resize(size.width, size.height);
             }
 
             WindowEvent::DroppedFile(path) => {
@@ -341,15 +355,12 @@ impl Game {
             }
         }
 
-        // update game UI (pause menu, etc.)
-        // views handle their own logic and directly modify state via context refs
+        // update game UI (pause menu, HUD, etc.)
         self.game_ui.update(GameUiUpdateContext {
             message_queue: &mut self.message_queue,
             entity_manager: &self.world.ecs,
-            pause_menu: PauseMenuData {
-                paused: &mut self.paused,
-                render_gizmos: &mut self.renderer.render_gizmos,
-            },
+            paused: &mut self.paused,
+            render_gizmos: &mut self.renderer.render_gizmos,
         });
     }
 
@@ -383,14 +394,30 @@ impl Game {
             &mut self.message_queue,
         );
 
-        if self.paused {
-            self.game_ui.render(
-                self.renderer
-                    .shaders
-                    .get_mut(&ShaderType::UiOverlay)
-                    .unwrap(),
-            );
+        // render player portrait for HUD (uses animated model shader)
+        {
+            let anim_shader = self
+                .renderer
+                .shaders
+                .get_mut(&ShaderType::AnimatedModel)
+                .unwrap();
+            let portrait_ctx = PortraitRenderContext {
+                entity_manager: &self.world.ecs,
+                shader: anim_shader,
+                lights: &self.world.lights,
+                defaults: &self.renderer.defaults,
+                cubemap: self.renderer.cubemap_texture,
+            };
+            self.game_ui.render_portrait(portrait_ctx);
         }
+
+        // render game UI overlay (pause menu when paused, HUD when playing)
+        let ui_shader = self
+            .renderer
+            .shaders
+            .get_mut(&ShaderType::UiOverlay)
+            .unwrap();
+        self.game_ui.render(ui_shader);
 
         self.platform
             .surface
