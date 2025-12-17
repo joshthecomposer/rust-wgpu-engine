@@ -260,6 +260,11 @@ impl EntityEditor {
                                 base_speed: None,
                                 jump_height: None,
                                 health: None,
+                                max_health: None,
+                                mana: None,
+                                max_mana: None,
+                                level: None,
+                                name: None,
                                 weapons: None,
                                 cleanup_timer: None,
                             }])
@@ -275,6 +280,11 @@ impl EntityEditor {
                             base_speed: speed,
                             jump_height: Some(1.0),
                             health: Some(100.0),
+                            max_health: Some(100.0),
+                            mana: Some(100.0),
+                            max_mana: Some(100.0),
+                            level: Some(1),
+                            name: None,
                             cleanup_timer: None,
                         };
 

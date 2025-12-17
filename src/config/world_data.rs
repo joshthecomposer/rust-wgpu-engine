@@ -46,6 +46,16 @@ pub struct EntityInstance {
     #[serde(default)]
     pub health: Option<f32>,
     #[serde(default)]
+    pub max_health: Option<f32>,
+    #[serde(default)]
+    pub mana: Option<f32>,
+    #[serde(default)]
+    pub max_mana: Option<f32>,
+    #[serde(default)]
+    pub level: Option<u32>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
     pub jump_height: Option<f32>,
     #[serde(default)]
     pub cleanup_timer: Option<f32>,

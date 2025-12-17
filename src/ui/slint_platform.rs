@@ -20,13 +20,15 @@ thread_local! {
 /// and can be retrieved via `get_last_created_window()`.
 pub struct SlintPlatform {
     default_size: (u32, u32),
+    scale_factor: f32,
     start_time: Instant,
 }
 
 impl SlintPlatform {
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new(width: u32, height: u32, scale_factor: f32) -> Self {
         Self {
             default_size: (width, height),
+            scale_factor,
             start_time: Instant::now(),
         }
     }
@@ -36,6 +38,13 @@ impl Platform for SlintPlatform {
     fn create_window_adapter(&self) -> Result<Rc<dyn WindowAdapter>, PlatformError> {
         // create a new window for each component
         let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
+
+        // IMPORTANT: set scale factor FIRST, before set_size, so the logical size is computed correctly
+        window.dispatch_event(slint::platform::WindowEvent::ScaleFactorChanged {
+            scale_factor: self.scale_factor,
+        });
+
+        // now set the physical size - this will compute logical size using the scale factor
         window.set_size(slint::PhysicalSize::new(
             self.default_size.0,
             self.default_size.1,
@@ -58,8 +67,8 @@ impl Platform for SlintPlatform {
 }
 
 /// Initialize the Slint platform. Must be called BEFORE creating any Slint components.
-pub fn init_slint_platform(width: u32, height: u32) {
-    let platform = SlintPlatform::new(width, height);
+pub fn init_slint_platform(width: u32, height: u32, scale_factor: f32) {
+    let platform = SlintPlatform::new(width, height, scale_factor);
     slint::platform::set_platform(Box::new(platform))
         .expect("Failed to set Slint platform - was it already set?");
 }

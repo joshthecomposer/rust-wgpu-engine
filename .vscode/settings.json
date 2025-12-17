@@ -1,6 +1,7 @@
 {
 	"cSpell.words": [
 		"FMOD",
+		"Framebuffers",
 		"gameconfig",
 		"glcall",
 		"glfw",
@@ -15,6 +16,8 @@
 		"opengl",
 		"Parameteri",
 		"rects",
+		"renderbuffer",
+		"Renderbuffers",
 		"rgba",
 		"slint",
 		"Spag",

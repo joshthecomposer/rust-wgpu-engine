@@ -1,7 +1,115 @@
-// Root Slint file for in-game UI (pause menu, etc.)
+// Root Slint file for in-game UI (pause menu, HUD, etc.)
+// This single component manages all game UI in one window.
 
 // import custom font for game UI - must be at root level for embedding
 import "../fonts/weiholmir.ttf";
 
-export { PauseMenu } from "pause_menu.slint";
+import { RunicButton } from "components/menu_button.slint";
+import { RunicWindow } from "components/runic_window.slint";
+import { RunicCloseButton } from "components/runic_close_button.slint";
+import { RunicWindowHeader } from "components/runic_window_header.slint";
+import { RunicMenuSeparator } from "components/runic_menu_separator.slint";
+import { RunicFooterLabel } from "components/runic_footer_label.slint";
+import { PlayerContainer } from "components/player_container.slint";
+import { Theme } from "components/theme.slint";
 
+export component GameRoot inherits Window {
+    background: transparent;
+    default-font-family: Theme.font-family;
+
+    // ==================== PAUSE MENU PROPERTIES ====================
+    in property <bool> show-pause-menu: false;
+    in property <string> build-version: "v0.0.1a";
+
+    callback close_clicked();
+    callback gizmo_clicked();
+    callback reload_world_clicked();
+    callback save_player_clicked();
+    callback quit_clicked();
+
+    // ==================== PLAYER HUD PROPERTIES ====================
+    in property <bool> show-player-hud: true;
+    in property <string> player-name: "PLAYER";
+    in property <int> player-level: 1;
+    in property <float> player-health: 100;
+    in property <float> player-health-max: 100;
+    in property <float> player-mana: 100;
+    in property <float> player-mana-max: 100;
+    in property <image> player-portrait;
+
+    // ==================== PLAYER HUD ====================
+    PlayerContainer {
+        x: 16px;
+        y: 16px;
+
+        show-hud: show-player-hud;
+        player-name: root.player-name;
+        level: root.player-level;
+        health-current: root.player-health;
+        health-max: root.player-health-max;
+        mana-current: root.player-mana;
+        mana-max: root.player-mana-max;
+        portrait: root.player-portrait;
+    }
+
+    // ==================== PAUSE MENU ====================
+    if show-pause-menu: RunicWindow {
+        window-width: 420px;
+        window-height: 400px;
+
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+
+        // close button (×) in top-right
+        RunicCloseButton {
+            x: parent.width - self.width - 12px;
+            y: 12px;
+            clicked => { root.close_clicked(); }
+        }
+
+        // header section
+        RunicWindowHeader {
+            y: 24px;
+            width: parent.width;
+            title: "SYSTEM MENU";
+        }
+
+        // button container
+        VerticalLayout {
+            x: 24px;
+            y: 100px;
+            width: parent.width - 48px;
+            spacing: 16px;
+
+            RunicButton {
+                label: "GIZMO RENDERING";
+                clicked => { root.gizmo_clicked(); }
+            }
+
+            RunicButton {
+                label: "RELOAD WORLD DATA";
+                clicked => { root.reload_world_clicked(); }
+            }
+
+            RunicButton {
+                label: "SAVE PLAYER DATA";
+                clicked => { root.save_player_clicked(); }
+            }
+
+            RunicMenuSeparator { }
+
+            RunicButton {
+                label: "QUIT GAME";
+                danger: true;
+                clicked => { root.quit_clicked(); }
+            }
+        }
+
+        // footer version text
+        RunicFooterLabel {
+            y: parent.height - 28px;
+            width: parent.width;
+            value: build-version;
+        }
+    }
+}
