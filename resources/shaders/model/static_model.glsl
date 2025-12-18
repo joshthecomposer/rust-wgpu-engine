@@ -18,53 +18,16 @@ uniform mat4 view;
 uniform mat4 model;
 uniform mat4 light_space_mat;
 
-// Animated model stuff
-uniform bool is_animated;
-const int MAX_BONE_INFLUENCE = 4;
-const int MAX_BONES = 100;
-
-uniform mat4 bone_transforms[MAX_BONES];
-
 void main()
 {
-	if (is_animated) {
-		vec4 totalPosition = vec4(0.0f);
-		vec3 totalNormal = vec3(0.0f);
-		for(int i = 0 ; i < MAX_BONE_INFLUENCE; i++)
-		{
-			if(bone_ids[i] == -1) 
-				continue;
-			if(bone_ids[i] >= MAX_BONES) 
-			{
-				totalPosition = vec4(a_pos,1.0f);
-				break;
-			}
-			vec4 localPosition = bone_transforms[bone_ids[i]] * vec4(a_pos,1.0f);
-			totalPosition += localPosition * bone_weights[i];
-
-			mat3 boneNormalMatrix = transpose(inverse(mat3(bone_transforms[bone_ids[i]])));
-			totalNormal += boneNormalMatrix * a_normal * bone_weights[i];
-		}
-
-		FragPos = vec3(model * totalPosition);
-		FragPosLightSpace = light_space_mat * vec4(FragPos, 1.0);
-
-		mat3 normalMatrix = transpose(inverse(mat3(model)));
-		Normal = normalize(normalMatrix * totalNormal);
-
-		mat4 viewModel = view * model;
-		gl_Position =  projection * viewModel * totalPosition;
-		TexCoords = a_tex_coords;
-	} else {
-		FragPos = vec3(model * vec4(a_pos, 1.0));
-		Normal = mat3(transpose(inverse(model))) * a_normal;  
-		TexCoords = a_tex_coords;    
-		FragPosLightSpace = light_space_mat * vec4(FragPos, 1.0);
-		gl_Position = projection * view * vec4(FragPos, 1.0);
-	}
+	FragPos = vec3(model * vec4(a_pos, 1.0));
+	Normal = mat3(transpose(inverse(model))) * a_normal;  
+	TexCoords = a_tex_coords;    
+	FragPosLightSpace = light_space_mat * vec4(FragPos, 1.0);
+	gl_Position = projection * view * vec4(FragPos, 1.0);
 
 	base_color = a_base_color;
-	
+
 }
 
 // FRAGMENT_SHADER
