@@ -21,6 +21,8 @@
 		"rgba",
 		"slint",
 		"Spag",
+		"sparseset",
+		"uninit",
 		"vsync",
 		"winit"
 	],

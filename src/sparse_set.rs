@@ -1,12 +1,67 @@
 use core::slice;
 use std::ops::{Deref, DerefMut};
 
+/// An implementation of a sparse set.
+///
+/// A sparse set is a specialized data structure for representing a set of integers.
+/// It can be useful in some very narrow and specific cases, namely when the universe of possible
+/// values is very large but used very sparingly and the set is iterated often or cleared often.
+///
+/// In this implement the SparseSet can hold an arbitrary value for every integer (key) in the set.
+///
+/// # Example
+///
+/// ```
+/// use sparseset::SparseSet;
+/// let mut set = SparseSet::with_capacity(128);
+/// set.insert(42, 3);
+/// set.insert(77, 5);
+/// set.insert(23, 8);
+///
+/// assert_eq!(*set.get(42).unwrap(), 3);
+///
+/// set.remove(42);
+/// assert!(!set.get(42).is_some());
+///
+/// for entry in set {
+///     println!("- {} => {}", entry.key(), entry.value);
+/// }
+/// ```
+///
+/// # Performance
+///
+/// Note that SparseSet is *incredibly* inefficient in terms of space. The O(1) insertion time
+/// assumes space for the element is already allocated.  Otherwise, a large key may require a
+/// massive reallocation, with no direct relation to the number of elements in the collection.
+/// SparseSet should only be seriously considered for small keys.
+///
+/// ## Runtime complexity
+///
+/// See how the runtime complexity of SparseSet compares to Hash and Btree maps:
+///
+/// |           | get       | insert   | remove   | iterate | clear        |
+/// |-----------|-----------|----------|----------|---------|--------------|
+/// | SparseSet | O(1)      | O(1)*    | O(1)     | O(n)    | O(1) / O(n)* |
+/// | HashMap   | O(1)~     | O(1)~*   | O(1)~    | N/A     | N/A          |
+/// | BTreeMap  | O(log n)  | O(log n) | O(log n) | N/A     | N/A          |
+///
+/// * Clear is O(1) on simple types and O(n) on types whom implements Drop.
+/// * Iterating is really efficient, its iterating over a dense array. In fact, its even possible
+/// to get an (even mutable) slice of the entries in the set.
+///
+/// See http://research.swtch.com/sparse for more details.
 #[derive(Debug)]
 pub struct SparseSet<T> {
     pub dense: Vec<Entry<T>>,
+
+    /// The value stored in the entry. A reference to it is returned by value() and value_mut(), as
+    /// well as get() and get_mut() directly from SparseSet. The field can be used without going
+    /// trough the accessors functions since it is public.
     pub sparse: Vec<usize>,
 }
 
+/// An entry in the sparse set.
+/// You can retrieve a slice (possibly mutable) of [Entry] from the SparseSet.
 #[derive(Debug)]
 pub struct Entry<T> {
     key: usize,
@@ -171,6 +226,7 @@ impl<T> DerefMut for SparseSet<T> {
     }
 }
 
+/// Move into an iterator, consuming the SparseSet.
 impl<T> IntoIterator for SparseSet<T> {
     type Item = Entry<T>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
@@ -180,6 +236,7 @@ impl<T> IntoIterator for SparseSet<T> {
     }
 }
 
+/// An iterator over the elements of the SparseSet.
 impl<'a, T> IntoIterator for &'a SparseSet<T> {
     type Item = &'a Entry<T>;
     type IntoIter = slice::Iter<'a, Entry<T>>;
@@ -189,6 +246,7 @@ impl<'a, T> IntoIterator for &'a SparseSet<T> {
     }
 }
 
+/// An iterator over mutable elements of the SparseSet.
 impl<'a, T> IntoIterator for &'a mut SparseSet<T> {
     type Item = &'a mut Entry<T>;
     type IntoIter = slice::IterMut<'a, Entry<T>>;
