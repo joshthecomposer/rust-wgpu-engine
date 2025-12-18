@@ -7,6 +7,7 @@
 		"christian-kohler.path-intellisense",
 		"dustypomerleau.rust-syntax",
 		"rust-lang.rust-analyzer",
-		"slint.slint"
+		"slint.slint",
+		"vadimcn.vscode-lldb"
 	]
 }
