@@ -607,7 +607,7 @@ impl Renderer {
 
     pub fn draw(
         &mut self,
-        em: &EntityManager,
+        em: &mut EntityManager,
         camera: &mut Camera,
         light_manager: &Lights,
         sound_manager: &mut SoundManager,
@@ -619,6 +619,52 @@ impl Renderer {
         particles: &mut ParticleSystem,
     ) {
         let ids_by_type = em.get_ids_by_type();
+        let cam_pos = camera.position;
+
+        let mut visible_by_type: HashMap<String, Vec<usize>> = HashMap::new();
+
+        const NEAR2: f32 = 15.0 * 15.0;
+        const MID2: f32 = 35.0 * 35.0;
+        const FAR2: f32 = 50.0 * 50.0;
+        const FARTHEST2: f32 = 75.0 * 75.0;
+
+        for (ty, ids) in ids_by_type.iter() {
+            let mut out = Vec::with_capacity(ids.len());
+
+            for &id in ids.iter() {
+                let t = match em.transforms.get(id) {
+                    Some(t) => t,
+                    None => continue,
+                };
+
+                let d2 = (t.position - cam_pos).length_squared();
+
+                if let Some(animator) = em.animators.get_mut(id) {
+                    let anim = animator
+                        .animations
+                        .get_mut(&animator.current_animation)
+                        .unwrap();
+
+                    anim.lod_skip = if d2 < NEAR2 {
+                        0
+                    } else if d2 < MID2 {
+                        1
+                    } else if d2 < FAR2 {
+                        3
+                    } else if d2 < FARTHEST2 {
+                        5
+                    } else {
+                        7
+                    };
+                }
+
+                out.push(id);
+            }
+
+            if !out.is_empty() {
+                visible_by_type.insert(ty.to_string(), out);
+            }
+        }
 
         self.shadow_begin(camera, light_manager);
 
@@ -892,19 +938,29 @@ impl Renderer {
 
                     shader.set_mat4_array("bone_transforms", &animation.current_pose);
 
-                    for os in animation.one_shots.iter() {
-                        if animation.current_segment.get() == os.segment {
-                            if !os.triggered.get() {
-                                sound_manager.play_sound_3d(
-                                    os.sound_type.clone(),
-                                    &trans.position,
-                                    *id,
-                                );
-                                particles.spawn_oneshot_emitter("DesertStep", trans.position, None);
-                                os.triggered.set(true);
+                    let cam_pos = camera.position;
+                    let d2 = (trans.position - cam_pos).length_squared();
+                    let do_particles = d2 < (40.0 * 40.0);
+
+                    if do_particles {
+                        for os in animation.one_shots.iter() {
+                            if animation.current_segment.get() == os.segment {
+                                if !os.triggered.get() {
+                                    sound_manager.play_sound_3d(
+                                        os.sound_type.clone(),
+                                        &trans.position,
+                                        *id,
+                                    );
+                                    particles.spawn_oneshot_emitter(
+                                        "DesertStep",
+                                        trans.position,
+                                        None,
+                                    );
+                                    os.triggered.set(true);
+                                }
+                            } else {
+                                os.triggered.set(false);
                             }
-                        } else {
-                            os.triggered.set(false);
                         }
                     }
 

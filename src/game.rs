@@ -389,7 +389,7 @@ impl Game {
 
     pub fn render(&mut self) {
         self.renderer.draw(
-            &self.world.ecs,
+            &mut self.world.ecs,
             &mut self.world.camera,
             &self.world.lights,
             &mut self.sound,
