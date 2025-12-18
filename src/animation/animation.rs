@@ -78,16 +78,8 @@ impl Animation {
 
         skeleton.global_transform = global_transform;
 
-        self.current_pose[skeleton.id as usize] = match 0 {
-            0 => global_inverse_transform * global_transform * skeleton.offset,
-            1 => global_transform * skeleton.offset * global_inverse_transform,
-            2 => global_transform * skeleton.offset,
-            3 => global_inverse_transform * global_transform,
-            4 => global_inverse_transform * skeleton.offset * global_transform,
-            5 => global_transform * global_inverse_transform * skeleton.offset,
-            10 => Mat4::IDENTITY,
-            _ => global_inverse_transform * global_transform * skeleton.offset,
-        };
+        self.current_pose[skeleton.id as usize] =
+            global_inverse_transform * global_transform * skeleton.offset;
 
         for child in skeleton.children.iter_mut() {
             self.calculate_pose(child, global_transform, global_inverse_transform);

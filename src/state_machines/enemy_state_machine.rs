@@ -235,6 +235,7 @@ pub fn enemy_sim_state_machine(
                     .get_mut(&animator.current_animation)
                     .unwrap();
 
+                // TODO: use the bone IDs instead for this
                 for bone_name in bone_names {
                     if let Some(bone_world_model_space) = anim
                         .get_raw_global_bone_transform_by_name(
