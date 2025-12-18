@@ -270,8 +270,8 @@
         }
       ],
       "item_bones": {
-        "rh_name": "Bone.029.L",
-        "lh_name": "Bone.029.R"
+        "rh": "Bone.029.L",
+        "lh": "Bone.029.R"
       },
       "aggro_range": 20.0,
       "hitbox": {
@@ -432,8 +432,8 @@
         }
       ],
       "item_bones": {
-        "rh_name": "mixamorig:RightHand",
-        "lh_name": "mixamorig:LeftHand"
+        "rh": "mixamorig:RightHand",
+        "lh": "mixamorig:LeftHand"
       },
       "aggro_range": 20.0,
       "hitbox": {
@@ -603,8 +603,8 @@
         }
       ],
       "item_bones": {
-        "rh_name": "mixamorg:RightHand",
-        "lh_name": "mixamorg:LeftHand"
+        "rh": "mixamorg:RightHand",
+        "lh": "mixamorg:LeftHand"
       },
       "aggro_range": 20.0,
       "hitbox": {

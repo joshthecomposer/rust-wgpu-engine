@@ -26,7 +26,7 @@ pub struct Animation {
     pub duration: f32,
     pub ticks_per_second: f32,
     pub model_animation_join: Vec<BoneJoinInfo>,
-    pub bone_transforms: HashMap<String, BoneTransformTrack>,
+    pub bone_transforms: Vec<BoneTransformTrack>,
     pub current_pose: Vec<Mat4>,
 
     pub current_segment: std::cell::Cell<u32>,
@@ -46,7 +46,7 @@ impl Animation {
             duration: 0.0,
             ticks_per_second: 0.0,
             model_animation_join: vec![],
-            bone_transforms: HashMap::new(),
+            bone_transforms: vec![],
             current_pose: vec![],
 
             current_segment: std::cell::Cell::new(0),
@@ -70,20 +70,16 @@ impl Animation {
         let delta = self.current_time % self.duration;
         let (local_position, local_rot, local_scale) =
             self.get_bone_local_transform(skeleton, delta);
+
+        // TODO: Can we keep this as TRS until the VERY end?
         let local_transform =
             Mat4::from_scale_rotation_translation(local_scale, local_rot, local_position);
         let global_transform = parent_transform * local_transform;
 
-        self.current_pose[skeleton.id as usize] = match 0 {
-            0 => global_inverse_transform * global_transform * skeleton.offset,
-            1 => global_transform * skeleton.offset * global_inverse_transform,
-            2 => global_transform * skeleton.offset,
-            3 => global_inverse_transform * global_transform,
-            4 => global_inverse_transform * skeleton.offset * global_transform,
-            5 => global_transform * global_inverse_transform * skeleton.offset,
-            10 => Mat4::IDENTITY,
-            _ => global_inverse_transform * global_transform * skeleton.offset,
-        };
+        skeleton.global_transform = global_transform;
+
+        self.current_pose[skeleton.id as usize] =
+            global_inverse_transform * global_transform * skeleton.offset;
 
         for child in skeleton.children.iter_mut() {
             self.calculate_pose(child, global_transform, global_inverse_transform);
@@ -115,6 +111,8 @@ impl Animation {
             Mat4::from_scale_rotation_translation(final_scale, final_rot, final_pos);
         let global_transform = parent_transform * local_transform;
 
+        skeleton.global_transform = global_transform;
+
         self.current_pose[skeleton.id as usize] = match 0 {
             0 => global_inverse_transform * global_transform * skeleton.offset,
             1 => global_transform * skeleton.offset * global_inverse_transform,
@@ -138,7 +136,7 @@ impl Animation {
     }
 
     fn get_bone_local_transform(&self, skeleton: &Bone, delta: f32) -> (Vec3, Quat, Vec3) {
-        let btt = match self.bone_transforms.get(&skeleton.name) {
+        let btt = match self.bone_transforms.get(skeleton.id) {
             Some(name) => name,
             _ => {
                 dbg!(skeleton);

@@ -97,13 +97,18 @@ impl Platform {
             .make_current(&surface)
             .expect("Failed to make GL context current");
 
-        if vsync {
-            let _ = surface.set_swap_interval(
-                &gl_context,
-                SwapInterval::Wait(std::num::NonZeroU32::new(1).unwrap()),
-            );
-        } else {
-            let _ = surface.set_swap_interval(&gl_context, SwapInterval::DontWait);
+        //if vsync {
+        //    let _ = surface.set_swap_interval(
+        //        &gl_context,
+        //        SwapInterval::Wait(std::num::NonZeroU32::new(1).unwrap()),
+        //    );
+        //} else {
+        //    let _ = surface.set_swap_interval(&gl_context, SwapInterval::DontWait);
+        //}
+
+        match surface.set_swap_interval(&gl_context, SwapInterval::DontWait) {
+            Ok(_) => println!("VSync disabled"),
+            Err(e) => eprintln!("Failed to disable vsync: {:?}", e),
         }
 
         gl::load_with(|symbol| {

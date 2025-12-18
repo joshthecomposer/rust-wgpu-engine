@@ -34,7 +34,7 @@ pub struct Game {
     message_queue: MessageQueue,
     game_ui: GameUiManager,
     pub should_quit: bool,
-    imgui_manager: ImguiManager,
+    imgui_manager: Option<ImguiManager>,
 }
 
 impl Game {
@@ -55,7 +55,10 @@ impl Game {
             platform.scale_factor as f32,
         );
 
-        let imgui_manager = ImguiManager::new(&platform);
+        let imgui_manager = match config.debug_mode {
+            true => Some(ImguiManager::new(&platform)),
+            false => None,
+        };
 
         Self {
             platform,
@@ -188,7 +191,9 @@ impl Game {
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
         self.game_ui.handle_window_event(event, &mut self.input);
-        self.imgui_manager.handle_imgui_event(event);
+        if let Some(imgui_manager) = &mut self.imgui_manager {
+            imgui_manager.handle_imgui_event(event);
+        }
         match event {
             WindowEvent::Resized(size) => {
                 self.platform.fb_width = size.width;
@@ -206,20 +211,22 @@ impl Game {
             }
 
             WindowEvent::DroppedFile(path) => {
-                let path = Path::new(path);
-                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    match ext {
-                        "txt" => {
-                            self.imgui_manager.entity_editor.new_archetype.mesh_path =
-                                path.to_string_lossy().into_owned();
+                if let Some(imgui_manager) = &mut self.imgui_manager {
+                    let path = Path::new(path);
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        match ext {
+                            "txt" => {
+                                imgui_manager.entity_editor.new_archetype.mesh_path =
+                                    path.to_string_lossy().into_owned();
+                            }
+                            "png" | "jpg" | "jpeg" => {
+                                imgui_manager.entity_editor.new_archetype.texture_path =
+                                    path.to_string_lossy().into_owned();
+                                imgui_manager.particle_editor.staged_texture =
+                                    path.to_string_lossy().into_owned();
+                            }
+                            _ => {}
                         }
-                        "png" | "jpg" | "jpeg" => {
-                            self.imgui_manager.entity_editor.new_archetype.texture_path =
-                                path.to_string_lossy().into_owned();
-                            self.imgui_manager.particle_editor.staged_texture =
-                                path.to_string_lossy().into_owned();
-                        }
-                        _ => {}
                     }
                 }
             }
@@ -234,13 +241,29 @@ impl Game {
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
-                let io = self.imgui_manager.imgui.io();
-                if !io.want_capture_mouse {
+                if let Some(imgui_manager) = &mut self.imgui_manager {
+                    let io = imgui_manager.imgui.io();
+                    if !io.want_capture_mouse {
+                        let fb = glam::vec2(
+                            self.platform.fb_width as f32,
+                            self.platform.fb_height as f32,
+                        );
+
+                        input::handle_mouse_input(
+                            *button,
+                            *state,
+                            fb,
+                            &self.world.camera,
+                            &mut self.world.ecs,
+                            &mut self.input,
+                            &mut self.physics,
+                        );
+                    }
+                } else {
                     let fb = glam::vec2(
                         self.platform.fb_width as f32,
                         self.platform.fb_height as f32,
                     );
-
                     input::handle_mouse_input(
                         *button,
                         *state,
@@ -378,21 +401,23 @@ impl Game {
             &mut self.world.particles,
         );
 
-        self.imgui_manager.draw(
-            &mut self.platform.window,
-            self.platform.fb_width as f32,
-            self.platform.fb_height as f32,
-            self.time.dt,
-            &mut self.world.lights,
-            &mut self.renderer,
-            &mut self.sound,
-            &self.world.camera,
-            &mut self.world.ecs,
-            &mut self.physics,
-            &mut self.input,
-            &mut self.world.particles,
-            &mut self.message_queue,
-        );
+        if let Some(imgui_manager) = &mut self.imgui_manager {
+            imgui_manager.draw(
+                &mut self.platform.window,
+                self.platform.fb_width as f32,
+                self.platform.fb_height as f32,
+                self.time.dt,
+                &mut self.world.lights,
+                &mut self.renderer,
+                &mut self.sound,
+                &self.world.camera,
+                &mut self.world.ecs,
+                &mut self.physics,
+                &mut self.input,
+                &mut self.world.particles,
+                &mut self.message_queue,
+            );
+        }
 
         // render player portrait for HUD (uses animated model shader)
         {
