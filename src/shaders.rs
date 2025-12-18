@@ -70,6 +70,13 @@ impl Shader {
         self.uniform_locations.insert(name.to_string(), location);
     }
 
+    pub fn set_vec2(&self, name: &str, x: f32, y: f32) {
+        let location = self.get_uniform_location(name);
+        if location != -1 {
+            unsafe { gl_call!(gl::Uniform2f(location, x, y)) }
+        }
+    }
+
     pub fn store_dir_light_location(&mut self, name: &str) {
         self.store_uniform_location(format!("{}.direction", name).as_str());
         self.store_uniform_location(format!("{}.view_pos", name).as_str());
@@ -326,8 +333,8 @@ fn extract_shader_sources(file_path: &str) -> (String, Option<String>, String) {
             }
             "// GEOMETRY_SHADER" => {
                 println!("Located geometry shader shader, extracting now...");
-                current_shader = Some("FRAGMENT_SHADER".to_string());
-                shader_sources.insert("FRAGMENT_SHADER".to_string(), String::new());
+                current_shader = Some("GEOMETRY_SHADER".to_string());
+                shader_sources.insert("GEOMETRY_SHADER".to_string(), String::new());
             }
             _ => {
                 if let Some(ref shader_type) = current_shader {

@@ -35,7 +35,6 @@ export component GameRoot inherits Window {
     in property <float> player-health-max: 100;
     in property <float> player-mana: 100;
     in property <float> player-mana-max: 100;
-    in property <image> player-portrait;
 
     // ==================== PLAYER HUD ====================
     PlayerContainer {
@@ -49,7 +48,6 @@ export component GameRoot inherits Window {
         health-max: root.player-health-max;
         mana-current: root.player-mana;
         mana-max: root.player-mana-max;
-        portrait: root.player-portrait;
     }
 
     // ==================== PAUSE MENU ====================

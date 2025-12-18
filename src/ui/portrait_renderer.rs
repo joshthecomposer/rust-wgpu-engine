@@ -14,11 +14,11 @@ use crate::shaders::Shader;
 pub const PORTRAIT_SIZE: u32 = 64;
 
 /// Renders entity portraits to an offscreen FBO.
+/// The portrait texture can be sampled directly for rendering without CPU readback.
 pub struct PortraitRenderer {
     fbo: u32,
     texture: u32,
     depth_rbo: u32,
-    pixel_buffer: Vec<u8>,
 }
 
 impl PortraitRenderer {
@@ -57,6 +57,17 @@ impl PortraitRenderer {
                 gl::TEXTURE_MAG_FILTER,
                 gl::LINEAR as i32
             ));
+            // use clamp to edge to prevent texture repeat artifacts at borders
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
             gl_call!(gl::FramebufferTexture2D(
                 gl::FRAMEBUFFER,
                 gl::COLOR_ATTACHMENT0,
@@ -89,35 +100,29 @@ impl PortraitRenderer {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
         }
 
-        let pixel_count = (PORTRAIT_SIZE * PORTRAIT_SIZE * 4) as usize;
-        let pixel_buffer = vec![0u8; pixel_count];
-
         Self {
             fbo,
             texture,
             depth_rbo,
-            pixel_buffer,
         }
     }
 
-    /// Render the player entity to the portrait FBO.
-    /// Returns the RGBA pixel data.
     pub fn render_portrait(
         &mut self,
-        em: &EntityManager,
+        em: &crate::entity_manager::EntityManager,
         player_id: usize,
-        shader: &mut Shader,
-        lights: &Lights,
+        shader: &mut crate::shaders::Shader,
+        lights: &crate::lights::Lights,
         defaults: &crate::renderer::DefaultTextures,
         cubemap: u32,
-    ) -> &[u8] {
+    ) {
         let trans = match em.transforms.get(player_id) {
             Some(t) => t,
-            None => return &self.pixel_buffer,
+            None => return,
         };
         let model = match em.models.get(player_id) {
             Some(m) => m,
-            None => return &self.pixel_buffer,
+            None => return,
         };
 
         let (view, projection) = self.create_portrait_camera(trans);
@@ -134,11 +139,6 @@ impl PortraitRenderer {
             defaults,
             cubemap,
         );
-
-        // read pixels
-        self.read_pixels();
-
-        &self.pixel_buffer
     }
 
     fn create_portrait_camera(&self, player_trans: &Transform) -> (Mat4, Mat4) {
@@ -188,6 +188,11 @@ impl PortraitRenderer {
                 PORTRAIT_SIZE as i32,
             ));
 
+            // the animated model shader outputs to 2 attachments (FragColor + BrightColor for HDR)
+            // but our portrait FBO only has 1 attachment, so we must explicitly set draw buffer
+            let draw_buffers: [u32; 1] = [gl::COLOR_ATTACHMENT0];
+            gl_call!(gl::DrawBuffers(1, draw_buffers.as_ptr()));
+
             // clear with transparent background
             gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 0.0));
             gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
@@ -208,6 +213,9 @@ impl PortraitRenderer {
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, defaults.black));
             gl_call!(gl::ActiveTexture(gl::TEXTURE4));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, defaults.opaque));
+            // bind a white texture for shadow map (slot 7) to avoid shadow artifacts
+            gl_call!(gl::ActiveTexture(gl::TEXTURE7));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, defaults.white));
             gl_call!(gl::ActiveTexture(gl::TEXTURE10));
             gl_call!(gl::BindTexture(gl::TEXTURE_CUBE_MAP, cubemap));
         }
@@ -259,36 +267,9 @@ impl PortraitRenderer {
         }
     }
 
-    fn read_pixels(&mut self) {
-        unsafe {
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, self.fbo));
-            gl_call!(gl::ReadPixels(
-                0,
-                0,
-                PORTRAIT_SIZE as i32,
-                PORTRAIT_SIZE as i32,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                self.pixel_buffer.as_mut_ptr() as *mut _
-            ));
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
-        }
-
-        // flip vertically since OpenGL has origin at bottom-left
-        let row_size = (PORTRAIT_SIZE * 4) as usize;
-        let half_height = (PORTRAIT_SIZE / 2) as usize;
-        for y in 0..half_height {
-            let top_start = y * row_size;
-            let bottom_start = ((PORTRAIT_SIZE as usize) - 1 - y) * row_size;
-            for x in 0..row_size {
-                self.pixel_buffer.swap(top_start + x, bottom_start + x);
-            }
-        }
-    }
-
-    /// Get the raw pixel buffer (RGBA, PORTRAIT_SIZE x PORTRAIT_SIZE).
-    pub fn get_pixels(&self) -> &[u8] {
-        &self.pixel_buffer
+    /// Get the GL texture ID for direct sampling.
+    pub fn get_texture_id(&self) -> u32 {
+        self.texture
     }
 }
 
