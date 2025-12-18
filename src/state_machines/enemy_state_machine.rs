@@ -1,7 +1,7 @@
 use glam::{vec3, Mat4, Vec3};
 
 use crate::{
-    animation::animation::Animator,
+    animation::animator::Animator,
     entity_manager::EntityManager,
     enums_types::{
         AnimationType, AttackState, EmitterName, EntityType, Faction, PlayerState, SimState,

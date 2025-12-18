@@ -7,7 +7,7 @@ use imgui::{
 };
 
 use crate::{
-    animation::animation::Animator,
+    animation::animator::Animator,
     camera::Camera,
     config::{
         emitter_data::{EmitterBlackboard, UiEmitterBlackboard},

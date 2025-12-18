@@ -3,7 +3,7 @@
 
 use glam::{Mat4, Vec3};
 
-use crate::animation::animation::Model;
+use crate::animation::model::Model;
 use crate::entity_manager::EntityManager;
 use crate::enums_types::Transform;
 use crate::gl_call;

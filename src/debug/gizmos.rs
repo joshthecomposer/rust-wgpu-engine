@@ -1,7 +1,7 @@
 use glam::Vec3;
 use serde::Deserialize;
 
-use crate::animation::animation::{Model, Vertex};
+use crate::animation::model::{Model, Vertex};
 
 pub struct Cuboid {
     pub w: f32,

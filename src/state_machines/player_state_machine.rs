@@ -7,7 +7,7 @@ use rapier3d::prelude::{
 use winit::keyboard::KeyCode;
 
 use crate::{
-    animation::{animation::Animator, animation_system},
+    animation::{animation_system, animator::Animator},
     camera::Camera,
     entity_manager::EntityManager,
     enums_types::{
