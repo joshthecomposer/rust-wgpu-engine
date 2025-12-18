@@ -8,7 +8,10 @@ use crate::{
     camera::Camera,
     config::game_config::GameConfig,
     enums_types::SoundType,
-    sound::fmod::{FMOD_Studio_EventDescription_LoadSampleData, FMOD_INIT_3D_RIGHTHANDED},
+    sound::fmod::{
+        FMOD_Studio_EventDescription_GetInstanceCount, FMOD_Studio_EventDescription_LoadSampleData,
+        FMOD_INIT_3D_RIGHTHANDED,
+    },
 };
 
 use super::fmod::{
@@ -143,8 +146,24 @@ impl SoundManager {
             if result != 0 {
                 eprintln!("FMOD update failed with error code {}", result);
             }
+            let mut count = 0;
         }
         self.set_listener_attributes(camera);
+
+        //let count = self.get_instance_count(SoundType::Footstep);
+        //dbg!(count);
+    }
+
+    pub fn get_instance_count(&self, sound_type: SoundType) -> Option<i32> {
+        let desc = self.sounds.get(&sound_type)?.description;
+        let mut count: libc::c_int = 0;
+
+        let r = unsafe { FMOD_Studio_EventDescription_GetInstanceCount(desc, &mut count) };
+        if r != 0 {
+            eprintln!("GetInstanceCount failed for {:?}: {}", sound_type, r);
+            return None;
+        }
+        Some(count as i32)
     }
 
     pub fn set_listener_attributes(&self, camera: &Camera) {
@@ -222,12 +241,14 @@ impl SoundManager {
                 eprintln!("FMOD sound failed to start: {}", play_result);
             }
 
-            self.active_3d_sounds
-                .entry(entity_id)
-                .or_insert(Vec::new())
-                .push(instance);
+            //self.active_3d_sounds
+            //    .entry(entity_id)
+            //    .or_insert(Vec::new())
+            //    .push(instance);
 
-            // FMOD_Studio_EventInstance_Release(instance);
+            // We don't wanna release on continuous sounds, so there should be a separate path for
+            // continuous
+            FMOD_Studio_EventInstance_Release(instance);
         }
     }
 
