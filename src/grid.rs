@@ -5,8 +5,8 @@ use glam::vec3;
 use glam::{vec2, Vec3, Vec4};
 use image::{ImageBuffer, Rgba};
 
-use crate::animation::animation::{Model, Vertex};
 use crate::animation::data_loader::texture_from_file;
+use crate::animation::model::{Model, Vertex};
 use crate::enums_types::{TextureProfile, TextureType};
 use crate::util::constants::MAX_BONE_INFLUENCE;
 use crate::{enums_types::CellType, shaders::Shader};

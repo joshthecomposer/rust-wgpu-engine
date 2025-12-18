@@ -15,7 +15,7 @@ use winit::{
 };
 
 use crate::{
-    animation::animation::Animator,
+    animation::animator::Animator,
     camera::Camera,
     config::{
         entity_config::{EntityTypeHelper, UiEntityTypeHelper},

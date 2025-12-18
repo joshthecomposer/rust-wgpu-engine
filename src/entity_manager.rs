@@ -16,10 +16,7 @@ use rapier3d::prelude::*;
 use winit::keyboard::KeyCode;
 
 use crate::{
-    animation::{
-        self,
-        animation::{Animation, Animator, Bone, Model},
-    },
+    animation::{self, animation::Animation, animator::Animator, model::Model, skellington::Bone},
     config::{
         entity_config::{
             AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper,
