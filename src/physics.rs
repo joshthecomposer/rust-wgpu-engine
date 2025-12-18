@@ -133,49 +133,41 @@ pub fn push_weapon_kinematics_from_bones(em: &mut EntityManager, ps: &mut Physic
         let pt = em.transforms.get(parent).unwrap();
         let pm = glam::Mat4::from_scale_rotation_translation(pt.scale, pt.rotation, pt.position);
         let skel = em.skellingtons.get(parent).unwrap();
-        let rh = em.item_bones.get(parent).unwrap().rh_name.clone();
+        let rh = em.item_bones.get(parent);
 
-        let bone_m = if blend > 0.0 && cur != next {
-            let (a1, a2) = animator.animations.get_pair(&cur, &next).unwrap();
-            a1.get_raw_global_bone_transform_by_name_blended(&rh, skel, pm, a2, blend)
-        } else {
-            animator
-                .animations
-                .get(&cur)
-                .unwrap()
-                .get_raw_global_bone_transform_by_name(&rh, skel, pm)
-        };
-
-        if let (Some(m), Some(ph)) = (bone_m, em.physics_handles.get(wid)) {
+        if let (Some(ph), Some(rh)) = (em.physics_handles.get(wid), rh) {
             //let (_s, rot, pos) = m.to_scale_rotation_translation();
+            let bone_m = skel.global_transform_by_id(rh.rh);
 
-            let corr = em.local_corrections.get(wid).cloned().unwrap_or(Transform {
-                position: glam::Vec3::ZERO,
-                rotation: glam::Quat::IDENTITY,
-                scale: glam::Vec3::ONE,
-            });
+            if let Some(m) = bone_m {
+                let corr = em.local_corrections.get(wid).cloned().unwrap_or(Transform {
+                    position: glam::Vec3::ZERO,
+                    rotation: glam::Quat::IDENTITY,
+                    scale: glam::Vec3::ONE,
+                });
 
-            let corr_m = glam::Mat4::from_scale_rotation_translation(
-                corr.scale,
-                corr.rotation,
-                corr.position,
-            );
+                let corr_m = glam::Mat4::from_scale_rotation_translation(
+                    corr.scale,
+                    corr.rotation,
+                    corr.position,
+                );
 
-            // Apply correction in bone space
-            // (boneWorld * correctionLocal) -> final weapon world
-            let final_m = m * corr_m;
+                // Apply correction in bone space
+                // (boneWorld * correctionLocal) -> final weapon world
+                let final_m = pm * m * corr_m;
 
-            let (_, rot, pos) = final_m.to_scale_rotation_translation();
+                let (_, rot, pos) = final_m.to_scale_rotation_translation();
 
-            if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
-                if rb.is_kinematic() {
-                    let iso = rapier3d::na::Isometry3::from_parts(
-                        rapier3d::na::Translation3::new(pos.x, pos.y, pos.z),
-                        rapier3d::na::UnitQuaternion::from_quaternion(
-                            rapier3d::na::Quaternion::new(rot.w, rot.x, rot.y, rot.z),
-                        ),
-                    );
-                    rb.set_next_kinematic_position(iso);
+                if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
+                    if rb.is_kinematic() {
+                        let iso = rapier3d::na::Isometry3::from_parts(
+                            rapier3d::na::Translation3::new(pos.x, pos.y, pos.z),
+                            rapier3d::na::UnitQuaternion::from_quaternion(
+                                rapier3d::na::Quaternion::new(rot.w, rot.x, rot.y, rot.z),
+                            ),
+                        );
+                        rb.set_next_kinematic_position(iso);
+                    }
                 }
             }
         }

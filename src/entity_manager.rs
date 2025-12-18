@@ -335,9 +335,34 @@ impl EntityManager {
                 let animator = self.animators.get(already_type).unwrap().clone();
                 let animation = animator.animations.iter().next().unwrap().1.clone();
 
+                if let Some(ib) = self.item_bones.get(already_type).cloned() {
+                    self.item_bones.insert(parent_id, ib);
+                }
+
                 (skell, animator, animation)
             } else {
-                animation::data_loader::import_bone_data(bone_path, false)
+                let b = if let Some(b) = &archetype.item_bones {
+                    Some(b.rh.as_str())
+                } else {
+                    None
+                };
+
+                let (skell, animator, animation, rh_bone_id) =
+                    animation::data_loader::import_bone_data(bone_path, false, b);
+
+                if let Some(ib) = &archetype.item_bones {
+                    if rh_bone_id.is_some() {
+                        self.item_bones.insert(
+                            parent_id,
+                            ItemBones {
+                                rh: rh_bone_id.unwrap(),
+                                lh: 0,
+                            },
+                        );
+                    }
+                }
+
+                (skell, animator, animation)
             };
 
             for prop in anim_props {
@@ -416,10 +441,6 @@ impl EntityManager {
         self.factions.insert(parent_id, instance.faction.clone());
         self.entity_types
             .insert(parent_id, instance.entity_type.clone());
-
-        if let Some(ib) = &archetype.item_bones {
-            self.item_bones.insert(parent_id, ib.clone());
-        }
 
         self.local_corrections.insert(
             parent_id,

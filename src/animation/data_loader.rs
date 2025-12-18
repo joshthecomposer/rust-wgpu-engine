@@ -27,7 +27,11 @@ use crate::{
     util::constants::MAX_BONE_INFLUENCE,
 };
 
-pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Animation) {
+pub fn import_bone_data(
+    file_path: &str,
+    flip_180: bool,
+    weapon_bone: Option<&str>,
+) -> (Bone, Animator, Animation, Option<usize>) {
     let data = match std::fs::read_to_string(file_path) {
         Ok(data) => data,
         Err(_) => panic!("{}", file_path),
@@ -38,6 +42,8 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
     let mut bones_no_children = Vec::new();
     let mut bone_idx = 0;
     let mut bone_count: u32 = 0;
+
+    let mut rh_bone_id = None;
 
     // =============================================================
     // Get Starting Bones
@@ -62,6 +68,12 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
             "BONE_NAME:" => {
                 let name = parts[1].to_string();
                 dbg!(&name);
+
+                if let Some(weapon_bone) = weapon_bone {
+                    if name == weapon_bone {
+                        rh_bone_id = Some(bone_idx);
+                    }
+                }
                 let parsed_parent: i32 = lines
                     .next()
                     .unwrap()
@@ -84,6 +96,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                     name,
                     offset,
                     children: vec![],
+                    global_transform: Mat4::default(),
                 });
 
                 bone_idx += 1;
@@ -157,6 +170,8 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                 }
 
                 animation = Animation::default();
+                animation.bone_transforms =
+                    vec![BoneTransformTrack::default(); bone_count as usize];
                 current_anim_str = parts[1].trim();
 
                 dbg!(&current_anim_str);
@@ -175,10 +190,7 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
                 for i in 0..bone_count {
                     let bone_name = model_animation_join[i as usize].name.clone();
 
-                    let track = animation
-                        .bone_transforms
-                        .entry(bone_name.clone())
-                        .or_insert_with(BoneTransformTrack::default);
+                    let track = &mut animation.bone_transforms[i as usize];
 
                     let mut position = parse_vec3(lines.next().unwrap());
                     let mut rotation = parse_quat(lines.next().unwrap());
@@ -244,23 +256,26 @@ pub fn import_bone_data(file_path: &str, flip_180: bool) -> (Bone, Animator, Ani
     }
 
     for (_, animation) in animator.animations.iter_mut() {
-        for (_, track) in animation.bone_transforms.iter_mut() {
-            track.positions.remove(0);
-            track.position_timestamps.remove(0);
-            track.rotations.remove(0);
-            track.rotation_timestamps.remove(0);
-            track.scales.remove(0);
-            track.scale_timestamps.remove(0);
+        for track in animation.bone_transforms.iter_mut() {
+            if !track.positions.is_empty() {
+                track.positions.remove(0);
+                track.position_timestamps.remove(0);
+                track.rotations.remove(0);
+                track.rotation_timestamps.remove(0);
+                track.scales.remove(0);
+                track.scale_timestamps.remove(0);
+            }
         }
     }
 
     for b in &bones_no_children {
-        if !animation.bone_transforms.contains_key(&b.name) {
-            eprintln!("WARN: no track for bone {:?}", b.name);
+        let t = &animation.bone_transforms[b.id as usize];
+        if t.positions.is_empty() || t.rotations.is_empty() || t.scales.is_empty() {
+            eprintln!("WARN: empty track for bone {:?}", b.name);
         }
     }
 
-    (bone, animator, animation)
+    (bone, animator, animation, rh_bone_id)
 }
 
 pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
@@ -650,7 +665,7 @@ fn build_bone_hierarchy_top_down(bones: Vec<Bone>) -> Bone {
     build_tree_node(root_id, &bones, &children_of)
 }
 
-fn build_tree_node(bone_id: u32, bones: &[Bone], children_of: &[Vec<u32>]) -> Bone {
+fn build_tree_node(bone_id: usize, bones: &[Bone], children_of: &[Vec<usize>]) -> Bone {
     let original = &bones[bone_id as usize];
     let mut node = Bone {
         id: original.id,
@@ -658,6 +673,7 @@ fn build_tree_node(bone_id: u32, bones: &[Bone], children_of: &[Vec<u32>]) -> Bo
         name: original.name.clone(),
         offset: original.offset,
         children: Vec::new(),
+        global_transform: Mat4::default(),
     };
 
     for &child_id in &children_of[bone_id as usize] {

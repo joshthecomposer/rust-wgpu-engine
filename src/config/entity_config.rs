@@ -13,8 +13,8 @@ use crate::{
 
 #[derive(Clone, Deserialize, Debug, Serialize)]
 pub struct ItemBones {
-    pub rh_name: String,
-    pub lh_name: String,
+    pub rh: usize,
+    pub lh: usize,
 }
 
 #[derive(Deserialize, Debug, Serialize)]
@@ -46,6 +46,12 @@ impl EntityConfig {
 // =============================================================
 
 #[derive(Deserialize, Debug, Serialize, Clone)]
+pub struct ItemBoneNames {
+    pub rh: String,
+    pub lh: String,
+}
+
+#[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct AnimationPropHelper {
     pub name: AnimationType,
     pub one_shots: HashMap<SoundType, Vec<u32>>,
@@ -65,7 +71,7 @@ pub struct EntityTypeHelper {
     #[serde(default)]
     pub animation_properties: Option<Vec<AnimationPropHelper>>,
     #[serde(default)]
-    pub item_bones: Option<ItemBones>,
+    pub item_bones: Option<ItemBoneNames>,
     pub aggro_range: Option<f32>,
     pub hitbox: HitboxShape,
     #[serde(default)]
