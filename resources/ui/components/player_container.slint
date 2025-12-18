@@ -43,7 +43,6 @@ export component PlayerContainer inherits Rectangle {
     in property <float> mana-current: 100;
     in property <float> mana-max: 100;
     in property <bool> show-hud: true;
-    in property <image> portrait;
 
     width: 280px;
     height: 90px;
@@ -66,23 +65,13 @@ export component PlayerContainer inherits Rectangle {
                 alignment: center;
                 spacing: 4px;
                 
-                // portrait frame
+                // portrait frame - transparent to let GL-rendered portrait show through
                 Rectangle {
                     width: 56px;
                     height: 56px;
-                    background: Theme.stone-dark;
+                    background: Colors.transparent;
                     border-width: 2px;
                     border-color: Theme.runic-gold;
-
-                    // portrait image
-                    Image {
-                        width: parent.width - 4px;
-                        height: parent.height - 4px;
-                        x: 2px;
-                        y: 2px;
-                        source: portrait;
-                        image-fit: cover;
-                    }
                 }
                 
                 // level display

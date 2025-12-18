@@ -77,9 +77,4 @@ impl GameRootView {
         };
         self.player_hud_view.update(&self.game_root, hud_ctx);
     }
-
-    /// Set the player portrait image on the GameRoot component.
-    pub fn set_player_portrait(&self, image: slint::Image) {
-        self.game_root.set_player_portrait(image);
-    }
 }

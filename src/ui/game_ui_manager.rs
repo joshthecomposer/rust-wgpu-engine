@@ -57,6 +57,9 @@ pub struct GameUiManager {
     needs_texture_resize: bool,
     overlay_vao: u32,
     overlay_vbo: u32,
+    pbo: u32,
+
+    is_paused: bool,
 }
 
 impl GameUiManager {
@@ -74,6 +77,12 @@ impl GameUiManager {
         // create VAO/VBO for fullscreen quad overlay
         let (overlay_vao, overlay_vbo) = Self::create_overlay_quad();
 
+        // create PBO for async texture upload
+        let mut pbo = 0;
+        unsafe {
+            gl_call!(gl::GenBuffers(1, &mut pbo));
+        }
+
         // create portrait renderer for player HUD
         let portrait_renderer = PortraitRenderer::new();
 
@@ -90,6 +99,8 @@ impl GameUiManager {
             needs_texture_resize: false,
             overlay_vao,
             overlay_vbo,
+            pbo,
+            is_paused: false,
         }
     }
 
@@ -128,7 +139,7 @@ impl GameUiManager {
                 0,
                 gl::RGBA,
                 gl::UNSIGNED_BYTE,
-                std::ptr::null(),
+                std::ptr::null()
             ));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
             tex
@@ -144,9 +155,8 @@ impl GameUiManager {
             gl_call!(gl::GenBuffers(1, &mut vbo));
 
             let vertices: [f32; 24] = [
-                // pos (x, y)    uv (u, v)
-                -1.0, 1.0, 0.0, 0.0, -1.0, -1.0, 0.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 0.0, 0.0,
-                1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
+                -1.0, 1.0, 0.0, 0.0, -1.0, -1.0, 0.0, 1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 0.0,
+                0.0, 1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0,
             ];
 
             gl_call!(gl::BindVertexArray(vao));
@@ -179,7 +189,6 @@ impl GameUiManager {
             (vao, vbo)
         }
     }
-
     /// Handle a winit window event. Only processes events when paused (for pause menu).
     pub fn handle_window_event(&mut self, event: &WindowEvent, _input: &mut InputState) -> bool {
         let slint_event = match event {
@@ -198,7 +207,6 @@ impl GameUiManager {
                     winit::event::MouseButton::Middle => PointerEventButton::Middle,
                     _ => return false,
                 };
-
                 match state {
                     winit::event::ElementState::Pressed => Some(SlintWindowEvent::PointerPressed {
                         position: self.last_cursor_pos,
@@ -217,7 +225,6 @@ impl GameUiManager {
                 None
             }
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                // keep our local scale factor in sync with winit and forward to Slint
                 self.scale_factor = *scale_factor as f32;
                 Some(SlintWindowEvent::ScaleFactorChanged {
                     scale_factor: self.scale_factor,
@@ -234,19 +241,16 @@ impl GameUiManager {
         }
     }
 
-    /// Resize the UI.
+    /// Resize the UI to match the new window size.
     pub fn resize(&mut self, width: u32, height: u32) {
         if width == 0 || height == 0 {
             return;
         }
-
         self.width = width;
         self.height = height;
-
         let pixel_count = (width * height) as usize;
         self.buffer
             .resize(pixel_count, PremultipliedRgbaColor::default());
-
         self.window.set_size(PhysicalSize::new(width, height));
         self.needs_texture_resize = true;
     }
@@ -254,6 +258,9 @@ impl GameUiManager {
     /// Update the UI each frame.
     pub fn update(&mut self, ctx: GameUiUpdateContext) {
         slint::platform::update_timers_and_animations();
+
+        // Sync our local paused state with the engine state
+        self.is_paused = *ctx.paused;
 
         let game_ctx = GameRootContext {
             paused: ctx.paused,
@@ -267,7 +274,7 @@ impl GameUiManager {
     /// Render the player portrait to the HUD. Call this before render().
     pub fn render_portrait(&mut self, ctx: PortraitRenderContext) {
         if let Some(player_id) = ctx.entity_manager.get_player_id() {
-            let pixels = self.portrait_renderer.render_portrait(
+            self.portrait_renderer.render_portrait(
                 ctx.entity_manager,
                 player_id,
                 ctx.shader,
@@ -275,36 +282,147 @@ impl GameUiManager {
                 ctx.defaults,
                 ctx.cubemap,
             );
-
-            let portrait_image = Self::create_slint_image(pixels);
-            self.game_root_view.set_player_portrait(portrait_image);
         }
     }
 
-    /// Render the UI to the internal pixel buffer and upload to GL texture.
     pub fn render(&mut self, shader: &mut Shader) {
+        // --------------------------------------------------------
+        // PART 1: PBO Upload (Zero-Copy Slint Render)
+        // --------------------------------------------------------
         if self.needs_texture_resize {
             Self::resize_texture(self.texture, self.width, self.height);
-            self.needs_texture_resize = false;
         }
 
         self.window.request_redraw();
-        self.window.draw_if_needed(|renderer| {
-            renderer.render(&mut self.buffer, self.width as usize);
-        });
-        Self::upload_to_texture(self.texture, &self.buffer, self.width, self.height);
 
+        self.window.draw_if_needed(|renderer| unsafe {
+            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, self.pbo));
+
+            if self.needs_texture_resize {
+                let size = (self.width * self.height * 4) as isize;
+                gl_call!(gl::BufferData(
+                    gl::PIXEL_UNPACK_BUFFER,
+                    size,
+                    std::ptr::null(),
+                    gl::STREAM_DRAW
+                ));
+                self.needs_texture_resize = false;
+            }
+
+            let ptr = gl::MapBuffer(gl::PIXEL_UNPACK_BUFFER, gl::WRITE_ONLY);
+            if !ptr.is_null() {
+                let pixel_count = (self.width * self.height) as usize;
+                let buffer_slice = std::slice::from_raw_parts_mut(
+                    ptr as *mut slint::platform::software_renderer::PremultipliedRgbaColor,
+                    pixel_count,
+                );
+                renderer.render(buffer_slice, self.width as usize);
+                gl_call!(gl::UnmapBuffer(gl::PIXEL_UNPACK_BUFFER));
+            }
+        });
+
+        unsafe {
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.texture));
+            gl_call!(gl::TexSubImage2D(
+                gl::TEXTURE_2D,
+                0,
+                0,
+                0,
+                self.width as i32,
+                self.height as i32,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                std::ptr::null()
+            ));
+            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+        }
+
+        // --------------------------------------------------------
+        // PART 2: Compositing
+        // --------------------------------------------------------
+        unsafe {
+            gl_call!(gl::Enable(gl::BLEND));
+            gl_call!(gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
+            gl_call!(gl::Disable(gl::DEPTH_TEST));
+        }
+
+        // A. DRAW UI (Background Layer)
         self.draw_overlay(shader, self.texture);
+
+        // B. DRAW PORTRAIT (Foreground Layer - inside the transparent frame)
+        // Only draw if NOT paused!
+        if !self.is_paused {
+            let portrait_tex = self.portrait_renderer.get_texture_id();
+            // portrait is rendered to FBO so needs V-flip
+            // the portrait FBO is square, so we need equal NDC dimensions
+            // adjusted for window aspect ratio to appear square on screen
+            // Slint frame is ~56x56 pixels, window is typically wider than tall
+            let aspect = self.width as f32 / self.height as f32;
+            let size = 0.08; // base size in NDC (height)
+            let width = size / aspect; // adjust width for aspect ratio
+            self.draw_screen_quad(
+                shader,
+                portrait_tex,
+                -0.92, // x position in NDC
+                0.86,  // y position in NDC
+                width, // width adjusted for aspect ratio
+                size,  // height in NDC
+                true,  // flip_v for FBO texture
+            );
+        }
+
+        unsafe {
+            gl_call!(gl::Enable(gl::DEPTH_TEST));
+            gl_call!(gl::Disable(gl::BLEND));
+        }
     }
 
-    /// Create a Slint Image from raw RGBA pixel data.
-    fn create_slint_image(pixels: &[u8]) -> slint::Image {
-        use crate::ui::portrait_renderer::PORTRAIT_SIZE;
-        use slint::{Rgba8Pixel, SharedPixelBuffer};
+    /// Helper to draw a quad at a specific position/scale
+    fn draw_screen_quad(
+        &self,
+        shader: &mut Shader,
+        texture: u32,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        flip_v: bool,
+    ) {
+        unsafe {
+            shader.activate();
 
-        let mut buffer = SharedPixelBuffer::<Rgba8Pixel>::new(PORTRAIT_SIZE, PORTRAIT_SIZE);
-        buffer.make_mut_bytes().copy_from_slice(pixels);
-        slint::Image::from_rgba8(buffer)
+            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
+            shader.set_int("ui_texture", 0);
+
+            shader.set_vec2("u_offset", x, y);
+            shader.set_vec2("u_scale", w, h);
+            shader.set_bool("u_flip_v", flip_v);
+
+            gl_call!(gl::BindVertexArray(self.overlay_vao));
+            gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
+            gl_call!(gl::BindVertexArray(0));
+        }
+    }
+
+    fn draw_overlay(&self, shader: &crate::shaders::Shader, texture: u32) {
+        unsafe {
+            shader.activate();
+            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
+            shader.set_int("ui_texture", 0);
+
+            // reset transform to fill the screen, no flip for Slint UI
+            shader.set_vec2("u_offset", 0.0, 0.0);
+            shader.set_vec2("u_scale", 1.0, 1.0);
+            shader.set_bool("u_flip_v", false);
+
+            gl_call!(gl::BindVertexArray(self.overlay_vao));
+            gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
+            gl_call!(gl::BindVertexArray(0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+        }
     }
 
     /// Resize a GL texture
@@ -325,47 +443,6 @@ impl GameUiManager {
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
         }
     }
-
-    /// Upload pixel buffer to GL texture
-    fn upload_to_texture(texture: u32, buffer: &[PremultipliedRgbaColor], width: u32, height: u32) {
-        unsafe {
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
-            gl_call!(gl::TexSubImage2D(
-                gl::TEXTURE_2D,
-                0,
-                0,
-                0,
-                width as i32,
-                height as i32,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                buffer.as_ptr() as *const _,
-            ));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-        }
-    }
-
-    /// Draw a UI overlay on screen.
-    fn draw_overlay(&self, shader: &crate::shaders::Shader, texture: u32) {
-        unsafe {
-            gl_call!(gl::Enable(gl::BLEND));
-            gl_call!(gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
-            gl_call!(gl::Disable(gl::DEPTH_TEST));
-
-            shader.activate();
-            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
-            shader.set_int("ui_texture", 0);
-
-            gl_call!(gl::BindVertexArray(self.overlay_vao));
-            gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
-            gl_call!(gl::BindVertexArray(0));
-
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            gl_call!(gl::Enable(gl::DEPTH_TEST));
-            gl_call!(gl::Disable(gl::BLEND));
-        }
-    }
 }
 
 impl Drop for GameUiManager {
@@ -374,6 +451,7 @@ impl Drop for GameUiManager {
             gl_call!(gl::DeleteTextures(1, &self.texture));
             gl_call!(gl::DeleteVertexArrays(1, &self.overlay_vao));
             gl_call!(gl::DeleteBuffers(1, &self.overlay_vbo));
+            gl_call!(gl::DeleteBuffers(1, &self.pbo));
         }
     }
 }
