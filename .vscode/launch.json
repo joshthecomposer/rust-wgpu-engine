@@ -2,28 +2,12 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Rust (MSVC)",
-      "type": "cppvsdbg",
+      "name": "Debug built exe",
+      "type": "lldb",
       "request": "launch",
       "program": "${workspaceFolder}/target/debug/learn-opengl-rs.exe",
       "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "stopAtEntry": false,
-      "environment": [
-        { "name": "RUST_BACKTRACE", "value": "1" }
-      ],
-      "exceptionBreakpointFilters": [
-        {
-          "filter": "first-chance-exceptions",
-          "label": "Break on first-chance exceptions",
-          "default": false
-        },
-        {
-          "filter": "user-unhandled",
-          "label": "Break on unhandled exceptions",
-          "default": true
-        }
-      ]
+      "args": []
     }
   ]
 }
