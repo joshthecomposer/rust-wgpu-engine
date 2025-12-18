@@ -1,3 +1,4 @@
+use glam::Mat4;
 use nalgebra::{point, vector};
 use rapier3d::prelude::{
     ColliderSet, ContactPair, InteractionGroups, QueryFilter, QueryPipeline, Ray, RigidBody,
@@ -40,6 +41,7 @@ pub fn player_state_machine(
 
     let controller = em.player_controllers.get_mut(player_id).unwrap();
     let player_pos = em.transforms.get(player_id).unwrap().position;
+    let transform = em.transforms.get(player_id).unwrap();
     let animator = em.animators.get_mut(player_id).unwrap();
     let health = em.healths.get(player_id).unwrap();
     let ph = em.physics_handles.get(player_id).unwrap();
@@ -55,6 +57,11 @@ pub fn player_state_machine(
     let impulse = glam::vec3(dir.x * (15.0 * m), 0.0, dir.z * (15.0 * m));
 
     let camera_is_detached = camera.move_state == CameraState::Free;
+
+    let active_weapon_id = match em.active_items.get(player_id) {
+        Some(id) => Some(id.right_hand.unwrap()),
+        None => None,
+    };
 
     //player_non_combat_transition(controller, PlayerState::Running, animator, false, rb);
     //return;
@@ -312,8 +319,34 @@ pub fn player_state_machine(
 
                 player_combat_state_machine(controller, animator, input, rb);
             }
-            PlayerState::Dying => {}
-            PlayerState::Dead => {}
+            PlayerState::Dying => {
+                controller.time_in_state += dt;
+                rb.set_enabled_rotations(true, true, true, true);
+
+                if let Some(active_weapon_id) = active_weapon_id {
+                    em.owners.remove(active_weapon_id);
+                    em.is_equipped.remove(active_weapon_id);
+                    em.active_items.remove(player_id);
+                    em.cleanup_timer.insert(active_weapon_id, 0.0);
+
+                    if let Some(inv) = em.inventories.get_mut(player_id) {
+                        inv.retain(|v| *v != active_weapon_id);
+                    }
+                }
+
+                if controller.time_in_state >= 3.0 {
+                    player_non_combat_transition(
+                        controller,
+                        PlayerState::Dead,
+                        animator,
+                        false,
+                        rb,
+                    );
+                }
+            }
+            PlayerState::Dead => {
+                em.entity_trashcan.push(player_id);
+            }
             PlayerState::Block => {
                 controller.time_in_state += dt;
 

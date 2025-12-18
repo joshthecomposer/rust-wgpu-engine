@@ -66,20 +66,15 @@ fn handle_player_movement_rapier(
         em.knockbacks.remove(player_key);
     }
 
-    if player_state.state == PlayerState::Dashing {
-        return;
-    }
-
-    if animator.next_animation == AnimationType::Death {
-        return;
-    }
-
-    if player_state.state == PlayerState::Combat {
-        return;
-    }
-
-    if player_state.state == PlayerState::Block {
-        return;
+    match player_state.state {
+        PlayerState::Dying
+        | PlayerState::Dead
+        | PlayerState::Dashing
+        | PlayerState::Combat
+        | PlayerState::Block => {
+            return;
+        }
+        _ => (),
     }
 
     em.v_effects.remove(player_key);
