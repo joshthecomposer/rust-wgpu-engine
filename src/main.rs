@@ -125,7 +125,7 @@ fn main() {
         config.win_height as u32,
         config.vsync,
     );
-
+    platform.window.focus_window();
     let game = Game::new(platform, config);
     let mut app = App::new(game);
 
