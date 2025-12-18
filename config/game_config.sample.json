@@ -6,7 +6,7 @@
   "grid_height": 100,
   "grid_width": 100,
   "vsync": true,
-  "debug_mode": true,
+  "debug_mode": false,
   "fps_counter": true,
   "render_gizmos": false,
   "sounds": {
