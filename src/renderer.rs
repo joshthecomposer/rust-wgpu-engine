@@ -63,6 +63,8 @@ pub struct Renderer {
 
     pub quad_vao: u32,
     pub quad_vbo: u32,
+
+    pub bones_ssbo: u32,
 }
 
 impl Renderer {
@@ -554,6 +556,27 @@ impl Renderer {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
         }
 
+        // =============================================================
+        // Bones SSBO (for instanced animated skinning)
+        // =============================================================
+        let mut bones_ssbo: u32 = 0;
+        unsafe {
+            gl_call!(gl::GenBuffers(1, &mut bones_ssbo));
+            gl_call!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, bones_ssbo));
+
+            // Allocate a tiny buffer to start; you'll BufferData() real size each draw.
+            // (Some drivers dislike size 0.)
+            let dummy: [f32; 16] = [0.0; 16]; // one mat4 worth of bytes
+            gl_call!(gl::BufferData(
+                gl::SHADER_STORAGE_BUFFER,
+                std::mem::size_of_val(&dummy) as isize,
+                dummy.as_ptr().cast(),
+                gl::STREAM_DRAW
+            ));
+
+            gl_call!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, 0));
+        }
+
         let mut debug_depth_quad = Shader::new("resources/shaders/debug_depth_quad.glsl");
 
         debug_depth_quad.activate();
@@ -608,6 +631,8 @@ impl Renderer {
 
             quad_vao: 0,
             quad_vbo: 0,
+
+            bones_ssbo,
         };
 
         renderer.ensure_quad();
@@ -829,7 +854,7 @@ impl Renderer {
         camera: &mut Camera,
         em: &EntityManager,
         light_manager: &Lights,
-        ps: &PhysicsState,
+        _ps: &PhysicsState,
         alpha: f32,
         particles: &mut ParticleSystem,
         sound_manager: &mut SoundManager,
@@ -844,15 +869,15 @@ impl Renderer {
             gl::CullFace(gl::BACK);
             gl::FrontFace(gl::CCW);
 
-            // Set default textures for models that don't have one
+            // default textures
             gl::ActiveTexture(gl::TEXTURE1);
-            gl::BindTexture(gl::TEXTURE_2D, self.defaults.white); // Diffuse default
+            gl::BindTexture(gl::TEXTURE_2D, self.defaults.white);
             gl::ActiveTexture(gl::TEXTURE2);
-            gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Spec default
+            gl::BindTexture(gl::TEXTURE_2D, self.defaults.black);
             gl::ActiveTexture(gl::TEXTURE3);
-            gl::BindTexture(gl::TEXTURE_2D, self.defaults.black); // Emissive default
+            gl::BindTexture(gl::TEXTURE_2D, self.defaults.black);
             gl::ActiveTexture(gl::TEXTURE4);
-            gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque); // Opacity default
+            gl::BindTexture(gl::TEXTURE_2D, self.defaults.opaque);
 
             gl::ActiveTexture(gl::TEXTURE7);
             gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
@@ -860,106 +885,169 @@ impl Renderer {
             gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture);
         }
 
-        let shader = match is_animated {
-            true => self.shaders.get_mut(&ShaderType::AnimatedModel).unwrap(),
-            false => self.shaders.get_mut(&ShaderType::StaticModel).unwrap(),
+        let shader = if is_animated {
+            self.shaders.get_mut(&ShaderType::AnimatedModel).unwrap()
+        } else {
+            self.shaders.get_mut(&ShaderType::StaticModel).unwrap()
         };
 
         shader.activate();
 
+        // IMPORTANT: This assumes your ids bucket is truly same mesh/vao/material
+        let model = em.models.get(ids[0]).unwrap();
+
+        // If you still want selection outline per-entity, instancing can’t do it with a bool uniform.
+        // Fastest: disable selection_fresnel for instanced draws.
+        shader.set_bool("selection_fresnel", false);
+
+        // Hoist stuff once per pass
+        shader.set_mat4("projection", camera.projection);
+        shader.set_mat4("view", camera.view);
+        shader.set_mat4("light_space_mat", camera.light_space);
+        shader.set_dir_light("dir_light", &light_manager.dir_light);
+        shader.set_float("bias_scalar", light_manager.bias_scalar);
+        shader.set_vec3("view_position", camera.position);
+        shader.set_int("skybox", 10);
+
+        // Gameplay side effects: keep per-id evaluation (sounds/particles/hurtboxes)
+        // Do it ONCE (not per alpha pass), and do it before rendering so it doesn’t depend on alpha pass.
+        if is_animated {
+            for &id in ids.iter() {
+                if em.is_equipped.get(id).is_none() && em.owners.get(id).is_some() {
+                    continue;
+                }
+
+                let trans = Self::render_transform(em, id, alpha);
+                let forward = trans.rotation * Vec3::Z;
+
+                let animator = em.animators.get(id).unwrap();
+                let animation = animator.get_current_animation().unwrap();
+                // let bonez = em.skellingtons.get(id).unwrap(); // only needed if you re-enable bone queries
+
+                for os in animation.one_shots.iter() {
+                    if animation.current_segment.get() == os.segment {
+                        if !os.triggered.get() {
+                            sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position, id);
+                            particles.spawn_oneshot_emitter("DesertStep", trans.position, None);
+                            os.triggered.set(true);
+                        }
+                    } else {
+                        os.triggered.set(false);
+                    }
+                }
+
+                for cs in animation.continuous_sounds.iter() {
+                    if !cs.playing.get() {
+                        sound_manager.play_sound_3d(cs.sound_type.clone(), &trans.position, id);
+                        cs.playing.set(true);
+                    }
+                }
+
+                if let Some(fa) = &animation.hurtbox_activation {
+                    if fa.segment_range.contains(&animation.current_segment.get()) {
+                        if !fa.triggered.get() {
+                            fa.triggered.set(true);
+
+                            // If you want bone-driven emitters later, you’ll need a CPU bone query or readback,
+                            // or you compute the bone tip in CPU from the same pose you’re uploading.
+                            let _ = forward;
+                        }
+                    } else {
+                        fa.triggered.set(false);
+                    }
+                }
+            }
+        }
+
+        // Render twice: opaque then alpha-test (your pattern)
         for &is_alpha_pass in &[false, true] {
             shader.set_bool("alpha_test_pass", is_alpha_pass);
 
-            // Hoist stuff
-            shader.set_mat4("projection", camera.projection);
-            shader.set_mat4("view", camera.view);
-            shader.set_mat4("light_space_mat", camera.light_space);
-            shader.set_dir_light("dir_light", &light_manager.dir_light);
-            shader.set_float("bias_scalar", light_manager.bias_scalar);
-            shader.set_vec3("view_position", camera.position);
-            shader.set_int("skybox", 10);
-            shader.set_bool("is_animated", is_animated);
+            // Build instance mats (and bones if animated) for THIS pass
+            let mut instance_mats: Vec<Mat4> = Vec::with_capacity(ids.len());
 
-            for id in ids.iter() {
-                let is_selected = em.selected.contains(&id);
-                if em.is_equipped.get(*id).is_none() && em.owners.get(*id).is_some() {
+            // For animated: pack bones for every instance in draw order
+            const MAX_BONES: usize = 100;
+            let mut all_bones: Vec<Mat4> = Vec::new();
+            if is_animated {
+                all_bones.reserve(ids.len() * MAX_BONES);
+            }
+
+            for &id in ids.iter() {
+                if em.is_equipped.get(id).is_none() && em.owners.get(id).is_some() {
                     continue;
                 }
-                shader.set_bool("selection_fresnel", is_selected);
 
-                let model = em.models.get(*id).unwrap();
-                let trans = Self::render_transform(em, *id, alpha);
+                // If you really need selection per entity, you must use an instanced param buffer/attrib.
+                // For now ignore em.selected.
 
-                let forward = trans.rotation * Vec3::Z;
-                let m_mat = Mat4::from_scale_rotation_translation(
+                let trans = Self::render_transform(em, id, alpha);
+                let m = Mat4::from_scale_rotation_translation(
                     trans.scale,
                     trans.rotation,
                     trans.position,
                 );
-                shader.set_mat4("model", m_mat);
+                instance_mats.push(m);
 
                 if is_animated {
-                    let animator = em.animators.get(*id).unwrap();
+                    let animator = em.animators.get(id).unwrap();
                     let animation = animator.get_current_animation().unwrap();
-                    let bonez = em.skellingtons.get(*id).unwrap();
 
-                    shader.set_mat4_array("bone_transforms", &animation.current_pose);
-
-                    for os in animation.one_shots.iter() {
-                        if animation.current_segment.get() == os.segment {
-                            if !os.triggered.get() {
-                                sound_manager.play_sound_3d(
-                                    os.sound_type.clone(),
-                                    &trans.position,
-                                    *id,
-                                );
-                                particles.spawn_oneshot_emitter("DesertStep", trans.position, None);
-                                os.triggered.set(true);
-                            }
-                        } else {
-                            os.triggered.set(false);
-                        }
-                    }
-
-                    for cs in animation.continuous_sounds.iter() {
-                        if !cs.playing.get() {
-                            sound_manager.play_sound_3d(
-                                cs.sound_type.clone(),
-                                &trans.position,
-                                *id,
-                            );
-                            cs.playing.set(true);
-                        }
-                    }
-
-                    if let Some(fa) = &animation.hurtbox_activation {
-                        if fa.segment_range.contains(&animation.current_segment.get()) {
-                            if !fa.triggered.get() {
-                                fa.triggered.set(true);
-
-                                //if let Some(bone_world_model_space) = animation.get_raw_global_bone_transform_by_name(
-                                //    "Bone.029.L",
-                                //    bonez,
-                                //    Mat4::IDENTITY,
-                                //) {
-                                //    let bone_world_space = m_mat * bone_world_model_space;
-                                //    let position = bone_world_space.w_axis.truncate();
-
-                                //    particles.spawn_oneshot_emitter("ShootyPart", position, Some(forward));
-                                //    particles.spawn_oneshot_emitter("SmokeyPart", position, Some(forward));
-                                //}
-                            }
-                        } else {
-                            fa.triggered.set(false);
-                        }
+                    // Ensure exactly MAX_BONES matrices per instance.
+                    // If current_pose is always MAX_BONES long, this is just a copy.
+                    let pose = &animation.current_pose;
+                    for i in 0..MAX_BONES {
+                        all_bones.push(*pose.get(i).unwrap_or(&Mat4::IDENTITY));
                     }
                 }
+            }
 
+            if instance_mats.is_empty() {
+                continue;
+            }
+
+            // Upload bones SSBO once per draw (animated only)
+            if is_animated {
                 unsafe {
-                    model.draw(shader);
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+                    gl_call!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, self.bones_ssbo));
+                    gl_call!(gl::BufferData(
+                        gl::SHADER_STORAGE_BUFFER,
+                        (all_bones.len() * std::mem::size_of::<Mat4>()) as isize,
+                        all_bones.as_ptr().cast(),
+                        gl::STREAM_DRAW
+                    ));
+                    // binding = 0 must match: layout(std430, binding=0) in shader
+                    gl_call!(gl::BindBufferBase(
+                        gl::SHADER_STORAGE_BUFFER,
+                        0,
+                        self.bones_ssbo
+                    ));
+                    gl_call!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, 0));
                 }
-                shader.set_bool("selection_fresnel", false);
+            }
+
+            unsafe {
+                gl_call!(gl::BindVertexArray(model.vao));
+                gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, model.instance_vbo));
+                gl_call!(gl::BufferData(
+                    gl::ARRAY_BUFFER,
+                    (instance_mats.len() * std::mem::size_of::<Mat4>()) as isize,
+                    instance_mats.as_ptr().cast(),
+                    gl::STREAM_DRAW
+                ));
+                gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
+
+                model.bind_material(shader);
+
+                gl_call!(gl::DrawElementsInstanced(
+                    gl::TRIANGLES,
+                    model.indices.len() as i32,
+                    gl::UNSIGNED_INT,
+                    std::ptr::null(),
+                    instance_mats.len() as i32
+                ));
+
+                gl_call!(gl::BindVertexArray(0));
             }
         }
 
@@ -1103,7 +1191,7 @@ impl Renderer {
     fn render_sample_depth(
         &mut self,
         em: &EntityManager,
-        ps: &PhysicsState,
+        _ps: &PhysicsState,
         alpha: f32,
         ids: &Vec<usize>,
         is_animated: bool,
@@ -1112,37 +1200,82 @@ impl Renderer {
         shader.activate();
         shader.set_bool("is_animated", is_animated);
 
-        for id in ids {
+        // assume per-bucket same model
+        let model = em.models.get(ids[0]).unwrap();
+
+        let mut instance_mats: Vec<Mat4> = Vec::with_capacity(ids.len());
+
+        const MAX_BONES: usize = 100;
+        let mut all_bones: Vec<Mat4> = Vec::new();
+        if is_animated {
+            all_bones.reserve(ids.len() * MAX_BONES);
+        }
+
+        for &id in ids.iter() {
+            if em.is_equipped.get(id).is_none() && em.owners.get(id).is_some() {
+                continue;
+            }
+
+            let trans = Self::render_transform(em, id, alpha);
+            let m =
+                Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
+            instance_mats.push(m);
+
             if is_animated {
-                let animator = em.animators.get(*id).unwrap();
+                let animator = em.animators.get(id).unwrap();
                 let animation = animator.get_current_animation().unwrap();
-                shader.set_mat4_array("bone_transforms", &animation.current_pose);
-            } else {
-                if em.is_equipped.get(*id).is_none() && em.owners.get(*id).is_some() {
-                    continue;
+                let pose = &animation.current_pose;
+
+                for i in 0..MAX_BONES {
+                    all_bones.push(*pose.get(i).unwrap_or(&Mat4::IDENTITY));
                 }
             }
+        }
 
-            let model = em.models.get(*id).unwrap();
-            let trans = Self::render_transform(em, *id, alpha);
-            //let trans = em.transforms.get(model.key()).unwrap();
+        if instance_mats.is_empty() {
+            return;
+        }
 
-            let model_model =
-                Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
+        // upload bones for this bucket draw
+        if is_animated {
             unsafe {
-                gl::BindVertexArray(model.vao);
-            }
-            shader.set_mat4("model", model_model);
-            unsafe {
-                gl_call!(gl::DrawElements(
-                    gl::TRIANGLES,
-                    model.indices.len() as i32,
-                    gl::UNSIGNED_INT,
-                    std::ptr::null(),
+                gl_call!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, self.bones_ssbo));
+                gl_call!(gl::BufferData(
+                    gl::SHADER_STORAGE_BUFFER,
+                    (all_bones.len() * std::mem::size_of::<Mat4>()) as isize,
+                    all_bones.as_ptr().cast(),
+                    gl::STREAM_DRAW
                 ));
-
-                gl_call!(gl::BindVertexArray(0));
+                gl_call!(gl::BindBufferBase(
+                    gl::SHADER_STORAGE_BUFFER,
+                    0,
+                    self.bones_ssbo
+                ));
+                gl_call!(gl::BindBuffer(gl::SHADER_STORAGE_BUFFER, 0));
             }
+        }
+
+        // upload instance matrices
+        unsafe {
+            gl_call!(gl::BindVertexArray(model.vao));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, model.instance_vbo));
+            gl_call!(gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (instance_mats.len() * std::mem::size_of::<Mat4>()) as isize,
+                instance_mats.as_ptr().cast(),
+                gl::STREAM_DRAW
+            ));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
+
+            gl_call!(gl::DrawElementsInstanced(
+                gl::TRIANGLES,
+                model.indices.len() as i32,
+                gl::UNSIGNED_INT,
+                std::ptr::null(),
+                instance_mats.len() as i32
+            ));
+
+            gl_call!(gl::BindVertexArray(0));
         }
     }
 

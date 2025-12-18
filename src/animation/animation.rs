@@ -70,6 +70,8 @@ pub struct Model {
     pub full_path: String,
 
     pub color_for_texture: bool,
+
+    pub instance_vbo: u32,
 }
 
 impl Model {
@@ -87,6 +89,43 @@ impl Model {
             full_path: String::new(),
 
             color_for_texture: false,
+
+            instance_vbo: 0,
+        }
+    }
+
+    pub fn bind_material(&self, shader: &mut Shader) {
+        // default: assume no opacity unless we find it
+        shader.set_bool("has_opacity_texture", false);
+        shader.set_bool("use_base_color", self.color_for_texture);
+
+        if self.color_for_texture {
+            return;
+        }
+
+        for tex_opt in self.textures.iter().flatten() {
+            match tex_opt._type.as_str() {
+                "Diffuse" => unsafe {
+                    gl::ActiveTexture(gl::TEXTURE1);
+                    gl::BindTexture(gl::TEXTURE_2D, tex_opt.id);
+                },
+                "Specular" => unsafe {
+                    gl::ActiveTexture(gl::TEXTURE2);
+                    gl::BindTexture(gl::TEXTURE_2D, tex_opt.id);
+                },
+                "Emissive" => unsafe {
+                    gl::ActiveTexture(gl::TEXTURE3);
+                    gl::BindTexture(gl::TEXTURE_2D, tex_opt.id);
+                },
+                "Opacity" => {
+                    shader.set_bool("has_opacity_texture", true);
+                    unsafe {
+                        gl::ActiveTexture(gl::TEXTURE4);
+                        gl::BindTexture(gl::TEXTURE_2D, tex_opt.id);
+                    }
+                }
+                _ => {}
+            }
         }
     }
 
@@ -108,6 +147,45 @@ impl Model {
             "Opacity" => self.textures[3].as_ref(),
             _ => None,
         }
+    }
+
+    unsafe fn setup_instance_attributes(model_vao: u32) -> u32 {
+        let mut instance_vbo = 0;
+        gl::GenBuffers(1, &mut instance_vbo);
+
+        gl::BindVertexArray(model_vao);
+        gl::BindBuffer(gl::ARRAY_BUFFER, instance_vbo);
+
+        // allocate some initial space (can resize later)
+        gl::BufferData(
+            gl::ARRAY_BUFFER,
+            (1024 * std::mem::size_of::<glam::Mat4>()) as isize,
+            std::ptr::null(),
+            gl::STREAM_DRAW,
+        );
+
+        let stride = std::mem::size_of::<glam::Mat4>() as i32; // 64 bytes
+        let vec4_size = std::mem::size_of::<glam::Vec4>() as i32; // 16 bytes
+
+        // mat4 takes 4 attribute slots: 6,7,8,9
+        for i in 0..4 {
+            let loc = 6 + i;
+            gl::EnableVertexAttribArray(loc);
+            gl::VertexAttribPointer(
+                loc,
+                4,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (i as i32 * vec4_size) as *const _,
+            );
+            gl::VertexAttribDivisor(loc, 1);
+        }
+
+        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+        gl::BindVertexArray(0);
+
+        instance_vbo
     }
 
     pub fn setup_opengl(&mut self) {
@@ -192,6 +270,8 @@ impl Model {
                 mem::size_of::<Vertex>() as i32,
                 offset_of!(Vertex, bone_weights) as *const _
             ));
+
+            self.instance_vbo = Self::setup_instance_attributes(self.vao);
 
             gl::BindVertexArray(0);
         }

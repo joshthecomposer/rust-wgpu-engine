@@ -4,8 +4,10 @@ layout (location = 0) in vec3 a_pos;
 layout (location = 1) in vec3 a_normal;
 layout (location = 2) in vec2 a_tex_coords;
 layout (location = 3) in vec4 a_base_color;
-layout (location = 4) in ivec4 bone_ids;
-layout (location = 5) in vec4 bone_weights;
+layout (location = 4) in ivec4 bone_ids;     // unused for static (kept for layout compatibility)
+layout (location = 5) in vec4  bone_weights; // unused for static
+
+layout (location = 6) in mat4 i_model; // locations 6,7,8,9
 
 out vec2 TexCoords;
 out vec3 Normal;
@@ -15,56 +17,20 @@ out vec4 base_color;
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform mat4 model;
 uniform mat4 light_space_mat;
 
-// Animated model stuff
-uniform bool is_animated;
-const int MAX_BONE_INFLUENCE = 4;
-const int MAX_BONES = 100;
+void main() {
+    vec4 world = i_model * vec4(a_pos, 1.0);
+    FragPos = world.xyz;
 
-uniform mat4 bone_transforms[MAX_BONES];
+    mat3 nrm = mat3(transpose(inverse(i_model)));
+    Normal = nrm * a_normal;
 
-void main()
-{
-	if (is_animated) {
-		vec4 totalPosition = vec4(0.0f);
-		vec3 totalNormal = vec3(0.0f);
-		for(int i = 0 ; i < MAX_BONE_INFLUENCE; i++)
-		{
-			if(bone_ids[i] == -1) 
-				continue;
-			if(bone_ids[i] >= MAX_BONES) 
-			{
-				totalPosition = vec4(a_pos,1.0f);
-				break;
-			}
-			vec4 localPosition = bone_transforms[bone_ids[i]] * vec4(a_pos,1.0f);
-			totalPosition += localPosition * bone_weights[i];
+    TexCoords = a_tex_coords;
+    FragPosLightSpace = light_space_mat * vec4(FragPos, 1.0);
+    gl_Position = projection * view * world;
 
-			mat3 boneNormalMatrix = transpose(inverse(mat3(bone_transforms[bone_ids[i]])));
-			totalNormal += boneNormalMatrix * a_normal * bone_weights[i];
-		}
-
-		FragPos = vec3(model * totalPosition);
-		FragPosLightSpace = light_space_mat * vec4(FragPos, 1.0);
-
-		mat3 normalMatrix = transpose(inverse(mat3(model)));
-		Normal = normalize(normalMatrix * totalNormal);
-
-		mat4 viewModel = view * model;
-		gl_Position =  projection * viewModel * totalPosition;
-		TexCoords = a_tex_coords;
-	} else {
-		FragPos = vec3(model * vec4(a_pos, 1.0));
-		Normal = mat3(transpose(inverse(model))) * a_normal;  
-		TexCoords = a_tex_coords;    
-		FragPosLightSpace = light_space_mat * vec4(FragPos, 1.0);
-		gl_Position = projection * view * vec4(FragPos, 1.0);
-	}
-
-	base_color = a_base_color;
-	
+    base_color = a_base_color;
 }
 
 // FRAGMENT_SHADER
@@ -84,20 +50,20 @@ uniform sampler2D shadow_map;
 uniform bool use_base_color;      // set true to use a flat color
 
 struct Material {
-    sampler2D Diffuse;
-    sampler2D Specular;
-    sampler2D Emissive;
-    sampler2D Opacity;
+	sampler2D Diffuse;
+	sampler2D Specular;
+	sampler2D Emissive;
+	sampler2D Opacity;
 };
 uniform Material material;
 
 struct DirLight {
-    vec3 direction;
-    vec3 view_pos;
+	vec3 direction;
+	vec3 view_pos;
 
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
+	vec3 ambient;
+	vec3 diffuse;
+	vec3 specular;
 };
 uniform DirLight dir_light;
 
@@ -116,100 +82,100 @@ float fresnel_scale = 1.0;
 float fresnel_power = 3.0;
 
 float ShadowCalculation(float dot_light_normal) {
-    vec3 pos = FragPosLightSpace.xyz * 0.5 + 0.5;
-    if (pos.x < 0.0 || pos.x > 1.0 ||
-        pos.y < 0.0 || pos.y > 1.0 ||
-        pos.z < 0.0 || pos.z > 1.0) {
-        return 1.0;
-    }
+	vec3 pos = FragPosLightSpace.xyz * 0.5 + 0.5;
+	if (pos.x < 0.0 || pos.x > 1.0 ||
+		pos.y < 0.0 || pos.y > 1.0 ||
+		pos.z < 0.0 || pos.z > 1.0) {
+		return 1.0;
+	}
 
-    float bias = max(bias_scalar * (1.0 - dot_light_normal), 0.0005);
+	float bias = max(bias_scalar * (1.0 - dot_light_normal), 0.0005);
 
-    float shadow = 0.0;
-    vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
-    for (int x = -1; x <= 1; ++x) {
-        for (int y = -1; y <= 1; ++y) {
-            float depth = texture(shadow_map, pos.xy + vec2(x, y) * texel_size).r;
-            shadow += (depth + bias) < pos.z ? 0.0 : 1.0;
-        }
-    }
-    return shadow / 9.0;
+	float shadow = 0.0;
+	vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
+	for (int x = -1; x <= 1; ++x) {
+		for (int y = -1; y <= 1; ++y) {
+			float depth = texture(shadow_map, pos.xy + vec2(x, y) * texel_size).r;
+			shadow += (depth + bias) < pos.z ? 0.0 : 1.0;
+		}
+	}
+	return shadow / 9.0;
 }
 
 vec4 calculate_directional_light() {
-    vec3 lightColor = dir_light.diffuse;
+	vec3 lightColor = dir_light.diffuse;
 
-    // ----- DIFFUSE/ALBEDO SOURCE -----
-    // If using base_color: take RGBA from uniform.
-    // Else: sample the Diffuse texture with LOD logic.
-    vec3 tex_color;
-    float alpha;
-    if (use_base_color) {
-        tex_color = base_color.rgb;
-        alpha     = base_color.a;
-    } else {
-        float view_dist = length(view_position - FragPos);
-        float lod = clamp((view_dist - 5.0) / 5.0, 0.0, 30.0);
-        vec4 tex_sample = textureLod(material.Diffuse, TexCoords, lod);
+	// ----- DIFFUSE/ALBEDO SOURCE -----
+	// If using base_color: take RGBA from uniform.
+	// Else: sample the Diffuse texture with LOD logic.
+	vec3 tex_color;
+	float alpha;
+	if (use_base_color) {
+		tex_color = base_color.rgb;
+		alpha     = base_color.a;
+	} else {
+		float view_dist = length(view_position - FragPos);
+		float lod = clamp((view_dist - 5.0) / 5.0, 0.0, 30.0);
+		vec4 tex_sample = textureLod(material.Diffuse, TexCoords, lod);
 
-        // keep “transparent becomes white” safety
-        vec3 safe_color = mix(vec3(1.0), tex_sample.rgb, tex_sample.a);
-        tex_color = safe_color;
-        alpha     = tex_sample.a;
-    }
-    // ----------------------------------
+		// keep “transparent becomes white” safety
+		vec3 safe_color = mix(vec3(1.0), tex_sample.rgb, tex_sample.a);
+		tex_color = safe_color;
+		alpha     = tex_sample.a;
+	}
+	// ----------------------------------
 
-    // Specular & Emissive remain texture-based (unchanged)
-    vec3 spec_color  = texture(material.Specular,  TexCoords).rgb;
-    vec3 emiss_color = texture(material.Emissive, TexCoords).rgb;
+	// Specular & Emissive remain texture-based (unchanged)
+	vec3 spec_color  = texture(material.Specular,  TexCoords).rgb;
+	vec3 emiss_color = texture(material.Emissive, TexCoords).rgb;
 
-    // if (alpha_test_pass && alpha < 0.5)
-    //     discard;
+	// if (alpha_test_pass && alpha < 0.5)
+	//     discard;
 
-    if (flash_white) {
-        float t = mod(elapsed, 0.15);
-        if (t < 0.075) {
-            return vec4(1.0, 1.0, 1.0, alpha);
-        } else {
-            discard;
-        }
-    }
+	if (flash_white) {
+		float t = mod(elapsed, 0.15);
+		if (t < 0.075) {
+			return vec4(1.0, 1.0, 1.0, alpha);
+		} else {
+			discard;
+		}
+	}
 
-    // Lighting
+	// Lighting
 	vec3 flat_ambient = vec3(dir_light.ambient);
 	vec3 envAmbient = texture(skybox, normalize(Normal)).rgb;
 	vec3 ambient = mix(flat_ambient, envAmbient, 0.42);
-    vec3 lightDir = normalize(dir_light.direction);
-    vec3 norm = normalize(Normal);
-    float dot_light_normal = dot(lightDir, norm);
-    float diff = max(dot_light_normal, 0.0);
-    vec3 diffuse = diff * lightColor;
+	vec3 lightDir = normalize(dir_light.direction);
+	vec3 norm = normalize(Normal);
+	float dot_light_normal = dot(lightDir, norm);
+	float diff = max(dot_light_normal, 0.0);
+	vec3 diffuse = diff * lightColor;
 
-    vec3 viewDir = normalize(view_position - FragPos);
-    vec3 reflectDir = reflect(-lightDir, norm);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 36.0);
-    vec3 specular = dir_light.specular * spec * spec_color;
+	vec3 viewDir = normalize(view_position - FragPos);
+	vec3 reflectDir = reflect(-lightDir, norm);
+	float spec = pow(max(dot(viewDir, reflectDir), 0.0), 36.0);
+	vec3 specular = dir_light.specular * spec * spec_color;
 
-    float shadow = ShadowCalculation(dot_light_normal);
+	float shadow = ShadowCalculation(dot_light_normal);
 
-    vec3 result_rgb = ((shadow * (diffuse + specular)) + ambient) * tex_color + emiss_color;
+	vec3 result_rgb = ((shadow * (diffuse + specular)) + ambient) * tex_color + emiss_color;
 
-    if (do_reg_fresnel) {
-        float reg_fresnel = fresnel_bias + fresnel_scale * pow(1.0 - max(dot(norm, viewDir), 0.0), fresnel_power);
-        vec3 reg_fresnel_color = vec3(1.0);
-        result_rgb = mix(result_rgb, reg_fresnel_color, reg_fresnel * 0.6);
-    }
+	if (do_reg_fresnel) {
+		float reg_fresnel = fresnel_bias + fresnel_scale * pow(1.0 - max(dot(norm, viewDir), 0.0), fresnel_power);
+		vec3 reg_fresnel_color = vec3(1.0);
+		result_rgb = mix(result_rgb, reg_fresnel_color, reg_fresnel * 0.6);
+	}
 
-    if (selection_fresnel) {
-        float fresnel = fresnel_bias + fresnel_scale * pow(1.0 - max(dot(norm, viewDir), 0.0), fresnel_power);
-        float pulse = 0.875 + 0.125 * sin(elapsed * 6.0);
-        pulse = pow(pulse, 3.0);
-        vec3 fresnel_color = vec3(2.0, 0.0, 3.5);
-        vec3 glow = fresnel_color * pulse;
-        result_rgb += fresnel * glow;
-    }
+	if (selection_fresnel) {
+		float fresnel = fresnel_bias + fresnel_scale * pow(1.0 - max(dot(norm, viewDir), 0.0), fresnel_power);
+		float pulse = 0.875 + 0.125 * sin(elapsed * 6.0);
+		pulse = pow(pulse, 3.0);
+		vec3 fresnel_color = vec3(2.0, 0.0, 3.5);
+		vec3 glow = fresnel_color * pulse;
+		result_rgb += fresnel * glow;
+	}
 
-    return vec4(result_rgb, alpha);
+	return vec4(result_rgb, alpha);
 }
 
 // DEBUG NORMALS
@@ -226,7 +192,7 @@ vec4 calculate_directional_light() {
 
 
 void main() {
-    vec4 lightedColor = calculate_directional_light();
+	vec4 lightedColor = calculate_directional_light();
 
 	//vec3 gamma = pow(lightedColor.rgb, vec3(1.0/2.2));
 
