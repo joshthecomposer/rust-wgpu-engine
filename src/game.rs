@@ -190,7 +190,7 @@ impl Game {
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
-        self.game_ui.handle_window_event(event, &mut self.input);
+        //self.game_ui.handle_window_event(event, &mut self.input);
         if let Some(imgui_manager) = &mut self.imgui_manager {
             imgui_manager.handle_imgui_event(event);
         }
@@ -207,7 +207,7 @@ impl Game {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
                 // resize Slint game UI to match new framebuffer size
-                self.game_ui.resize(size.width, size.height);
+                //self.game_ui.resize(size.width, size.height);
             }
 
             WindowEvent::DroppedFile(path) => {
@@ -331,7 +331,7 @@ impl Game {
             &self.input,
             self.platform.fb_width as f32 / self.platform.fb_height as f32,
         );
-        self.sound.update(&self.world.camera);
+        //self.sound.update(&self.world.camera);
         self.world.lights.update(&self.time.dt);
         self.world.particles.update(self.time.dt);
 
@@ -352,24 +352,24 @@ impl Game {
                     world.ecs.populate_entity_data(&mut physics);
 
                     // Cleanup 3d sounds
-                    {
-                        let keys: Vec<usize> =
-                            self.sound.active_3d_sounds.keys().cloned().collect();
+                    //{
+                    //    let keys: Vec<usize> =
+                    //        self.sound.active_3d_sounds.keys().cloned().collect();
 
-                        for id in keys {
-                            self.sound.cleanup_entity_sounds(id);
-                        }
-                    }
+                    //    for id in keys {
+                    //        self.sound.cleanup_entity_sounds(id);
+                    //    }
+                    //}
 
-                    // Cleanup 2d sounds
-                    {
-                        let sounds: Vec<SoundType> =
-                            self.sound.active_sounds.keys().cloned().collect();
+                    //// Cleanup 2d sounds
+                    //{
+                    //    let sounds: Vec<SoundType> =
+                    //        self.sound.active_sounds.keys().cloned().collect();
 
-                        for sound in sounds {
-                            self.sound.stop_sound(&sound);
-                        }
-                    }
+                    //    for sound in sounds {
+                    //        self.sound.stop_sound(&sound);
+                    //    }
+                    //}
 
                     self.world = world;
                     self.physics = physics;
@@ -378,13 +378,13 @@ impl Game {
             }
         }
 
-        // update game UI (pause menu, HUD, etc.)
-        self.game_ui.update(GameUiUpdateContext {
-            message_queue: &mut self.message_queue,
-            entity_manager: &self.world.ecs,
-            paused: &mut self.paused,
-            render_gizmos: &mut self.renderer.render_gizmos,
-        });
+        //// update game UI (pause menu, HUD, etc.)
+        //self.game_ui.update(GameUiUpdateContext {
+        //    message_queue: &mut self.message_queue,
+        //    entity_manager: &self.world.ecs,
+        //    paused: &mut self.paused,
+        //    render_gizmos: &mut self.renderer.render_gizmos,
+        //});
     }
 
     pub fn render(&mut self) {
@@ -421,28 +421,28 @@ impl Game {
 
         // render player portrait for HUD (uses animated model shader)
         {
-            let anim_shader = self
-                .renderer
-                .shaders
-                .get_mut(&ShaderType::AnimatedModel)
-                .unwrap();
-            let portrait_ctx = PortraitRenderContext {
-                entity_manager: &self.world.ecs,
-                shader: anim_shader,
-                lights: &self.world.lights,
-                defaults: &self.renderer.defaults,
-                cubemap: self.renderer.cubemap_texture,
-            };
-            self.game_ui.render_portrait(portrait_ctx);
+            //let anim_shader = self
+            //    .renderer
+            //    .shaders
+            //    .get_mut(&ShaderType::AnimatedModel)
+            //    .unwrap();
+            //let portrait_ctx = PortraitRenderContext {
+            //    entity_manager: &self.world.ecs,
+            //    shader: anim_shader,
+            //    lights: &self.world.lights,
+            //    defaults: &self.renderer.defaults,
+            //    cubemap: self.renderer.cubemap_texture,
+            //};
+            //self.game_ui.render_portrait(portrait_ctx);
         }
 
         // render game UI overlay (pause menu when paused, HUD when playing)
-        let ui_shader = self
-            .renderer
-            .shaders
-            .get_mut(&ShaderType::UiOverlay)
-            .unwrap();
-        self.game_ui.render(ui_shader);
+        //let ui_shader = self
+        //    .renderer
+        //    .shaders
+        //    .get_mut(&ShaderType::UiOverlay)
+        //    .unwrap();
+        //self.game_ui.render(ui_shader);
 
         self.platform
             .surface
