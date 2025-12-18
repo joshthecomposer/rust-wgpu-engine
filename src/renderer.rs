@@ -868,7 +868,6 @@ impl Renderer {
             shader.set_float("bias_scalar", light_manager.bias_scalar);
             shader.set_vec3("view_position", camera.position);
             shader.set_int("skybox", 10);
-            shader.set_bool("is_animated", is_animated);
 
             for id in ids.iter() {
                 let is_selected = em.selected.contains(&id);
@@ -880,7 +879,6 @@ impl Renderer {
                 let model = em.models.get(*id).unwrap();
                 let trans = Self::render_transform(em, *id, alpha);
 
-                let forward = trans.rotation * Vec3::Z;
                 let m_mat = Mat4::from_scale_rotation_translation(
                     trans.scale,
                     trans.rotation,
@@ -891,7 +889,6 @@ impl Renderer {
                 if is_animated {
                     let animator = em.animators.get(*id).unwrap();
                     let animation = animator.get_current_animation().unwrap();
-                    let bonez = em.skellingtons.get(*id).unwrap();
 
                     shader.set_mat4_array("bone_transforms", &animation.current_pose);
 
