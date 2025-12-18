@@ -38,6 +38,9 @@ pub struct Animation {
 
     pub current_time: f32,
     pub looping: bool,
+
+    pub lod_skip: u32,
+    pub lod_counter: u32,
 }
 
 impl Animation {
@@ -58,6 +61,9 @@ impl Animation {
 
             current_time: 0.0,
             looping: true,
+
+            lod_skip: 0,
+            lod_counter: 0,
         }
     }
 
@@ -285,6 +291,16 @@ impl Animation {
             }
         }
 
+        let skip = self.lod_skip;
+
+        if skip > 0 {
+            self.lod_counter = self.lod_counter.wrapping_add(1);
+
+            if (self.lod_counter % (skip + 1)) != 0 {
+                return;
+            }
+        }
+
         if let Some(other_animation) = other_animation {
             self.calculate_pose_blended(
                 skellington,
@@ -307,9 +323,10 @@ impl Animation {
 pub fn get_time_fraction(times: &[f32], dt: f32) -> (u32, f32) {
     let mut segment = 0;
 
-    while dt > times[segment] {
+    while segment + 1 < times.len() && dt > times[segment] {
         segment += 1;
     }
+    segment = segment.min(times.len() - 1);
 
     if segment == 0 {
         return (0, 0.0); // avoid accessing times[-1]... maybe this isn't the best
@@ -321,3 +338,21 @@ pub fn get_time_fraction(times: &[f32], dt: f32) -> (u32, f32) {
 
     (segment as u32, frac)
 }
+
+//pub fn get_time_fraction(times: &[f32], dt: f32) -> (u32, f32) {
+//    let mut segment = 0;
+//
+//    while dt > times[segment] {
+//        segment += 1;
+//    }
+//
+//    if segment == 0 {
+//        return (0, 0.0); // avoid accessing times[-1]... maybe this isn't the best
+//    }
+//
+//    let start = times[segment - 1];
+//    let end = times[segment];
+//    let frac = (dt - start) / (end - start);
+//
+//    (segment as u32, frac)
+//}
