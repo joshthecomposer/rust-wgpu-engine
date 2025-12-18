@@ -29,7 +29,13 @@ pub fn update(
         .filter(|e| *e.value() == "Enemy")
         .map(|e| e.key())
         .collect::<Vec<usize>>();
+
+    let player_id = match em.factions.iter().find(|f| *f.value() == "Player") {
+        Some(e) => Some(e.key()),
+        None => None,
+    };
+
     for id in enemy_ids.iter() {
-        enemy_sim_state_machine(*id, em, dt, particles, ps, input);
+        enemy_sim_state_machine(*id, em, dt, particles, ps, input, player_id);
     }
 }

@@ -22,6 +22,7 @@ pub fn enemy_sim_state_machine(
     particles: &mut ParticleSystem,
     ps: &mut PhysicsState,
     input: &InputState,
+    player_id: Option<usize>,
 ) {
     // ==================================================================================
     // BLACKBOARD DATA
@@ -31,14 +32,6 @@ pub fn enemy_sim_state_machine(
     let entity_pos = em.transforms.get(entity_id).unwrap().position;
     let destination = em.destinations.get_mut(entity_id).unwrap();
     let entity_type = em.entity_types.get(entity_id).unwrap();
-
-    // TODO: iterating over the whole array to find the player ID is bad and removes all benefits
-    // of the ECS. we should fetch the player_id (and any other common data) once per frame and
-    // pass them down through the pipeline as a struct of references or something similar.
-    let player_id = match em.factions.iter().find(|f| *f.value() == "Player") {
-        Some(e) => Some(e.key()),
-        None => None,
-    };
 
     if player_id.is_none() {
         if entity_type == "MooseMan" {
@@ -235,7 +228,6 @@ pub fn enemy_sim_state_machine(
                     .get_mut(&animator.current_animation)
                     .unwrap();
 
-                // TODO: use the bone IDs instead for this
                 for bone_name in bone_names {
                     if let Some(bone_world_model_space) = anim
                         .get_raw_global_bone_transform_by_name(
