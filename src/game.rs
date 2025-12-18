@@ -153,7 +153,7 @@ impl Game {
                     self.time.fixed_dt,
                 );
 
-                physics::push_weapon_kinematics_from_bones(&mut self.world.ecs, &mut self.physics);
+                //physics::push_weapon_kinematics_from_bones(&mut self.world.ecs, &mut self.physics);
                 physics::push_static_kinematics(&self.world.ecs, &mut self.physics);
 
                 match self.world.camera.move_state {
