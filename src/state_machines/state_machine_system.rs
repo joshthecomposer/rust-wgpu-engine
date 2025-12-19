@@ -1,7 +1,6 @@
 use crate::{
     camera::Camera,
     entity_manager::EntityManager,
-    enums_types::Faction,
     input::InputState,
     particles::ParticleSystem,
     physics::PhysicsState,
