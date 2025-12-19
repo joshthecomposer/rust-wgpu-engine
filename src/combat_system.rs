@@ -1,16 +1,13 @@
-use glam::{vec3, Vec3};
+use glam::vec3;
 
 use crate::{
     entity_manager::EntityManager,
-    enums_types::{
-        AnimationType, AttackState, Effect, EmitterName, Faction, Knockback, PlayerState, SimState,
-        VisualEffect,
-    },
+    enums_types::{AnimationType, AttackState, Knockback, PlayerState, SimState},
     particles::ParticleSystem,
     physics::{self, PhysicsState},
 };
 
-pub fn update(em: &mut EntityManager, dt: f32, ps: &mut PhysicsState, px: &mut ParticleSystem) {
+pub fn update(em: &mut EntityManager, _dt: f32, ps: &mut PhysicsState, px: &mut ParticleSystem) {
     handle_player_to_enemy(em, ps, px);
     handle_enemy_to_player(em, ps);
 }
@@ -18,7 +15,7 @@ pub fn update(em: &mut EntityManager, dt: f32, ps: &mut PhysicsState, px: &mut P
 fn handle_player_to_enemy(
     em: &mut EntityManager,
     ps: &mut PhysicsState,
-    particles: &mut ParticleSystem,
+    _particles: &mut ParticleSystem,
 ) {
     let attacking_player_ids = em.player_get_ids_for_state(PlayerState::Combat);
 
@@ -111,7 +108,7 @@ fn handle_player_to_enemy(
                             did_particles: false,
                         };
 
-                        let trans = em.transforms.get(target_id).unwrap();
+                        // let trans = em.transforms.get(target_id).unwrap();
 
                         if sim_state.state != SimState::Blocking {
                             if let Some(h) = em.healths.get_mut(target_id) {

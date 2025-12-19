@@ -21,6 +21,7 @@
 		"glutin",
 		"heightfield",
 		"hitbox",
+		"hitset",
 		"hitsets",
 		"hurtbox",
 		"idlist",
