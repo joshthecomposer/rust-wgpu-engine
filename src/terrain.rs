@@ -1,11 +1,11 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 
-use gl::ActiveTexture;
-use glam::{vec2, vec3, vec4, Vec3, Vec4};
-use image::{GenericImageView, ImageBuffer, Luma};
+use glam::{vec2, vec3, Vec3, Vec4};
+use image::{ImageBuffer, Luma};
 use nalgebra::Point3;
 use rapier3d::prelude::{
-    Collider, ColliderBuilder, ColliderSet, InteractionGroups, RigidBodyHandle, RigidBodySet,
+    ColliderBuilder, ColliderSet, InteractionGroups, RigidBodyHandle, RigidBodySet,
 };
 
 use crate::{
@@ -187,53 +187,53 @@ impl Terrain {
         model
     }
 
-    pub fn get_height_at(&self, x: f32, z: f32) -> f32 {
-        let terrain_x = x + self.width as f32 / 2.0;
-        let terrain_z = z + self.height as f32 / 2.0;
+    // pub fn get_height_at(&self, x: f32, z: f32) -> f32 {
+    //     let terrain_x = x + self.width as f32 / 2.0;
+    //     let terrain_z = z + self.height as f32 / 2.0;
 
-        let x0 = terrain_x.floor() as i32;
-        let z0 = terrain_z.floor() as i32;
-        let x1 = x0 + 1;
-        let z1 = z0 + 1;
+    //     let x0 = terrain_x.floor() as i32;
+    //     let z0 = terrain_z.floor() as i32;
+    //     let x1 = x0 + 1;
+    //     let z1 = z0 + 1;
 
-        if x0 < 0 || z0 < 0 || x1 >= self.width as i32 || z1 >= self.height as i32 {
-            return 0.0; // out of bounds so return 0.
-        }
+    //     if x0 < 0 || z0 < 0 || x1 >= self.width as i32 || z1 >= self.height as i32 {
+    //         return 0.0; // out of bounds so return 0.
+    //     }
 
-        let h00 = self.height_map[(z0 as u32 * self.width + x0 as u32) as usize];
-        let h10 = self.height_map[(z0 as u32 * self.width + x1 as u32) as usize];
-        let h01 = self.height_map[(z1 as u32 * self.width + x0 as u32) as usize];
-        let h11 = self.height_map[(z1 as u32 * self.width + x1 as u32) as usize];
+    //     let h00 = self.height_map[(z0 as u32 * self.width + x0 as u32) as usize];
+    //     let h10 = self.height_map[(z0 as u32 * self.width + x1 as u32) as usize];
+    //     let h01 = self.height_map[(z1 as u32 * self.width + x0 as u32) as usize];
+    //     let h11 = self.height_map[(z1 as u32 * self.width + x1 as u32) as usize];
 
-        let tx = terrain_x - x0 as f32;
-        let tz = terrain_z - z0 as f32;
+    //     let tx = terrain_x - x0 as f32;
+    //     let tz = terrain_z - z0 as f32;
 
-        let h0 = h00 * (1.0 - tx) + h10 * tx;
-        let h1 = h01 * (1.0 - tx) + h11 * tx;
-        let height = h0 * (1.0 - tz) + h1 * tz;
+    //     let h0 = h00 * (1.0 - tx) + h10 * tx;
+    //     let h1 = h01 * (1.0 - tx) + h11 * tx;
+    //     let height = h0 * (1.0 - tz) + h1 * tz;
 
-        height - (self.max_height / 2.0)
-    }
+    //     height - (self.max_height / 2.0)
+    // }
 
-    pub fn create_collider(&self) -> Collider {
-        // Convert terrain vertex positions to Point3
-        let vertices: Vec<Point3<f32>> = self
-            .vertices
-            .iter()
-            .map(|v| Point3::new(v[0], v[1], v[2]))
-            .collect();
+    // pub fn create_collider(&self) -> Collider {
+    //     // Convert terrain vertex positions to Point3
+    //     let vertices: Vec<Point3<f32>> = self
+    //         .vertices
+    //         .iter()
+    //         .map(|v| Point3::new(v[0], v[1], v[2]))
+    //         .collect();
 
-        // Convert triangle indices (assumed u32 or usize)
-        let indices: Vec<[u32; 3]> = self
-            .indices
-            .chunks(3)
-            .map(|tri| [tri[0] as u32, tri[1] as u32, tri[2] as u32])
-            .collect();
+    //     // Convert triangle indices (assumed u32 or usize)
+    //     let indices: Vec<[u32; 3]> = self
+    //         .indices
+    //         .chunks(3)
+    //         .map(|tri| [tri[0] as u32, tri[1] as u32, tri[2] as u32])
+    //         .collect();
 
-        ColliderBuilder::trimesh(vertices, indices)
-            .expect("Some shit went wrong")
-            .build()
-    }
+    //     ColliderBuilder::trimesh(vertices, indices)
+    //         .expect("Some shit went wrong")
+    //         .build()
+    // }
 }
 
 pub fn insert_chunked_terrain_colliders(
