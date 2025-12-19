@@ -1,6 +1,5 @@
 use crate::{
-    camera::Camera, config::world_data::WorldData, entity_manager::EntityManager, lights::Lights,
-    particles::ParticleSystem,
+    camera::Camera, entity_manager::EntityManager, lights::Lights, particles::ParticleSystem,
 };
 
 pub struct World {
