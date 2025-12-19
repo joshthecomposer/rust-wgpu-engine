@@ -354,20 +354,36 @@ impl GameUiManager {
         // Only draw if NOT paused!
         if !self.is_paused {
             let portrait_tex = self.portrait_renderer.get_texture_id();
-            // portrait is rendered to FBO so needs V-flip
-            // the portrait FBO is square, so we need equal NDC dimensions
-            // adjusted for window aspect ratio to appear square on screen
-            // Slint frame is ~56x56 pixels, window is typically wider than tall
-            let aspect = self.width as f32 / self.height as f32;
-            let size = 0.08; // base size in NDC (height)
-            let width = size / aspect; // adjust width for aspect ratio
+
+            // get portrait rect from Slint (in logical pixels)
+            let (px, py, pw, ph) = self.game_root_view.get_portrait_rect();
+
+            // convert logical pixels to physical pixels
+            let px_phys = px * self.scale_factor;
+            let py_phys = py * self.scale_factor;
+            let pw_phys = pw * self.scale_factor;
+            let ph_phys = ph * self.scale_factor;
+
+            // convert to NDC
+            // screen coords: (0,0) = top-left, (width, height) = bottom-right
+            // NDC: (-1,1) = top-left, (1,-1) = bottom-right
+            // the quad vertices go from -1 to 1, so scale represents half-size
+            let ndc_w = pw_phys / self.width as f32; // half-width in NDC
+            let ndc_h = ph_phys / self.height as f32; // half-height in NDC
+
+            // compute center of the portrait rect in NDC
+            let center_x_px = px_phys + pw_phys / 2.0;
+            let center_y_px = py_phys + ph_phys / 2.0;
+            let ndc_x = (2.0 * center_x_px / self.width as f32) - 1.0;
+            let ndc_y = 1.0 - (2.0 * center_y_px / self.height as f32);
+
             self.draw_screen_quad(
                 shader,
                 portrait_tex,
-                -0.92, // x position in NDC
-                0.86,  // y position in NDC
-                width, // width adjusted for aspect ratio
-                size,  // height in NDC
+                ndc_x, // x center in NDC
+                ndc_y, // y center in NDC
+                ndc_w, // half-width in NDC
+                ndc_h, // half-height in NDC
                 true,  // flip_v for FBO texture
             );
         }

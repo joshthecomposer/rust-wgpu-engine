@@ -77,4 +77,14 @@ impl GameRootView {
         };
         self.player_hud_view.update(&self.game_root, hud_ctx);
     }
+
+    /// Get the portrait rect position and size in logical pixels.
+    /// Returns (x, y, width, height) for positioning the GL-rendered portrait.
+    pub fn get_portrait_rect(&self) -> (f32, f32, f32, f32) {
+        let x = self.game_root.get_portrait_x();
+        let y = self.game_root.get_portrait_y();
+        let w = self.game_root.get_portrait_width();
+        let h = self.game_root.get_portrait_height();
+        (x, y, w, h)
+    }
 }

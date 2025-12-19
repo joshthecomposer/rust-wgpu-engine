@@ -36,8 +36,14 @@ export component GameRoot inherits Window {
     in property <float> player-mana: 100;
     in property <float> player-mana-max: 100;
 
+    // expose portrait rect for GL rendering (absolute screen position)
+    out property <length> portrait-x: player-hud.x + player-hud.portrait-x;
+    out property <length> portrait-y: player-hud.y + player-hud.portrait-y;
+    out property <length> portrait-width: player-hud.portrait-width;
+    out property <length> portrait-height: player-hud.portrait-height;
+
     // ==================== PLAYER HUD ====================
-    PlayerContainer {
+    player-hud := PlayerContainer {
         x: 16px;
         y: 16px;
 
