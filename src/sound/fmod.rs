@@ -113,8 +113,8 @@ extern "C" {
         attenuationposition: *const FMOD_VECTOR,
     ) -> FMOD_RESULT;
 
-    pub fn FMOD_Studio_EventDescription_GetInstanceCount(
-        eventDescription: FMOD_STUDIO_EVENTDESCRIPTION,
-        count: *mut libc::c_int,
-    ) -> FMOD_RESULT;
+    // pub fn FMOD_Studio_EventDescription_GetInstanceCount(
+    //     eventDescription: FMOD_STUDIO_EVENTDESCRIPTION,
+    //     count: *mut libc::c_int,
+    // ) -> FMOD_RESULT;
 }
