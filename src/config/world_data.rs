@@ -1,34 +1,22 @@
 use glam::{Quat, Vec3};
-use std::fs::{read_to_string, write};
-use toml::value::{Array, Table, Value};
+use serde::{Deserialize, Serialize};
 
-use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
-
-use crate::enums_types::{EntityType, Faction};
+use crate::config::Config;
 
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct WorldData {
     pub entities: Vec<EntityInstance>,
 }
 
-impl WorldData {
-    pub fn load_from_file(file_name: &str) -> Self {
-        println!("loading world data from {}", &file_name);
-        let config_str = read_to_string(file_name).unwrap();
-
-        serde_json::from_str(&config_str).expect("The world_data file was missing or malformed")
-    }
-
-    pub fn write_to_file(&self, file_name: &str) {
-        println!("writing world data to {}", &file_name);
-
-        let json_string =
-            serde_json::to_string_pretty(self).expect("Failed to serialize world data");
-        write(file_name, json_string).expect("Failed to write world data");
-
-        println!("Completed writing world data to {}", &file_name);
+impl Default for WorldData {
+    fn default() -> Self {
+        Self {
+            entities: Vec::new(),
+        }
     }
 }
+
+impl Config for WorldData {}
 
 // =============================================================
 // Helpers

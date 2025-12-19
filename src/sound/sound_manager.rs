@@ -6,7 +6,7 @@ use glam::Vec3;
 
 use crate::{
     camera::Camera,
-    config::game_config::GameConfig,
+    config::sound_config::SoundConfig,
     enums_types::SoundType,
     sound::fmod::{
         FMOD_Studio_EventDescription_GetInstanceCount, FMOD_Studio_EventDescription_LoadSampleData,
@@ -58,7 +58,7 @@ pub struct SoundManager {
 }
 
 impl SoundManager {
-    pub fn new(config: &GameConfig) -> SoundManager {
+    pub fn new(config: &SoundConfig) -> SoundManager {
         let sound_props = &config.sounds;
 
         let mut fmod_system: FMOD_STUDIO_SYSTEM = std::ptr::null_mut();

@@ -1,15 +1,10 @@
-use std::{
-    collections::HashMap,
-    fs::{read_to_string, write},
-};
+use crate::config::Config;
+use std::collections::HashMap;
 
 use glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    debug::gizmos::Cylinder,
-    enums_types::{AnimationType, EntityType, Faction, HitboxShape, SoundType},
-};
+use crate::enums_types::{AnimationType, HitboxShape, SoundType};
 
 #[derive(Clone, Deserialize, Debug, Serialize)]
 pub struct ItemBones {
@@ -22,28 +17,15 @@ pub struct EntityConfig {
     pub entity_types: HashMap<String, EntityTypeHelper>,
 }
 
-impl EntityConfig {
-    pub fn load_from_file(file_name: &str) -> EntityConfig {
-        println!("loading entity configuration from {}", file_name);
-        let config_str = read_to_string(file_name).unwrap();
-
-        serde_json::from_str(&config_str).expect("The entity config file was missing")
-    }
-
-    pub fn write_to_file(&self, file_name: &str) {
-        println!("writing entity type data to {}", file_name);
-
-        let json_string =
-            serde_json::to_string_pretty(self).expect("Failed to serialize entity type data");
-        write(file_name, json_string).expect("Failed to write entity type file");
-
-        println!("Completed writing entity type data to {}", file_name);
+impl Default for EntityConfig {
+    fn default() -> Self {
+        Self {
+            entity_types: HashMap::new(),
+        }
     }
 }
 
-// =============================================================
-// Helpers
-// =============================================================
+impl Config for EntityConfig {}
 
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct ItemBoneNames {

@@ -1,44 +1,23 @@
-use crate::{
-    enums_types::{EmitterName, EntityType, Faction},
-    gl_call,
-};
-use core::fmt;
-use glam::{Quat, Vec2, Vec3, Vec4};
-use image::{GenericImageView, Rgba};
-use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::ser::Formatter;
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Display,
-    fs::{read_to_string, write},
-    hash::Hash,
-    ptr::hash,
-};
-use toml::value::{Array, Table, Value};
+use crate::{config::Config, gl_call};
+use glam::{Vec2, Vec3, Vec4};
+use image::GenericImageView;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct EmitterData {
     pub one_shot_data: HashMap<String, EmitterBlackboard>,
 }
 
-impl EmitterData {
-    pub fn load_from_file(file_name: &str) -> Self {
-        println!("loading EmitterData from {}", &file_name);
-        let config_str = read_to_string(file_name).unwrap();
-
-        serde_json::from_str(&config_str).expect("The EmitterData file was missing or malformed")
-    }
-
-    pub fn write_to_file(&self, file_name: &str) {
-        println!("writing emitter data to {}", &file_name);
-
-        let json_string =
-            serde_json::to_string_pretty(self).expect("Failed to serialize emitter data");
-        write(file_name, json_string).expect("Failed to write emitter data");
-
-        println!("Completed writing emitter data to {}", &file_name);
+impl Default for EmitterData {
+    fn default() -> Self {
+        Self {
+            one_shot_data: HashMap::new(),
+        }
     }
 }
+
+impl Config for EmitterData {}
 
 #[derive(Deserialize, Debug, Serialize, Default, Clone)]
 #[serde(default)]
