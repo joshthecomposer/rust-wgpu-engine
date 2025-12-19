@@ -573,6 +573,7 @@
       "total_mass": null
     },
     "Boss1": {
+	  "rigid_body_type": "KinematicPositionBased",
       "rot_correction": [
         0.0,
         0.0,
@@ -580,9 +581,9 @@
         1.0
       ],
       "scale_correction": [
-        20.0,
-        20.0,
-        20.0
+        35.0,
+        35.0,
+        35.0
       ],
       "mesh_path": "resources/models/animated/Boss1/mesh.txt",
       "bone_path": "resources/models/animated/Boss1/mesh.txt",

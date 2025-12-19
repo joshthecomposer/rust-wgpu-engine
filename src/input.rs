@@ -181,7 +181,9 @@ pub fn handle_mouse_input(
                         em.selected.push(entity_id);
                         let ph = em.physics_handles.get_mut(entity_id).unwrap();
                         let rb = physics.rigid_body_set.get_mut(ph.rigid_body).unwrap();
-                        rb.set_body_type(RigidBodyType::KinematicPositionBased, false);
+                        if rb.body_type() != RigidBodyType::KinematicPositionBased {
+                            rb.set_body_type(RigidBodyType::KinematicPositionBased, false);
+                        }
                         return;
                     }
 

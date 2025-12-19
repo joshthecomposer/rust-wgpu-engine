@@ -4,15 +4,15 @@
       "entity_type": "TrashGuy",
       "faction": "Player",
       "position": [
-        34.245834,
-        0.47162437,
-        45.429756
+        32.642574,
+        0.48767138,
+        44.51063
       ],
       "rotation": [
         0.0,
-        -0.94322264,
+        0.06714462,
         0.0,
-        0.33216116
+        0.99774325
       ],
       "weapons": [
         {
@@ -455,9 +455,9 @@
       "entity_type": "TrashGuy",
       "faction": "Enemy",
       "position": [
-        -12.058667,
-        0.3726462,
-        -17.78191
+        -12.059428,
+        0.3658378,
+        -17.781923
       ],
       "rotation": [
         0.0,
@@ -506,9 +506,9 @@
       "entity_type": "TrashGuy",
       "faction": "Enemy",
       "position": [
-        -11.062353,
-        0.4049499,
-        -17.782358
+        -11.062355,
+        0.405069,
+        -17.782356
       ],
       "rotation": [
         0.0,
@@ -557,9 +557,9 @@
       "entity_type": "TrashGuy",
       "faction": "Enemy",
       "position": [
-        -11.560507,
-        0.3856243,
-        -17.781889
+        -11.56089,
+        0.38510346,
+        -17.781878
       ],
       "rotation": [
         0.0,
@@ -600,6 +600,31 @@
       "mana": null,
       "max_mana": null,
       "level": null,
+      "name": null,
+      "jump_height": 1.0,
+      "cleanup_timer": null
+    },
+    {
+      "entity_type": "Boss1",
+      "faction": "NeutralNpc",
+      "position": [
+        -30.328,
+        -449.052,
+        -252.741
+      ],
+      "rotation": [
+        0.0,
+        -0.99529314,
+        0.0,
+        0.09691029
+      ],
+      "weapons": null,
+      "base_speed": 3.5,
+      "health": 100.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
       "name": null,
       "jump_height": 1.0,
       "cleanup_timer": null

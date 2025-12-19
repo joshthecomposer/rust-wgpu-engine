@@ -4,6 +4,7 @@
     "Enemy",
     "Item",
     "World",
-    "Player"
+    "Player",
+	"NeutralNpc"
   ]
 }

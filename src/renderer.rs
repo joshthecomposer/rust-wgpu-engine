@@ -619,6 +619,7 @@ impl Renderer {
 
         for (ty, ids) in ids_by_type.iter() {
             let mut out = Vec::with_capacity(ids.len());
+            let enough_guys = ids.len() >= 300;
 
             for &id in ids.iter() {
                 let t = match em.transforms.get(id) {
@@ -636,14 +637,16 @@ impl Renderer {
 
                     anim.lod_skip = if d2 < NEAR2 {
                         0
-                    } else if d2 < MID2 {
+                    } else if d2 < MID2 && enough_guys {
                         1
-                    } else if d2 < FAR2 {
+                    } else if d2 < FAR2 && enough_guys {
                         3
-                    } else if d2 < FARTHEST2 {
+                    } else if d2 < FARTHEST2 && enough_guys {
                         5
-                    } else {
+                    } else if enough_guys {
                         7
+                    } else {
+                        0
                     };
                 }
 
