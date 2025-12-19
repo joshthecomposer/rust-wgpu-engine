@@ -1,20 +1,15 @@
-use std::collections::HashSet;
-
-use gl::SampleMaski;
-use glam::{vec3, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
-use image::{GenericImageView, Rgba};
+use glam::{vec3, Mat3, Mat4, Quat, Vec3, Vec4};
+use image::GenericImageView;
 use rand::{rng, Rng};
 use rapier3d::parry::utils::hashmap::HashMap;
 
 use crate::{
     camera::Camera,
     config::{
-        emitter_data::{EmitterBlackboard, EmitterData, UiEmitterBlackboard},
+        emitter_data::{EmitterBlackboard, EmitterData},
         Config,
     },
-    enums_types::EmitterName,
     gl_call,
-    lights::Lights,
     shaders::Shader,
 };
 
@@ -111,8 +106,6 @@ impl Emitter {
 
         shader.activate();
 
-        let mut rng = rng();
-
         let mut matrices = Vec::with_capacity(self.count);
         for i in 0..self.count {
             let t = self.times_alive[i];
@@ -138,7 +131,7 @@ impl Emitter {
             let factor = start_factor + (end_factor - start_factor) * scale_t;
             let scale = self.scales[i] * factor;
 
-            let rotation = self.rotation_offsets[i] + self.rotation_speeds[i] * t;
+            // let rotation = self.rotation_offsets[i] + self.rotation_speeds[i] * t;
 
             let view = camera.view;
             let view_rot = Mat3::from_cols(
@@ -626,7 +619,7 @@ impl ParticleSystem {
 
     pub fn calculate_particle_data(
         ed: &EmitterBlackboard,
-        origin: Vec3,
+        _origin: Vec3,
         direction: Option<Vec3>,
         emitter: &mut Emitter,
     ) {
@@ -640,7 +633,7 @@ impl ParticleSystem {
             Vec3::Y
         };
 
-        let rot = Quat::from_rotation_arc(local_up, desired_dir);
+        // let rot = Quat::from_rotation_arc(local_up, desired_dir);
 
         let mut rng = rng();
 
