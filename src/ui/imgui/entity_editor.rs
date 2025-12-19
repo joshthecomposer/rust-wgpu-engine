@@ -1,27 +1,17 @@
 use std::borrow::Cow;
 
-use glam::{Mat4, Quat, Vec3};
-use imgui::{
-    sys::{ImGuiKey, ImGuiKey_Backspace},
-    Drag, Io, Ui,
-};
+use glam::{Quat, Vec3};
+use imgui::{Drag, Ui};
 
 use crate::{
-    animation::animator::Animator,
-    camera::Camera,
-    config::{
-        entity_config::{EntityTypeHelper, UiEntityTypeHelper},
-        world_data::{EntityInstance, WorldData},
-    },
+    config::{entity_config::UiEntityTypeHelper, world_data::EntityInstance},
     entity_manager::EntityManager,
-    enums_types::{CameraState, EntityType, Faction, SoundType},
-    gl_call,
+    enums_types::SoundType,
     input::InputState,
     lights::Lights,
     physics::PhysicsState,
     renderer::Renderer,
     sound::sound_manager::SoundManager,
-    util::data_structure::HashMapGetPairMut,
 };
 
 pub struct EntityEditor {
@@ -100,22 +90,16 @@ impl EntityEditor {
                 ui.text("Controls for Various Lights");
                 ui.separator();
 
-                if ui.slider("Dir Light X", -1.0, 1.0, &mut lm.dir_light.direction.x) {
-                    lm.dir_light.view_pos.x = lm.dir_light.direction.x * lm.dir_light.distance;
-                };
-                if ui.slider("Dir Light Y", -1.0, 1.0, &mut lm.dir_light.direction.y) {
-                    lm.dir_light.view_pos.y = lm.dir_light.direction.y * lm.dir_light.distance;
-                };
-                if ui.slider("Dir Light Z", -1.0, 1.0, &mut lm.dir_light.direction.z) {
-                    lm.dir_light.view_pos.z = lm.dir_light.direction.z * lm.dir_light.distance;
-                };
-                if ui.slider("Dir Light distance", 0.0, 100.0, &mut lm.dir_light.distance) {};
+                ui.slider("Dir Light X", -1.0, 1.0, &mut lm.dir_light.direction.x);
+                ui.slider("Dir Light Y", -1.0, 1.0, &mut lm.dir_light.direction.y);
+                ui.slider("Dir Light Z", -1.0, 1.0, &mut lm.dir_light.direction.z);
+                ui.slider("Dir Light distance", 0.0, 100.0, &mut lm.dir_light.distance);
 
                 ui.checkbox("Shadow Debug", &mut rdr.shadow_debug);
 
-                if ui.slider("Ortho Near", 0.0, 10.0, &mut lm.near) {};
-                if ui.slider("Ortho Far", 0.0, 500.0, &mut lm.far) {};
-                if ui.slider("Bounds", 0.0, 100.0, &mut lm.bounds) {};
+                ui.slider("Ortho Near", 0.0, 10.0, &mut lm.near);
+                ui.slider("Ortho Far", 0.0, 500.0, &mut lm.far);
+                ui.slider("Bounds", 0.0, 100.0, &mut lm.bounds);
 
                 if Drag::new("Bias Scalar")
                     .speed(0.0001)
@@ -123,9 +107,7 @@ impl EntityEditor {
                     .build(ui, &mut lm.bias_scalar)
                 {}
 
-                lm.dir_light.view_pos.x = lm.dir_light.direction.x * lm.dir_light.distance;
-                lm.dir_light.view_pos.y = lm.dir_light.direction.y * lm.dir_light.distance;
-                lm.dir_light.view_pos.z = lm.dir_light.direction.z * lm.dir_light.distance;
+                lm.dir_light.view_pos = lm.dir_light.direction * lm.dir_light.distance;
 
                 // ===================== Sound =====================
                 ui.separator();
