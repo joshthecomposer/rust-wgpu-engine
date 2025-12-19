@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 
 use glam::{vec3, Vec3};
@@ -223,15 +224,15 @@ impl Lights {
         }
     }
 
-    pub fn add_point_light(&mut self, mut light: PointLight, distance: u32) {
-        if let Some(strength) = self.point_strengths.get(&distance) {
-            light.constant = strength.constant;
-            light.linear = strength.linear;
-            light.quadratic = strength.quadratic;
-        }
-        self.point_lights.insert(self.next_light_id, light);
-        self.next_light_id += 1;
-    }
+    // pub fn add_point_light(&mut self, mut light: PointLight, distance: u32) {
+    //     if let Some(strength) = self.point_strengths.get(&distance) {
+    //         light.constant = strength.constant;
+    //         light.linear = strength.linear;
+    //         light.quadratic = strength.quadratic;
+    //     }
+    //     self.point_lights.insert(self.next_light_id, light);
+    //     self.next_light_id += 1;
+    // }
 
     pub fn update(&mut self, _delta: &f32) {
         for i in self.point_lights.iter_mut() {
@@ -240,6 +241,4 @@ impl Lights {
             }
         }
     }
-
-    pub fn debug_render() {}
 }
