@@ -23,6 +23,7 @@ use crate::{
         },
         factions_config::FactionsConfig,
         world_data::{EntityInstance, WorldData},
+        Config,
     },
     debug::gizmos::{Cuboid, Cylinder, Pill},
     enums_types::{
@@ -1089,7 +1090,7 @@ impl EntityManager {
             wd.entities.push(instance);
         }
 
-        wd.write_to_file(file_name);
+        wd.save_to_file(file_name);
     }
 
     pub fn resolve_weapons(&self, id: usize) -> Option<Vec<EntityInstance>> {
@@ -1154,7 +1155,7 @@ impl EntityManager {
             entity_types: self.entity_type_register.clone(),
         };
 
-        ec.write_to_file(&format!("config/entity_config.json"));
+        ec.save_to_file("config/entity_config.json");
     }
 
     pub fn register_new_entity_type(&mut self, data: &UiEntityTypeHelper) {
@@ -1302,7 +1303,7 @@ impl EntityManager {
         let ec = EntityConfig {
             entity_types: self.entity_type_register.clone(),
         };
-        ec.write_to_file("config/entity_config.json");
+        ec.save_to_file("config/entity_config.json");
     }
 
     pub fn register_new_faction(&mut self, faction: &str) {
@@ -1314,7 +1315,7 @@ impl EntityManager {
             factions: self.faction_register.clone(),
         };
 
-        cfg.write_to_file("config/factions_config.json");
+        cfg.save_to_file("config/factions_config.json");
     }
 }
 

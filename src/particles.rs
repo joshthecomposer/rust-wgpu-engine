@@ -8,7 +8,10 @@ use rapier3d::parry::utils::hashmap::HashMap;
 
 use crate::{
     camera::Camera,
-    config::emitter_data::{EmitterBlackboard, EmitterData, UiEmitterBlackboard},
+    config::{
+        emitter_data::{EmitterBlackboard, EmitterData, UiEmitterBlackboard},
+        Config,
+    },
     enums_types::EmitterName,
     gl_call,
     lights::Lights,
@@ -344,9 +347,9 @@ impl ParticleSystem {
 
         let mut registered_textures = HashMap::new();
 
-        for (k, v) in &mut emitter_data.one_shot_data {
-            if let Some(path) = &v.texture_path {
-                let tex = Self::load_texture(&path);
+        for (_k, v) in &mut emitter_data.one_shot_data {
+            if let Some(path) = v.texture_path.as_ref() {
+                let tex = Self::load_texture(path);
                 registered_textures.insert(path.clone(), tex);
                 v.texture_idx = Some(tex);
             }

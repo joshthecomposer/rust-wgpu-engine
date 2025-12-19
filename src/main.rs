@@ -33,7 +33,7 @@ use std::{
     path::Path,
 };
 
-use config::game_config::GameConfig;
+use config::{game_config::GameConfig, Config};
 use game::Game;
 
 use glam::Quat;

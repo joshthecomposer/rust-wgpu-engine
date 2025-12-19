@@ -1,5 +1,7 @@
 {
 	"cSpell.words": [
+		"EVENTDESCRIPTION",
+		"EVENTINSTANCE",
 		"FMOD",
 		"Framebuffers",
 		"gameconfig",
@@ -7,6 +9,7 @@
 		"glfw",
 		"glutin",
 		"hitbox",
+		"hurtbox",
 		"imgui",
 		"Integerv",
 		"MSVC",
@@ -19,6 +22,7 @@
 		"renderbuffer",
 		"Renderbuffers",
 		"rgba",
+		"RIGHTHANDED",
 		"skybox",
 		"slint",
 		"Spag",

@@ -7,6 +7,8 @@ use winit::window::CursorGrabMode;
 
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
+use crate::config::sound_config::SoundConfig;
+use crate::config::Config;
 use crate::enums_types::{CameraState, ShaderType, SoundType};
 use crate::input::{self, InputState};
 use crate::physics::PhysicsState;
@@ -47,8 +49,10 @@ impl Game {
 
         world.ecs.populate_entity_data(&mut physics);
 
+        let sound_config = SoundConfig::load_or_create_default("config/sound_config.json");
+
         let renderer = Renderer::new(&platform);
-        let sound = SoundManager::new(&config);
+        let sound = SoundManager::new(&sound_config);
         let game_ui = GameUiManager::new(
             platform.fb_width,
             platform.fb_height,

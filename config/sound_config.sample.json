@@ -1,0 +1,17 @@
+{
+  "sounds": {
+    "Footstep": "event:/footstep",
+    "MooseHuff": "event:/moose3D",
+    "StopRunning": "event:/stop_running",
+    "Jump": "event:/jump",
+    "Land": "event:/land",
+    "Music": "event:/music"
+  },
+  "master_volume": 1.0,
+  "bgm": 1.0,
+  "sfx": 1.0,
+  "voice": 1.0,
+  "ui": 1.0,
+  "ambience": 1.0
+}
+

@@ -13,6 +13,7 @@ use crate::{
         emitter_data::{EmitterBlackboard, UiEmitterBlackboard},
         entity_config::{EntityTypeHelper, UiEntityTypeHelper},
         world_data::{EntityInstance, WorldData},
+        Config,
     },
     entity_manager::EntityManager,
     enums_types::{CameraState, EntityType, Faction, SoundType},
@@ -349,7 +350,7 @@ impl ParticleEditor {
                                     .insert(payload.name.clone(), payload.clone());
                                 particles
                                     .emitter_data
-                                    .write_to_file("config/particle_emitters.toml");
+                                    .save_to_file("config/particle_emitters.toml");
                             } else {
                                 eprintln!("[Warning] emitter not saved, name was already taken.");
                             }
