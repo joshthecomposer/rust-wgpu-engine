@@ -404,24 +404,6 @@ impl Game {
             &mut self.world.particles,
         );
 
-        if let Some(imgui_manager) = &mut self.imgui_manager {
-            imgui_manager.draw(
-                &mut self.platform.window,
-                self.platform.fb_width as f32,
-                self.platform.fb_height as f32,
-                self.time.dt,
-                &mut self.world.lights,
-                &mut self.renderer,
-                &mut self.sound,
-                &self.world.camera,
-                &mut self.world.ecs,
-                &mut self.physics,
-                &mut self.input,
-                &mut self.world.particles,
-                &mut self.message_queue,
-            );
-        }
-
         // render player portrait for HUD (uses animated model shader)
         {
             let anim_shader = self
@@ -446,6 +428,24 @@ impl Game {
             .get_mut(&ShaderType::UiOverlay)
             .unwrap();
         self.game_ui.render(ui_shader);
+
+        if let Some(imgui_manager) = &mut self.imgui_manager {
+            imgui_manager.draw(
+                &mut self.platform.window,
+                self.platform.fb_width as f32,
+                self.platform.fb_height as f32,
+                self.time.dt,
+                &mut self.world.lights,
+                &mut self.renderer,
+                &mut self.sound,
+                &self.world.camera,
+                &mut self.world.ecs,
+                &mut self.physics,
+                &mut self.input,
+                &mut self.world.particles,
+                &mut self.message_queue,
+            );
+        }
 
         self.platform
             .surface

@@ -2,6 +2,7 @@ use crate::config::Config;
 use std::collections::HashMap;
 
 use glam::{Quat, Vec3};
+use rapier3d::prelude::RigidBodyType;
 use serde::{Deserialize, Serialize};
 
 use crate::enums_types::{AnimationType, HitboxShape, SoundType};
@@ -46,6 +47,7 @@ pub struct AnimationPropHelper {
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct EntityTypeHelper {
     pub rot_correction: Quat,
+    pub rigid_body_type: Option<RigidBodyType>,
     pub scale_correction: Vec3,
     pub mesh_path: String,
     #[serde(default)]
@@ -64,6 +66,7 @@ impl Default for EntityTypeHelper {
     fn default() -> Self {
         Self {
             rot_correction: Quat::IDENTITY,
+            rigid_body_type: None,
             scale_correction: Vec3::ONE,
             mesh_path: String::new(),
             bone_path: None,

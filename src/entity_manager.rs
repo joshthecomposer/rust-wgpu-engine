@@ -455,7 +455,16 @@ impl EntityManager {
                 self.create_cylinder_hitbox(r, h, position, scale, rotation, parent_id, ps);
             }
             HitboxShape::Pill { r, h } => {
-                self.create_pill_hitbox(r, h, position, scale, rotation, parent_id, ps);
+                self.create_pill_hitbox(
+                    r,
+                    h,
+                    position,
+                    scale,
+                    rotation,
+                    parent_id,
+                    ps,
+                    archetype.rigid_body_type,
+                );
             }
             HitboxShape::BoundingBox => {
                 self.create_bounding_hitbox(&model, position, scale, rotation, parent_id, ps);
@@ -478,20 +487,33 @@ impl EntityManager {
         rotation: Quat,
         parent_id: usize,
         ps: &mut PhysicsState,
+        rbt: Option<RigidBodyType>,
     ) {
         let pill_pos = position;
         // === PHYSICS ===
         let iso: Isometry<f32> = (pill_pos, rotation).into();
-        let body = RigidBodyBuilder::dynamic()
-            .ccd_enabled(true)
-            .position(iso)
-            .enabled_rotations(false, false, false)
-            .build();
-        //let body = RigidBodyBuilder::kinematic_position_based()
-        //    .ccd_enabled(true)
-        //    .position(iso)
-        //    .enabled_rotations(true, true, true)
-        //    .build();
+
+        let body = match rbt {
+            Some(rbt) => match rbt {
+                RigidBodyType::KinematicPositionBased => {
+                    RigidBodyBuilder::kinematic_position_based()
+                        .ccd_enabled(false)
+                        .position(iso)
+                        .enabled_rotations(true, true, true)
+                        .build()
+                } // TODO: Handle all types
+                _ => RigidBodyBuilder::dynamic()
+                    .ccd_enabled(false)
+                    .position(iso)
+                    .enabled_rotations(false, false, false)
+                    .build(),
+            },
+            None => RigidBodyBuilder::dynamic()
+                .ccd_enabled(false)
+                .position(iso)
+                .enabled_rotations(false, false, false)
+                .build(),
+        };
 
         let capsule_total_height = h;
         let capsule_half_height = (capsule_total_height - 2.0 * r) / 2.0;
@@ -523,7 +545,7 @@ impl EntityManager {
                 .insert_with_parent(collider, body_handle, &mut ps.rigid_body_set);
 
         // calculating the jump height based on mass
-        {
+        let physics_handle = {
             let body = ps.rigid_body_set.get_mut(body_handle).unwrap();
 
             if let Some(jump_height) = self.jump_heights.get_mut(parent_id) {
@@ -532,13 +554,13 @@ impl EntityManager {
 
                 jump_height.precalculated = Some(impulse.into());
             }
-        }
 
-        let physics_handle = PhysicsHandle {
-            rigid_body: body_handle,
-            collider: collider_handle,
+            PhysicsHandle {
+                rigid_body: body_handle,
+                collider: collider_handle,
 
-            og_rb_type: RigidBodyType::Dynamic,
+                og_rb_type: body.body_type(),
+            }
         };
 
         self.physics_handles.insert(parent_id, physics_handle);
