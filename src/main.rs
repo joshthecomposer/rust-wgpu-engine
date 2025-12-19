@@ -28,21 +28,14 @@ mod time;
 mod util;
 
 mod world;
-use std::{
-    fs::{self, OpenOptions},
-    path::Path,
-};
 
 use config::{game_config::GameConfig, Config};
 use game::Game;
 
-use glam::Quat;
-use std::io::Write;
-
 use crate::platform::Platform;
 
 use winit::event::WindowEvent;
-use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::event_loop::ActiveEventLoop;
 use winit::window::WindowId;
 use winit::{application::ApplicationHandler, event::DeviceEvent};
 
@@ -98,12 +91,12 @@ impl ApplicationHandler for App {
         self.game.platform.window.request_redraw();
     }
 
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {}
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
 
     fn device_event(
         &mut self,
-        event_loop: &ActiveEventLoop,
-        device_id: winit::event::DeviceId,
+        _event_loop: &ActiveEventLoop,
+        _device_id: winit::event::DeviceId,
         event: winit::event::DeviceEvent,
     ) {
         if let DeviceEvent::MouseMotion { delta } = event {
