@@ -1,23 +1,12 @@
-use std::collections::HashSet;
-
 use glam::{vec3, Quat, Vec3};
-use rapier3d::{
-    control::{CharacterAutostep, CharacterLength, KinematicCharacterController},
-    prelude::{QueryFilter, QueryFilterFlags},
-};
 use winit::keyboard::KeyCode;
 
 use crate::{
-    camera::{CamMoveBasis, Camera},
+    camera::CamMoveBasis,
     entity_manager::{glam_to_nalgebra_quat, EntityManager},
-    enums_types::{
-        AnimationType, CameraState, EntityType, Faction, PlayerState, SimState, Transform,
-        VisualEffect, ANIMATION_EPSILON,
-    },
+    enums_types::{AnimationType, PlayerState, SimState},
     input::InputState,
     physics::PhysicsState,
-    terrain::Terrain,
-    util::constants::{FREEFALL_DELAY, GRAVITY},
 };
 
 pub fn update(
@@ -49,11 +38,11 @@ fn handle_player_movement_rapier(
     };
     let player_key = *check_key;
 
-    let animator = em.animators.get_mut(player_key).unwrap();
+    // let animator = em.animators.get_mut(player_key).unwrap();
     let player_state = em.player_controllers.get(player_key).unwrap();
     let speed = em.base_speeds.get(player_key).unwrap();
 
-    let kb = em.knockbacks.get_mut(player_key);
+    // let kb = em.knockbacks.get_mut(player_key);
 
     let kb_active = em.knockbacks.get_mut(player_key).map_or(false, |kb| {
         kb.ttl -= delta;
