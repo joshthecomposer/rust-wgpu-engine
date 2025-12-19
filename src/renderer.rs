@@ -1,35 +1,24 @@
-#![allow(dead_code, clippy::too_many_arguments)]
-use std::{
-    collections::{HashMap, HashSet},
-    ffi::c_void,
-    mem,
-    ptr::null_mut,
-};
+#![allow(clippy::too_many_arguments)]
+use std::{collections::HashMap, ffi::c_void, mem, ptr::null_mut};
 
 use gl::CULL_FACE;
-use glam::{vec3, vec4, Mat4, Vec3, Vec4};
+use glam::{vec3, vec4, Mat4};
 use image::GenericImageView;
 
 use crate::{
     camera::Camera,
     entity_manager::EntityManager,
-    enums_types::{
-        AnimationType, EmitterName, EntityType, Faction, FboType, ShaderType, Transform, VaoType,
-    },
+    enums_types::{FboType, ShaderType, Transform, VaoType},
     gl_call,
-    grid::Grid,
     lights::Lights,
     particles::ParticleSystem,
     physics::PhysicsState,
     platform::Platform,
     shaders::Shader,
-    sound::{
-        fmod::{FMOD_Studio_EventInstance_Set3DAttributes, FMOD_3D_ATTRIBUTES, FMOD_VECTOR},
-        sound_manager::SoundManager,
-    },
+    sound::sound_manager::SoundManager,
     util::constants::{
-        BASIC_QUAD_VERTICES, FACES_CUBEMAP, POINT_LIGHT_POSITIONS, SHADOW_HEIGHT, SHADOW_WIDTH,
-        SKYBOX_INDICES, SKYBOX_VERTICES, UNIT_CUBE_VERTICES,
+        BASIC_QUAD_VERTICES, FACES_CUBEMAP, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES,
+        SKYBOX_VERTICES, UNIT_CUBE_VERTICES,
     },
 };
 
@@ -121,8 +110,8 @@ impl Renderer {
         // buffer and that allows HDR
 
         let mut hdr_fbo = 0;
-        let mut hdr_color = 0;
-        let mut hdr_bright = 0;
+        let hdr_color;
+        let hdr_bright;
 
         // TODO: Dynamic resizing of the FBO
         let width = platform.fb_width;
@@ -556,7 +545,7 @@ impl Renderer {
         debug_depth_quad.activate();
         debug_depth_quad.store_uniform_location("depth_map");
         debug_depth_quad.set_int("depth_map", 0);
-        let mut ui_overlay_shader = Shader::new("resources/shaders/ui_overlay.glsl");
+        let ui_overlay_shader = Shader::new("resources/shaders/ui_overlay.glsl");
         ui_overlay_shader.activate();
         ui_overlay_shader.set_int("ui_texture", 0);
 
@@ -800,7 +789,7 @@ impl Renderer {
         camera: &mut Camera,
         em: &EntityManager,
         ids: Vec<usize>,
-        ps: &PhysicsState,
+        _ps: &PhysicsState,
         alpha: f32,
     ) {
         unsafe {
@@ -865,7 +854,7 @@ impl Renderer {
         camera: &mut Camera,
         em: &EntityManager,
         light_manager: &Lights,
-        ps: &PhysicsState,
+        _ps: &PhysicsState,
         alpha: f32,
         particles: &mut ParticleSystem,
         sound_manager: &mut SoundManager,
@@ -1016,35 +1005,35 @@ impl Renderer {
         shader.set_bool("selection_fresnel", false);
     }
 
-    fn grid_pass(&mut self, grid: &mut Grid, camera: &mut Camera, light_manager: &Lights) {
-        unsafe {
-            gl::Enable(gl::BLEND);
-            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-        }
-        let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
-        shader.activate();
+    // fn grid_pass(&mut self, grid: &mut Grid, camera: &mut Camera, light_manager: &Lights) {
+    //     unsafe {
+    //         gl::Enable(gl::BLEND);
+    //         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+    //     }
+    //     let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
+    //     shader.activate();
 
-        shader.set_bool("do_reg_fresnel", false);
-        shader.set_bool("selection_fresnel", false);
+    //     shader.set_bool("do_reg_fresnel", false);
+    //     shader.set_bool("selection_fresnel", false);
 
-        shader.set_mat4("model", Mat4::IDENTITY);
-        shader.set_mat4("view", camera.view);
-        shader.set_mat4("projection", camera.projection);
-        shader.set_mat4("light_space_mat", camera.light_space);
-        shader.set_dir_light("dir_light", &light_manager.dir_light);
-        shader.set_float("bias_scalar", light_manager.bias_scalar);
-        shader.set_vec3("view_position", camera.position);
-        shader.set_bool("is_animated", false);
-        shader.set_bool("alpha_test_pass", false);
-        unsafe {
-            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-            shader.set_int("shadow_map", 0);
+    //     shader.set_mat4("model", Mat4::IDENTITY);
+    //     shader.set_mat4("view", camera.view);
+    //     shader.set_mat4("projection", camera.projection);
+    //     shader.set_mat4("light_space_mat", camera.light_space);
+    //     shader.set_dir_light("dir_light", &light_manager.dir_light);
+    //     shader.set_float("bias_scalar", light_manager.bias_scalar);
+    //     shader.set_vec3("view_position", camera.position);
+    //     shader.set_bool("is_animated", false);
+    //     shader.set_bool("alpha_test_pass", false);
+    //     unsafe {
+    //         gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+    //         gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
+    //         shader.set_int("shadow_map", 0);
 
-            grid.draw(shader);
-            gl::Disable(gl::BLEND)
-        }
-    }
+    //         grid.draw(shader);
+    //         gl::Disable(gl::BLEND)
+    //     }
+    // }
 
     fn skybox_pass(&mut self, camera: &mut Camera, _fb_width: u32, _fb_height: u32) {
         unsafe {
@@ -1146,7 +1135,7 @@ impl Renderer {
     fn render_sample_depth(
         &mut self,
         em: &EntityManager,
-        ps: &PhysicsState,
+        _ps: &PhysicsState,
         alpha: f32,
         ids: &Vec<usize>,
         is_animated: bool,
@@ -1189,28 +1178,28 @@ impl Renderer {
         }
     }
 
-    fn debug_light_pass(&mut self, camera: &mut Camera) {
-        let debug_light_shader = self.shaders.get(&ShaderType::DebugLight).unwrap();
-        debug_light_shader.activate();
-        debug_light_shader.set_mat4("view", camera.view);
-        debug_light_shader.set_mat4("projection", camera.projection);
+    // fn debug_light_pass(&mut self, camera: &mut Camera) {
+    //     let debug_light_shader = self.shaders.get(&ShaderType::DebugLight).unwrap();
+    //     debug_light_shader.activate();
+    //     debug_light_shader.set_mat4("view", camera.view);
+    //     debug_light_shader.set_mat4("projection", camera.projection);
 
-        unsafe {
-            gl_call!(gl::BindVertexArray(
-                *self.vaos.get(&VaoType::DebugLight).unwrap()
-            ));
-            for light_pos in &POINT_LIGHT_POSITIONS {
-                let mut m_mat = Mat4::IDENTITY;
-                m_mat *= Mat4::from_translation(*light_pos);
-                m_mat *= Mat4::from_scale(vec3(0.2, 0.2, 0.2));
+    //     unsafe {
+    //         gl_call!(gl::BindVertexArray(
+    //             *self.vaos.get(&VaoType::DebugLight).unwrap()
+    //         ));
+    //         for light_pos in &POINT_LIGHT_POSITIONS {
+    //             let mut m_mat = Mat4::IDENTITY;
+    //             m_mat *= Mat4::from_translation(*light_pos);
+    //             m_mat *= Mat4::from_scale(vec3(0.2, 0.2, 0.2));
 
-                debug_light_shader.set_mat4("model", m_mat);
-                debug_light_shader.set_vec3("LightColor", vec3(1.0, 1.0, 1.0));
+    //             debug_light_shader.set_mat4("model", m_mat);
+    //             debug_light_shader.set_vec3("LightColor", vec3(1.0, 1.0, 1.0));
 
-                gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 36));
-            }
-        }
-    }
+    //             gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 36));
+    //         }
+    //     }
+    // }
 
     pub fn render_quad(&self) {
         let mut vao = 0;
@@ -1268,7 +1257,7 @@ impl Renderer {
     }
 
     pub fn render_transform_from_args(
-        em: &EntityManager,
+        _em: &EntityManager,
         curr: &Transform,
         prev: &Transform,
         alpha: f32,

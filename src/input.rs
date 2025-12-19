@@ -1,18 +1,15 @@
 use std::collections::HashSet;
 
-use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec3Swizzles, Vec4Swizzles};
+use glam::{vec4, Vec2, Vec3, Vec4Swizzles};
 
-use rapier3d::{data::Index, prelude::*};
+use rapier3d::prelude::*;
 use winit::{
     event::{ElementState, MouseButton},
     keyboard::KeyCode,
 };
 
 use crate::{
-    camera::{self, Camera},
-    entity_manager::EntityManager,
-    enums_types::{AnimationType, CameraState, Faction},
-    physics::PhysicsState,
+    camera::Camera, entity_manager::EntityManager, enums_types::CameraState, physics::PhysicsState,
     util::constants::GROUP_TERRAIN,
 };
 
@@ -53,9 +50,9 @@ impl InputState {
         self.keys_current.contains(&key) && !self.keys_previous.contains(&key)
     }
 
-    pub fn just_released(&self, key: KeyCode) -> bool {
-        !self.keys_current.contains(&key) && self.keys_previous.contains(&key)
-    }
+    // pub fn just_released(&self, key: KeyCode) -> bool {
+    //     !self.keys_current.contains(&key) && self.keys_previous.contains(&key)
+    // }
 
     pub fn space_just_pressed(&self) -> bool {
         self.keys_current.contains(&KeyCode::Space) && !self.keys_previous.contains(&KeyCode::Space)
@@ -76,13 +73,13 @@ impl InputState {
         self.keys_current.contains(&KeyCode::ShiftLeft)
     }
 
-    pub fn mouse_just_pressed(&self, b: MouseButton) -> bool {
-        self.mouse_current.contains(&b) && !self.mouse_previous.contains(&b)
-    }
+    // pub fn mouse_just_pressed(&self, b: MouseButton) -> bool {
+    //     self.mouse_current.contains(&b) && !self.mouse_previous.contains(&b)
+    // }
 
-    pub fn mouse_just_released(&self, b: MouseButton) -> bool {
-        !self.mouse_current.contains(&b) && self.mouse_previous.contains(&b)
-    }
+    // pub fn mouse_just_released(&self, b: MouseButton) -> bool {
+    //     !self.mouse_current.contains(&b) && self.mouse_previous.contains(&b)
+    // }
 
     pub fn left_mouse_just_pressed(&self) -> bool {
         // Return false if UI consumed the click
@@ -93,20 +90,20 @@ impl InputState {
             && !self.mouse_previous.contains(&MouseButton::Left)
     }
 
-    pub fn left_mouse_just_released(&self) -> bool {
-        !self.mouse_current.contains(&MouseButton::Left)
-            && self.mouse_previous.contains(&MouseButton::Left)
-    }
+    // pub fn left_mouse_just_released(&self) -> bool {
+    //     !self.mouse_current.contains(&MouseButton::Left)
+    //         && self.mouse_previous.contains(&MouseButton::Left)
+    // }
 
-    pub fn right_mouse_just_pressed(&self) -> bool {
-        self.mouse_current.contains(&MouseButton::Right)
-            && !self.mouse_previous.contains(&MouseButton::Right)
-    }
+    // pub fn right_mouse_just_pressed(&self) -> bool {
+    //     self.mouse_current.contains(&MouseButton::Right)
+    //         && !self.mouse_previous.contains(&MouseButton::Right)
+    // }
 
-    pub fn right_mouse_just_released(&self) -> bool {
-        !self.mouse_current.contains(&MouseButton::Right)
-            && self.mouse_previous.contains(&MouseButton::Right)
-    }
+    // pub fn right_mouse_just_released(&self) -> bool {
+    //     !self.mouse_current.contains(&MouseButton::Right)
+    //         && self.mouse_previous.contains(&MouseButton::Right)
+    // }
 
     pub fn mouse_is_down(&self, b: MouseButton) -> bool {
         self.mouse_current.contains(&b)
@@ -130,11 +127,10 @@ pub fn handle_keyboard_input(key: KeyCode, action: ElementState, input_state: &m
         ElementState::Released => {
             input_state.keys_current.remove(&key);
         }
-        _ => (),
     }
 }
 
-pub fn handle_mouse_motion() {}
+// pub fn handle_mouse_motion() {}
 
 pub fn handle_mouse_input(
     button: MouseButton,
@@ -207,7 +203,6 @@ pub fn handle_mouse_input(
         ElementState::Released => {
             input_state.mouse_current.remove(&button);
         }
-        _ => (),
     }
 }
 
@@ -237,40 +232,40 @@ pub fn mouse_ray_from_screen(mouse_pos: Vec2, screen_size: Vec2, camera: &Camera
     (camera_pos, ray_world)
 }
 
-fn ray_hits_cylinder(
-    ray_origin: Vec3,
-    ray_dir: Vec3,
-    cyl_base: Vec3,
-    height: f32,
-    radius: f32,
-) -> Option<f32> {
-    // Project onto XZ plane
-    let d = vec2(ray_dir.x, ray_dir.z);
-    let o = vec2(ray_origin.x - cyl_base.x, ray_origin.z - cyl_base.z);
+// fn ray_hits_cylinder(
+//     ray_origin: Vec3,
+//     ray_dir: Vec3,
+//     cyl_base: Vec3,
+//     height: f32,
+//     radius: f32,
+// ) -> Option<f32> {
+//     // Project onto XZ plane
+//     let d = vec2(ray_dir.x, ray_dir.z);
+//     let o = vec2(ray_origin.x - cyl_base.x, ray_origin.z - cyl_base.z);
 
-    let a = d.dot(d);
-    let b = 2.0 * o.dot(d);
-    let c = o.dot(o) - radius * radius;
+//     let a = d.dot(d);
+//     let b = 2.0 * o.dot(d);
+//     let c = o.dot(o) - radius * radius;
 
-    let discriminant = b * b - 4.0 * a * c;
-    if discriminant < 0.0 {
-        return None;
-    }
+//     let discriminant = b * b - 4.0 * a * c;
+//     if discriminant < 0.0 {
+//         return None;
+//     }
 
-    let sqrt_disc = discriminant.sqrt();
-    let t1 = (-b - sqrt_disc) / (2.0 * a);
-    let t2 = (-b + sqrt_disc) / (2.0 * a);
+//     let sqrt_disc = discriminant.sqrt();
+//     let t1 = (-b - sqrt_disc) / (2.0 * a);
+//     let t2 = (-b + sqrt_disc) / (2.0 * a);
 
-    for &t in &[t1, t2] {
-        if t < 0.0 {
-            continue;
-        }
+//     for &t in &[t1, t2] {
+//         if t < 0.0 {
+//             continue;
+//         }
 
-        let y = ray_origin.y + t * ray_dir.y;
-        if y >= cyl_base.y && y <= cyl_base.y + height {
-            return Some(t);
-        }
-    }
+//         let y = ray_origin.y + t * ray_dir.y;
+//         if y >= cyl_base.y && y <= cyl_base.y + height {
+//             return Some(t);
+//         }
+//     }
 
-    None
-}
+//     None
+// }

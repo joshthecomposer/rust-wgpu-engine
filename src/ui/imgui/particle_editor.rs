@@ -1,23 +1,14 @@
 use std::borrow::Cow;
 
-use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
-use imgui::{
-    sys::{ImGuiKey, ImGuiKey_Backspace},
-    Drag, Io, Ui,
-};
+use glam::{Vec2, Vec4};
+use imgui::{Drag, Ui};
 
 use crate::{
-    animation::animator::Animator,
-    camera::Camera,
     config::{
         emitter_data::{EmitterBlackboard, UiEmitterBlackboard},
-        entity_config::{EntityTypeHelper, UiEntityTypeHelper},
-        world_data::{EntityInstance, WorldData},
         Config,
     },
     entity_manager::EntityManager,
-    enums_types::{CameraState, EntityType, Faction, SoundType},
-    gl_call,
     input::InputState,
     lights::Lights,
     particles::ParticleSystem,
@@ -25,7 +16,6 @@ use crate::{
     renderer::Renderer,
     sound::sound_manager::SoundManager,
     ui::message_queue::{MessageQueue, UiMessage},
-    util::data_structure::HashMapGetPairMut,
 };
 
 pub struct ParticleEditor {
@@ -47,11 +37,11 @@ impl ParticleEditor {
     pub fn draw(
         &mut self,
         ui: &mut Ui,
-        em: &mut EntityManager,
-        ps: &mut PhysicsState,
-        rdr: &mut Renderer,
-        lm: &mut Lights,
-        sm: &mut SoundManager,
+        _em: &mut EntityManager,
+        _ps: &mut PhysicsState,
+        _rdr: &mut Renderer,
+        _lm: &mut Lights,
+        _sm: &mut SoundManager,
         input: &mut InputState,
         size: &[f32; 2],
         particles: &mut ParticleSystem,

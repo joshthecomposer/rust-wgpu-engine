@@ -1,29 +1,19 @@
-use std::{borrow::Cow, ffi::CString};
+use std::ffi::CString;
 
-use glam::{Mat4, Quat, Vec3};
 use glutin::prelude::GlDisplay;
-use imgui::{
-    sys::{ImGuiKey, ImGuiKey_Backspace},
-    Drag, Io, Ui,
-};
 
-use imgui::{Context as ImguiContext, Key};
+use imgui::Key;
 use winit::{
-    event::{ElementState, Ime, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent},
+    event::{ElementState, Ime, MouseButton, MouseScrollDelta, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
     window::Window,
 };
 
 use crate::{
-    animation::animator::Animator,
     camera::Camera,
-    config::{
-        entity_config::{EntityTypeHelper, UiEntityTypeHelper},
-        world_data::{EntityInstance, WorldData},
-    },
+    config::entity_config::UiEntityTypeHelper,
     entity_manager::EntityManager,
-    enums_types::{CameraState, EntityType, Faction, SoundType},
-    gl_call,
+    enums_types::CameraState,
     input::InputState,
     lights::Lights,
     particles::ParticleSystem,
@@ -37,7 +27,6 @@ use crate::{
         },
         message_queue::MessageQueue,
     },
-    util::data_structure::HashMapGetPairMut,
 };
 
 pub struct ImguiManager {
@@ -45,7 +34,7 @@ pub struct ImguiManager {
     pub renderer: imgui_opengl_renderer::Renderer,
     pub entity_editor: EntityEditor,
     pub particle_editor: ParticleEditor,
-    pub player_data: PlayerData,
+    pub _player_data: PlayerData,
 }
 
 impl ImguiManager {
@@ -75,7 +64,7 @@ impl ImguiManager {
                 new_entity_count: 1,
             },
             particle_editor: ParticleEditor::default(),
-            player_data: PlayerData {},
+            _player_data: PlayerData {},
         }
     }
 
@@ -177,7 +166,7 @@ impl ImguiManager {
 
     pub fn draw(
         &mut self,
-        window: &mut Window,
+        _window: &mut Window,
         width: f32,
         height: f32,
         delta: f32,

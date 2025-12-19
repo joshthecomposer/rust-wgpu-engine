@@ -85,15 +85,15 @@ impl Model {
     }
 
     /// Convenience: get by "type" using a fixed mapping
-    pub fn get_tex_by_type(&self, tex_type: &str) -> Option<&Texture> {
-        match tex_type {
-            "Diffuse" => self.textures[0].as_ref(),
-            "Specular" => self.textures[1].as_ref(),
-            "Emissive" => self.textures[2].as_ref(),
-            "Opacity" => self.textures[3].as_ref(),
-            _ => None,
-        }
-    }
+    // pub fn get_tex_by_type(&self, tex_type: &str) -> Option<&Texture> {
+    //     match tex_type {
+    //         "Diffuse" => self.textures[0].as_ref(),
+    //         "Specular" => self.textures[1].as_ref(),
+    //         "Emissive" => self.textures[2].as_ref(),
+    //         "Opacity" => self.textures[3].as_ref(),
+    //         _ => None,
+    //     }
+    // }
 
     pub fn setup_opengl(&mut self) {
         unsafe {

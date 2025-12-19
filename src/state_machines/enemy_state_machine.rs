@@ -1,17 +1,12 @@
-use glam::{vec3, Mat4, Vec3};
+use glam::{Mat4, Vec3};
 
 use crate::{
     animation::animator::Animator,
     entity_manager::EntityManager,
-    enums_types::{
-        AnimationType, AttackState, EmitterName, EntityType, Faction, PlayerState, SimState,
-        SimStateController, SoundType, ANIMATION_EPSILON,
-    },
+    enums_types::{AnimationType, AttackState, SimState, SimStateController, ANIMATION_EPSILON},
     input::InputState,
     particles::ParticleSystem,
     physics::PhysicsState,
-    sound::sound_manager::SoundManager,
-    util::constants::{DECREASED_GRAVITY_SCALAR, GRAVITY},
     util::data_structure::HashMapGetPairMut,
 };
 
@@ -21,7 +16,7 @@ pub fn enemy_sim_state_machine(
     dt: f32,
     particles: &mut ParticleSystem,
     ps: &mut PhysicsState,
-    input: &InputState,
+    _input: &InputState,
     player_id: Option<usize>,
 ) {
     // ==================================================================================
@@ -45,7 +40,7 @@ pub fn enemy_sim_state_machine(
     let health = em.healths.get(entity_id).unwrap();
     let ph = em.physics_handles.get(entity_id).unwrap();
     let rb = ps.rigid_body_set.get_mut(ph.rigid_body).unwrap();
-    let yaw = em.yaws.get(entity_id).unwrap();
+    // let yaw = em.yaws.get(entity_id).unwrap();
     let aggro_range = em.aggro_ranges.get(entity_id).unwrap();
     let transform = em.transforms.get(entity_id).unwrap();
     let player_pos = em.transforms.get(player_id.unwrap()).unwrap().position;
@@ -59,8 +54,8 @@ pub fn enemy_sim_state_machine(
         None => None,
     };
 
-    let can_attack =
-        animator.animations.get(&AnimationType::Slash).is_some() && active_weapon_id.is_some();
+    // let can_attack =
+    // animator.animations.get(&AnimationType::Slash).is_some() && active_weapon_id.is_some();
 
     let weapon_length = if let Some(awid) = active_weapon_id {
         *em.model_heights.get(awid).unwrap()
@@ -82,7 +77,7 @@ pub fn enemy_sim_state_machine(
     };
 
     let anim = animator.get_current_animation().unwrap();
-    let anim_type = &animator.current_animation;
+    // let anim_type = &animator.current_animation;
 
     // ==================================================================================
     // STATE_MACHINE

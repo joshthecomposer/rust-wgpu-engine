@@ -7,11 +7,8 @@ use std::{
     time::UNIX_EPOCH,
 };
 
-use gl::ActiveShaderProgram;
-use glam::{Mat4, Quat, Vec3};
-use nalgebra::{Point3, UnitQuaternion, Vector3};
-use rand::SeedableRng;
-use rand_chacha::ChaCha8Rng;
+use glam::{Quat, Vec3};
+use nalgebra::{Point3, UnitQuaternion};
 use rapier3d::prelude::*;
 use winit::keyboard::KeyCode;
 
@@ -27,15 +24,14 @@ use crate::{
     },
     debug::gizmos::{Cuboid, Cylinder, Pill},
     enums_types::{
-        ActiveItem, AnimationType, AttackState, EntityType, EquipSlot, Faction, FrameActivation,
-        GroundedState, HitboxShape, Inventory, JumpHeight, Knockback, Parent, PhysicsHandle,
-        PlayerController, PlayerState, Rotator, SimState, SimStateController, Transform,
-        VisualEffect,
+        ActiveItem, AnimationType, AttackState, FrameActivation, GroundedState, HitboxShape,
+        JumpHeight, Knockback, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState,
+        SimStateController, Transform, VisualEffect,
     },
     input::InputState,
-    physics::{self, PhysicsState},
+    physics::PhysicsState,
     sound::sound_manager::{ContinuousSound, OneShot, SoundManager},
-    sparse_set::{Entry, SparseSet},
+    sparse_set::SparseSet,
     terrain::{self, Terrain},
     util::constants::{GRAVITY, GROUP_PLAYER},
 };
@@ -71,7 +67,7 @@ pub struct EntityManager {
     pub player_controllers: SparseSet<PlayerController>,
     pub simstate_controllers: SparseSet<SimStateController>,
     pub destinations: SparseSet<Vec3>,
-    pub rng: ChaCha8Rng,
+    // pub rng: ChaCha8Rng,
     pub selected: Vec<usize>,
     pub v_effects: SparseSet<VisualEffect>,
     pub entity_trashcan: Vec<usize>,
@@ -127,7 +123,7 @@ impl EntityManager {
             player_controllers: SparseSet::with_capacity(max_entities),
             simstate_controllers: SparseSet::with_capacity(max_entities),
             destinations: SparseSet::with_capacity(max_entities),
-            rng: ChaCha8Rng::seed_from_u64(1),
+            // rng: ChaCha8Rng::seed_from_u64(1),
             selected: Vec::new(),
             v_effects: SparseSet::with_capacity(max_entities),
             entity_trashcan: Vec::new(),
@@ -351,7 +347,7 @@ impl EntityManager {
                 let (skell, animator, animation, rh_bone_id) =
                     animation::data_loader::import_bone_data(bone_path, false, b);
 
-                if let Some(ib) = &archetype.item_bones {
+                if let Some(_) = &archetype.item_bones {
                     if rh_bone_id.is_some() {
                         self.item_bones.insert(
                             parent_id,
@@ -478,7 +474,7 @@ impl EntityManager {
         r: f32,
         h: f32,
         position: Vec3,
-        scale: Vec3,
+        _scale: Vec3,
         rotation: Quat,
         parent_id: usize,
         ps: &mut PhysicsState,
@@ -574,12 +570,12 @@ impl EntityManager {
         self.grounded_states.insert(
             parent_id,
             GroundedState {
-                was_grouned: false,
+                was_grounded: false,
                 is_grounded: false,
                 just_left: false,
                 just_landed: false,
                 ray_length_grounded: 0.25,
-                ray_length_airborn: 0.06,
+                ray_length_airborne: 0.06,
             },
         );
 
@@ -666,9 +662,9 @@ impl EntityManager {
         let size = max - min;
         let center = (min + max) * 0.5;
 
-        let mut local_offset = center;
+        // let mut local_offset = center;
 
-        local_offset.y = 0.5 * size.y;
+        // local_offset.y = 0.5 * size.y;
 
         let cuboid = Cuboid {
             w: size.x,
@@ -1015,16 +1011,16 @@ impl EntityManager {
             .collect::<Vec<usize>>()
     }
 
-    pub fn get_non_weapon_entities(&self) -> Vec<usize> {
-        self.factions
-            .iter()
-            .filter(|w_type| {
-                *w_type.value() != "Item"
-                //&& *w_type.value() != Faction::World
-            })
-            .map(|e| e.key())
-            .collect::<Vec<usize>>()
-    }
+    // pub fn get_non_weapon_entities(&self) -> Vec<usize> {
+    //     self.factions
+    //         .iter()
+    //         .filter(|w_type| {
+    //             *w_type.value() != "Item"
+    //             //&& *w_type.value() != Faction::World
+    //         })
+    //         .map(|e| e.key())
+    //         .collect::<Vec<usize>>()
+    // }
 
     pub fn get_gizmo_ids(&self) -> Vec<usize> {
         self.collider_gizmos

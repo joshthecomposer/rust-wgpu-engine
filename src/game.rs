@@ -378,7 +378,6 @@ impl Game {
                     self.world = world;
                     self.physics = physics;
                 }
-                _ => {}
             }
         }
 

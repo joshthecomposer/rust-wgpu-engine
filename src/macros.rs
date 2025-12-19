@@ -28,7 +28,7 @@ pub fn gl_log_call(function: &str, file: &str, line: u32) -> bool {
     }
 }
 
-pub static mut DRAW_CALLS: usize = 0;
+// pub static mut DRAW_CALLS: usize = 0;
 
 #[macro_export]
 #[cfg(not(feature = "gl_debug"))]
@@ -50,8 +50,8 @@ macro_rules! gl_call {
     }};
 }
 
-pub fn incr_draw_call() {
-    unsafe {
-        DRAW_CALLS += 1;
-    }
-}
+// pub fn incr_draw_call() {
+//     unsafe {
+//         DRAW_CALLS += 1;
+//     }
+// }

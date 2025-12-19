@@ -2,16 +2,7 @@
 use core::f32;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
-use rapier3d::prelude::Cuboid;
-use std::{
-    any::Any,
-    collections::HashMap,
-    ffi::c_void,
-    mem::{self, offset_of},
-    path::Path,
-    ptr,
-    str::Lines,
-};
+use std::{ffi::c_void, path::Path, str::Lines};
 
 use crate::{
     animation::{
@@ -20,10 +11,8 @@ use crate::{
         model::{Model, Texture, Vertex},
         skellington::{Bone, BoneJoinInfo, BoneTransformTrack},
     },
-    enums_types::{AnimationType, FrameActivation, TextureProfile, TextureType, ANIMATION_EPSILON},
+    enums_types::{AnimationType, TextureProfile, TextureType},
     gl_call,
-    shaders::Shader,
-    sound::sound_manager::{ContinuousSound, OneShot},
     util::constants::MAX_BONE_INFLUENCE,
 };
 
@@ -188,8 +177,6 @@ pub fn import_bone_data(
                 // let mut skipped_bones = HashSet::new();
 
                 for i in 0..bone_count {
-                    let bone_name = model_animation_join[i as usize].name.clone();
-
                     let track = &mut animation.bone_transforms[i as usize];
 
                     let mut position = parse_vec3(lines.next().unwrap());

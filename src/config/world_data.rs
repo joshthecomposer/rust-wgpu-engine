@@ -49,7 +49,7 @@ pub struct EntityInstance {
     pub cleanup_timer: Option<f32>,
 }
 
-fn snap(v: f64, precision: u32) -> f64 {
-    let factor = 10f64.powi(precision as i32);
-    (v * factor).round() / factor
-}
+// fn snap(v: f64, precision: u32) -> f64 {
+//     let factor = 10f64.powi(precision as i32);
+//     (v * factor).round() / factor
+// }

@@ -1,7 +1,5 @@
-use crate::{
-    entity_manager::EntityManager, physics::PhysicsState, util::data_structure::HashMapGetPairMut,
-};
-use glam::{Mat4, Vec3};
+use crate::{entity_manager::EntityManager, physics::PhysicsState};
+use glam::Vec3;
 use rapier3d::prelude::RigidBodyType;
 
 pub fn update(em: &mut EntityManager, ps: &mut PhysicsState) {

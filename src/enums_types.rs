@@ -6,11 +6,10 @@ use std::{
     str::FromStr,
 };
 
-use glam::{Mat4, Quat, Vec3};
-use nalgebra::RealField;
+use glam::{Quat, Vec3};
 use rapier3d::{
     math::Vector,
-    prelude::{ColliderHandle, ColliderType, RigidBodyHandle, RigidBodyType},
+    prelude::{ColliderHandle, RigidBodyHandle, RigidBodyType},
 };
 use serde::{Deserialize, Serialize};
 
@@ -521,10 +520,10 @@ pub struct JumpHeight {
 
 #[derive(Clone, Debug)]
 pub struct GroundedState {
-    pub was_grouned: bool,
+    pub was_grounded: bool,
     pub is_grounded: bool,
     pub just_left: bool,
     pub just_landed: bool,
     pub ray_length_grounded: f32,
-    pub ray_length_airborn: f32,
+    pub ray_length_airborne: f32,
 }
