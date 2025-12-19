@@ -647,14 +647,16 @@ impl Renderer {
 
                     anim.lod_skip = if d2 < NEAR2 {
                         0
-                    } else if d2 < MID2 {
+                    } else if d2 < MID2 || ids.len() > 300 {
                         1
-                    } else if d2 < FAR2 {
+                    } else if d2 < FAR2 || ids.len() > 300 {
                         3
-                    } else if d2 < FARTHEST2 {
+                    } else if d2 < FARTHEST2 || ids.len() > 300 {
                         5
-                    } else {
+                    } else if ids.len() > 300 {
                         7
+                    } else {
+                        0
                     };
                 }
 

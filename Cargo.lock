@@ -363,6 +363,9 @@ name = "bit-vec"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bit_field"
@@ -1582,6 +1585,7 @@ dependencies = [
  "equivalent",
  "foldhash",
  "rayon",
+ "serde",
 ]
 
 [[package]]
@@ -2515,6 +2519,7 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
+ "serde",
  "simba",
  "typenum",
 ]
@@ -2612,6 +2617,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
 dependencies = [
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -3155,6 +3161,7 @@ dependencies = [
  "num-traits",
  "ordered-float",
  "rstar",
+ "serde",
  "simba",
  "slab",
  "spade",
@@ -3459,6 +3466,7 @@ dependencies = [
  "profiling",
  "rayon",
  "rustc-hash 2.1.1",
+ "serde",
  "simba",
  "thiserror 2.0.12",
  "vec_map",
@@ -4128,6 +4136,7 @@ dependencies = [
  "hashbrown 0.15.5",
  "num-traits",
  "robust",
+ "serde",
  "smallvec",
 ]
 

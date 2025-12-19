@@ -1,95 +1,5 @@
 {
   "entity_types": {
-    "Cactus1": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/plants/cactus1.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Cylinder",
-        "r": 0.1,
-        "h": 3.0
-      },
-      "total_mass": null
-    },
-    "Mountain8": {
-      "rot_correction": [
-        0.0,
-        -0.1,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/Mountain8/mesh.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Mesh"
-      },
-      "total_mass": null
-    },
-    "Stump": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/stump/001_stump.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Mesh"
-      },
-      "total_mass": null
-    },
-    "Rock1": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/terrain/rocks/rock1.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Mesh"
-      },
-      "total_mass": null
-    },
     "Mountain9": {
       "rot_correction": [
         0.0,
@@ -112,7 +22,7 @@
       },
       "total_mass": null
     },
-    "Mountain2": {
+    "Cactus2": {
       "rot_correction": [
         0.0,
         0.0,
@@ -124,7 +34,31 @@
         1.0,
         1.0
       ],
-      "mesh_path": "resources/models/static/Mountain2/mesh.txt",
+      "mesh_path": "resources/models/static/plants/cactus2.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Cylinder",
+        "r": 0.1,
+        "h": 3.0
+      },
+      "total_mass": null
+    },
+    "Stump": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/stump/001_stump.txt",
       "bone_path": null,
       "animation_properties": null,
       "item_bones": null,
@@ -158,7 +92,7 @@
       },
       "total_mass": null
     },
-    "Mountain7": {
+    "Mountain2": {
       "rot_correction": [
         0.0,
         0.0,
@@ -170,13 +104,226 @@
         1.0,
         1.0
       ],
-      "mesh_path": "resources/models/static/Mountain7/mesh.txt",
+      "mesh_path": "resources/models/static/Mountain2/mesh.txt",
       "bone_path": null,
       "animation_properties": null,
       "item_bones": null,
       "aggro_range": null,
       "hitbox": {
         "shape": "Mesh"
+      },
+      "total_mass": null
+    },
+    "DoubleAxe": {
+      "rot_correction": [
+        -0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/weapons/swords/001_double_axe_new.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "BoundingBox"
+      },
+      "total_mass": null
+    },
+    "TubeGuy": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/animated/TubeGuy/mesh.txt",
+      "bone_path": "resources/models/animated/TubeGuy/mesh.txt",
+      "animation_properties": [
+        {
+          "name": "Idle",
+          "one_shots": {},
+          "continuous_sounds": [],
+          "hurtbox_activation": [],
+          "hold_frame": null
+        }
+      ],
+      "item_bones": null,
+      "aggro_range": 1.0,
+      "hitbox": {
+        "shape": "Pill",
+        "r": 0.5,
+        "h": 2.0
+      },
+      "total_mass": 12.0
+    },
+    "TreeFoliage": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/trees/001_tree_foliage_model.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "BoundingBox"
+      },
+      "total_mass": null
+    },
+    "Mountain4": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/Mountain4/mesh.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Mesh"
+      },
+      "total_mass": null
+    },
+    "OrcSword": {
+      "rot_correction": [
+        0.5,
+        -0.5,
+        0.5,
+        0.5
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/weapons/001_orc_sword_bc.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "BoundingBox"
+      },
+      "total_mass": null
+    },
+    "MooseMan": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        0.013,
+        0.013,
+        0.013
+      ],
+      "mesh_path": "resources/models/animated/moose/moosey.txt",
+      "bone_path": "resources/models/animated/moose/moosey.txt",
+      "animation_properties": [
+        {
+          "name": "Dance",
+          "one_shots": {},
+          "continuous_sounds": [
+            "MooseHuff"
+          ],
+          "hurtbox_activation": [],
+          "hold_frame": null
+        }
+      ],
+      "item_bones": {
+        "rh": "mixamorg:RightHand",
+        "lh": "mixamorg:LeftHand"
+      },
+      "aggro_range": 20.0,
+      "hitbox": {
+        "shape": "Pill",
+        "r": 0.5,
+        "h": 2.0
+      },
+      "total_mass": 300.0
+    },
+    "Boss1": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        15.0,
+        15.0,
+        15.0
+      ],
+      "mesh_path": "resources/models/animated/Boss1/mesh.txt",
+      "bone_path": "resources/models/animated/Boss1/mesh.txt",
+      "animation_properties": [
+        {
+          "name": "Idle",
+          "one_shots": {},
+          "continuous_sounds": [],
+          "hurtbox_activation": [],
+          "hold_frame": null
+        }
+      ],
+      "item_bones": null,
+      "aggro_range": 5.0,
+      "hitbox": {
+        "shape": "Pill",
+        "r": 5.0,
+        "h": 20.0
+      },
+      "total_mass": 50.0
+    },
+    "Cactus1": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/plants/cactus1.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Cylinder",
+        "r": 0.1,
+        "h": 3.0
       },
       "total_mass": null
     },
@@ -281,7 +428,7 @@
       },
       "total_mass": 83.0
     },
-    "TubeGuy": {
+    "Mountain5": {
       "rot_correction": [
         0.0,
         0.0,
@@ -293,27 +440,17 @@
         1.0,
         1.0
       ],
-      "mesh_path": "resources/models/animated/TubeGuy/mesh.txt",
-      "bone_path": "resources/models/animated/TubeGuy/mesh.txt",
-      "animation_properties": [
-        {
-          "name": "Idle",
-          "one_shots": {},
-          "continuous_sounds": [],
-          "hurtbox_activation": [],
-          "hold_frame": null
-        }
-      ],
+      "mesh_path": "resources/models/static/Mountain5/mesh.txt",
+      "bone_path": null,
+      "animation_properties": null,
       "item_bones": null,
-      "aggro_range": 1.0,
+      "aggro_range": null,
       "hitbox": {
-        "shape": "Pill",
-        "r": 0.5,
-        "h": 2.0
+        "shape": "Mesh"
       },
-      "total_mass": 12.0
+      "total_mass": null
     },
-    "Mountain4": {
+    "Rock1": {
       "rot_correction": [
         0.0,
         0.0,
@@ -325,7 +462,73 @@
         1.0,
         1.0
       ],
-      "mesh_path": "resources/models/static/Mountain4/mesh.txt",
+      "mesh_path": "resources/models/static/terrain/rocks/rock1.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Mesh"
+      },
+      "total_mass": null
+    },
+    "Mountain3": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/Mountain3/mesh.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Mesh"
+      },
+      "total_mass": null
+    },
+    "Mountain8": {
+      "rot_correction": [
+        0.0,
+        -0.1,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/Mountain8/mesh.txt",
+      "bone_path": null,
+      "animation_properties": null,
+      "item_bones": null,
+      "aggro_range": null,
+      "hitbox": {
+        "shape": "Mesh"
+      },
+      "total_mass": null
+    },
+    "Mountain1": {
+      "rot_correction": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scale_correction": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mesh_path": "resources/models/static/Mountain1/mesh.txt",
       "bone_path": null,
       "animation_properties": null,
       "item_bones": null,
@@ -348,28 +551,6 @@
         1.0
       ],
       "mesh_path": "resources/models/static/terrain/bare_bush1.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Mesh"
-      },
-      "total_mass": null
-    },
-    "Mountain10": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/Mountain10/mesh.txt",
       "bone_path": null,
       "animation_properties": null,
       "item_bones": null,
@@ -443,96 +624,6 @@
       },
       "total_mass": null
     },
-    "Mountain1": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/Mountain1/mesh.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Mesh"
-      },
-      "total_mass": null
-    },
-    "TreeFoliage": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/trees/001_tree_foliage_model.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "BoundingBox"
-      },
-      "total_mass": null
-    },
-    "Cactus2": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/plants/cactus2.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Cylinder",
-        "r": 0.1,
-        "h": 3.0
-      },
-      "total_mass": null
-    },
-    "Mountain5": {
-      "rot_correction": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/Mountain5/mesh.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "Mesh"
-      },
-      "total_mass": null
-    },
     "Mountain6": {
       "rot_correction": [
         0.0,
@@ -555,7 +646,7 @@
       },
       "total_mass": null
     },
-    "Mountain3": {
+    "Mountain10": {
       "rot_correction": [
         0.0,
         0.0,
@@ -567,7 +658,7 @@
         1.0,
         1.0
       ],
-      "mesh_path": "resources/models/static/Mountain3/mesh.txt",
+      "mesh_path": "resources/models/static/Mountain10/mesh.txt",
       "bone_path": null,
       "animation_properties": null,
       "item_bones": null,
@@ -577,7 +668,7 @@
       },
       "total_mass": null
     },
-    "MooseMan": {
+    "Mountain7": {
       "rot_correction": [
         0.0,
         0.0,
@@ -585,54 +676,17 @@
         1.0
       ],
       "scale_correction": [
-        0.013,
-        0.013,
-        0.013
-      ],
-      "mesh_path": "resources/models/animated/moose/moosey.txt",
-      "bone_path": "resources/models/animated/moose/moosey.txt",
-      "animation_properties": [
-        {
-          "name": "Dance",
-          "one_shots": {},
-          "continuous_sounds": [
-            "MooseHuff"
-          ],
-          "hurtbox_activation": [],
-          "hold_frame": null
-        }
-      ],
-      "item_bones": {
-        "rh": "mixamorg:RightHand",
-        "lh": "mixamorg:LeftHand"
-      },
-      "aggro_range": 20.0,
-      "hitbox": {
-        "shape": "Pill",
-        "r": 0.5,
-        "h": 2.0
-      },
-      "total_mass": 300.0
-    },
-    "DoubleAxe": {
-      "rot_correction": [
-        -0.5,
-        0.5,
-        0.5,
-        0.5
-      ],
-      "scale_correction": [
         1.0,
         1.0,
         1.0
       ],
-      "mesh_path": "resources/models/static/weapons/swords/001_double_axe_new.txt",
+      "mesh_path": "resources/models/static/Mountain7/mesh.txt",
       "bone_path": null,
       "animation_properties": null,
       "item_bones": null,
       "aggro_range": null,
       "hitbox": {
-        "shape": "BoundingBox"
+        "shape": "Mesh"
       },
       "total_mass": null
     },
@@ -657,28 +711,6 @@
         "shape": "Mesh"
       },
       "total_mass": 12.0
-    },
-    "OrcSword": {
-      "rot_correction": [
-        0.5,
-        -0.5,
-        0.5,
-        0.5
-      ],
-      "scale_correction": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "mesh_path": "resources/models/static/weapons/001_orc_sword_bc.txt",
-      "bone_path": null,
-      "animation_properties": null,
-      "item_bones": null,
-      "aggro_range": null,
-      "hitbox": {
-        "shape": "BoundingBox"
-      },
-      "total_mass": null
     }
   }
 }

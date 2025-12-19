@@ -4,6 +4,7 @@ use std::{
 };
 
 use glam::{Quat, Vec3};
+use rapier3d::prelude::ColliderType;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -76,6 +77,8 @@ pub struct EntityTypeHelper {
     pub hitbox: HitboxShape,
     #[serde(default)]
     pub total_mass: Option<f32>,
+    #[serde(default)]
+    pub controller_type: Option<ColliderType>,
 }
 
 impl Default for EntityTypeHelper {
@@ -90,6 +93,7 @@ impl Default for EntityTypeHelper {
             aggro_range: None,
             hitbox: HitboxShape::BoundingBox,
             total_mass: None,
+            controller_type: None,
         }
     }
 }
@@ -110,6 +114,7 @@ impl EntityTypeHelper {
             },
             hitbox: HitboxShape::BoundingBox,
             total_mass: None,
+            controller_type: None,
         }
     }
 }
