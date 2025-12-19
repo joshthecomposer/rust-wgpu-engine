@@ -14,6 +14,11 @@ pub struct Time {
     pub alpha: f32, // accumulator / fixed_dt (computed after fixed loop)
     pub did_step: bool,
     pub steps_this_frame: u32,
+
+    // FPS tracking
+    pub fps: i32,
+    fps_accumulator: f32,
+    fps_frame_count: u32,
 }
 
 impl Time {
@@ -29,6 +34,9 @@ impl Time {
             alpha: 0.0,
             did_step: false,
             steps_this_frame: 0,
+            fps: 60,
+            fps_accumulator: 0.0,
+            fps_frame_count: 0,
         }
     }
 
@@ -49,6 +57,15 @@ impl Time {
 
         self.did_step = false;
         self.steps_this_frame = 0;
+
+        // update FPS counter (update every 0.5 seconds)
+        self.fps_accumulator += frame_dt;
+        self.fps_frame_count += 1;
+        if self.fps_accumulator >= 0.5 {
+            self.fps = (self.fps_frame_count as f32 / self.fps_accumulator) as i32;
+            self.fps_accumulator = 0.0;
+            self.fps_frame_count = 0;
+        }
     }
 
     pub fn should_step(&self) -> bool {

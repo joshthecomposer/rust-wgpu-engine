@@ -1,0 +1,33 @@
+// settings row layout - label on left, control on right
+import { Theme } from "theme.slint";
+
+export component RunicSettingsRow inherits Rectangle {
+    in property <string> label;
+
+    height: 32px;
+    background: transparent;
+
+    HorizontalLayout {
+        spacing: 12px;
+        alignment: space-between;
+
+        Text {
+            text: label;
+            color: Theme.old-text;
+            font-size: 12px;
+            letter-spacing: 1px;
+            vertical-alignment: center;
+        }
+
+        @children
+    }
+
+    // subtle bottom border
+    Rectangle {
+        y: parent.height - 1px;
+        width: parent.width;
+        height: 1px;
+        background: Theme.stone-light.with-alpha(0.3);
+    }
+}
+

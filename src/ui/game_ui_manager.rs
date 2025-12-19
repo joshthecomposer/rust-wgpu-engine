@@ -29,6 +29,9 @@ pub struct GameUiUpdateContext<'a> {
     pub entity_manager: &'a EntityManager,
     pub paused: &'a mut bool,
     pub render_gizmos: &'a mut bool,
+    pub show_fps: &'a mut bool,
+    pub bgm_volume: &'a mut f32,
+    pub sfx_volume: &'a mut f32,
 }
 
 /// Context for portrait rendering - passed to render().
@@ -220,6 +223,21 @@ impl GameUiManager {
                     }
                 }
             }
+            WindowEvent::MouseWheel { delta, .. } => {
+                use winit::event::MouseScrollDelta;
+                let (delta_x, delta_y) = match delta {
+                    MouseScrollDelta::LineDelta(x, y) => {
+                        // convert lines to pixels (roughly 20px per line)
+                        (*x * 20.0, *y * 20.0)
+                    }
+                    MouseScrollDelta::PixelDelta(p) => (p.x as f32, p.y as f32),
+                };
+                Some(SlintWindowEvent::PointerScrolled {
+                    position: self.last_cursor_pos,
+                    delta_x,
+                    delta_y,
+                })
+            }
             WindowEvent::Resized(size) => {
                 self.resize(size.width, size.height);
                 None
@@ -265,10 +283,18 @@ impl GameUiManager {
         let game_ctx = GameRootContext {
             paused: ctx.paused,
             render_gizmos: ctx.render_gizmos,
+            show_fps: ctx.show_fps,
+            bgm_volume: ctx.bgm_volume,
+            sfx_volume: ctx.sfx_volume,
             entity_manager: ctx.entity_manager,
             message_queue: ctx.message_queue,
         };
         self.game_root_view.update(game_ctx);
+    }
+
+    /// Set the current FPS for the FPS counter.
+    pub fn set_fps(&self, fps: i32) {
+        self.game_root_view.set_fps(fps);
     }
 
     /// Render the player portrait to the HUD. Call this before render().

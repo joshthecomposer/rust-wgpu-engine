@@ -19,6 +19,9 @@ slint::include_modules!();
 pub struct GameRootContext<'a> {
     pub paused: &'a mut bool,
     pub render_gizmos: &'a mut bool,
+    pub show_fps: &'a mut bool,
+    pub bgm_volume: &'a mut f32,
+    pub sfx_volume: &'a mut f32,
     pub entity_manager: &'a EntityManager,
     pub message_queue: &'a mut MessageQueue,
 }
@@ -65,6 +68,9 @@ impl GameRootView {
         let pause_ctx = PauseMenuContext {
             paused: ctx.paused,
             render_gizmos: ctx.render_gizmos,
+            show_fps: ctx.show_fps,
+            bgm_volume: ctx.bgm_volume,
+            sfx_volume: ctx.sfx_volume,
             entity_manager: ctx.entity_manager,
             message_queue: ctx.message_queue,
         };
@@ -86,5 +92,10 @@ impl GameRootView {
         let w = self.game_root.get_portrait_width();
         let h = self.game_root.get_portrait_height();
         (x, y, w, h)
+    }
+
+    /// Set the current FPS for the FPS counter.
+    pub fn set_fps(&self, fps: i32) {
+        self.game_root.set_current_fps(fps);
     }
 }
