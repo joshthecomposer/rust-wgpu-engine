@@ -5,7 +5,7 @@
 //!
 #[derive(PartialEq)]
 pub enum UiMessage {
-    LeftMouseClicked,
+    // LeftMouseClicked,
     WindowShouldClose,
     ReloadWorldData,
     RenderStagedEmitters { do_it: bool },
