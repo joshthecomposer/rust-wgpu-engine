@@ -11,12 +11,12 @@ pub const FMOD_INIT_3D_RIGHTHANDED: u32 = 0x00000010;
 pub const FMOD_INIT_NORMAL: u32 = 0;
 pub const FMOD_VERSION: u32 = 0x00020214;
 pub type FMOD_STUDIO_EVENTINSTANCE = *mut libc::c_void;
-pub const FMOD_DEBUG_LEVEL_LOG: u32 = 0x00000001;
+// pub const FMOD_DEBUG_LEVEL_LOG: u32 = 0x00000001;
 
 #[repr(C)]
 pub enum FMOD_STUDIO_STOP_MODE {
     FMOD_STUDIO_STOP_IMMEDIATE = 1,
-    FMOD_STUDIO_STOP_ALLOWFADEOUT = 2,
+    // FMOD_STUDIO_STOP_ALLOWFADEOUT = 2,
 }
 
 #[repr(C)]
@@ -40,7 +40,7 @@ pub struct FMOD_3D_ATTRIBUTES {
 #[link(name = "fmodstudio")]
 extern "C" {
 
-    pub fn FMOD_Debug_Initialize(flags: u32, mode: u32, file: *const c_char) -> FMOD_RESULT;
+    // pub fn FMOD_Debug_Initialize(flags: u32, mode: u32, file: *const c_char) -> FMOD_RESULT;
 
     pub fn FMOD_Studio_System_Update(system: FMOD_STUDIO_SYSTEM) -> FMOD_RESULT;
 
