@@ -1,18 +1,15 @@
 use std::collections::HashSet;
 
-use glam::{vec2, vec3, vec4, Mat4, Vec2, Vec3, Vec3Swizzles, Vec4Swizzles};
+use glam::{vec2, vec4, Vec2, Vec3, Vec4Swizzles};
 
-use rapier3d::{data::Index, prelude::*};
+use rapier3d::prelude::*;
 use winit::{
     event::{ElementState, MouseButton},
     keyboard::KeyCode,
 };
 
 use crate::{
-    camera::{self, Camera},
-    entity_manager::EntityManager,
-    enums_types::{AnimationType, CameraState, Faction},
-    physics::PhysicsState,
+    camera::Camera, entity_manager::EntityManager, enums_types::CameraState, physics::PhysicsState,
     util::constants::GROUP_TERRAIN,
 };
 
@@ -130,7 +127,6 @@ pub fn handle_keyboard_input(key: KeyCode, action: ElementState, input_state: &m
         ElementState::Released => {
             input_state.keys_current.remove(&key);
         }
-        _ => (),
     }
 }
 
@@ -207,7 +203,6 @@ pub fn handle_mouse_input(
         ElementState::Released => {
             input_state.mouse_current.remove(&button);
         }
-        _ => (),
     }
 }
 
