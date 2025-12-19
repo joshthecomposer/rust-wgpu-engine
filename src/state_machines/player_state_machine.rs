@@ -230,6 +230,18 @@ pub fn player_state_machine(
                     sm.play_sound_3d(SoundType::Jump, &player_pos, player_id);
                     break 'ns;
                 }
+
+                if !gs.is_grounded && rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON
+                {
+                    player_non_combat_transition(
+                        controller,
+                        PlayerState::Freefalling,
+                        animator,
+                        false,
+                        rb,
+                    );
+                    break 'ns;
+                };
             }
             PlayerState::Jumping => {
                 controller.time_in_state += dt;
@@ -291,6 +303,18 @@ pub fn player_state_machine(
                     );
                     break 'ns;
                 }
+
+                if !gs.is_grounded && rb.linvel().y <= DECREASED_GRAVITY_SCALAR + ANIMATION_EPSILON
+                {
+                    player_non_combat_transition(
+                        controller,
+                        PlayerState::Freefalling,
+                        animator,
+                        false,
+                        rb,
+                    );
+                    break 'ns;
+                };
             }
             PlayerState::Freefalling => {
                 controller.time_in_state += dt;
