@@ -281,7 +281,7 @@ pub fn grounding_solver(em: &mut EntityManager, ps: &PhysicsState) {
 
         let dist = match gs.is_grounded {
             true => gs.ray_length_grounded,
-            false => gs.ray_length_airborn,
+            false => gs.ray_length_airborne,
         };
 
         let prev = gs.is_grounded;

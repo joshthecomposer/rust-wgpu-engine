@@ -521,10 +521,10 @@ pub struct JumpHeight {
 
 #[derive(Clone, Debug)]
 pub struct GroundedState {
-    pub was_grouned: bool,
+    pub was_grounded: bool,
     pub is_grounded: bool,
     pub just_left: bool,
     pub just_landed: bool,
     pub ray_length_grounded: f32,
-    pub ray_length_airborn: f32,
+    pub ray_length_airborne: f32,
 }
