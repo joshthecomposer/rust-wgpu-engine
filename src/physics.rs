@@ -6,7 +6,6 @@ use crate::util::constants::{GROUP_PLAYER, GROUP_TERRAIN};
 use crate::{
     entity_manager::EntityManager,
     enums_types::{PhysicsHandle, Transform},
-    util::data_structure::HashMapGetPair,
 };
 
 pub struct PhysicsState {
@@ -24,10 +23,6 @@ pub struct PhysicsState {
     pub query_pipeline: Option<QueryPipeline>,
     pub physics_hooks: (),
     pub event_handler: (),
-
-    // accumulator stuff
-    pub accumulator: f32,
-    pub fixed_dt: f32,
 }
 
 impl PhysicsState {
@@ -47,9 +42,6 @@ impl PhysicsState {
             query_pipeline: Some(QueryPipeline::new()),
             physics_hooks: (),
             event_handler: (),
-
-            accumulator: 0.0,
-            fixed_dt: 1.0 / 60.0,
         }
     }
 
@@ -73,15 +65,15 @@ impl PhysicsState {
 }
 
 pub fn apply_delta_v(rb: &mut RigidBody, dir: glam::Vec3, dv: f32) {
-    let J = dir.normalize() * (rb.mass() * dv);
-    rb.apply_impulse(J.into(), true);
+    let j = dir.normalize() * (rb.mass() * dv);
+    rb.apply_impulse(j.into(), true);
 }
 
-pub fn jump_to_height(rb: &mut RigidBody, h: f32, gravity: f32) {
-    let v0 = (2.0 * gravity.abs() * h).sqrt();
-    let J = glam::vec3(0.0, rb.mass() * v0, 0.0);
-    rb.apply_impulse(J.into(), true);
-}
+// pub fn jump_to_height(rb: &mut RigidBody, h: f32, gravity: f32) {
+// let v0 = (2.0 * gravity.abs() * h).sqrt();
+// let J = glam::vec3(0.0, rb.mass() * v0, 0.0);
+// rb.apply_impulse(J.into(), true);
+// }
 
 pub fn sync_transforms_from_physics(em: &mut EntityManager, ps: &PhysicsState) {
     let mut updates: Vec<(usize, glam::Vec3, glam::Quat)> =
@@ -110,14 +102,14 @@ pub fn sync_transforms_from_physics(em: &mut EntityManager, ps: &PhysicsState) {
             // keep existing t.scale as-is
         } else {
             panic!("SOmething didn't have a transform");
-            em.transforms.insert(
-                id,
-                Transform {
-                    position: pos,
-                    rotation: rot,
-                    scale: glam::Vec3::splat(1.0), // or preserve a known scale (e.g., Vec3::ONE)
-                },
-            );
+            // em.transforms.insert(
+            //     id,
+            //     Transform {
+            //         position: pos,
+            //         rotation: rot,
+            //         scale: glam::Vec3::splat(1.0), // or preserve a known scale (e.g., Vec3::ONE)
+            //     },
+            // );
         }
     }
 }
@@ -125,10 +117,10 @@ pub fn sync_transforms_from_physics(em: &mut EntityManager, ps: &PhysicsState) {
 pub fn push_weapon_kinematics_from_bones(em: &mut EntityManager, ps: &mut PhysicsState) {
     for wid in em.get_active_weapon_ids() {
         let parent = *em.owners.get(wid).unwrap();
-        let animator = em.animators.get(parent).unwrap();
-        let cur = animator.current_animation.clone();
-        let next = animator.next_animation.clone();
-        let blend = animator.blend_factor;
+        // let animator = em.animators.get(parent).unwrap();
+        // let cur = animator.current_animation.clone();
+        // let next = animator.next_animation.clone();
+        // let blend = animator.blend_factor;
 
         let pt = em.transforms.get(parent).unwrap();
         let pm = glam::Mat4::from_scale_rotation_translation(pt.scale, pt.rotation, pt.position);
@@ -214,7 +206,7 @@ pub fn sync_collider_transforms_with_physics(em: &mut EntityManager, ps: &mut Ph
         let shape = collider.shape();
 
         let mut gizmo_pos = center;
-        let mut gizmo_scale = Vec3::ONE;
+        // let mut gizmo_scale = Vec3::ONE;
 
         if let Some(cuboid) = shape.as_cuboid() {
             let he = cuboid.half_extents;
@@ -254,7 +246,7 @@ pub fn grounding_solver(em: &mut EntityManager, ps: &PhysicsState) {
 
     for id in ids.iter() {
         let ph = em.physics_handles.get(*id).unwrap();
-        let ch = ph.collider;
+        // let ch = ph.collider;
         let rb_handle = ph.rigid_body;
 
         let trans = em.transforms.get(*id).unwrap();

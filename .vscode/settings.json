@@ -71,7 +71,8 @@
 		"wasd",
 		"winit",
 		"wlist",
-		"xform"
+		"xform",
+		"xyzw"
 	],
 	"[rust]": {
 		"editor.defaultFormatter": "rust-lang.rust-analyzer",
