@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::collections::HashMap;
 
 use glam::{vec3, Vec3};
@@ -234,7 +233,7 @@ impl Lights {
         self.next_light_id += 1;
     }
 
-    pub fn update(&mut self, delta: &f32) {
+    pub fn update(&mut self, _delta: &f32) {
         for i in self.point_lights.iter_mut() {
             if let Some(velocity) = self.velocities.get(i.key()) {
                 i.value.position += velocity;
