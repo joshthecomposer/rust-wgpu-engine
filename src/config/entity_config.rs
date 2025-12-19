@@ -77,23 +77,23 @@ impl Default for EntityTypeHelper {
 }
 
 impl EntityTypeHelper {
-    pub fn from_ui_helper(ui_helper: &UiEntityTypeHelper) -> Self {
-        Self {
-            rot_correction: Quat::from_array(ui_helper.rot_correction),
-            scale_correction: ui_helper.scale_correction.into(),
-            mesh_path: ui_helper.mesh_path.clone(),
-            bone_path: None,
-            animation_properties: None,
-            item_bones: None,
-            aggro_range: if ui_helper.aggro_range > 0.0 {
-                Some(ui_helper.aggro_range)
-            } else {
-                None
-            },
-            hitbox: HitboxShape::BoundingBox,
-            total_mass: None,
-        }
-    }
+    // pub fn from_ui_helper(ui_helper: &UiEntityTypeHelper) -> Self {
+    //     Self {
+    //         rot_correction: Quat::from_array(ui_helper.rot_correction),
+    //         scale_correction: ui_helper.scale_correction.into(),
+    //         mesh_path: ui_helper.mesh_path.clone(),
+    //         bone_path: None,
+    //         animation_properties: None,
+    //         item_bones: None,
+    //         aggro_range: if ui_helper.aggro_range > 0.0 {
+    //             Some(ui_helper.aggro_range)
+    //         } else {
+    //             None
+    //         },
+    //         hitbox: HitboxShape::BoundingBox,
+    //         total_mass: None,
+    //     }
+    // }
 }
 
 // This is currently for ImGUI saving a new entity type.
