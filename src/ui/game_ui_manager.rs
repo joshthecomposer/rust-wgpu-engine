@@ -18,7 +18,7 @@ use crate::input::InputState;
 use crate::lights::Lights;
 use crate::renderer::DefaultTextures;
 use crate::shaders::Shader;
-use crate::ui::game::views::{GameRootContext, GameRootView};
+use crate::ui::game::views::{GameRootContext, GameRootView, SettingsContext, SystemContext};
 use crate::ui::message_queue::MessageQueue;
 use crate::ui::portrait_renderer::PortraitRenderer;
 use crate::ui::slint_platform::init_slint_platform;
@@ -282,12 +282,16 @@ impl GameUiManager {
 
         let game_ctx = GameRootContext {
             paused: ctx.paused,
-            render_gizmos: ctx.render_gizmos,
-            show_fps: ctx.show_fps,
-            bgm_volume: ctx.bgm_volume,
-            sfx_volume: ctx.sfx_volume,
-            entity_manager: ctx.entity_manager,
-            message_queue: ctx.message_queue,
+            settings: SettingsContext {
+                render_gizmos: ctx.render_gizmos,
+                show_fps: ctx.show_fps,
+                bgm_volume: ctx.bgm_volume,
+                sfx_volume: ctx.sfx_volume,
+            },
+            system: SystemContext {
+                entity_manager: ctx.entity_manager,
+                message_queue: ctx.message_queue,
+            },
         };
         self.game_root_view.update(game_ctx);
     }

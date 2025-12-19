@@ -15,15 +15,28 @@ use super::player_hud::{PlayerHudContext, PlayerHudView};
 
 slint::include_modules!();
 
-/// Context passed to GameRootView::update().
-pub struct GameRootContext<'a> {
-    pub paused: &'a mut bool,
+/// Context for settings-related state (debug, audio, graphics, etc.).
+/// Groups all user-configurable settings to avoid bloating parent contexts.
+pub struct SettingsContext<'a> {
     pub render_gizmos: &'a mut bool,
     pub show_fps: &'a mut bool,
     pub bgm_volume: &'a mut f32,
     pub sfx_volume: &'a mut f32,
+}
+
+/// Context for system-level resources needed for system actions.
+/// Groups resources needed for save/load, quit, reload, etc.
+pub struct SystemContext<'a> {
     pub entity_manager: &'a EntityManager,
     pub message_queue: &'a mut MessageQueue,
+}
+
+/// Context passed to GameRootView::update().
+/// Uses nested contexts to logically group related fields.
+pub struct GameRootContext<'a> {
+    pub paused: &'a mut bool,
+    pub settings: SettingsContext<'a>,
+    pub system: SystemContext<'a>,
 }
 
 /// Manages the unified GameRoot Slint component and delegates to child views.
@@ -63,22 +76,19 @@ impl GameRootView {
     /// Update the game root view by delegating to child views.
     pub fn update(&mut self, ctx: GameRootContext) {
         let paused = *ctx.paused;
+        let entity_manager = ctx.system.entity_manager;
 
         // delegate to pause menu view
         let pause_ctx = PauseMenuContext {
             paused: ctx.paused,
-            render_gizmos: ctx.render_gizmos,
-            show_fps: ctx.show_fps,
-            bgm_volume: ctx.bgm_volume,
-            sfx_volume: ctx.sfx_volume,
-            entity_manager: ctx.entity_manager,
-            message_queue: ctx.message_queue,
+            settings: ctx.settings,
+            system: ctx.system,
         };
         self.pause_menu_view.update(&self.game_root, pause_ctx);
 
         // delegate to player HUD view
         let hud_ctx = PlayerHudContext {
-            entity_manager: ctx.entity_manager,
+            entity_manager,
             paused,
         };
         self.player_hud_view.update(&self.game_root, hud_ctx);

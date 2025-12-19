@@ -7,17 +7,14 @@ use std::rc::Rc;
 use crate::entity_manager::EntityManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 
-use super::game_root::GameRoot;
+use super::game_root::{GameRoot, SettingsContext, SystemContext};
 
 /// Context passed to PauseMenuView::update().
+/// Uses nested contexts to logically group settings and system resources.
 pub struct PauseMenuContext<'a> {
     pub paused: &'a mut bool,
-    pub render_gizmos: &'a mut bool,
-    pub show_fps: &'a mut bool,
-    pub bgm_volume: &'a mut f32,
-    pub sfx_volume: &'a mut f32,
-    pub entity_manager: &'a EntityManager,
-    pub message_queue: &'a mut MessageQueue,
+    pub settings: SettingsContext<'a>,
+    pub system: SystemContext<'a>,
 }
 
 /// Manages the pause menu portion of the GameRoot component.
@@ -81,23 +78,23 @@ impl PauseMenuView {
         game_root.set_show_pause_menu(*ctx.paused);
 
         // sync settings state from engine to UI
-        game_root.set_gizmo_enabled(*ctx.render_gizmos);
-        game_root.set_show_fps(*ctx.show_fps);
-        game_root.set_bgm_volume(*ctx.bgm_volume);
-        game_root.set_sfx_volume(*ctx.sfx_volume);
+        game_root.set_gizmo_enabled(*ctx.settings.render_gizmos);
+        game_root.set_show_fps(*ctx.settings.show_fps);
+        game_root.set_bgm_volume(*ctx.settings.bgm_volume);
+        game_root.set_sfx_volume(*ctx.settings.sfx_volume);
 
         // sync settings state from UI to engine (live preview)
-        *ctx.render_gizmos = game_root.get_gizmo_enabled();
-        *ctx.show_fps = game_root.get_show_fps();
-        *ctx.bgm_volume = game_root.get_bgm_volume();
-        *ctx.sfx_volume = game_root.get_sfx_volume();
+        *ctx.settings.render_gizmos = game_root.get_gizmo_enabled();
+        *ctx.settings.show_fps = game_root.get_show_fps();
+        *ctx.settings.bgm_volume = game_root.get_bgm_volume();
+        *ctx.settings.sfx_volume = game_root.get_sfx_volume();
 
         self.handle_unpause(ctx.paused);
-        self.handle_reload_world(ctx.message_queue);
-        self.handle_save_player_data(ctx.entity_manager);
-        self.handle_quit(ctx.message_queue);
-        self.handle_apply_settings(ctx.message_queue);
-        self.handle_cancel_settings(ctx.message_queue);
+        self.handle_reload_world(ctx.system.message_queue);
+        self.handle_save_player_data(ctx.system.entity_manager);
+        self.handle_quit(ctx.system.message_queue);
+        self.handle_apply_settings(ctx.system.message_queue);
+        self.handle_cancel_settings(ctx.system.message_queue);
     }
     /// Handle unpause action by directly modifying the paused state.
     /// This is a view-specific action, so we modify state directly via context ref.
