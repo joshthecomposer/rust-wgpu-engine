@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::{cell::Cell, collections::HashMap, ffi::CString};
 
 use glam::Vec3;
@@ -8,10 +6,7 @@ use crate::{
     camera::Camera,
     config::sound_config::SoundConfig,
     enums_types::SoundType,
-    sound::fmod::{
-        FMOD_Studio_EventDescription_GetInstanceCount, FMOD_Studio_EventDescription_LoadSampleData,
-        FMOD_INIT_3D_RIGHTHANDED,
-    },
+    sound::fmod::{FMOD_Studio_EventDescription_LoadSampleData, FMOD_INIT_3D_RIGHTHANDED},
 };
 
 use super::fmod::{
@@ -27,12 +22,6 @@ use super::fmod::{
 pub struct SoundData {
     description: FMOD_STUDIO_EVENTDESCRIPTION,
     // instance: FMOD_STUDIO_EVENTINSTANCE,
-}
-
-#[derive(Clone, Debug)]
-pub struct SoundTrigger {
-    pub sound_type: SoundType,
-    pub frame: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -53,7 +42,6 @@ pub struct SoundManager {
     pub sounds: HashMap<SoundType, SoundData>, //The key (String) is the sound_name in the game_config.json
     pub active_sounds: HashMap<SoundType, FMOD_STUDIO_EVENTINSTANCE>,
     pub active_3d_sounds: HashMap<usize, Vec<FMOD_STUDIO_EVENTINSTANCE>>,
-    pub playing_bg: bool,
     pub master_volume: f32,
 }
 
@@ -133,7 +121,6 @@ impl SoundManager {
         SoundManager {
             fmod_system,
             sounds,
-            playing_bg: false,
             master_volume: 1.0,
             active_3d_sounds: HashMap::new(),
             active_sounds: HashMap::new(),
@@ -146,7 +133,6 @@ impl SoundManager {
             if result != 0 {
                 eprintln!("FMOD update failed with error code {}", result);
             }
-            let mut count = 0;
         }
         self.set_listener_attributes(camera);
 
@@ -154,17 +140,17 @@ impl SoundManager {
         //dbg!(count);
     }
 
-    pub fn get_instance_count(&self, sound_type: SoundType) -> Option<i32> {
-        let desc = self.sounds.get(&sound_type)?.description;
-        let mut count: libc::c_int = 0;
+    // pub fn get_instance_count(&self, sound_type: SoundType) -> Option<i32> {
+    //     let desc = self.sounds.get(&sound_type)?.description;
+    //     let mut count: libc::c_int = 0;
 
-        let r = unsafe { FMOD_Studio_EventDescription_GetInstanceCount(desc, &mut count) };
-        if r != 0 {
-            eprintln!("GetInstanceCount failed for {:?}: {}", sound_type, r);
-            return None;
-        }
-        Some(count as i32)
-    }
+    //     let r = unsafe { FMOD_Studio_EventDescription_GetInstanceCount(desc, &mut count) };
+    //     if r != 0 {
+    //         eprintln!("GetInstanceCount failed for {:?}: {}", sound_type, r);
+    //         return None;
+    //     }
+    //     Some(count as i32)
+    // }
 
     pub fn set_listener_attributes(&self, camera: &Camera) {
         let forward = camera.forward.normalize();
@@ -193,7 +179,7 @@ impl SoundManager {
         }
     }
 
-    pub fn play_sound_3d(&mut self, sound_type: SoundType, position: &Vec3, entity_id: usize) {
+    pub fn play_sound_3d(&mut self, sound_type: SoundType, position: &Vec3, _entity_id: usize) {
         let sound_data = match self.sounds.get(&sound_type) {
             Some(data) => data,
             None => {
