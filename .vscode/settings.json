@@ -54,7 +54,8 @@
 		"uninit",
 		"vsync",
 		"winit",
-		"wlist"
+		"wlist",
+		"xform"
 	],
 	"[rust]": {
 		"editor.defaultFormatter": "rust-lang.rust-analyzer",
