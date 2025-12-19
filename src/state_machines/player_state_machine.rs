@@ -1,24 +1,18 @@
-use glam::Mat4;
-use nalgebra::{point, vector};
-use rapier3d::prelude::{
-    ColliderSet, ContactPair, InteractionGroups, QueryFilter, QueryPipeline, Ray, RigidBody,
-    RigidBodySet,
-};
-use winit::keyboard::KeyCode;
+use rapier3d::prelude::RigidBody;
 
 use crate::{
-    animation::{animation_system, animator::Animator},
+    animation::animator::Animator,
     camera::Camera,
     entity_manager::EntityManager,
     enums_types::{
-        AnimationType, AttackState, CameraState, EmitterName, EntityType, Faction,
-        PlayerController, PlayerState, SoundType, ANIMATION_EPSILON,
+        AnimationType, AttackState, CameraState, PlayerController, PlayerState, SoundType,
+        ANIMATION_EPSILON,
     },
     input::InputState,
     particles::ParticleSystem,
-    physics::{self, PhysicsState},
+    physics::PhysicsState,
     sound::sound_manager::SoundManager,
-    util::constants::{DECREASED_GRAVITY_SCALAR, GRAVITY},
+    util::constants::DECREASED_GRAVITY_SCALAR,
     util::data_structure::HashMapGetPairMut,
 };
 
@@ -41,7 +35,7 @@ pub fn player_state_machine(
 
     let controller = em.player_controllers.get_mut(player_id).unwrap();
     let player_pos = em.transforms.get(player_id).unwrap().position;
-    let transform = em.transforms.get(player_id).unwrap();
+    // let transform = em.transforms.get(player_id).unwrap();
     let animator = em.animators.get_mut(player_id).unwrap();
     let health = em.healths.get(player_id).unwrap();
     let ph = em.physics_handles.get(player_id).unwrap();
@@ -485,7 +479,7 @@ fn player_non_combat_transition(
     next_state: PlayerState,
     a: &mut Animator,
     reset_anim: bool,
-    rb: &mut RigidBody,
+    _rb: &mut RigidBody,
 ) {
     let anim = match next_state {
         PlayerState::Init => AnimationType::Idle,
@@ -518,25 +512,25 @@ fn player_non_combat_transition(
     }
 }
 
-fn is_grounded_ray(
-    query: &QueryPipeline,
-    colliders: &ColliderSet,
-    bodies: &RigidBodySet,
-    origin: glam::Vec3,
-    max_dist: f32,
-    terrain_mask: u32, // pass 0 to not use this
-) -> bool {
-    let ray = Ray::new(
-        point![origin.x, origin.y, origin.z],
-        vector![0.0, -1.0, 0.0],
-    );
+// fn is_grounded_ray(
+//     query: &QueryPipeline,
+//     colliders: &ColliderSet,
+//     bodies: &RigidBodySet,
+//     origin: glam::Vec3,
+//     max_dist: f32,
+//     terrain_mask: u32, // pass 0 to not use this
+// ) -> bool {
+//     let ray = Ray::new(
+//         point![origin.x, origin.y, origin.z],
+//         vector![0.0, -1.0, 0.0],
+//     );
 
-    let filter = QueryFilter::default()
-        .groups(InteractionGroups::new(u32::MAX.into(), u32::MAX.into()))
-        .into();
-    if let Some((handle, toi)) = query.cast_ray(&bodies, &colliders, &ray, max_dist, true, filter) {
-        // can add a slope limit here
-        return true;
-    }
-    false
-}
+//     let filter = QueryFilter::default()
+//         .groups(InteractionGroups::new(u32::MAX.into(), u32::MAX.into()))
+//         .into();
+//     if let Some((handle, toi)) = query.cast_ray(&bodies, &colliders, &ray, max_dist, true, filter) {
+//         // can add a slope limit here
+//         return true;
+//     }
+//     false
+// }
