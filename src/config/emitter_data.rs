@@ -1,6 +1,5 @@
-use crate::{config::Config, gl_call};
+use crate::config::Config;
 use glam::{Vec2, Vec3, Vec4};
-use image::GenericImageView;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -52,66 +51,66 @@ pub struct EmitterBlackboard {
     pub pps: Option<usize>,
 }
 
-fn load_texture<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let path = match Option::<String>::deserialize(deserializer)? {
-        Some(path) => path,
-        None => return Ok(None),
-    };
+// fn load_texture<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
+// where
+//     D: serde::Deserializer<'de>,
+// {
+//     let path = match Option::<String>::deserialize(deserializer)? {
+//         Some(path) => path,
+//         None => return Ok(None),
+//     };
 
-    let mut tex = 0;
+//     let mut tex = 0;
 
-    println!("FOUND TEXTURE {}", &path);
+//     println!("FOUND TEXTURE {}", &path);
 
-    unsafe {
-        gl_call!(gl::GenTextures(1, &mut tex));
-        gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
-        gl_call!(gl::TexParameteri(
-            gl::TEXTURE_2D,
-            gl::TEXTURE_MIN_FILTER,
-            gl::LINEAR as i32
-        ));
-        gl_call!(gl::TexParameteri(
-            gl::TEXTURE_2D,
-            gl::TEXTURE_MAG_FILTER,
-            gl::LINEAR as i32
-        ));
-        gl_call!(gl::TexParameteri(
-            gl::TEXTURE_2D,
-            gl::TEXTURE_WRAP_S,
-            gl::CLAMP_TO_EDGE as i32
-        ));
-        gl_call!(gl::TexParameteri(
-            gl::TEXTURE_2D,
-            gl::TEXTURE_WRAP_T,
-            gl::CLAMP_TO_EDGE as i32
-        ));
+//     unsafe {
+//         gl_call!(gl::GenTextures(1, &mut tex));
+//         gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
+//         gl_call!(gl::TexParameteri(
+//             gl::TEXTURE_2D,
+//             gl::TEXTURE_MIN_FILTER,
+//             gl::LINEAR as i32
+//         ));
+//         gl_call!(gl::TexParameteri(
+//             gl::TEXTURE_2D,
+//             gl::TEXTURE_MAG_FILTER,
+//             gl::LINEAR as i32
+//         ));
+//         gl_call!(gl::TexParameteri(
+//             gl::TEXTURE_2D,
+//             gl::TEXTURE_WRAP_S,
+//             gl::CLAMP_TO_EDGE as i32
+//         ));
+//         gl_call!(gl::TexParameteri(
+//             gl::TEXTURE_2D,
+//             gl::TEXTURE_WRAP_T,
+//             gl::CLAMP_TO_EDGE as i32
+//         ));
 
-        let img = match image::open(path) {
-            Ok(img) => img,
-            _ => panic!("error opening smoke texture"),
-        };
+//         let img = match image::open(path) {
+//             Ok(img) => img,
+//             _ => panic!("error opening smoke texture"),
+//         };
 
-        let (img_width, img_height) = img.dimensions();
-        let rgba = img.to_rgba8();
-        let raw = rgba.as_raw();
+//         let (img_width, img_height) = img.dimensions();
+//         let rgba = img.to_rgba8();
+//         let raw = rgba.as_raw();
 
-        gl_call!(gl::TexImage2D(
-            gl::TEXTURE_2D,
-            0,
-            gl::RGBA8 as i32,
-            img_width as i32,
-            img_height as i32,
-            0,
-            gl::RGBA,
-            gl::UNSIGNED_BYTE,
-            raw.as_ptr().cast(),
-        ));
-    }
-    Ok(Some(tex))
-}
+//         gl_call!(gl::TexImage2D(
+//             gl::TEXTURE_2D,
+//             0,
+//             gl::RGBA8 as i32,
+//             img_width as i32,
+//             img_height as i32,
+//             0,
+//             gl::RGBA,
+//             gl::UNSIGNED_BYTE,
+//             raw.as_ptr().cast(),
+//         ));
+//     }
+//     Ok(Some(tex))
+// }
 
 #[derive(Deserialize, Debug, Serialize)]
 pub struct UiEmitterBlackboard {
