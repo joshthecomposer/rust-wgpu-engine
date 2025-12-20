@@ -28,10 +28,9 @@ pub struct GameUiUpdateContext<'a> {
     pub message_queue: &'a mut MessageQueue,
     pub entity_manager: &'a EntityManager,
     pub paused: &'a mut bool,
-    pub render_gizmos: &'a mut bool,
-    pub show_fps: &'a mut bool,
-    pub bgm_volume: &'a mut f32,
-    pub sfx_volume: &'a mut f32,
+    pub render_gizmos: &'a mut bool, // renderer.render_gizmos - kept separate since it's not in config
+    pub game_config: &'a mut crate::config::game_config::GameConfig,
+    pub sound_config: &'a mut crate::config::sound_config::SoundConfig,
 }
 
 /// Context for portrait rendering - passed to render().
@@ -284,9 +283,8 @@ impl GameUiManager {
             paused: ctx.paused,
             settings: SettingsContext {
                 render_gizmos: ctx.render_gizmos,
-                show_fps: ctx.show_fps,
-                bgm_volume: ctx.bgm_volume,
-                sfx_volume: ctx.sfx_volume,
+                game_config: ctx.game_config,
+                sound_config: ctx.sound_config,
             },
             system: SystemContext {
                 entity_manager: ctx.entity_manager,

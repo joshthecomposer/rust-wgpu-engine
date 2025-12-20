@@ -24,6 +24,8 @@ export component PauseMenu inherits Rectangle {
     in-out property <bool> show-fps: false;
     in-out property <float> bgm-volume: 100.0;
     in-out property <float> sfx-volume: 80.0;
+    in-out property <bool> vsync: true;
+    in-out property <bool> debug-mode: false;
 
     // tab state
     in-out property <int> active-tab: 0; // 0 = System, 1 = Settings
@@ -113,6 +115,8 @@ export component PauseMenu inherits Rectangle {
                 show-fps <=> root.show-fps;
                 bgm-volume <=> root.bgm-volume;
                 sfx-volume <=> root.sfx-volume;
+                vsync <=> root.vsync;
+                debug-mode <=> root.debug-mode;
                 apply_clicked => { root.apply_settings_clicked(); }
                 cancel_clicked => {
                     root.cancel_settings_clicked();

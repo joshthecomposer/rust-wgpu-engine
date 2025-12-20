@@ -18,6 +18,8 @@ export component SettingsMenu inherits Rectangle {
     in-out property <bool> show-fps: false;
     in-out property <float> bgm-volume: 100.0;
     in-out property <float> sfx-volume: 80.0;
+    in-out property <bool> vsync: true;
+    in-out property <bool> debug-mode: false;
 
     callback apply_clicked();
     callback cancel_clicked();
@@ -29,12 +31,12 @@ export component SettingsMenu inherits Rectangle {
 
         scroll-view := RunicScrollView {
             vertical-stretch: 1;
-            viewport-height: 450px;
+            viewport-height: 550px;
 
             VerticalLayout {
                 spacing: 12px;
                 padding-right: 8px;
-                padding-bottom: 16px;
+                padding-bottom: 32px;
 
                     RunicSettingsSectionHeader {
                         title: "DISPLAY";
@@ -85,6 +87,16 @@ export component SettingsMenu inherits Rectangle {
                         }
                     }
 
+                    RunicSettingsRow {
+                        label: "VSync";
+                        RunicCheckbox {
+                            checked: vsync;
+                            toggled => {
+                                vsync = !vsync;
+                            }
+                        }
+                    }
+
                     RunicSettingsSectionHeader {
                         title: "INTERFACE";
                     }
@@ -105,6 +117,16 @@ export component SettingsMenu inherits Rectangle {
                             checked: show-fps;
                             toggled => {
                                 show-fps = !show-fps;
+                            }
+                        }
+                    }
+
+                    RunicSettingsRow {
+                        label: "Debug Mode";
+                        RunicCheckbox {
+                            checked: debug-mode;
+                            toggled => {
+                                debug-mode = !debug-mode;
                             }
                         }
                     }

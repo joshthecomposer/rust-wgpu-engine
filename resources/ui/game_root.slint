@@ -17,10 +17,14 @@ export component GameRoot inherits Window {
     in property <bool> show-pause-menu: false;
 
     // settings properties
+    in-out property <string> resolution: "1920 x 1080";
+    in-out property <string> window-mode: "Windowed";
     in-out property <bool> gizmo-enabled: false;
     in-out property <bool> show-fps: false;
     in-out property <float> bgm-volume: 100.0;
     in-out property <float> sfx-volume: 80.0;
+    in-out property <bool> vsync: true;
+    in-out property <bool> debug-mode: false;
 
     in property <int> current-fps: 60;
 
@@ -74,10 +78,14 @@ export component GameRoot inherits Window {
     PauseMenu {
         show-pause-menu: root.show-pause-menu;
         build-version: root.build-version;
+        resolution <=> root.resolution;
+        window-mode <=> root.window-mode;
         gizmo-enabled <=> root.gizmo-enabled;
         show-fps <=> root.show-fps;
         bgm-volume <=> root.bgm-volume;
         sfx-volume <=> root.sfx-volume;
+        vsync <=> root.vsync;
+        debug-mode <=> root.debug-mode;
 
         close_clicked => { root.close_clicked(); }
         reload_world_clicked => { root.reload_world_clicked(); }

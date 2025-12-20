@@ -25,6 +25,7 @@ pub struct PauseMenuView {
     quit_pending: Rc<Cell<bool>>,
     apply_settings_pending: Rc<Cell<bool>>,
     cancel_settings_pending: Rc<Cell<bool>>,
+    settings_initialized: Rc<Cell<bool>>, // track if we've initialized UI from engine
 }
 
 impl PauseMenuView {
@@ -70,6 +71,7 @@ impl PauseMenuView {
             quit_pending,
             apply_settings_pending,
             cancel_settings_pending,
+            settings_initialized: Rc::new(Cell::new(false)),
         }
     }
 
@@ -77,17 +79,43 @@ impl PauseMenuView {
     pub fn update(&self, game_root: &GameRoot, ctx: PauseMenuContext) {
         game_root.set_show_pause_menu(*ctx.paused);
 
-        // sync settings state from engine to UI
-        game_root.set_gizmo_enabled(*ctx.settings.render_gizmos);
-        game_root.set_show_fps(*ctx.settings.show_fps);
-        game_root.set_bgm_volume(*ctx.settings.bgm_volume);
-        game_root.set_sfx_volume(*ctx.settings.sfx_volume);
+        // initialize UI from engine values on first run or after cancel
+        if !self.settings_initialized.get() {
+            // format resolution as "width x height"
+            let resolution_str = format!(
+                "{} x {}",
+                ctx.settings.game_config.win_width, ctx.settings.game_config.win_height
+            );
+            game_root.set_resolution(resolution_str.into());
+            game_root.set_window_mode(ctx.settings.game_config.window_mode.clone().into());
+            game_root.set_gizmo_enabled(*ctx.settings.render_gizmos);
+            game_root.set_show_fps(ctx.settings.game_config.fps_counter);
+            game_root.set_bgm_volume(ctx.settings.sound_config.bgm);
+            game_root.set_sfx_volume(ctx.settings.sound_config.sfx);
+            game_root.set_vsync(ctx.settings.game_config.vsync);
+            game_root.set_debug_mode(ctx.settings.game_config.debug_mode);
+            self.settings_initialized.set(true);
+        }
 
         // sync settings state from UI to engine (live preview)
+        // only sync FROM UI TO engine, not the other way, to preserve user changes
+
+        // parse resolution string "width x height" back to u32 values
+        let resolution_str = game_root.get_resolution().to_string();
+        if let Some((width_str, height_str)) = resolution_str.split_once(" x ") {
+            if let (Ok(width), Ok(height)) = (width_str.trim().parse(), height_str.trim().parse()) {
+                ctx.settings.game_config.win_width = width;
+                ctx.settings.game_config.win_height = height;
+            }
+        }
+
+        ctx.settings.game_config.window_mode = game_root.get_window_mode().to_string();
         *ctx.settings.render_gizmos = game_root.get_gizmo_enabled();
-        *ctx.settings.show_fps = game_root.get_show_fps();
-        *ctx.settings.bgm_volume = game_root.get_bgm_volume();
-        *ctx.settings.sfx_volume = game_root.get_sfx_volume();
+        ctx.settings.game_config.fps_counter = game_root.get_show_fps();
+        ctx.settings.sound_config.bgm = game_root.get_bgm_volume();
+        ctx.settings.sound_config.sfx = game_root.get_sfx_volume();
+        ctx.settings.game_config.vsync = game_root.get_vsync();
+        ctx.settings.game_config.debug_mode = game_root.get_debug_mode();
 
         self.handle_unpause(ctx.paused);
         self.handle_reload_world(ctx.system.message_queue);
@@ -115,6 +143,8 @@ impl PauseMenuView {
     fn handle_cancel_settings(&self, message_queue: &mut MessageQueue) {
         if self.cancel_settings_pending.replace(false) {
             message_queue.send(UiMessage::CancelSettings);
+            // reset flag so UI will be reloaded from engine on next update
+            self.settings_initialized.set(false);
         }
     }
 
