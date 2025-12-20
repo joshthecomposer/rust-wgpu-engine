@@ -8,6 +8,8 @@ use std::{
 
 use glam::{Quat, Vec3};
 use nalgebra::{Point3, UnitQuaternion};
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use rapier3d::prelude::*;
 use winit::keyboard::KeyCode;
 
@@ -69,7 +71,7 @@ pub struct EntityManager {
     pub player_controllers: SparseSet<PlayerController>,
     pub simstate_controllers: SparseSet<SimStateController>,
     pub destinations: SparseSet<Vec3>,
-    // pub rng: ChaCha8Rng,
+    pub rng: ChaCha8Rng,
     pub selected: Vec<usize>,
     pub v_effects: SparseSet<VisualEffect>,
     pub entity_trashcan: Vec<usize>,
@@ -126,7 +128,7 @@ impl EntityManager {
             player_controllers: SparseSet::with_capacity(max_entities),
             simstate_controllers: SparseSet::with_capacity(max_entities),
             destinations: SparseSet::with_capacity(max_entities),
-            // rng: ChaCha8Rng::seed_from_u64(1),
+            rng: ChaCha8Rng::seed_from_u64(100),
             selected: Vec::new(),
             v_effects: SparseSet::with_capacity(max_entities),
             entity_trashcan: Vec::new(),
@@ -232,6 +234,8 @@ impl EntityManager {
     pub fn create_meshless_entity(&mut self, instance: &EntityInstance) {
         let parent_id = self.next_entity_id;
 
+        dbg!("CREATING A MESHLESS ENTITY");
+
         let archetype = match self.entity_type_register.get(&instance.entity_type) {
             Some(a) => a,
             None => {
@@ -267,6 +271,8 @@ impl EntityManager {
                 scale,
             },
         );
+
+        self.next_entity_id += 1;
     }
 
     pub fn create_mesh_entity(
