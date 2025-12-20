@@ -914,7 +914,10 @@ impl Renderer {
                 }
                 shader.set_bool("selection_fresnel", is_selected);
 
-                let model = em.models.get(*id).unwrap();
+                let model = match em.models.get(*id) {
+                    Some(m) => m,
+                    None => continue,
+                };
                 let trans = Self::render_transform(em, *id, alpha);
 
                 let m_mat = Mat4::from_scale_rotation_translation(
@@ -1158,7 +1161,10 @@ impl Renderer {
                 }
             }
 
-            let model = em.models.get(*id).unwrap();
+            let model = match em.models.get(*id) {
+                Some(m) => m,
+                None => continue,
+            };
             let trans = Self::render_transform(em, *id, alpha);
             //let trans = em.transforms.get(model.key()).unwrap();
 

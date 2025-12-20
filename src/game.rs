@@ -152,6 +152,12 @@ impl Game {
                     &self.world.camera,
                 );
 
+                self.world.spawn_manager.update(
+                    &mut self.world.ecs,
+                    &mut self.physics,
+                    self.time.fixed_dt,
+                );
+
                 items::update(&mut self.world.ecs, &mut self.physics);
                 animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
                 combat_system::update(

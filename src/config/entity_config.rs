@@ -49,6 +49,7 @@ pub struct EntityTypeHelper {
     pub rot_correction: Quat,
     pub rigid_body_type: Option<RigidBodyType>,
     pub scale_correction: Vec3,
+    #[serde(default)]
     pub mesh_path: String,
     #[serde(default)]
     pub bone_path: Option<String>,

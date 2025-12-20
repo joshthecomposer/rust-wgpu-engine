@@ -3,6 +3,13 @@ use serde::Deserialize;
 
 use crate::animation::model::{Model, Vertex};
 
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+pub enum Dimension {
+    Cuboid { w: f32, h: f32, d: f32 },
+    Cylinder { r: f32, h: f32 },
+    Pill { r: f32, h: f32 },
+}
+
 pub struct Cuboid {
     pub w: f32,
     pub h: f32,

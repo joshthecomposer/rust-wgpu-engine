@@ -98,7 +98,7 @@ pub fn enemy_sim_state_machine(
                     break 'ns;
                 }
 
-                entity_non_combat_transition(controller, SimState::Waiting, animator, true);
+                entity_non_combat_transition(controller, SimState::Aggro, animator, true);
             }
             SimState::Waiting => {
                 controller.time_in_state += dt;
@@ -138,11 +138,6 @@ pub fn enemy_sim_state_machine(
                         reset_combat(controller, animator);
                         break 'ns;
                     }
-                }
-
-                if !within_aggro_range {
-                    entity_non_combat_transition(controller, SimState::Waiting, animator, false);
-                    break 'ns;
                 }
 
                 if within_weapon_length {
