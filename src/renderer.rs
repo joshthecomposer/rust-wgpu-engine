@@ -547,6 +547,63 @@ impl Renderer {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
         }
 
+        // =============================================================
+        // Base Quad for Frames
+        // =============================================================
+        let mut quad_vao = 0;
+        let mut quad_vbo = 0;
+
+        unsafe {
+            let quad_vertices: [f32; 30] = BASIC_QUAD_VERTICES;
+
+            gl_call!(gl::GenVertexArrays(1, &mut quad_vao));
+            gl_call!(gl::GenBuffers(1, &mut quad_vbo));
+
+            gl_call!(gl::BindVertexArray(quad_vao));
+
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, quad_vbo));
+            gl_call!(gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (quad_vertices.len() * std::mem::size_of::<f32>()) as isize,
+                quad_vertices.as_ptr().cast(),
+                gl::STATIC_DRAW
+            ));
+
+            let stride = (5 * std::mem::size_of::<f32>()) as i32;
+
+            // location 0: vec3 position
+            gl_call!(gl::EnableVertexAttribArray(0));
+            gl_call!(gl::VertexAttribPointer(
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                std::ptr::null()
+            ));
+
+            // location 1: vec2 uv (offset 3 floats)
+            gl_call!(gl::EnableVertexAttribArray(1));
+            gl_call!(gl::VertexAttribPointer(
+                1,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (3 * std::mem::size_of::<f32>()) as *const _
+            ));
+
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
+            gl_call!(gl::BindVertexArray(0));
+
+            // TODO: HashMap lookup every quad draw is unnecessary overhead
+            // Not huge, but we call render_quad() a lot (bloom passes).
+            // storing this as just fields int a struct would be better.
+            // e.g. pub struct Vaos { base_quad, hdr, etc }
+
+            vaos.insert(VaoType::BaseQuad, quad_vao);
+        }
+
         let mut debug_depth_quad = Shader::new("resources/shaders/debug_depth_quad.glsl");
 
         debug_depth_quad.activate();
@@ -1218,55 +1275,10 @@ impl Renderer {
     // }
 
     pub fn render_quad(&self) {
-        let mut vao = 0;
-        let mut vbo = 0;
-
-        let quad_vertices: [f32; 30] = BASIC_QUAD_VERTICES;
-
         unsafe {
-            gl_call!(gl::GenVertexArrays(1, &mut vao));
-            gl_call!(gl::GenBuffers(1, &mut vbo));
-            gl_call!(gl::BindVertexArray(vao));
-
-            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, vbo));
-            gl_call!(gl::BufferData(
-                gl::ARRAY_BUFFER,
-                (quad_vertices.len() * std::mem::size_of::<f32>()) as isize,
-                quad_vertices.as_ptr() as *const _,
-                gl::STATIC_DRAW
+            gl_call!(gl::BindVertexArray(
+                *self.vaos.get(&VaoType::BaseQuad).unwrap()
             ));
-
-            let stride = (5 * std::mem::size_of::<f32>()) as i32;
-
-            // Position Attribute
-            gl_call!(gl::EnableVertexAttribArray(0));
-            gl_call!(gl::VertexAttribPointer(
-                0,
-                3,
-                gl::FLOAT,
-                gl::FALSE,
-                stride,
-                std::ptr::null()
-            ));
-
-            // Texture Coordinate Attribute
-            gl_call!(gl::EnableVertexAttribArray(1));
-            gl_call!(gl::VertexAttribPointer(
-                1,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                stride,
-                (3 * std::mem::size_of::<f32>()) as *const _
-            ));
-
-            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
-            gl_call!(gl::BindVertexArray(0));
-        }
-
-        // Draw the quad
-        unsafe {
-            gl_call!(gl::BindVertexArray(vao));
             gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
             gl_call!(gl::BindVertexArray(0));
         }

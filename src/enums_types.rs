@@ -19,6 +19,7 @@ pub enum VaoType {
     Skybox,
     DebugLight,
     GroundPlane,
+    BaseQuad,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -27,6 +28,7 @@ pub enum VboType {
     Skybox,
     DebugLight,
     GroundPlane,
+    BaseQuad,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
