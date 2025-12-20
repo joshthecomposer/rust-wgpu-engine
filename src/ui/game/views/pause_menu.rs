@@ -82,12 +82,16 @@ impl PauseMenuView {
         game_root.set_show_fps(*ctx.settings.show_fps);
         game_root.set_bgm_volume(*ctx.settings.bgm_volume);
         game_root.set_sfx_volume(*ctx.settings.sfx_volume);
+        game_root.set_vsync(*ctx.settings.vsync);
+        game_root.set_debug_mode(*ctx.settings.debug_mode);
 
         // sync settings state from UI to engine (live preview)
         *ctx.settings.render_gizmos = game_root.get_gizmo_enabled();
         *ctx.settings.show_fps = game_root.get_show_fps();
         *ctx.settings.bgm_volume = game_root.get_bgm_volume();
         *ctx.settings.sfx_volume = game_root.get_sfx_volume();
+        *ctx.settings.vsync = game_root.get_vsync();
+        *ctx.settings.debug_mode = game_root.get_debug_mode();
 
         self.handle_unpause(ctx.paused);
         self.handle_reload_world(ctx.system.message_queue);

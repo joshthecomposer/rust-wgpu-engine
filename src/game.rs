@@ -394,6 +394,7 @@ impl Game {
                     // update config from current state
                     self.config.fps_counter = self.show_fps;
                     self.config.render_gizmos = self.renderer.render_gizmos;
+                    // note: vsync and debug_mode are already in self.config and updated via UI
 
                     // save configs to disk
                     self.config.save_to_file(&self.config_path);
@@ -407,6 +408,7 @@ impl Game {
                     // sync state from reloaded config
                     self.show_fps = self.config.fps_counter;
                     self.renderer.render_gizmos = self.config.render_gizmos;
+                    // note: vsync and debug_mode are already in self.config and will be reloaded
                 }
             }
         }
@@ -420,6 +422,8 @@ impl Game {
             show_fps: &mut self.show_fps,
             bgm_volume: &mut self.sound_config.bgm,
             sfx_volume: &mut self.sound_config.sfx,
+            vsync: &mut self.config.vsync,
+            debug_mode: &mut self.config.debug_mode,
         });
 
         // update FPS counter

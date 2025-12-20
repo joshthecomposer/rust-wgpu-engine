@@ -22,6 +22,8 @@ pub struct SettingsContext<'a> {
     pub show_fps: &'a mut bool,
     pub bgm_volume: &'a mut f32,
     pub sfx_volume: &'a mut f32,
+    pub vsync: &'a mut bool,
+    pub debug_mode: &'a mut bool,
 }
 
 /// Context for system-level resources needed for system actions.

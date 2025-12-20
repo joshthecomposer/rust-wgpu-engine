@@ -32,6 +32,8 @@ pub struct GameUiUpdateContext<'a> {
     pub show_fps: &'a mut bool,
     pub bgm_volume: &'a mut f32,
     pub sfx_volume: &'a mut f32,
+    pub vsync: &'a mut bool,
+    pub debug_mode: &'a mut bool,
 }
 
 /// Context for portrait rendering - passed to render().
@@ -287,6 +289,8 @@ impl GameUiManager {
                 show_fps: ctx.show_fps,
                 bgm_volume: ctx.bgm_volume,
                 sfx_volume: ctx.sfx_volume,
+                vsync: ctx.vsync,
+                debug_mode: ctx.debug_mode,
             },
             system: SystemContext {
                 entity_manager: ctx.entity_manager,

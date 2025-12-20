@@ -21,6 +21,8 @@ export component GameRoot inherits Window {
     in-out property <bool> show-fps: false;
     in-out property <float> bgm-volume: 100.0;
     in-out property <float> sfx-volume: 80.0;
+    in-out property <bool> vsync: true;
+    in-out property <bool> debug-mode: false;
 
     in property <int> current-fps: 60;
 
@@ -78,6 +80,8 @@ export component GameRoot inherits Window {
         show-fps <=> root.show-fps;
         bgm-volume <=> root.bgm-volume;
         sfx-volume <=> root.sfx-volume;
+        vsync <=> root.vsync;
+        debug-mode <=> root.debug-mode;
 
         close_clicked => { root.close_clicked(); }
         reload_world_clicked => { root.reload_world_clicked(); }
