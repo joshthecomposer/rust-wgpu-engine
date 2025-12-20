@@ -7,6 +7,7 @@ import "../fonts/weiholmir.ttf";
 import { PlayerContainer } from "components/player_container.slint";
 import { PauseMenu } from "pause_menu.slint";
 import { FpsCounter } from "components/fps_counter.slint";
+import { Toast } from "components/toast.slint";
 import { Theme } from "components/theme.slint";
 
 export component GameRoot inherits Window {
@@ -30,12 +31,16 @@ export component GameRoot inherits Window {
 
     in property <string> build-version: "v0.0.1a";
 
+    // ==================== TOAST NOTIFICATIONS ====================
+    in property <[{id: int, toast-type: int, title: string, message: string, state: int}]> toasts: [];
+
     callback close_clicked();
     callback reload_world_clicked();
     callback save_player_clicked();
     callback quit_clicked();
     callback apply_settings_clicked();
     callback cancel_settings_clicked();
+    callback toast_close_clicked(int);
 
     // ==================== PLAYER HUD PROPERTIES ====================
     in property <bool> show-player-hud: true;
@@ -93,5 +98,31 @@ export component GameRoot inherits Window {
         quit_clicked => { root.quit_clicked(); }
         apply_settings_clicked => { root.apply_settings_clicked(); }
         cancel_settings_clicked => { root.cancel_settings_clicked(); }
+    }
+
+    // ==================== TOAST NOTIFICATIONS ====================
+    // positioned in bottom-right corner, stacks vertically
+    // accounts for 4px shadow offset on right and bottom
+    toast-container := Rectangle {
+        x: parent.width - self.width - 24px;
+        y: parent.height - self.height - 24px;
+        width: 400px;
+        height: toast-layout.preferred-height;
+        background: transparent;
+        clip: false;
+
+        toast-layout := VerticalLayout {
+            spacing: 12px;
+            alignment: end;
+
+            for toast in toasts: Toast {
+                toast-type: toast.toast-type;
+                title: toast.title;
+                message: toast.message;
+                toast-id: toast.id;
+                state: toast.state;
+                close-clicked(id) => { root.toast_close_clicked(id); }
+            }
+        }
     }
 }

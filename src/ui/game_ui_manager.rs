@@ -31,6 +31,7 @@ pub struct GameUiUpdateContext<'a> {
     pub render_gizmos: &'a mut bool, // renderer.render_gizmos - kept separate since it's not in config
     pub game_config: &'a mut crate::config::game_config::GameConfig,
     pub sound_config: &'a mut crate::config::sound_config::SoundConfig,
+    pub elapsed_time: f64,
 }
 
 /// Context for portrait rendering - passed to render().
@@ -290,6 +291,7 @@ impl GameUiManager {
                 entity_manager: ctx.entity_manager,
                 message_queue: ctx.message_queue,
             },
+            elapsed_time: ctx.elapsed_time,
         };
         self.game_root_view.update(game_ctx);
     }
