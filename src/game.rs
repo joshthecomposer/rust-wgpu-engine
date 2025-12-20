@@ -351,6 +351,22 @@ impl Game {
         self.world.lights.update(&self.time.dt);
         self.world.particles.update(self.time.dt);
 
+        // update game UI (pause menu, HUD, etc.) BEFORE processing messages
+        // this ensures UI values are synced to game state before ApplySettings saves
+        self.game_ui.update(GameUiUpdateContext {
+            message_queue: &mut self.message_queue,
+            entity_manager: &self.world.ecs,
+            paused: &mut self.paused,
+            render_gizmos: &mut self.renderer.render_gizmos,
+            show_fps: &mut self.show_fps,
+            bgm_volume: &mut self.sound_config.bgm,
+            sfx_volume: &mut self.sound_config.sfx,
+            vsync: &mut self.config.vsync,
+            debug_mode: &mut self.config.debug_mode,
+        });
+
+        self.game_ui.set_fps(self.time.fps);
+
         let msgs = self.message_queue.drain();
 
         for msg in msgs.iter() {
@@ -399,6 +415,10 @@ impl Game {
                     // save configs to disk
                     self.config.save_to_file(&self.config_path);
                     self.sound_config.save_to_file(&self.sound_config_path);
+
+                    self.paused = false;
+
+                    println!("[DEBUG] ApplySettings - Configs saved to disk");
                 }
                 UiMessage::CancelSettings => {
                     // reload configs from disk to discard changes
@@ -412,22 +432,6 @@ impl Game {
                 }
             }
         }
-
-        // update game UI (pause menu, HUD, etc.)
-        self.game_ui.update(GameUiUpdateContext {
-            message_queue: &mut self.message_queue,
-            entity_manager: &self.world.ecs,
-            paused: &mut self.paused,
-            render_gizmos: &mut self.renderer.render_gizmos,
-            show_fps: &mut self.show_fps,
-            bgm_volume: &mut self.sound_config.bgm,
-            sfx_volume: &mut self.sound_config.sfx,
-            vsync: &mut self.config.vsync,
-            debug_mode: &mut self.config.debug_mode,
-        });
-
-        // update FPS counter
-        self.game_ui.set_fps(self.time.fps);
     }
 
     pub fn render(&mut self) {

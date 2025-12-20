@@ -25,6 +25,7 @@ pub struct PauseMenuView {
     quit_pending: Rc<Cell<bool>>,
     apply_settings_pending: Rc<Cell<bool>>,
     cancel_settings_pending: Rc<Cell<bool>>,
+    settings_initialized: Rc<Cell<bool>>, // track if we've initialized UI from engine
 }
 
 impl PauseMenuView {
@@ -70,6 +71,7 @@ impl PauseMenuView {
             quit_pending,
             apply_settings_pending,
             cancel_settings_pending,
+            settings_initialized: Rc::new(Cell::new(false)),
         }
     }
 
@@ -77,15 +79,19 @@ impl PauseMenuView {
     pub fn update(&self, game_root: &GameRoot, ctx: PauseMenuContext) {
         game_root.set_show_pause_menu(*ctx.paused);
 
-        // sync settings state from engine to UI
-        game_root.set_gizmo_enabled(*ctx.settings.render_gizmos);
-        game_root.set_show_fps(*ctx.settings.show_fps);
-        game_root.set_bgm_volume(*ctx.settings.bgm_volume);
-        game_root.set_sfx_volume(*ctx.settings.sfx_volume);
-        game_root.set_vsync(*ctx.settings.vsync);
-        game_root.set_debug_mode(*ctx.settings.debug_mode);
+        // initialize UI from engine values on first run or after cancel
+        if !self.settings_initialized.get() {
+            game_root.set_gizmo_enabled(*ctx.settings.render_gizmos);
+            game_root.set_show_fps(*ctx.settings.show_fps);
+            game_root.set_bgm_volume(*ctx.settings.bgm_volume);
+            game_root.set_sfx_volume(*ctx.settings.sfx_volume);
+            game_root.set_vsync(*ctx.settings.vsync);
+            game_root.set_debug_mode(*ctx.settings.debug_mode);
+            self.settings_initialized.set(true);
+        }
 
         // sync settings state from UI to engine (live preview)
+        // only sync FROM UI TO engine, not the other way, to preserve user changes
         *ctx.settings.render_gizmos = game_root.get_gizmo_enabled();
         *ctx.settings.show_fps = game_root.get_show_fps();
         *ctx.settings.bgm_volume = game_root.get_bgm_volume();
@@ -119,6 +125,8 @@ impl PauseMenuView {
     fn handle_cancel_settings(&self, message_queue: &mut MessageQueue) {
         if self.cancel_settings_pending.replace(false) {
             message_queue.send(UiMessage::CancelSettings);
+            // reset flag so UI will be reloaded from engine on next update
+            self.settings_initialized.set(false);
         }
     }
 
