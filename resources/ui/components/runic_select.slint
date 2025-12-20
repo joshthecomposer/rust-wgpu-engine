@@ -1,0 +1,57 @@
+// runic-styled dropdown select
+import { Theme } from "theme.slint";
+
+export component RunicSelect inherits Rectangle {
+    in property <string> current-value: "";
+    in property <[string]> options: [];
+    in-out property <bool> is-open: false;
+    callback selected(string);
+    callback opened();
+
+    width: 160px;
+    height: 28px;
+    background: transparent;
+
+    // trigger button
+    trigger := Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: touch.has-hover ? Theme.stone-mild : Theme.stone-dark;
+        border-width: 1px;
+        border-color: Theme.stone-light;
+
+        touch := TouchArea {
+            clicked => {
+                is-open = !is-open;
+                if is-open {
+                    root.opened();
+                }
+            }
+        }
+
+        HorizontalLayout {
+            padding-left: 12px;
+            padding-right: 12px;
+            spacing: 8px;
+            alignment: space-between;
+
+            Text {
+                text: current-value;
+                color: Theme.highlight;
+                font-size: 11px;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: "▼";
+                color: Theme.runic-gold;
+                font-size: 8px;
+                vertical-alignment: center;
+            }
+        }
+    }
+
+    // dropdown is now rendered at the overlay level in settings_menu.slint
+    // keeping this comment for reference
+}
+

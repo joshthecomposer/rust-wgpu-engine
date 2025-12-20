@@ -9,6 +9,8 @@ pub enum UiMessage {
     WindowShouldClose,
     ReloadWorldData,
     RenderStagedEmitters { do_it: bool },
+    ApplySettings,
+    CancelSettings,
 }
 
 pub struct MessageQueue {

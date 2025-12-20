@@ -2,32 +2,47 @@ import { RunicButton } from "components/menu_button.slint";
 import { RunicWindow } from "components/runic_window.slint";
 import { RunicCloseButton } from "components/runic_close_button.slint";
 import { RunicWindowHeader } from "components/runic_window_header.slint";
-import { RunicMenuSeparator } from "components/runic_menu_separator.slint";
 import { RunicFooterLabel } from "components/runic_footer_label.slint";
+import { RunicTabButton } from "components/runic_tab_button.slint";
+import { SystemMenu } from "components/system_menu.slint";
+import { SettingsMenu } from "components/settings_menu.slint";
 import { Theme } from "components/theme.slint";
 
-export component PauseMenu inherits Window {
+export component PauseMenu inherits Rectangle {
     background: transparent;
-    default-font-family: Theme.font-family;
+    width: 100%;
+    height: 100%;
 
     in property <bool> show-pause-menu: false;
     in property <string> build-version: "v0.0.1a";
 
+    // settings properties
+    in-out property <string> resolution: "1920 x 1080";
+    in-out property <string> window-mode: "Borderless";
+    in-out property <string> shader-type: "Default";
+    in-out property <bool> gizmo-enabled: false;
+    in-out property <bool> show-fps: false;
+    in-out property <float> bgm-volume: 100.0;
+    in-out property <float> sfx-volume: 80.0;
+
+    // tab state
+    in-out property <int> active-tab: 0; // 0 = System, 1 = Settings
+
+    // callbacks
     callback close_clicked();
-    callback gizmo_clicked();
     callback reload_world_clicked();
     callback save_player_clicked();
     callback quit_clicked();
+    callback apply_settings_clicked();
+    callback cancel_settings_clicked();
 
     // ==================== PAUSE MENU ====================
     if show-pause-menu: RunicWindow {
-        window-width: 420px;
-        window-height: 400px;
-
+        window-width: 440px;
+        window-height: active-tab == 0 ? 380px : 620px; // smaller for System tab, larger for Settings
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
 
-        // close button (×) in top-right
         RunicCloseButton {
             x: parent.width - self.width - 12px;
             y: 12px;
@@ -41,34 +56,68 @@ export component PauseMenu inherits Window {
             title: "SYSTEM MENU";
         }
 
-        // button container
-        VerticalLayout {
+        // tabs header
+        HorizontalLayout {
             x: 24px;
-            y: 100px;
+            y: 80px;
             width: parent.width - 48px;
-            spacing: 16px;
+            height: 32px;
+            spacing: 20px;
+            alignment: center;
 
-            RunicButton {
-                label: "GIZMO RENDERING";
-                clicked => { root.gizmo_clicked(); }
+            RunicTabButton {
+                label: "SYSTEM";
+                active: active-tab == 0;
+                clicked => { active-tab = 0; }
             }
 
-            RunicButton {
-                label: "RELOAD WORLD DATA";
-                clicked => { root.reload_world_clicked(); }
+            RunicTabButton {
+                label: "SETTINGS";
+                active: active-tab == 1;
+                clicked => { active-tab = 1; }
+            }
+        }
+
+        // tab underline
+        Rectangle {
+            y: 112px;
+            x: 24px;
+            width: parent.width - 48px;
+            height: 1px;
+            background: Theme.stone-light;
+        }
+
+        // tab content container
+        Rectangle {
+            x: 24px;
+            y: 125px;
+            width: parent.width - 48px;
+            height: parent.height - 165px;
+            background: transparent;
+
+            // system tab content
+            if active-tab == 0: SystemMenu {
+                width: parent.width;
+                reload_world_clicked => { root.reload_world_clicked(); }
+                save_player_clicked => { root.save_player_clicked(); }
+                quit_clicked => { root.quit_clicked(); }
             }
 
-            RunicButton {
-                label: "SAVE PLAYER DATA";
-                clicked => { root.save_player_clicked(); }
-            }
-
-            RunicMenuSeparator { }
-
-            RunicButton {
-                label: "QUIT GAME";
-                danger: true;
-                clicked => { root.quit_clicked(); }
+            // settings tab content
+            if active-tab == 1: SettingsMenu {
+                width: parent.width;
+                resolution <=> root.resolution;
+                window-mode <=> root.window-mode;
+                shader-type <=> root.shader-type;
+                gizmo-enabled <=> root.gizmo-enabled;
+                show-fps <=> root.show-fps;
+                bgm-volume <=> root.bgm-volume;
+                sfx-volume <=> root.sfx-volume;
+                apply_clicked => { root.apply_settings_clicked(); }
+                cancel_clicked => {
+                    root.cancel_settings_clicked();
+                    root.active-tab = 0; // switch back to System tab
+                }
             }
         }
 

@@ -4,28 +4,34 @@
 // import custom font for game UI - must be at root level for embedding
 import "../fonts/weiholmir.ttf";
 
-import { RunicButton } from "components/menu_button.slint";
-import { RunicWindow } from "components/runic_window.slint";
-import { RunicCloseButton } from "components/runic_close_button.slint";
-import { RunicWindowHeader } from "components/runic_window_header.slint";
-import { RunicMenuSeparator } from "components/runic_menu_separator.slint";
-import { RunicFooterLabel } from "components/runic_footer_label.slint";
 import { PlayerContainer } from "components/player_container.slint";
+import { PauseMenu } from "pause_menu.slint";
+import { FpsCounter } from "components/fps_counter.slint";
 import { Theme } from "components/theme.slint";
 
 export component GameRoot inherits Window {
     background: transparent;
     default-font-family: Theme.font-family;
 
-    // ==================== PAUSE MENU PROPERTIES ====================
+    // pause menu properties
     in property <bool> show-pause-menu: false;
+
+    // settings properties
+    in-out property <bool> gizmo-enabled: false;
+    in-out property <bool> show-fps: false;
+    in-out property <float> bgm-volume: 100.0;
+    in-out property <float> sfx-volume: 80.0;
+
+    in property <int> current-fps: 60;
+
     in property <string> build-version: "v0.0.1a";
 
     callback close_clicked();
-    callback gizmo_clicked();
     callback reload_world_clicked();
     callback save_player_clicked();
     callback quit_clicked();
+    callback apply_settings_clicked();
+    callback cancel_settings_clicked();
 
     // ==================== PLAYER HUD PROPERTIES ====================
     in property <bool> show-player-hud: true;
@@ -56,64 +62,28 @@ export component GameRoot inherits Window {
         mana-max: root.player-mana-max;
     }
 
+    // ==================== FPS COUNTER ====================
+    FpsCounter {
+        x: parent.width - self.width - 16px;
+        y: 16px;
+        fps: root.current-fps;
+        show: root.show-fps;
+    }
+
     // ==================== PAUSE MENU ====================
-    if show-pause-menu: RunicWindow {
-        window-width: 420px;
-        window-height: 400px;
+    PauseMenu {
+        show-pause-menu: root.show-pause-menu;
+        build-version: root.build-version;
+        gizmo-enabled <=> root.gizmo-enabled;
+        show-fps <=> root.show-fps;
+        bgm-volume <=> root.bgm-volume;
+        sfx-volume <=> root.sfx-volume;
 
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-
-        // close button (×) in top-right
-        RunicCloseButton {
-            x: parent.width - self.width - 12px;
-            y: 12px;
-            clicked => { root.close_clicked(); }
-        }
-
-        // header section
-        RunicWindowHeader {
-            y: 24px;
-            width: parent.width;
-            title: "SYSTEM MENU";
-        }
-
-        // button container
-        VerticalLayout {
-            x: 24px;
-            y: 100px;
-            width: parent.width - 48px;
-            spacing: 16px;
-
-            RunicButton {
-                label: "GIZMO RENDERING";
-                clicked => { root.gizmo_clicked(); }
-            }
-
-            RunicButton {
-                label: "RELOAD WORLD DATA";
-                clicked => { root.reload_world_clicked(); }
-            }
-
-            RunicButton {
-                label: "SAVE PLAYER DATA";
-                clicked => { root.save_player_clicked(); }
-            }
-
-            RunicMenuSeparator { }
-
-            RunicButton {
-                label: "QUIT GAME";
-                danger: true;
-                clicked => { root.quit_clicked(); }
-            }
-        }
-
-        // footer version text
-        RunicFooterLabel {
-            y: parent.height - 28px;
-            width: parent.width;
-            value: build-version;
-        }
+        close_clicked => { root.close_clicked(); }
+        reload_world_clicked => { root.reload_world_clicked(); }
+        save_player_clicked => { root.save_player_clicked(); }
+        quit_clicked => { root.quit_clicked(); }
+        apply_settings_clicked => { root.apply_settings_clicked(); }
+        cancel_settings_clicked => { root.cancel_settings_clicked(); }
     }
 }

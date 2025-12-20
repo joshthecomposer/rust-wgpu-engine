@@ -37,6 +37,11 @@ pub struct Game {
     game_ui: GameUiManager,
     pub should_quit: bool,
     imgui_manager: Option<ImguiManager>,
+    config: GameConfig,
+    config_path: String,
+    sound_config: SoundConfig,
+    sound_config_path: String,
+    show_fps: bool,
 }
 
 impl Game {
@@ -64,6 +69,8 @@ impl Game {
             false => None,
         };
 
+        let show_fps = config.fps_counter;
+
         Self {
             platform,
             time,
@@ -77,6 +84,11 @@ impl Game {
             game_ui,
             should_quit: false,
             imgui_manager,
+            config,
+            config_path: "config/game_config.json".to_string(),
+            sound_config,
+            sound_config_path: "config/sound_config.json".to_string(),
+            show_fps,
         }
     }
 
@@ -378,6 +390,24 @@ impl Game {
                     self.world = world;
                     self.physics = physics;
                 }
+                UiMessage::ApplySettings => {
+                    // update config from current state
+                    self.config.fps_counter = self.show_fps;
+                    self.config.render_gizmos = self.renderer.render_gizmos;
+
+                    // save configs to disk
+                    self.config.save_to_file(&self.config_path);
+                    self.sound_config.save_to_file(&self.sound_config_path);
+                }
+                UiMessage::CancelSettings => {
+                    // reload configs from disk to discard changes
+                    self.config = GameConfig::load_from_file(&self.config_path);
+                    self.sound_config = SoundConfig::load_from_file(&self.sound_config_path);
+
+                    // sync state from reloaded config
+                    self.show_fps = self.config.fps_counter;
+                    self.renderer.render_gizmos = self.config.render_gizmos;
+                }
             }
         }
 
@@ -387,7 +417,13 @@ impl Game {
             entity_manager: &self.world.ecs,
             paused: &mut self.paused,
             render_gizmos: &mut self.renderer.render_gizmos,
+            show_fps: &mut self.show_fps,
+            bgm_volume: &mut self.sound_config.bgm,
+            sfx_volume: &mut self.sound_config.sfx,
         });
+
+        // update FPS counter
+        self.game_ui.set_fps(self.time.fps);
     }
 
     pub fn render(&mut self) {

@@ -1,0 +1,35 @@
+// tab button for runic menus with active state indicator
+import { Theme } from "theme.slint";
+
+export component RunicTabButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    callback clicked();
+
+    height: 32px;
+    background: transparent;
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    Text {
+        width: parent.width;
+        text: label;
+        color: active ? Theme.highlight : Theme.stone-edge;
+        font-size: 14px;
+        font-weight: active ? 700 : 400;
+        letter-spacing: 2px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    if active: Rectangle {
+        y: parent.height - 6px;
+        x: (parent.width - self.width) / 2;
+        width: 6px;
+        height: 6px;
+        background: Theme.runic-gold;
+    }
+}
+

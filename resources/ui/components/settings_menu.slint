@@ -1,0 +1,323 @@
+// settings menu tab content - all game settings
+import { Theme } from "theme.slint";
+import { RunicButton } from "menu_button.slint";
+import { RunicSettingsSectionHeader } from "runic_settings_section_header.slint";
+import { RunicSettingsRow } from "runic_settings_row.slint";
+import { RunicCheckbox } from "runic_checkbox.slint";
+import { RunicSlider } from "runic_slider.slint";
+import { RunicSelect } from "runic_select.slint";
+import { RunicMenuSeparator } from "runic_menu_separator.slint";
+import { RunicScrollView } from "runic_scroll_view.slint";
+
+export component SettingsMenu inherits Rectangle {
+    // settings properties
+    in-out property <string> resolution: "1920 x 1080";
+    in-out property <string> window-mode: "Borderless";
+    in-out property <string> shader-type: "Default";
+    in-out property <bool> gizmo-enabled: false;
+    in-out property <bool> show-fps: false;
+    in-out property <float> bgm-volume: 100.0;
+    in-out property <float> sfx-volume: 80.0;
+
+    callback apply_clicked();
+    callback cancel_clicked();
+
+    background: transparent;
+
+    VerticalLayout {
+        spacing: 0px;
+
+        scroll-view := RunicScrollView {
+            vertical-stretch: 1;
+            viewport-height: 450px;
+
+            VerticalLayout {
+                spacing: 12px;
+                padding-right: 8px;
+                padding-bottom: 16px;
+
+                    RunicSettingsSectionHeader {
+                        title: "DISPLAY";
+                    }
+
+                    RunicSettingsRow {
+                        label: "Resolution";
+                        resolution-select := RunicSelect {
+                            current-value: resolution;
+                            options: ["1280 x 720", "1920 x 1080", "2560 x 1440"];
+                            selected(value) => {
+                                resolution = value;
+                            }
+                            opened => {
+                                window-mode-select.is-open = false;
+                                shader-type-select.is-open = false;
+                            }
+                        }
+                    }
+
+                    RunicSettingsRow {
+                        label: "Window Mode";
+                        window-mode-select := RunicSelect {
+                            current-value: window-mode;
+                            options: ["Windowed", "Fullscreen", "Borderless"];
+                            selected(value) => {
+                                window-mode = value;
+                            }
+                            opened => {
+                                resolution-select.is-open = false;
+                                shader-type-select.is-open = false;
+                            }
+                        }
+                    }
+
+                    RunicSettingsRow {
+                        label: "Shader Type";
+                        shader-type-select := RunicSelect {
+                            current-value: shader-type;
+                            options: ["Default", "PSX"];
+                            selected(value) => {
+                                shader-type = value;
+                            }
+                            opened => {
+                                resolution-select.is-open = false;
+                                window-mode-select.is-open = false;
+                            }
+                        }
+                    }
+
+                    RunicSettingsSectionHeader {
+                        title: "INTERFACE";
+                    }
+
+                    RunicSettingsRow {
+                        label: "Gizmo Rendering";
+                        RunicCheckbox {
+                            checked: gizmo-enabled;
+                            toggled => {
+                                gizmo-enabled = !gizmo-enabled;
+                            }
+                        }
+                    }
+
+                    RunicSettingsRow {
+                        label: "Show FPS Counter";
+                        RunicCheckbox {
+                            checked: show-fps;
+                            toggled => {
+                                show-fps = !show-fps;
+                            }
+                        }
+                    }
+
+                    RunicSettingsSectionHeader {
+                        title: "SOUND";
+                    }
+
+                    RunicSettingsRow {
+                        label: "BGM Volume";
+                        RunicSlider {
+                            minimum: 0.0;
+                            maximum: 100.0;
+                            value: bgm-volume;
+                            changed(v) => {
+                                bgm-volume = v;
+                            }
+                        }
+                    }
+
+                    RunicSettingsRow {
+                        label: "SFX Volume";
+                        RunicSlider {
+                            minimum: 0.0;
+                            maximum: 100.0;
+                            value: sfx-volume;
+                            changed(v) => {
+                                sfx-volume = v;
+                            }
+                        }
+                    }
+                }
+            }
+
+        RunicMenuSeparator { }
+
+        HorizontalLayout {
+            spacing: 12px;
+            padding-top: 8px;
+
+            RunicButton {
+                label: "CANCEL";
+                danger: true;
+                clicked => { root.cancel_clicked(); }
+            }
+
+            RunicButton {
+                label: "APPLY CHANGES";
+                clicked => { root.apply_clicked(); }
+            }
+        }
+    }
+
+    // dropdown overlay layer - renders above everything
+    // positioned manually based on layout
+
+    // click-outside-to-close for resolution dropdown
+    if resolution-select.is-open: TouchArea {
+        width: root.width;
+        height: root.height;
+        clicked => {
+            resolution-select.is-open = false;
+        }
+    }
+
+    if resolution-select.is-open: Rectangle {
+        x: root.width - 160px - 22px; // align to right side where dropdowns are (accounting for scrollbar)
+        y: 60px; // approximate position of first dropdown
+        width: 164px; // wider to accommodate border
+        height: 3 * 28px + 4px; // taller to accommodate border
+        background: Theme.stone-light; // subtle border
+        drop-shadow-blur: 8px;
+        drop-shadow-color: #00000080;
+        drop-shadow-offset-y: 4px;
+
+        // content background (inset to create border effect)
+        Rectangle {
+            x: 2px;
+            y: 2px;
+            width: parent.width - 4px;
+            height: parent.height - 4px;
+            background: #0f172a;
+
+            VerticalLayout {
+                padding: 0px;
+
+                for option in ["1280 x 720", "1920 x 1080", "2560 x 1440"]: Rectangle {
+                    height: 28px;
+                    background: res-touch.has-hover ? Theme.stone-dark : #0f172a;
+
+                    res-touch := TouchArea {
+                        clicked => {
+                            resolution = option;
+                            resolution-select.is-open = false;
+                        }
+                    }
+
+                    Text {
+                        x: 12px;
+                        text: option;
+                        color: res-touch.has-hover ? Theme.runic-gold : Theme.old-text;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+
+    // click-outside-to-close for window mode dropdown
+    if window-mode-select.is-open: TouchArea {
+        width: root.width;
+        height: root.height;
+        clicked => {
+            window-mode-select.is-open = false;
+        }
+    }
+
+    if window-mode-select.is-open: Rectangle {
+        x: root.width - 160px - 22px;
+        y: 104px; // second dropdown position (60 + 32 + 12 spacing)
+        width: 164px; // wider to accommodate border
+        height: 3 * 28px + 4px; // taller to accommodate border
+        background: Theme.stone-light; // subtle border
+        drop-shadow-blur: 8px;
+        drop-shadow-color: #00000080;
+        drop-shadow-offset-y: 4px;
+
+        // content background (inset to create border effect)
+        Rectangle {
+            x: 2px;
+            y: 2px;
+            width: parent.width - 4px;
+            height: parent.height - 4px;
+            background: #0f172a;
+
+            VerticalLayout {
+                padding: 0px;
+
+                for option in ["Windowed", "Fullscreen", "Borderless"]: Rectangle {
+                    height: 28px;
+                    background: wm-touch.has-hover ? Theme.stone-dark : #0f172a;
+
+                    wm-touch := TouchArea {
+                        clicked => {
+                            window-mode = option;
+                            window-mode-select.is-open = false;
+                        }
+                    }
+
+                    Text {
+                        x: 12px;
+                        text: option;
+                        color: wm-touch.has-hover ? Theme.runic-gold : Theme.old-text;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+
+    // click-outside-to-close for shader type dropdown
+    if shader-type-select.is-open: TouchArea {
+        width: root.width;
+        height: root.height;
+        clicked => {
+            shader-type-select.is-open = false;
+        }
+    }
+
+    if shader-type-select.is-open: Rectangle {
+        x: root.width - 160px - 22px;
+        y: 148px; // third dropdown position (104 + 32 + 12 spacing)
+        width: 164px; // wider to accommodate border
+        height: 2 * 28px + 4px; // taller to accommodate border
+        background: Theme.stone-light; // subtle border
+        drop-shadow-blur: 8px;
+        drop-shadow-color: #00000080;
+        drop-shadow-offset-y: 4px;
+
+        // content background (inset to create border effect)
+        Rectangle {
+            x: 2px;
+            y: 2px;
+            width: parent.width - 4px;
+            height: parent.height - 4px;
+            background: #0f172a;
+
+            VerticalLayout {
+                padding: 0px;
+
+                for option in ["Default", "PSX"]: Rectangle {
+                    height: 28px;
+                    background: shader-touch.has-hover ? Theme.stone-dark : #0f172a;
+
+                    shader-touch := TouchArea {
+                        clicked => {
+                            shader-type = option;
+                            shader-type-select.is-open = false;
+                        }
+                    }
+
+                    Text {
+                        x: 12px;
+                        text: option;
+                        color: shader-touch.has-hover ? Theme.runic-gold : Theme.old-text;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+}
+

@@ -7,42 +7,40 @@ use std::rc::Rc;
 use crate::entity_manager::EntityManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 
-use super::game_root::GameRoot;
+use super::game_root::{GameRoot, SettingsContext, SystemContext};
 
 /// Context passed to PauseMenuView::update().
+/// Uses nested contexts to logically group settings and system resources.
 pub struct PauseMenuContext<'a> {
     pub paused: &'a mut bool,
-    pub render_gizmos: &'a mut bool,
-    pub entity_manager: &'a EntityManager,
-    pub message_queue: &'a mut MessageQueue,
+    pub settings: SettingsContext<'a>,
+    pub system: SystemContext<'a>,
 }
 
 /// Manages the pause menu portion of the GameRoot component.
 pub struct PauseMenuView {
     close_pending: Rc<Cell<bool>>,
-    gizmo_pending: Rc<Cell<bool>>,
     reload_pending: Rc<Cell<bool>>,
     save_pending: Rc<Cell<bool>>,
     quit_pending: Rc<Cell<bool>>,
+    apply_settings_pending: Rc<Cell<bool>>,
+    cancel_settings_pending: Rc<Cell<bool>>,
 }
 
 impl PauseMenuView {
     /// Create a new PauseMenuView and wire up callbacks to the GameRoot component.
     pub fn new(game_root: &GameRoot) -> Self {
         let close_pending = Rc::new(Cell::new(false));
-        let gizmo_pending = Rc::new(Cell::new(false));
         let reload_pending = Rc::new(Cell::new(false));
         let save_pending = Rc::new(Cell::new(false));
         let quit_pending = Rc::new(Cell::new(false));
+        let apply_settings_pending = Rc::new(Cell::new(false));
+        let cancel_settings_pending = Rc::new(Cell::new(false));
 
         // wire up callbacks
         {
             let close = close_pending.clone();
             game_root.on_close_clicked(move || close.set(true));
-        }
-        {
-            let gizmo = gizmo_pending.clone();
-            game_root.on_gizmo_clicked(move || gizmo.set(true));
         }
         {
             let reload = reload_pending.clone();
@@ -56,13 +54,22 @@ impl PauseMenuView {
             let quit = quit_pending.clone();
             game_root.on_quit_clicked(move || quit.set(true));
         }
+        {
+            let apply = apply_settings_pending.clone();
+            game_root.on_apply_settings_clicked(move || apply.set(true));
+        }
+        {
+            let cancel = cancel_settings_pending.clone();
+            game_root.on_cancel_settings_clicked(move || cancel.set(true));
+        }
 
         Self {
             close_pending,
-            gizmo_pending,
             reload_pending,
             save_pending,
             quit_pending,
+            apply_settings_pending,
+            cancel_settings_pending,
         }
     }
 
@@ -70,11 +77,24 @@ impl PauseMenuView {
     pub fn update(&self, game_root: &GameRoot, ctx: PauseMenuContext) {
         game_root.set_show_pause_menu(*ctx.paused);
 
+        // sync settings state from engine to UI
+        game_root.set_gizmo_enabled(*ctx.settings.render_gizmos);
+        game_root.set_show_fps(*ctx.settings.show_fps);
+        game_root.set_bgm_volume(*ctx.settings.bgm_volume);
+        game_root.set_sfx_volume(*ctx.settings.sfx_volume);
+
+        // sync settings state from UI to engine (live preview)
+        *ctx.settings.render_gizmos = game_root.get_gizmo_enabled();
+        *ctx.settings.show_fps = game_root.get_show_fps();
+        *ctx.settings.bgm_volume = game_root.get_bgm_volume();
+        *ctx.settings.sfx_volume = game_root.get_sfx_volume();
+
         self.handle_unpause(ctx.paused);
-        self.handle_toggle_gizmos(ctx.render_gizmos);
-        self.handle_reload_world(ctx.message_queue);
-        self.handle_save_player_data(ctx.entity_manager);
-        self.handle_quit(ctx.message_queue);
+        self.handle_reload_world(ctx.system.message_queue);
+        self.handle_save_player_data(ctx.system.entity_manager);
+        self.handle_quit(ctx.system.message_queue);
+        self.handle_apply_settings(ctx.system.message_queue);
+        self.handle_cancel_settings(ctx.system.message_queue);
     }
     /// Handle unpause action by directly modifying the paused state.
     /// This is a view-specific action, so we modify state directly via context ref.
@@ -84,11 +104,17 @@ impl PauseMenuView {
         }
     }
 
-    /// Handle gizmo rendering toggle by directly modifying the render_gizmos state.
-    /// This is a view-specific action, so we modify state directly via context ref.
-    fn handle_toggle_gizmos(&self, render_gizmos: &mut bool) {
-        if self.gizmo_pending.replace(false) {
-            *render_gizmos = !*render_gizmos;
+    /// Handle apply settings by sending a global message to save config to disk.
+    fn handle_apply_settings(&self, message_queue: &mut MessageQueue) {
+        if self.apply_settings_pending.replace(false) {
+            message_queue.send(UiMessage::ApplySettings);
+        }
+    }
+
+    /// Handle cancel settings by sending a global message to reload config from disk.
+    fn handle_cancel_settings(&self, message_queue: &mut MessageQueue) {
+        if self.cancel_settings_pending.replace(false) {
+            message_queue.send(UiMessage::CancelSettings);
         }
     }
 
