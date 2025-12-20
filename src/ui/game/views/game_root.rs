@@ -12,6 +12,7 @@ use crate::ui::message_queue::MessageQueue;
 
 use super::pause_menu::{PauseMenuContext, PauseMenuView};
 use super::player_hud::{PlayerHudContext, PlayerHudView};
+use super::toast::ToastView;
 
 slint::include_modules!();
 
@@ -36,6 +37,7 @@ pub struct GameRootContext<'a> {
     pub paused: &'a mut bool,
     pub settings: SettingsContext<'a>,
     pub system: SystemContext<'a>,
+    pub elapsed_time: f64,
 }
 
 /// Manages the unified GameRoot Slint component and delegates to child views.
@@ -43,6 +45,7 @@ pub struct GameRootView {
     game_root: GameRoot,
     pause_menu_view: PauseMenuView,
     player_hud_view: PlayerHudView,
+    toast_view: ToastView,
 }
 
 impl GameRootView {
@@ -62,11 +65,13 @@ impl GameRootView {
         // create child views that wire up their callbacks to game_root
         let pause_menu_view = PauseMenuView::new(&game_root);
         let player_hud_view = PlayerHudView::new();
+        let toast_view = ToastView::new(&game_root);
 
         let view = Self {
             game_root,
             pause_menu_view,
             player_hud_view,
+            toast_view,
         };
 
         (view, window)
@@ -76,6 +81,19 @@ impl GameRootView {
     pub fn update(&mut self, ctx: GameRootContext) {
         let paused = *ctx.paused;
         let entity_manager = ctx.system.entity_manager;
+        let elapsed_time = ctx.elapsed_time;
+
+        // drain pending toasts from global queue and add them
+        let pending_toasts = crate::ui::toast::drain_pending_toasts();
+        for toast in pending_toasts {
+            self.toast_view.add_toast(
+                toast.toast_type,
+                toast.title,
+                toast.message,
+                toast.duration,
+                elapsed_time,
+            );
+        }
 
         // delegate to pause menu view
         let pause_ctx = PauseMenuContext {
@@ -91,6 +109,8 @@ impl GameRootView {
             paused,
         };
         self.player_hud_view.update(&self.game_root, hud_ctx);
+
+        self.toast_view.update(&self.game_root, elapsed_time);
     }
 
     /// Get the portrait rect position and size in logical pixels.

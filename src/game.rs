@@ -18,6 +18,7 @@ use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
+use crate::toast; // import toast macro
 use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PortraitRenderContext};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
@@ -357,6 +358,7 @@ impl Game {
             render_gizmos: &mut self.renderer.render_gizmos,
             game_config: &mut self.config,
             sound_config: &mut self.sound_config,
+            elapsed_time: self.time.elapsed as f64,
         });
 
         self.game_ui.set_fps(self.time.fps);
@@ -399,6 +401,12 @@ impl Game {
 
                     self.world = world;
                     self.physics = physics;
+
+                    toast!(
+                        Success,
+                        "World Reloaded",
+                        "World data has been reloaded successfully."
+                    );
                 }
                 UiMessage::ApplySettings => {
                     // sync renderer state to config before saving
@@ -475,6 +483,12 @@ impl Game {
                     self.paused = false;
 
                     println!("[DEBUG] ApplySettings - Configs saved to disk");
+
+                    toast!(
+                        Success,
+                        "Settings Applied",
+                        "Your settings have been saved successfully."
+                    );
                 }
                 UiMessage::CancelSettings => {
                     // reload configs from disk to discard changes
@@ -483,6 +497,12 @@ impl Game {
 
                     // sync renderer state from reloaded config
                     self.renderer.render_gizmos = self.config.render_gizmos;
+
+                    toast!(
+                        Info,
+                        "Settings Cancelled",
+                        "Your changes have been discarded."
+                    );
                 }
             }
         }

@@ -5,6 +5,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::entity_manager::EntityManager;
+use crate::toast;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 
 use super::game_root::{GameRoot, SettingsContext, SystemContext};
@@ -161,6 +162,11 @@ impl PauseMenuView {
     fn handle_save_player_data(&self, entity_manager: &EntityManager) {
         if self.save_pending.replace(false) {
             entity_manager.serialize_entity_data("config/player_data.json");
+            toast!(
+                Success,
+                "Player Data Saved",
+                "Your player data has been saved successfully."
+            );
         }
     }
 
