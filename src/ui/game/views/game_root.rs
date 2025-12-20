@@ -18,12 +18,9 @@ slint::include_modules!();
 /// Context for settings-related state (debug, audio, graphics, etc.).
 /// Groups all user-configurable settings to avoid bloating parent contexts.
 pub struct SettingsContext<'a> {
-    pub render_gizmos: &'a mut bool,
-    pub show_fps: &'a mut bool,
-    pub bgm_volume: &'a mut f32,
-    pub sfx_volume: &'a mut f32,
-    pub vsync: &'a mut bool,
-    pub debug_mode: &'a mut bool,
+    pub render_gizmos: &'a mut bool, // kept separate since it's in renderer, not config
+    pub game_config: &'a mut crate::config::game_config::GameConfig,
+    pub sound_config: &'a mut crate::config::sound_config::SoundConfig,
 }
 
 /// Context for system-level resources needed for system actions.

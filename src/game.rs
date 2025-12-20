@@ -1,9 +1,10 @@
 use std::path::Path;
 
-use glutin::surface::GlSurface;
+use glutin::surface::{GlSurface, SwapInterval};
+use winit::dpi::LogicalSize;
 use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
-use winit::window::CursorGrabMode;
+use winit::window::{CursorGrabMode, Fullscreen};
 
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
@@ -41,7 +42,6 @@ pub struct Game {
     config_path: String,
     sound_config: SoundConfig,
     sound_config_path: String,
-    show_fps: bool,
 }
 
 impl Game {
@@ -69,8 +69,6 @@ impl Game {
             false => None,
         };
 
-        let show_fps = config.fps_counter;
-
         Self {
             platform,
             time,
@@ -88,7 +86,6 @@ impl Game {
             config_path: "config/game_config.json".to_string(),
             sound_config,
             sound_config_path: "config/sound_config.json".to_string(),
-            show_fps,
         }
     }
 
@@ -358,11 +355,8 @@ impl Game {
             entity_manager: &self.world.ecs,
             paused: &mut self.paused,
             render_gizmos: &mut self.renderer.render_gizmos,
-            show_fps: &mut self.show_fps,
-            bgm_volume: &mut self.sound_config.bgm,
-            sfx_volume: &mut self.sound_config.sfx,
-            vsync: &mut self.config.vsync,
-            debug_mode: &mut self.config.debug_mode,
+            game_config: &mut self.config,
+            sound_config: &mut self.sound_config,
         });
 
         self.game_ui.set_fps(self.time.fps);
@@ -407,10 +401,72 @@ impl Game {
                     self.physics = physics;
                 }
                 UiMessage::ApplySettings => {
-                    // update config from current state
-                    self.config.fps_counter = self.show_fps;
+                    // sync renderer state to config before saving
                     self.config.render_gizmos = self.renderer.render_gizmos;
-                    // note: vsync and debug_mode are already in self.config and updated via UI
+
+                    // apply resolution if it changed
+                    let current_size = self.platform.window.inner_size();
+                    let new_width = self.config.win_width as u32;
+                    let new_height = self.config.win_height as u32;
+
+                    if current_size.width != new_width || current_size.height != new_height {
+                        let _ = self
+                            .platform
+                            .window
+                            .request_inner_size(LogicalSize::new(new_width, new_height));
+                        println!(
+                            "[DEBUG] ApplySettings - Requested window resize to {}x{}",
+                            new_width, new_height
+                        );
+                    }
+
+                    // apply vsync setting
+                    if self.config.vsync {
+                        let _ = self.platform.surface.set_swap_interval(
+                            &self.platform.gl_context,
+                            SwapInterval::Wait(std::num::NonZeroU32::new(1).unwrap()),
+                        );
+                        println!("[DEBUG] ApplySettings - VSync enabled");
+                    } else {
+                        let _ = self
+                            .platform
+                            .surface
+                            .set_swap_interval(&self.platform.gl_context, SwapInterval::DontWait);
+                        println!("[DEBUG] ApplySettings - VSync disabled");
+                    }
+
+                    // apply window mode setting
+                    match self.config.window_mode.as_str() {
+                        "Windowed" => {
+                            self.platform.window.set_fullscreen(None);
+                            println!("[DEBUG] ApplySettings - Window mode set to Windowed");
+                        }
+                        "Fullscreen" => {
+                            // get current monitor and its video mode
+                            if let Some(monitor) = self.platform.window.current_monitor() {
+                                if let Some(video_mode) = monitor.video_modes().next() {
+                                    self.platform
+                                        .window
+                                        .set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
+                                    println!(
+                                        "[DEBUG] ApplySettings - Window mode set to Fullscreen"
+                                    );
+                                }
+                            }
+                        }
+                        "Borderless" => {
+                            self.platform
+                                .window
+                                .set_fullscreen(Some(Fullscreen::Borderless(None)));
+                            println!("[DEBUG] ApplySettings - Window mode set to Borderless");
+                        }
+                        _ => {
+                            println!(
+                                "[WARN] ApplySettings - Unknown window mode: {}",
+                                self.config.window_mode
+                            );
+                        }
+                    }
 
                     // save configs to disk
                     self.config.save_to_file(&self.config_path);
@@ -425,10 +481,8 @@ impl Game {
                     self.config = GameConfig::load_from_file(&self.config_path);
                     self.sound_config = SoundConfig::load_from_file(&self.sound_config_path);
 
-                    // sync state from reloaded config
-                    self.show_fps = self.config.fps_counter;
+                    // sync renderer state from reloaded config
                     self.renderer.render_gizmos = self.config.render_gizmos;
-                    // note: vsync and debug_mode are already in self.config and will be reloaded
                 }
             }
         }
