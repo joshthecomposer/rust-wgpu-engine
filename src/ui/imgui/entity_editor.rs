@@ -233,10 +233,33 @@ impl EntityEditor {
 
                 if self.create_mode {
                     for _ in 0..self.new_entity_count {
+                        if selected_faction == "None" {
+                            let instance = EntityInstance {
+                                entity_type: selected_type.to_string(),
+                                faction: None,
+                                position: input.ray_pos,
+                                rotation: Quat::IDENTITY,
+                                weapons: None,
+                                base_speed: speed,
+                                jump_height: Some(1.0),
+                                health: Some(100.0),
+                                max_health: Some(100.0),
+                                mana: Some(100.0),
+                                max_mana: Some(100.0),
+                                level: Some(1),
+                                name: None,
+                                cleanup_timer: None,
+                            };
+                            em.create_meshless_entity(&instance);
+                            self.create_mode = false;
+
+                            continue;
+                        }
+
                         let weapons = if self.include_weapon {
                             Some(vec![EntityInstance {
                                 entity_type: entity_types[self.weapon_type_index].clone(),
-                                faction: "Item".to_string(),
+                                faction: Some("Item".to_string()),
                                 position: Vec3::splat(0.0),
                                 rotation: Quat::IDENTITY,
                                 base_speed: None,
@@ -255,7 +278,7 @@ impl EntityEditor {
                         };
                         let instance = EntityInstance {
                             entity_type: selected_type.to_string(),
-                            faction: selected_faction.to_string(),
+                            faction: Some(selected_faction.to_string()),
                             position: input.ray_pos,
                             rotation: Quat::IDENTITY,
                             weapons,
@@ -270,7 +293,7 @@ impl EntityEditor {
                             cleanup_timer: None,
                         };
 
-                        let parent_id = em.create_entity(&instance, ps);
+                        let parent_id = em.create_mesh_entity(&instance, ps);
                         em.populate_inventory(parent_id, &instance, ps);
                         self.create_mode = false;
                     }

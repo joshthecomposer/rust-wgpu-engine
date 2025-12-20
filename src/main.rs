@@ -23,6 +23,7 @@ mod items;
 mod particles;
 mod physics;
 mod platform;
+mod spawn_system;
 mod state_machines;
 mod time;
 mod util;

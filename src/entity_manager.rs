@@ -1,5 +1,4 @@
-#![allow(clippy::too_many_arguments, unused_must_use)]
-
+#![allow(unused_must_use)]
 use core::f32;
 use std::{
     collections::{HashMap, HashSet},
@@ -22,7 +21,7 @@ use crate::{
         world_data::{EntityInstance, WorldData},
         Config,
     },
-    debug::gizmos::{Cuboid, Cylinder, Pill},
+    debug::gizmos::{Cuboid, Cylinder, Dimension, Pill},
     enums_types::{
         ActiveItem, AnimationType, AttackState, FrameActivation, GroundedState, HitboxShape,
         JumpHeight, Knockback, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState,
@@ -47,6 +46,9 @@ pub struct EntityManager {
     pub collider_transforms: SparseSet<Transform>,
     pub prev_collider_transforms: SparseSet<Transform>,
     pub collider_to_entity: HashMap<ColliderHandle, usize>,
+
+    // Mostly for "areas" that are gizmo-only entities.
+    pub dimensions: SparseSet<Dimension>,
 
     pub inventories: SparseSet<Vec<usize>>,
     pub active_items: SparseSet<ActiveItem>,
@@ -108,6 +110,7 @@ impl EntityManager {
             collider_transforms: SparseSet::with_capacity(max_entities),
             prev_collider_transforms: SparseSet::with_capacity(max_entities),
             collider_to_entity: HashMap::new(),
+            dimensions: SparseSet::with_capacity(max_entities),
             inventories: SparseSet::with_capacity(max_entities),
             active_items: SparseSet::with_capacity(max_entities),
             owners: SparseSet::with_capacity(max_entities),
@@ -158,8 +161,20 @@ impl EntityManager {
         let data = self.serializable_world_data.clone();
 
         for instance in data.entities.iter() {
-            let parent_id = self.create_entity(instance, ps);
-            self.populate_inventory(parent_id, &instance, ps);
+            if let Some(et) = self.entity_type_register.get(&instance.entity_type) {
+                match et.mesh_path.as_str() {
+                    "" => {
+                        // meshless things are gizmo-only things such as a spawn area or a trigger
+                        // area. There has to be a gizmo, it can't be a null entity type, that is
+                        // not supported, yet
+                        self.create_meshless_entity(instance);
+                    }
+                    _ => {
+                        let parent_id = self.create_mesh_entity(instance, ps);
+                        self.populate_inventory(parent_id, &instance, ps);
+                    }
+                }
+            }
         }
 
         load_terrain(self, ps);
@@ -173,7 +188,7 @@ impl EntityManager {
     ) {
         if let Some(weapons_list) = &instance.weapons {
             for weapon in weapons_list.iter() {
-                let weapon_id = self.create_entity(weapon, ps);
+                let weapon_id = self.create_mesh_entity(weapon, ps);
 
                 self.hitsets.insert(weapon_id, HashSet::new());
 
@@ -213,7 +228,8 @@ impl EntityManager {
         }
     }
 
-    pub fn create_entity(&mut self, instance: &EntityInstance, ps: &mut PhysicsState) -> usize {
+    // right now this is just for things that might be "gizmo-only" such as a spawn area
+    pub fn create_meshless_entity(&mut self, instance: &EntityInstance) {
         let parent_id = self.next_entity_id;
 
         let archetype = match self.entity_type_register.get(&instance.entity_type) {
@@ -228,39 +244,94 @@ impl EntityManager {
         let rotation = instance.rotation;
         let scale = archetype.scale_correction;
 
-        match instance.faction.as_str() {
-            "Player" => {
-                self.player_controllers.insert(
-                    parent_id,
-                    PlayerController {
-                        state: PlayerState::Init,
-                        attack_state: AttackState::Attack1,
-                        time_in_state: 0.0,
-                    },
-                );
-            }
-            "Enemy" => {
-                self.simstate_controllers.insert(
-                    parent_id,
-                    SimStateController {
-                        state: SimState::Init,
-                        attack_state: AttackState::Attack1,
-                        time_in_state: 0.0,
-                        target_time: 0.0,
-                    },
-                );
+        self.entity_types
+            .insert(parent_id, instance.entity_type.clone());
 
-                self.destinations.insert(parent_id, position);
-
-                if let Some(ar) = archetype.aggro_range {
-                    self.aggro_ranges.insert(parent_id, ar);
-                }
+        match archetype.hitbox {
+            HitboxShape::Cylinder { r, h } => {
+                self.create_cylinder_hitbox(r, h, position, scale, parent_id);
+                self.dimensions
+                    .insert(parent_id, Dimension::Cylinder { r, h });
             }
-            _ => (),
+            HitboxShape::BoxDim { hx, hy, hz } => {
+                todo!();
+            }
+            _ => panic!("don't you try it you swit!!!"),
         }
 
-        self.factions.insert(parent_id, instance.faction.clone());
-        self.faction_register.insert(instance.faction.clone());
+        self.transforms.insert(
+            parent_id,
+            Transform {
+                position,
+                rotation,
+                scale,
+            },
+        );
+    }
+
+    pub fn create_mesh_entity(
+        &mut self,
+        instance: &EntityInstance,
+        ps: &mut PhysicsState,
+    ) -> usize {
+        let parent_id = self.next_entity_id;
+
+        let archetype = match self.entity_type_register.get(&instance.entity_type) {
+            Some(a) => a,
+            None => {
+                dbg!(&instance.entity_type);
+                panic!();
+            }
+        };
+
+        let position = instance.position;
+        let rotation = instance.rotation;
+        let scale = archetype.scale_correction;
+
+        match &instance.faction {
+            Some(faction) => {
+                self.factions.insert(parent_id, faction.clone());
+                self.faction_register.insert(faction.clone());
+
+                match faction.as_str() {
+                    "Player" => {
+                        self.player_controllers.insert(
+                            parent_id,
+                            PlayerController {
+                                state: PlayerState::Init,
+                                attack_state: AttackState::Attack1,
+                                time_in_state: 0.0,
+                            },
+                        );
+                    }
+                    "Enemy" => {
+                        self.simstate_controllers.insert(
+                            parent_id,
+                            SimStateController {
+                                state: SimState::Init,
+                                attack_state: AttackState::Attack1,
+                                time_in_state: 0.0,
+                                target_time: 0.0,
+                            },
+                        );
+
+                        self.destinations.insert(parent_id, position);
+
+                        if let Some(ar) = archetype.aggro_range {
+                            self.aggro_ranges.insert(parent_id, ar);
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            None => {
+                // TODO: Determine whether this is true, for now let's catch these while we have no
+                // specific use-case for them yet. Factionless entities should probably go the
+                // meshelss path
+                panic!("I don't know if we should have a meshed entity without a faction");
+            }
+        }
+
         self.yaws.insert(parent_id, 0.0);
 
         if let Some(health) = instance.health {
@@ -435,7 +506,6 @@ impl EntityManager {
             .insert(parent_id, instance.entity_type.clone());
 
         self.prev_transforms.insert(parent_id, transform);
-        self.factions.insert(parent_id, instance.faction.clone());
         self.entity_types
             .insert(parent_id, instance.entity_type.clone());
 
@@ -452,7 +522,15 @@ impl EntityManager {
 
         match archetype.hitbox {
             HitboxShape::Cylinder { r, h } => {
-                self.create_cylinder_hitbox(r, h, position, scale, rotation, parent_id, ps);
+                self.create_cylinder_hitbox(r, h, position, scale, parent_id);
+                self.create_physics_for_cylinder(
+                    position,
+                    rotation,
+                    scale,
+                    HitboxShape::Cylinder { r, h },
+                    parent_id,
+                    ps,
+                );
             }
             HitboxShape::Pill { r, h } => {
                 self.create_pill_hitbox(
@@ -610,9 +688,7 @@ impl EntityManager {
         h: f32,
         position: Vec3,
         scale: Vec3,
-        rotation: Quat,
         parent_id: usize,
-        ps: &mut PhysicsState,
     ) {
         let cyl = Cylinder { r, h };
 
@@ -635,33 +711,6 @@ impl EntityManager {
                 scale,
             },
         );
-
-        let iso: Isometry<f32> = (position, rotation).into();
-
-        let body = RigidBodyBuilder::fixed().position(iso).build();
-
-        let collider = ColliderBuilder::cylinder(h * 0.5, r)
-            .active_collision_types(ActiveCollisionTypes::all())
-            .build();
-
-        let body_handle = ps.rigid_body_set.insert(body);
-        let collider_handle =
-            ps.collider_set
-                .insert_with_parent(collider, body_handle, &mut ps.rigid_body_set);
-
-        // set body massA
-
-        self.physics_handles.insert(
-            parent_id,
-            PhysicsHandle {
-                rigid_body: body_handle,
-                collider: collider_handle,
-
-                og_rb_type: RigidBodyType::Fixed,
-            },
-        );
-
-        self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
     pub fn create_bounding_hitbox(
@@ -810,6 +859,48 @@ impl EntityManager {
         );
 
         self.collider_to_entity.insert(collider_handle, parent_id);
+    }
+
+    pub fn create_physics_for_cylinder(
+        &mut self,
+        position: Vec3,
+        rotation: Quat,
+        scale: Vec3,
+        shape: HitboxShape,
+        parent_id: usize,
+        ps: &mut PhysicsState,
+    ) {
+        match shape {
+            HitboxShape::Cylinder { r, h } => {
+                let iso: Isometry<f32> = (position, rotation).into();
+
+                let body = RigidBodyBuilder::fixed().position(iso).build();
+
+                let collider = ColliderBuilder::cylinder(h * 0.5, r)
+                    .active_collision_types(ActiveCollisionTypes::all())
+                    .build();
+
+                let body_handle = ps.rigid_body_set.insert(body);
+                let collider_handle = ps.collider_set.insert_with_parent(
+                    collider,
+                    body_handle,
+                    &mut ps.rigid_body_set,
+                );
+
+                self.physics_handles.insert(
+                    parent_id,
+                    PhysicsHandle {
+                        rigid_body: body_handle,
+                        collider: collider_handle,
+
+                        og_rb_type: RigidBodyType::Fixed,
+                    },
+                );
+
+                self.collider_to_entity.insert(collider_handle, parent_id);
+            }
+            _ => panic!("You n'wah!!!"),
+        }
     }
 
     pub fn update(
@@ -1081,7 +1172,10 @@ impl EntityManager {
 
             let weapons = self.resolve_weapons(id);
 
-            let faction = self.factions.get(id).unwrap().clone();
+            let faction = match self.factions.get(id) {
+                Some(f) => Some(f.clone()),
+                None => None,
+            };
 
             let jump_height = match self.jump_heights.get(id) {
                 Some(jh) => Some(jh.desired),
@@ -1129,7 +1223,7 @@ impl EntityManager {
             for w in idlist.iter() {
                 wlist.push(EntityInstance {
                     entity_type: self.entity_types.get(*w).unwrap().clone(),
-                    faction: self.factions.get(*w).unwrap().clone(),
+                    faction: Some(self.factions.get(*w).unwrap().clone()),
                     position: Vec3::splat(0.0),
                     rotation: Quat::IDENTITY,
                     weapons: None,
@@ -1191,85 +1285,87 @@ impl EntityManager {
 
         let mut etype = EntityTypeHelper::default();
 
-        let texture_path = Path::new(&data.texture_path);
-        let mesh_path = Path::new(&data.mesh_path);
-        let texture_file_name = texture_path.file_name().unwrap().to_str().unwrap();
+        if !data.mesh_path.is_empty() {
+            let texture_path = Path::new(&data.texture_path);
+            let mesh_path = Path::new(&data.mesh_path);
+            let texture_file_name = texture_path.file_name().unwrap().to_str().unwrap();
 
-        let base_path = Path::new("resources/models/");
+            let base_path = Path::new("resources/models/");
 
-        // Get the mesh data just for the memes.
-        let file_data = match std::fs::read_to_string(&data.mesh_path) {
-            Ok(data) => data,
-            Err(_) => {
-                println!("Failed to open mesh file: {}", data.mesh_path);
-                return;
-            }
-        };
-
-        match file_data.contains("ANIMATION_DATA") {
-            true => {
-                let new_mesh_path =
-                    base_path.join(&format!("animated/{}/mesh.txt", &data.entity_type));
-                let new_texture_path = base_path.join(&format!(
-                    "animated/{}/{}",
-                    &data.entity_type, &texture_file_name
-                ));
-                std::fs::create_dir_all(&new_mesh_path.parent().unwrap());
-                std::fs::create_dir_all(&new_texture_path.parent().unwrap());
-
-                std::fs::copy(mesh_path, &new_mesh_path);
-                std::fs::copy(texture_path, new_texture_path);
-
-                etype.bone_path = Some(new_mesh_path.clone().to_string_lossy().to_string());
-                etype.mesh_path = new_mesh_path.clone().to_string_lossy().to_string();
-            }
-            false => {
-                let new_mesh_path =
-                    base_path.join(&format!("static/{}/mesh.txt", &data.entity_type));
-                let new_texture_path = base_path.join(&format!(
-                    "static/{}/{}",
-                    &data.entity_type, &texture_file_name
-                ));
-
-                std::fs::create_dir_all(&new_mesh_path.parent().unwrap());
-                std::fs::create_dir_all(&new_texture_path.parent().unwrap());
-
-                std::fs::copy(mesh_path, &new_mesh_path);
-                std::fs::copy(texture_path, new_texture_path);
-
-                etype.bone_path = None;
-                etype.mesh_path = new_mesh_path.clone().to_string_lossy().to_string();
-            }
-        }
-
-        if etype.bone_path.is_some() {
-            let mut lines = file_data.lines();
-            let mut anim_props = vec![];
-            while let Some(line) = lines.next() {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-
-                if parts.is_empty() {
-                    continue;
+            // Get the mesh data just for the memes.
+            let file_data = match std::fs::read_to_string(&data.mesh_path) {
+                Ok(data) => data,
+                Err(_) => {
+                    println!("Failed to open mesh file: {}", data.mesh_path);
+                    return;
                 }
+            };
 
-                match parts[0] {
-                    "ANIMATION_DATA" => {}
-                    "ANIMATION_NAME:" => match parts[1].trim() {
-                        "Idle" => anim_props.push(AnimationPropHelper {
-                            name: AnimationType::Idle,
-                            one_shots: HashMap::new(),
-                            continuous_sounds: vec![],
-                            hurtbox_activation: vec![],
-                            hold_frame: None,
-                        }),
-                        _ => {}
-                    },
-                    _ => (),
+            match file_data.contains("ANIMATION_DATA") {
+                true => {
+                    let new_mesh_path =
+                        base_path.join(&format!("animated/{}/mesh.txt", &data.entity_type));
+                    let new_texture_path = base_path.join(&format!(
+                        "animated/{}/{}",
+                        &data.entity_type, &texture_file_name
+                    ));
+                    std::fs::create_dir_all(&new_mesh_path.parent().unwrap());
+                    std::fs::create_dir_all(&new_texture_path.parent().unwrap());
+
+                    std::fs::copy(mesh_path, &new_mesh_path);
+                    std::fs::copy(texture_path, new_texture_path);
+
+                    etype.bone_path = Some(new_mesh_path.clone().to_string_lossy().to_string());
+                    etype.mesh_path = new_mesh_path.clone().to_string_lossy().to_string();
+                }
+                false => {
+                    let new_mesh_path =
+                        base_path.join(&format!("static/{}/mesh.txt", &data.entity_type));
+                    let new_texture_path = base_path.join(&format!(
+                        "static/{}/{}",
+                        &data.entity_type, &texture_file_name
+                    ));
+
+                    std::fs::create_dir_all(&new_mesh_path.parent().unwrap());
+                    std::fs::create_dir_all(&new_texture_path.parent().unwrap());
+
+                    std::fs::copy(mesh_path, &new_mesh_path);
+                    std::fs::copy(texture_path, new_texture_path);
+
+                    etype.bone_path = None;
+                    etype.mesh_path = new_mesh_path.clone().to_string_lossy().to_string();
                 }
             }
 
-            if anim_props.len() > 0 {
-                etype.animation_properties = Some(anim_props);
+            if etype.bone_path.is_some() {
+                let mut lines = file_data.lines();
+                let mut anim_props = vec![];
+                while let Some(line) = lines.next() {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+
+                    if parts.is_empty() {
+                        continue;
+                    }
+
+                    match parts[0] {
+                        "ANIMATION_DATA" => {}
+                        "ANIMATION_NAME:" => match parts[1].trim() {
+                            "Idle" => anim_props.push(AnimationPropHelper {
+                                name: AnimationType::Idle,
+                                one_shots: HashMap::new(),
+                                continuous_sounds: vec![],
+                                hurtbox_activation: vec![],
+                                hold_frame: None,
+                            }),
+                            _ => {}
+                        },
+                        _ => (),
+                    }
+                }
+
+                if anim_props.len() > 0 {
+                    etype.animation_properties = Some(anim_props);
+                }
             }
         }
 

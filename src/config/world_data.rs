@@ -24,7 +24,8 @@ impl Config for WorldData {}
 #[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct EntityInstance {
     pub entity_type: String,
-    pub faction: String,
+    #[serde(default)]
+    pub faction: Option<String>,
     pub position: Vec3,
     pub rotation: Quat,
     #[serde(default)]

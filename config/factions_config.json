@@ -1,10 +1,11 @@
 {
-  "factions": [
-    "FriendlyNpc",
-    "Enemy",
-    "Item",
-    "World",
-    "Player",
-	"NeutralNpc"
-  ]
+	"factions": [
+		"FriendlyNpc",
+		"Enemy",
+		"Item",
+		"World",
+		"Player",
+		"NeutralNpc",
+		"None"
+	]
 }
