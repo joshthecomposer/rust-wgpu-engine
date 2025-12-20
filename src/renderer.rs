@@ -7,6 +7,7 @@ use image::GenericImageView;
 
 use crate::{
     camera::Camera,
+    config::game_config::GameConfig,
     entity_manager::EntityManager,
     enums_types::{FboType, ShaderType, Transform, VaoType},
     gl_call,
@@ -52,7 +53,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(platform: &Platform) -> Self {
+    pub fn new(platform: &Platform, config: &GameConfig) -> Self {
         // =============================================================
         // Setup Shaders
         // =============================================================
@@ -272,9 +273,15 @@ impl Renderer {
         // =============================================================
         let mut hdr_msaa_fbo = 0;
 
-        unsafe {
-            let samples = 16;
+        assert!(&[1, 2, 4, 8, 16].contains(&config.msaa_level)); // 1 is off
+        println!("MSAA LEVEL CHOSEN: {}", config.msaa_level);
 
+        if config.msaa_level == 1 {
+            // for good measure, I don't think we have to do this with 1
+            unsafe { gl_call!(gl::Disable(gl::MULTISAMPLE)) };
+        }
+
+        unsafe {
             gl_call!(gl::GenFramebuffers(1, &mut hdr_msaa_fbo));
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_fbo));
 
@@ -285,7 +292,7 @@ impl Renderer {
                 gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, color_rb_msaa[i]));
                 gl_call!(gl::RenderbufferStorageMultisample(
                     gl::RENDERBUFFER,
-                    samples,
+                    config.msaa_level,
                     gl::RGBA16F,
                     width as i32,
                     height as i32,
@@ -303,7 +310,7 @@ impl Renderer {
             gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, rbo_depth_msaa));
             gl_call!(gl::RenderbufferStorageMultisample(
                 gl::RENDERBUFFER,
-                samples,
+                config.msaa_level,
                 gl::DEPTH_COMPONENT24,
                 width as i32,
                 height as i32,

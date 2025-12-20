@@ -15,6 +15,7 @@ pub struct GameConfig {
     pub debug_mode: bool,
     pub fps_counter: bool,
     pub render_gizmos: bool,
+    pub msaa_level: i32,
 }
 
 impl Default for GameConfig {
@@ -32,6 +33,7 @@ impl Default for GameConfig {
             debug_mode: true,
             fps_counter: true,
             render_gizmos: false,
+            msaa_level: 16,
         }
     }
 }

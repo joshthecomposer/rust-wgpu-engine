@@ -57,7 +57,7 @@ impl Game {
 
         let sound_config = SoundConfig::load_or_create_default("config/sound_config.json");
 
-        let renderer = Renderer::new(&platform);
+        let renderer = Renderer::new(&platform, &config);
         let sound = SoundManager::new(&sound_config);
         let game_ui = GameUiManager::new(
             platform.fb_width,

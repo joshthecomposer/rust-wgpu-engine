@@ -9,6 +9,7 @@
   "debug_mode": true,
   "fps_counter": true,
   "render_gizmos": false,
+  "msaa_level": 4,
   "sounds": {
     "MooseHuff": "event:/moose3D",
     "Footstep": "event:/footstep",
