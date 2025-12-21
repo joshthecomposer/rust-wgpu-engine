@@ -9,7 +9,7 @@ use crate::{
     camera::Camera,
     config::game_config::GameConfig,
     entity_manager::EntityManager,
-    enums_types::{FboType, ShaderType, Transform, VaoType},
+    enums_types::{FboType, FxaaLevels, ShaderType, Transform, VaoType},
     gl_call,
     lights::Lights,
     particles::ParticleSystem,
@@ -51,6 +51,11 @@ pub struct Renderer {
     pub do_hdr: bool,
     pub bloom_strength: f32,
     pub do_msaa: bool,
+    pub do_fxaa: bool,
+    pub fxaa_level: FxaaLevels,
+
+    pub fxaa_fbo: u32,
+    pub fxaa_tex: u32,
 }
 
 impl Renderer {
@@ -99,6 +104,7 @@ impl Renderer {
         let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");
         let hdr_shader = Shader::new("resources/shaders/hdr.glsl");
         let blur_shader = Shader::new("resources/shaders/blur.glsl");
+        let fxaa_shader = Shader::new("resources/shaders/fxaa.glsl");
 
         let mut vao = 0;
         let mut vbo = 0;
@@ -608,6 +614,67 @@ impl Renderer {
             vaos.insert(VaoType::BaseQuad, quad_vao);
         }
 
+        // =============================================================
+        // Post-color texture for FXAA
+        // =============================================================
+        let mut fxaa_fbo = 0u32;
+        let mut fxaa_tex = 0u32;
+
+        unsafe {
+            gl_call!(gl::GenFramebuffers(1, &mut fxaa_fbo));
+            gl_call!(gl::GenTextures(1, &mut fxaa_tex));
+
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, fxaa_fbo));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, fxaa_tex));
+
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA8 as i32,
+                width as i32,
+                height as i32,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                std::ptr::null()
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+
+            gl_call!(gl::FramebufferTexture2D(
+                gl::FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::TEXTURE_2D,
+                fxaa_tex,
+                0
+            ));
+
+            let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
+            if status != gl::FRAMEBUFFER_COMPLETE {
+                panic!("Pingpong FBO {} incomplete: 0x{:x}", fxaa_fbo, status);
+            }
+
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+        }
+
         let mut debug_depth_quad = Shader::new("resources/shaders/debug_depth_quad.glsl");
 
         debug_depth_quad.activate();
@@ -631,6 +698,7 @@ impl Renderer {
         shaders.insert(ShaderType::Blur, blur_shader);
         shaders.insert(ShaderType::StaticModel, static_model_shader);
         shaders.insert(ShaderType::AnimatedModel, animated_model_shader);
+        shaders.insert(ShaderType::Fxaa, fxaa_shader);
 
         // DEFAULT TEXTURES
         let defaults = DefaultTextures {
@@ -660,6 +728,11 @@ impl Renderer {
             do_hdr: true,
             bloom_strength: 0.1,
             do_msaa,
+            do_fxaa: config.msaa_level < 2 && config.fxaa_level != FxaaLevels::Off,
+            fxaa_level: config.fxaa_level.clone(),
+
+            fxaa_fbo,
+            fxaa_tex,
         }
     }
 
@@ -757,12 +830,12 @@ impl Renderer {
         // =============================================================
         // Render to the MSAA one if MSAA > 1, else use the regular
         unsafe {
-            let hdr_msaa_or_normal_fbo = match self.do_msaa {
+            let scene_target = match self.do_msaa {
                 true => *self.fbos.get(&FboType::HdrMsaa).unwrap(),
                 false => *self.fbos.get(&FboType::HDR).unwrap(),
             };
 
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_or_normal_fbo));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, scene_target));
             gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
             gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
         }
@@ -800,6 +873,7 @@ impl Renderer {
         // blitting MSAA: read MSAA and draw texture FBO
         // ==========================================================
         if self.do_msaa {
+            assert!(!self.do_fxaa);
             unsafe {
                 let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
                 let hdr_fbo = *self.fbos.get(&FboType::HDR).unwrap();
@@ -842,11 +916,23 @@ impl Renderer {
 
         let blurred_bloom_tex = self.blur_bloom(fb_width, fb_height);
 
+        // ==========================================================
+        // HDR COMBINE (and do fxaa if enabled)
+        // ==========================================================
+
+        let hdr_out_fbo = if !self.do_msaa && self.do_fxaa {
+            self.fxaa_fbo
+        } else {
+            0
+        };
+
         unsafe {
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_out_fbo));
             gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
             gl_call!(gl::Disable(gl::DEPTH_TEST));
-            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
+            gl_call!(gl::Clear(
+                gl::COLOR_BUFFER_BIT /* |  gl::DEPTH_BUFFER_BIT */
+            ));
         }
 
         let hdr_shader = self.shaders.get_mut(&ShaderType::HDR).unwrap();
@@ -866,6 +952,34 @@ impl Renderer {
         }
 
         self.render_quad();
+
+        // ==========================================================
+        // FXAA PASS
+        // ==========================================================
+        if !self.do_msaa && self.do_fxaa {
+            unsafe {
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+                gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
+                gl_call!(gl::Disable(gl::DEPTH_TEST));
+                gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT));
+            }
+
+            let fxaa_shader = self.shaders.get_mut(&ShaderType::Fxaa).unwrap();
+            fxaa_shader.activate();
+            fxaa_shader.set_int("uColor", 0);
+            fxaa_shader.set_vec2(
+                "uInvResolution",
+                1.0 / fb_width as f32,
+                1.0 / fb_height as f32,
+            );
+
+            unsafe {
+                gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.fxaa_tex));
+            }
+
+            self.render_quad();
+        }
 
         unsafe {
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
@@ -1059,18 +1173,6 @@ impl Renderer {
                         if fa.segment_range.contains(&animation.current_segment.get()) {
                             if !fa.triggered.get() {
                                 fa.triggered.set(true);
-
-                                //if let Some(bone_world_model_space) = animation.get_raw_global_bone_transform_by_name(
-                                //    "Bone.029.L",
-                                //    bonez,
-                                //    Mat4::IDENTITY,
-                                //) {
-                                //    let bone_world_space = m_mat * bone_world_model_space;
-                                //    let position = bone_world_space.w_axis.truncate();
-
-                                //    particles.spawn_oneshot_emitter("ShootyPart", position, Some(forward));
-                                //    particles.spawn_oneshot_emitter("SmokeyPart", position, Some(forward));
-                                //}
                             }
                         } else {
                             fa.triggered.set(false);
@@ -1095,36 +1197,6 @@ impl Renderer {
         shader.set_bool("do_reg_fresnel", false);
         shader.set_bool("selection_fresnel", false);
     }
-
-    // fn grid_pass(&mut self, grid: &mut Grid, camera: &mut Camera, light_manager: &Lights) {
-    //     unsafe {
-    //         gl::Enable(gl::BLEND);
-    //         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-    //     }
-    //     let shader = self.shaders.get_mut(&ShaderType::Model).unwrap();
-    //     shader.activate();
-
-    //     shader.set_bool("do_reg_fresnel", false);
-    //     shader.set_bool("selection_fresnel", false);
-
-    //     shader.set_mat4("model", Mat4::IDENTITY);
-    //     shader.set_mat4("view", camera.view);
-    //     shader.set_mat4("projection", camera.projection);
-    //     shader.set_mat4("light_space_mat", camera.light_space);
-    //     shader.set_dir_light("dir_light", &light_manager.dir_light);
-    //     shader.set_float("bias_scalar", light_manager.bias_scalar);
-    //     shader.set_vec3("view_position", camera.position);
-    //     shader.set_bool("is_animated", false);
-    //     shader.set_bool("alpha_test_pass", false);
-    //     unsafe {
-    //         gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-    //         gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
-    //         shader.set_int("shadow_map", 0);
-
-    //         grid.draw(shader);
-    //         gl::Disable(gl::BLEND)
-    //     }
-    // }
 
     fn skybox_pass(&mut self, camera: &mut Camera, _fb_width: u32, _fb_height: u32) {
         unsafe {
