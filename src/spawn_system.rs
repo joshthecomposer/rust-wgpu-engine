@@ -1,12 +1,12 @@
-use glam::{Quat, Vec2, Vec3};
+use glam::{Quat, Vec3};
 use nalgebra::{point, vector};
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
-use rapier3d::prelude::{Group, InteractionGroups, QueryFilter, Ray, RigidBodyType};
+use rapier3d::prelude::{Group, InteractionGroups, QueryFilter, Ray};
 
 use crate::{
     config::world_data::EntityInstance, debug::gizmos::Dimension, entity_manager::EntityManager,
-    physics::PhysicsState, time::Time, util::constants::GROUP_TERRAIN,
+    physics::PhysicsState, util::constants::GROUP_TERRAIN,
 };
 
 pub struct SpawnManager {

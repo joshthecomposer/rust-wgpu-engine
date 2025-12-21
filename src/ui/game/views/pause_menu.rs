@@ -82,7 +82,6 @@ pub struct PauseMenuView {
     apply_settings_pending: Rc<Cell<bool>>,
     cancel_settings_pending: Rc<Cell<bool>>,
     settings_initialized: Rc<Cell<bool>>, // track if we've initialized UI from engine
-    last_msaa_level: Rc<Cell<i32>>,       // track last MSAA level for debug logging
 }
 
 impl PauseMenuView {
@@ -129,7 +128,6 @@ impl PauseMenuView {
             apply_settings_pending,
             cancel_settings_pending,
             settings_initialized: Rc::new(Cell::new(false)),
-            last_msaa_level: Rc::new(Cell::new(-1)), // -1 = uninitialized
         }
     }
 
