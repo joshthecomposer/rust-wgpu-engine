@@ -20,6 +20,7 @@ export component SettingsMenu inherits Rectangle {
     in-out property <float> sfx-volume: 80.0;
     in-out property <bool> vsync: true;
     in-out property <bool> debug-mode: false;
+    in-out property <string> msaa: "16x MSAA";
 
     callback apply_clicked();
     callback cancel_clicked();
@@ -53,6 +54,7 @@ export component SettingsMenu inherits Rectangle {
                             opened => {
                                 window-mode-select.is-open = false;
                                 shader-type-select.is-open = false;
+                                msaa-select.is-open = false;
                             }
                         }
                     }
@@ -81,8 +83,9 @@ export component SettingsMenu inherits Rectangle {
                                 shader-type = value;
                             }
                             opened => {
-                                resolution-select.is-open = false;
                                 window-mode-select.is-open = false;
+                                shader-type-select.is-open = false;
+                                msaa-select.is-open = false;
                             }
                         }
                     }
@@ -93,6 +96,22 @@ export component SettingsMenu inherits Rectangle {
                             checked: vsync;
                             toggled => {
                                 vsync = !vsync;
+                            }
+                        }
+                    }
+
+                    RunicSettingsRow {
+                        label: "MSAA";
+                        msaa-select := RunicSelect {
+                            current-value: msaa;
+                            options: ["None", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA"];
+                            selected(value) => {
+                                msaa = value;
+                            }
+                            opened => {
+                                resolution-select.is-open = false;
+                                window-mode-select.is-open = false;
+                                shader-type-select.is-open = false;
                             }
                         }
                     }
@@ -334,6 +353,61 @@ export component SettingsMenu inherits Rectangle {
                         x: 12px;
                         text: option;
                         color: shader-touch.has-hover ? Theme.runic-gold : Theme.old-text;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+
+    // click-outside-to-close for msaa dropdown
+    if msaa-select.is-open: TouchArea {
+        width: root.width;
+        height: root.height;
+        clicked => {
+            msaa-select.is-open = false;
+        }
+    }
+
+    if msaa-select.is-open: Rectangle {
+        x: root.width - 160px - 22px;
+        y: 236px; // fifth row position (148 + 44 + 44 for shader-type + vsync + msaa)
+        width: 164px; // wider to accommodate border
+        height: 5 * 28px + 4px; // taller to accommodate border (5 options)
+        background: Theme.stone-light;
+        drop-shadow-blur: 8px;
+        drop-shadow-color: #00000080;
+        drop-shadow-offset-y: 4px;
+
+        // content background (inset to create border effect)
+        Rectangle {
+            x: 2px;
+            y: 2px;
+            width: parent.width - 4px;
+            height: parent.height - 4px;
+            background: #0f172a;
+
+            VerticalLayout {
+                padding: 0px;
+
+                for option in ["None", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA"]: Rectangle {
+                    height: 28px;
+                    background: msaa-touch.has-hover ? Theme.stone-dark : #0f172a;
+
+                    msaa-touch := TouchArea {
+                        clicked => {
+                            debug("MSAA dropdown clicked:", option);
+                            msaa = option;
+                            debug("MSAA property set to:", msaa);
+                            msaa-select.is-open = false;
+                        }
+                    }
+
+                    Text {
+                        x: 12px;
+                        text: option;
+                        color: msaa-touch.has-hover ? Theme.runic-gold : Theme.old-text;
                         font-size: 11px;
                         vertical-alignment: center;
                     }

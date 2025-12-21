@@ -26,6 +26,7 @@ export component GameRoot inherits Window {
     in-out property <float> sfx-volume: 80.0;
     in-out property <bool> vsync: true;
     in-out property <bool> debug-mode: false;
+    in-out property <string> msaa: "16x MSAA";
 
     in property <int> current-fps: 60;
 
@@ -91,6 +92,7 @@ export component GameRoot inherits Window {
         sfx-volume <=> root.sfx-volume;
         vsync <=> root.vsync;
         debug-mode <=> root.debug-mode;
+        msaa <=> root.msaa;
 
         close_clicked => { root.close_clicked(); }
         reload_world_clicked => { root.reload_world_clicked(); }

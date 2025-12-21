@@ -26,6 +26,7 @@ export component PauseMenu inherits Rectangle {
     in-out property <float> sfx-volume: 80.0;
     in-out property <bool> vsync: true;
     in-out property <bool> debug-mode: false;
+    in-out property <string> msaa: "16x MSAA";
 
     // tab state
     in-out property <int> active-tab: 0; // 0 = System, 1 = Settings
@@ -117,6 +118,7 @@ export component PauseMenu inherits Rectangle {
                 sfx-volume <=> root.sfx-volume;
                 vsync <=> root.vsync;
                 debug-mode <=> root.debug-mode;
+                msaa <=> root.msaa;
                 apply_clicked => { root.apply_settings_clicked(); }
                 cancel_clicked => {
                     root.cancel_settings_clicked();

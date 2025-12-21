@@ -415,6 +415,15 @@ impl Game {
                     );
                 }
                 UiMessage::ApplySettings => {
+                    // load old config to detect changes that require restart
+                    let old_config = GameConfig::load_from_file(&self.config_path);
+                    let msaa_changed = old_config.msaa_level != self.config.msaa_level;
+
+                    println!(
+                        "[DEBUG] ApplySettings - Old MSAA: {}, New MSAA: {}, Changed: {}",
+                        old_config.msaa_level, self.config.msaa_level, msaa_changed
+                    );
+
                     // sync renderer state to config before saving
                     self.config.render_gizmos = self.renderer.render_gizmos;
 
@@ -490,11 +499,20 @@ impl Game {
 
                     println!("[DEBUG] ApplySettings - Configs saved to disk");
 
-                    toast!(
-                        Success,
-                        "Settings Applied",
-                        "Your settings have been saved successfully."
-                    );
+                    // show restart toast if MSAA changed
+                    if msaa_changed {
+                        toast!(
+                            Info,
+                            "Restart Required",
+                            "MSAA changes will take effect after restarting the application."
+                        );
+                    } else {
+                        toast!(
+                            Success,
+                            "Settings Applied",
+                            "Your settings have been saved successfully."
+                        );
+                    }
                 }
                 UiMessage::CancelSettings => {
                     // reload configs from disk to discard changes

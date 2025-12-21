@@ -3,20 +3,14 @@
   "cell_size": 1.0,
   "win_width": 1280.0,
   "win_height": 720.0,
+  "window_mode": "Windowed",
+  "shader_type": "Default",
   "grid_height": 100,
   "grid_width": 100,
   "vsync": true,
   "debug_mode": true,
   "fps_counter": true,
   "render_gizmos": false,
-  "msaa_level": 4,
-  "sounds": {
-    "MooseHuff": "event:/moose3D",
-    "Footstep": "event:/footstep",
-    "Music": "event:/music",
-    "StopRunning": "event:/stop_running",
-    "Jump": "event:/jump",
-    "Land": "event:/land"
-  }
+  "msaa_level": 4
 }
 

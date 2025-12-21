@@ -10,6 +10,41 @@ use crate::ui::message_queue::{MessageQueue, UiMessage};
 
 use super::game_root::{GameRoot, SettingsContext, SystemContext};
 
+/// Convert MSAA level (i32) to display string.
+/// 1 -> "None", 2 -> "2x MSAA", 4 -> "4x MSAA", 8 -> "8x MSAA", 16 -> "16x MSAA"
+fn msaa_level_to_string(level: i32) -> String {
+    match level {
+        1 => "None".to_string(),
+        2 => "2x MSAA".to_string(),
+        4 => "4x MSAA".to_string(),
+        8 => "8x MSAA".to_string(),
+        16 => "16x MSAA".to_string(),
+        _ => {
+            eprintln!(
+                "Warning: Invalid MSAA level {}, defaulting to 16x MSAA",
+                level
+            );
+            "16x MSAA".to_string()
+        }
+    }
+}
+
+/// Convert MSAA display string to level (i32).
+/// "None" -> 1, "2x MSAA" -> 2, "4x MSAA" -> 4, "8x MSAA" -> 8, "16x MSAA" -> 16
+fn msaa_string_to_level(s: &str) -> i32 {
+    match s {
+        "None" => 1,
+        "2x MSAA" => 2,
+        "4x MSAA" => 4,
+        "8x MSAA" => 8,
+        "16x MSAA" => 16,
+        _ => {
+            eprintln!("Warning: Invalid MSAA string '{}', defaulting to 16", s);
+            16
+        }
+    }
+}
+
 /// Context passed to PauseMenuView::update().
 /// Uses nested contexts to logically group settings and system resources.
 pub struct PauseMenuContext<'a> {
@@ -27,6 +62,7 @@ pub struct PauseMenuView {
     apply_settings_pending: Rc<Cell<bool>>,
     cancel_settings_pending: Rc<Cell<bool>>,
     settings_initialized: Rc<Cell<bool>>, // track if we've initialized UI from engine
+    last_msaa_level: Rc<Cell<i32>>,       // track last MSAA level for debug logging
 }
 
 impl PauseMenuView {
@@ -73,6 +109,7 @@ impl PauseMenuView {
             apply_settings_pending,
             cancel_settings_pending,
             settings_initialized: Rc::new(Cell::new(false)),
+            last_msaa_level: Rc::new(Cell::new(-1)), // -1 = uninitialized
         }
     }
 
@@ -95,6 +132,7 @@ impl PauseMenuView {
             game_root.set_sfx_volume(ctx.settings.sound_config.sfx);
             game_root.set_vsync(ctx.settings.game_config.vsync);
             game_root.set_debug_mode(ctx.settings.game_config.debug_mode);
+            game_root.set_msaa(msaa_level_to_string(ctx.settings.game_config.msaa_level).into());
             self.settings_initialized.set(true);
         }
 
@@ -118,11 +156,26 @@ impl PauseMenuView {
         ctx.settings.game_config.vsync = game_root.get_vsync();
         ctx.settings.game_config.debug_mode = game_root.get_debug_mode();
 
+        // sync MSAA from UI to config
+        let msaa_str = game_root.get_msaa().to_string();
+        let msaa_level = msaa_string_to_level(&msaa_str);
+
+        // only log when MSAA value changes
+        if msaa_level != self.last_msaa_level.get() {
+            println!(
+                "[DEBUG] PauseMenu - MSAA changed: '{}' -> level: {}",
+                msaa_str, msaa_level
+            );
+            self.last_msaa_level.set(msaa_level);
+        }
+
+        ctx.settings.game_config.msaa_level = msaa_level;
+
         self.handle_unpause(ctx.paused);
         self.handle_reload_world(ctx.system.message_queue);
         self.handle_save_player_data(ctx.system.entity_manager);
         self.handle_quit(ctx.system.message_queue);
-        self.handle_apply_settings(ctx.system.message_queue);
+        self.handle_apply_settings(game_root, ctx.system.message_queue);
         self.handle_cancel_settings(ctx.system.message_queue);
     }
     /// Handle unpause action by directly modifying the paused state.
@@ -134,8 +187,13 @@ impl PauseMenuView {
     }
 
     /// Handle apply settings by sending a global message to save config to disk.
-    fn handle_apply_settings(&self, message_queue: &mut MessageQueue) {
+    fn handle_apply_settings(&self, game_root: &GameRoot, message_queue: &mut MessageQueue) {
         if self.apply_settings_pending.replace(false) {
+            let msaa_str = game_root.get_msaa().to_string();
+            println!(
+                "[DEBUG] handle_apply_settings - MSAA value from UI: '{}'",
+                msaa_str
+            );
             message_queue.send(UiMessage::ApplySettings);
         }
     }
