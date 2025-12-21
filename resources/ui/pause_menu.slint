@@ -19,7 +19,6 @@ export component PauseMenu inherits Rectangle {
     // settings properties
     in-out property <string> resolution: "1920 x 1080";
     in-out property <string> window-mode: "Borderless";
-    in-out property <string> shader-type: "Default";
     in-out property <bool> gizmo-enabled: false;
     in-out property <bool> show-fps: false;
     in-out property <float> bgm-volume: 100.0;
@@ -111,7 +110,6 @@ export component PauseMenu inherits Rectangle {
                 width: parent.width;
                 resolution <=> root.resolution;
                 window-mode <=> root.window-mode;
-                shader-type <=> root.shader-type;
                 gizmo-enabled <=> root.gizmo-enabled;
                 show-fps <=> root.show-fps;
                 bgm-volume <=> root.bgm-volume;

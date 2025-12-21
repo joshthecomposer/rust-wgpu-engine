@@ -13,7 +13,6 @@ export component SettingsMenu inherits Rectangle {
     // settings properties
     in-out property <string> resolution: "1920 x 1080";
     in-out property <string> window-mode: "Borderless";
-    in-out property <string> shader-type: "Default";
     in-out property <bool> gizmo-enabled: false;
     in-out property <bool> show-fps: false;
     in-out property <float> bgm-volume: 100.0;
@@ -24,6 +23,12 @@ export component SettingsMenu inherits Rectangle {
 
     callback apply_clicked();
     callback cancel_clicked();
+
+    // dropdown positioning constants
+    property <length> row-height: 32px;
+    property <length> row-spacing: 12px;
+    property <length> section-header-height: 28px;
+    property <length> base-y: 60px; // starting Y position for first dropdown
 
     background: transparent;
 
@@ -53,7 +58,6 @@ export component SettingsMenu inherits Rectangle {
                             }
                             opened => {
                                 window-mode-select.is-open = false;
-                                shader-type-select.is-open = false;
                                 msaa-select.is-open = false;
                             }
                         }
@@ -69,23 +73,6 @@ export component SettingsMenu inherits Rectangle {
                             }
                             opened => {
                                 resolution-select.is-open = false;
-                                shader-type-select.is-open = false;
-                            }
-                        }
-                    }
-
-                    RunicSettingsRow {
-                        label: "Shader Type";
-                        shader-type-select := RunicSelect {
-                            current-value: shader-type;
-                            options: ["Default", "PSX"];
-                            selected(value) => {
-                                shader-type = value;
-                            }
-                            opened => {
-                                window-mode-select.is-open = false;
-                                shader-type-select.is-open = false;
-                                msaa-select.is-open = false;
                             }
                         }
                     }
@@ -111,7 +98,6 @@ export component SettingsMenu inherits Rectangle {
                             opened => {
                                 resolution-select.is-open = false;
                                 window-mode-select.is-open = false;
-                                shader-type-select.is-open = false;
                             }
                         }
                     }
@@ -213,7 +199,7 @@ export component SettingsMenu inherits Rectangle {
 
     if resolution-select.is-open: Rectangle {
         x: root.width - 160px - 22px; // align to right side where dropdowns are (accounting for scrollbar)
-        y: 60px; // approximate position of first dropdown
+        y: base-y; // first dropdown (section header + resolution row)
         width: 164px; // wider to accommodate border
         height: 3 * 28px + 4px; // taller to accommodate border
         background: Theme.stone-light; // subtle border
@@ -266,7 +252,7 @@ export component SettingsMenu inherits Rectangle {
 
     if window-mode-select.is-open: Rectangle {
         x: root.width - 160px - 22px;
-        y: 104px; // second dropdown position (60 + 32 + 12 spacing)
+        y: base-y + row-height + row-spacing; // second dropdown (resolution + spacing)
         width: 164px; // wider to accommodate border
         height: 3 * 28px + 4px; // taller to accommodate border
         background: Theme.stone-light; // subtle border
@@ -308,59 +294,6 @@ export component SettingsMenu inherits Rectangle {
         }
     }
 
-    // click-outside-to-close for shader type dropdown
-    if shader-type-select.is-open: TouchArea {
-        width: root.width;
-        height: root.height;
-        clicked => {
-            shader-type-select.is-open = false;
-        }
-    }
-
-    if shader-type-select.is-open: Rectangle {
-        x: root.width - 160px - 22px;
-        y: 148px; // third dropdown position (104 + 32 + 12 spacing)
-        width: 164px; // wider to accommodate border
-        height: 2 * 28px + 4px; // taller to accommodate border
-        background: Theme.stone-light; // subtle border
-        drop-shadow-blur: 8px;
-        drop-shadow-color: #00000080;
-        drop-shadow-offset-y: 4px;
-
-        // content background (inset to create border effect)
-        Rectangle {
-            x: 2px;
-            y: 2px;
-            width: parent.width - 4px;
-            height: parent.height - 4px;
-            background: #0f172a;
-
-            VerticalLayout {
-                padding: 0px;
-
-                for option in ["Default", "PSX"]: Rectangle {
-                    height: 28px;
-                    background: shader-touch.has-hover ? Theme.stone-dark : #0f172a;
-
-                    shader-touch := TouchArea {
-                        clicked => {
-                            shader-type = option;
-                            shader-type-select.is-open = false;
-                        }
-                    }
-
-                    Text {
-                        x: 12px;
-                        text: option;
-                        color: shader-touch.has-hover ? Theme.runic-gold : Theme.old-text;
-                        font-size: 11px;
-                        vertical-alignment: center;
-                    }
-                }
-            }
-        }
-    }
-
     // click-outside-to-close for msaa dropdown
     if msaa-select.is-open: TouchArea {
         width: root.width;
@@ -372,7 +305,7 @@ export component SettingsMenu inherits Rectangle {
 
     if msaa-select.is-open: Rectangle {
         x: root.width - 160px - 22px;
-        y: 236px; // fifth row position (148 + 44 + 44 for shader-type + vsync + msaa)
+        y: base-y + 3 * (row-height + row-spacing); // fourth dropdown (resolution + window-mode + vsync + spacing)
         width: 164px; // wider to accommodate border
         height: 5 * 28px + 4px; // taller to accommodate border (5 options)
         background: Theme.stone-light;
