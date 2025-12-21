@@ -50,6 +50,7 @@ pub struct Renderer {
     pub exposure: f32,
     pub do_hdr: bool,
     pub bloom_strength: f32,
+    pub do_msaa: bool,
 }
 
 impl Renderer {
@@ -276,10 +277,13 @@ impl Renderer {
         assert!(&[1, 2, 4, 8, 16].contains(&config.msaa_level)); // 1 is off
         println!("MSAA LEVEL CHOSEN: {}", config.msaa_level);
 
-        if config.msaa_level == 1 {
+        let do_msaa = if config.msaa_level == 1 {
             // for good measure, I don't think we have to do this with 1
             unsafe { gl_call!(gl::Disable(gl::MULTISAMPLE)) };
-        }
+            false
+        } else {
+            true
+        };
 
         unsafe {
             gl_call!(gl::GenFramebuffers(1, &mut hdr_msaa_fbo));
@@ -655,6 +659,7 @@ impl Renderer {
             exposure: 1.5,
             do_hdr: true,
             bloom_strength: 0.1,
+            do_msaa,
         }
     }
 
@@ -671,6 +676,11 @@ impl Renderer {
         alpha: f32,
         particles: &mut ParticleSystem,
     ) {
+        // =============================================================
+        // ANIMATION LOD
+        // =============================================================
+        // lod works by just seeing if there are more than 300 guys. If so, we skip animation
+        // frames based on distance from the camera. No fustrum stuff, just simple radius calc
         let ids_by_type = em.get_ids_by_type();
         let cam_pos = camera.position;
 
@@ -722,6 +732,9 @@ impl Renderer {
             }
         }
 
+        // =============================================================
+        // SHADOW PASS
+        // =============================================================
         self.shadow_begin(camera, light_manager);
 
         for (_, ids) in ids_by_type.iter() {
@@ -739,12 +752,18 @@ impl Renderer {
             return;
         }
 
+        // =============================================================
+        // HDR FRAMEBUFFER
+        // =============================================================
+        // Render to the MSAA one if MSAA > 1, else use the regular
         unsafe {
-            let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_fbo));
-            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
+            let hdr_msaa_or_normal_fbo = match self.do_msaa {
+                true => *self.fbos.get(&FboType::HdrMsaa).unwrap(),
+                false => *self.fbos.get(&FboType::HDR).unwrap(),
+            };
 
-            //gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_or_normal_fbo));
+            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
             gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
         }
 
@@ -780,43 +799,45 @@ impl Renderer {
         // ==========================================================
         // blitting MSAA: read MSAA and draw texture FBO
         // ==========================================================
-        unsafe {
-            let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
-            let hdr_fbo = *self.fbos.get(&FboType::HDR).unwrap();
+        if self.do_msaa {
+            unsafe {
+                let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
+                let hdr_fbo = *self.fbos.get(&FboType::HDR).unwrap();
 
-            // bind for blit
-            gl_call!(gl::BindFramebuffer(gl::READ_FRAMEBUFFER, hdr_msaa_fbo));
-            gl_call!(gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, hdr_fbo));
+                // bind for blit
+                gl_call!(gl::BindFramebuffer(gl::READ_FRAMEBUFFER, hdr_msaa_fbo));
+                gl_call!(gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, hdr_fbo));
 
-            gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT0));
-            gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT0));
-            gl_call!(gl::BlitFramebuffer(
-                0,
-                0,
-                fb_width as i32,
-                fb_height as i32,
-                0,
-                0,
-                fb_width as i32,
-                fb_height as i32,
-                gl::COLOR_BUFFER_BIT,
-                gl::NEAREST,
-            ));
+                gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT0));
+                gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT0));
+                gl_call!(gl::BlitFramebuffer(
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    gl::COLOR_BUFFER_BIT,
+                    gl::NEAREST,
+                ));
 
-            gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT1));
-            gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT1));
-            gl_call!(gl::BlitFramebuffer(
-                0,
-                0,
-                fb_width as i32,
-                fb_height as i32,
-                0,
-                0,
-                fb_width as i32,
-                fb_height as i32,
-                gl::COLOR_BUFFER_BIT,
-                gl::NEAREST,
-            ));
+                gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT1));
+                gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT1));
+                gl_call!(gl::BlitFramebuffer(
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    gl::COLOR_BUFFER_BIT,
+                    gl::NEAREST,
+                ));
+            }
         }
 
         let blurred_bloom_tex = self.blur_bloom(fb_width, fb_height);
