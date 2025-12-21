@@ -60,4 +60,11 @@ void main() {
     vec3 outRgb = (lumaB < lumaMin || lumaB > lumaMax) ? rgbA : rgbB;
 
     FragColor = vec4(outRgb, 1.0);
+
+	//// DEBUG CHECK (red lines)
+	//if (contrast < 0.05) {
+	//	FragColor = vec4(0.0, 0.0, 0.0, 1.0); // non-edge
+	//} else {
+	//	FragColor = vec4(1.0, 0.0, 0.0, 1.0); // EDGE
+	//}
 }
