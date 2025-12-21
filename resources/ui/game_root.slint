@@ -1,8 +1,10 @@
 // Root Slint file for in-game UI (pause menu, HUD, etc.)
 // This single component manages all game UI in one window.
 
-// import custom font for game UI - must be at root level for embedding
+// import custom fonts for game UI - must be at root level for embedding
 import "../fonts/weiholmir.ttf";
+import "../fonts/JetBrainsMono-Medium.ttf";
+import "../fonts/OpenDyslexic-Regular.otf";
 
 import { PlayerContainer } from "components/player_container.slint";
 import { PauseMenu } from "pause_menu.slint";
@@ -12,7 +14,9 @@ import { Theme } from "components/theme.slint";
 
 export component GameRoot inherits Window {
     background: transparent;
-    default-font-family: Theme.font-family;
+    in-out property <string> font-family: "Weiholmir"; // display name for UI
+    in-out property <string> actual-font-family: "Weiholmir"; // actual font family name for rendering
+    default-font-family: root.actual-font-family;
 
     // pause menu properties
     in property <bool> show-pause-menu: false;
@@ -93,6 +97,8 @@ export component GameRoot inherits Window {
         vsync <=> root.vsync;
         debug-mode <=> root.debug-mode;
         msaa <=> root.msaa;
+        font-family <=> root.font-family;
+        actual-font-family <=> root.actual-font-family;
 
         close_clicked => { root.close_clicked(); }
         reload_world_clicked => { root.reload_world_clicked(); }
