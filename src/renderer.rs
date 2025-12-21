@@ -7,6 +7,7 @@ use image::GenericImageView;
 
 use crate::{
     camera::Camera,
+    config::game_config::GameConfig,
     entity_manager::EntityManager,
     enums_types::{FboType, ShaderType, Transform, VaoType},
     gl_call,
@@ -49,10 +50,11 @@ pub struct Renderer {
     pub exposure: f32,
     pub do_hdr: bool,
     pub bloom_strength: f32,
+    pub do_msaa: bool,
 }
 
 impl Renderer {
-    pub fn new(platform: &Platform) -> Self {
+    pub fn new(platform: &Platform, config: &GameConfig) -> Self {
         // =============================================================
         // Setup Shaders
         // =============================================================
@@ -272,9 +274,18 @@ impl Renderer {
         // =============================================================
         let mut hdr_msaa_fbo = 0;
 
-        unsafe {
-            let samples = 16;
+        assert!(&[1, 2, 4, 8, 16].contains(&config.msaa_level)); // 1 is off
+        println!("MSAA LEVEL CHOSEN: {}", config.msaa_level);
 
+        let do_msaa = if config.msaa_level == 1 {
+            // for good measure, I don't think we have to do this with 1
+            unsafe { gl_call!(gl::Disable(gl::MULTISAMPLE)) };
+            false
+        } else {
+            true
+        };
+
+        unsafe {
             gl_call!(gl::GenFramebuffers(1, &mut hdr_msaa_fbo));
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_fbo));
 
@@ -285,7 +296,7 @@ impl Renderer {
                 gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, color_rb_msaa[i]));
                 gl_call!(gl::RenderbufferStorageMultisample(
                     gl::RENDERBUFFER,
-                    samples,
+                    config.msaa_level,
                     gl::RGBA16F,
                     width as i32,
                     height as i32,
@@ -303,7 +314,7 @@ impl Renderer {
             gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, rbo_depth_msaa));
             gl_call!(gl::RenderbufferStorageMultisample(
                 gl::RENDERBUFFER,
-                samples,
+                config.msaa_level,
                 gl::DEPTH_COMPONENT24,
                 width as i32,
                 height as i32,
@@ -540,6 +551,63 @@ impl Renderer {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
         }
 
+        // =============================================================
+        // Base Quad for Frames
+        // =============================================================
+        let mut quad_vao = 0;
+        let mut quad_vbo = 0;
+
+        unsafe {
+            let quad_vertices: [f32; 30] = BASIC_QUAD_VERTICES;
+
+            gl_call!(gl::GenVertexArrays(1, &mut quad_vao));
+            gl_call!(gl::GenBuffers(1, &mut quad_vbo));
+
+            gl_call!(gl::BindVertexArray(quad_vao));
+
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, quad_vbo));
+            gl_call!(gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (quad_vertices.len() * std::mem::size_of::<f32>()) as isize,
+                quad_vertices.as_ptr().cast(),
+                gl::STATIC_DRAW
+            ));
+
+            let stride = (5 * std::mem::size_of::<f32>()) as i32;
+
+            // location 0: vec3 position
+            gl_call!(gl::EnableVertexAttribArray(0));
+            gl_call!(gl::VertexAttribPointer(
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                std::ptr::null()
+            ));
+
+            // location 1: vec2 uv (offset 3 floats)
+            gl_call!(gl::EnableVertexAttribArray(1));
+            gl_call!(gl::VertexAttribPointer(
+                1,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (3 * std::mem::size_of::<f32>()) as *const _
+            ));
+
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
+            gl_call!(gl::BindVertexArray(0));
+
+            // TODO: HashMap lookup every quad draw is unnecessary overhead
+            // Not huge, but we call render_quad() a lot (bloom passes).
+            // storing this as just fields int a struct would be better.
+            // e.g. pub struct Vaos { base_quad, hdr, etc }
+
+            vaos.insert(VaoType::BaseQuad, quad_vao);
+        }
+
         let mut debug_depth_quad = Shader::new("resources/shaders/debug_depth_quad.glsl");
 
         debug_depth_quad.activate();
@@ -591,6 +659,7 @@ impl Renderer {
             exposure: 1.5,
             do_hdr: true,
             bloom_strength: 0.1,
+            do_msaa,
         }
     }
 
@@ -607,6 +676,11 @@ impl Renderer {
         alpha: f32,
         particles: &mut ParticleSystem,
     ) {
+        // =============================================================
+        // ANIMATION LOD
+        // =============================================================
+        // lod works by just seeing if there are more than 300 guys. If so, we skip animation
+        // frames based on distance from the camera. No fustrum stuff, just simple radius calc
         let ids_by_type = em.get_ids_by_type();
         let cam_pos = camera.position;
 
@@ -658,6 +732,9 @@ impl Renderer {
             }
         }
 
+        // =============================================================
+        // SHADOW PASS
+        // =============================================================
         self.shadow_begin(camera, light_manager);
 
         for (_, ids) in ids_by_type.iter() {
@@ -675,12 +752,18 @@ impl Renderer {
             return;
         }
 
+        // =============================================================
+        // HDR FRAMEBUFFER
+        // =============================================================
+        // Render to the MSAA one if MSAA > 1, else use the regular
         unsafe {
-            let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
-            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_fbo));
-            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
+            let hdr_msaa_or_normal_fbo = match self.do_msaa {
+                true => *self.fbos.get(&FboType::HdrMsaa).unwrap(),
+                false => *self.fbos.get(&FboType::HDR).unwrap(),
+            };
 
-            //gl_call!(gl::ClearColor(0.0, 0.0, 0.0, 1.0));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_msaa_or_normal_fbo));
+            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
             gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
         }
 
@@ -716,43 +799,45 @@ impl Renderer {
         // ==========================================================
         // blitting MSAA: read MSAA and draw texture FBO
         // ==========================================================
-        unsafe {
-            let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
-            let hdr_fbo = *self.fbos.get(&FboType::HDR).unwrap();
+        if self.do_msaa {
+            unsafe {
+                let hdr_msaa_fbo = *self.fbos.get(&FboType::HdrMsaa).unwrap();
+                let hdr_fbo = *self.fbos.get(&FboType::HDR).unwrap();
 
-            // bind for blit
-            gl_call!(gl::BindFramebuffer(gl::READ_FRAMEBUFFER, hdr_msaa_fbo));
-            gl_call!(gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, hdr_fbo));
+                // bind for blit
+                gl_call!(gl::BindFramebuffer(gl::READ_FRAMEBUFFER, hdr_msaa_fbo));
+                gl_call!(gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, hdr_fbo));
 
-            gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT0));
-            gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT0));
-            gl_call!(gl::BlitFramebuffer(
-                0,
-                0,
-                fb_width as i32,
-                fb_height as i32,
-                0,
-                0,
-                fb_width as i32,
-                fb_height as i32,
-                gl::COLOR_BUFFER_BIT,
-                gl::NEAREST,
-            ));
+                gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT0));
+                gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT0));
+                gl_call!(gl::BlitFramebuffer(
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    gl::COLOR_BUFFER_BIT,
+                    gl::NEAREST,
+                ));
 
-            gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT1));
-            gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT1));
-            gl_call!(gl::BlitFramebuffer(
-                0,
-                0,
-                fb_width as i32,
-                fb_height as i32,
-                0,
-                0,
-                fb_width as i32,
-                fb_height as i32,
-                gl::COLOR_BUFFER_BIT,
-                gl::NEAREST,
-            ));
+                gl_call!(gl::ReadBuffer(gl::COLOR_ATTACHMENT1));
+                gl_call!(gl::DrawBuffer(gl::COLOR_ATTACHMENT1));
+                gl_call!(gl::BlitFramebuffer(
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    gl::COLOR_BUFFER_BIT,
+                    gl::NEAREST,
+                ));
+            }
         }
 
         let blurred_bloom_tex = self.blur_bloom(fb_width, fb_height);
@@ -1211,55 +1296,10 @@ impl Renderer {
     // }
 
     pub fn render_quad(&self) {
-        let mut vao = 0;
-        let mut vbo = 0;
-
-        let quad_vertices: [f32; 30] = BASIC_QUAD_VERTICES;
-
         unsafe {
-            gl_call!(gl::GenVertexArrays(1, &mut vao));
-            gl_call!(gl::GenBuffers(1, &mut vbo));
-            gl_call!(gl::BindVertexArray(vao));
-
-            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, vbo));
-            gl_call!(gl::BufferData(
-                gl::ARRAY_BUFFER,
-                (quad_vertices.len() * std::mem::size_of::<f32>()) as isize,
-                quad_vertices.as_ptr() as *const _,
-                gl::STATIC_DRAW
+            gl_call!(gl::BindVertexArray(
+                *self.vaos.get(&VaoType::BaseQuad).unwrap()
             ));
-
-            let stride = (5 * std::mem::size_of::<f32>()) as i32;
-
-            // Position Attribute
-            gl_call!(gl::EnableVertexAttribArray(0));
-            gl_call!(gl::VertexAttribPointer(
-                0,
-                3,
-                gl::FLOAT,
-                gl::FALSE,
-                stride,
-                std::ptr::null()
-            ));
-
-            // Texture Coordinate Attribute
-            gl_call!(gl::EnableVertexAttribArray(1));
-            gl_call!(gl::VertexAttribPointer(
-                1,
-                2,
-                gl::FLOAT,
-                gl::FALSE,
-                stride,
-                (3 * std::mem::size_of::<f32>()) as *const _
-            ));
-
-            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
-            gl_call!(gl::BindVertexArray(0));
-        }
-
-        // Draw the quad
-        unsafe {
-            gl_call!(gl::BindVertexArray(vao));
             gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
             gl_call!(gl::BindVertexArray(0));
         }
