@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::{config::Config, enums_types::FxaaLevels};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -15,6 +15,7 @@ pub struct GameConfig {
     pub fps_counter: bool,
     pub render_gizmos: bool,
     pub msaa_level: i32,
+    pub fxaa_level: FxaaLevels,
 }
 
 impl Default for GameConfig {
@@ -32,6 +33,7 @@ impl Default for GameConfig {
             fps_counter: true,
             render_gizmos: false,
             msaa_level: 16,
+            fxaa_level: FxaaLevels::Off,
         }
     }
 }

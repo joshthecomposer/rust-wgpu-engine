@@ -257,7 +257,11 @@ impl EntityManager {
                 self.dimensions
                     .insert(parent_id, Dimension::Cylinder { r, h });
             }
-            HitboxShape::BoxDim { hx, hy, hz } => {
+            HitboxShape::BoxDim {
+                hx: _hx,
+                hy: _hy,
+                hz: _hz,
+            } => {
                 todo!();
             }
             _ => panic!("don't you try it you swit!!!"),

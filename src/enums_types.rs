@@ -62,6 +62,15 @@ pub enum ShaderType {
     Blur,
     StaticModel,
     AnimatedModel,
+    Fxaa,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub enum FxaaLevels {
+    Off,
+    Low,
+    Med,
+    High,
 }
 
 /// A struct to carry some rotation state for blending between rotations smoothly
