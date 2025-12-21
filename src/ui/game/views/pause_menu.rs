@@ -156,18 +156,8 @@ impl PauseMenuView {
         ctx.settings.game_config.vsync = game_root.get_vsync();
         ctx.settings.game_config.debug_mode = game_root.get_debug_mode();
 
-        // sync MSAA from UI to config
         let msaa_str = game_root.get_msaa().to_string();
         let msaa_level = msaa_string_to_level(&msaa_str);
-
-        // only log when MSAA value changes
-        if msaa_level != self.last_msaa_level.get() {
-            println!(
-                "[DEBUG] PauseMenu - MSAA changed: '{}' -> level: {}",
-                msaa_str, msaa_level
-            );
-            self.last_msaa_level.set(msaa_level);
-        }
 
         ctx.settings.game_config.msaa_level = msaa_level;
 
@@ -175,7 +165,7 @@ impl PauseMenuView {
         self.handle_reload_world(ctx.system.message_queue);
         self.handle_save_player_data(ctx.system.entity_manager);
         self.handle_quit(ctx.system.message_queue);
-        self.handle_apply_settings(game_root, ctx.system.message_queue);
+        self.handle_apply_settings(ctx.system.message_queue);
         self.handle_cancel_settings(ctx.system.message_queue);
     }
     /// Handle unpause action by directly modifying the paused state.
@@ -187,13 +177,8 @@ impl PauseMenuView {
     }
 
     /// Handle apply settings by sending a global message to save config to disk.
-    fn handle_apply_settings(&self, game_root: &GameRoot, message_queue: &mut MessageQueue) {
+    fn handle_apply_settings(&self, message_queue: &mut MessageQueue) {
         if self.apply_settings_pending.replace(false) {
-            let msaa_str = game_root.get_msaa().to_string();
-            println!(
-                "[DEBUG] handle_apply_settings - MSAA value from UI: '{}'",
-                msaa_str
-            );
             message_queue.send(UiMessage::ApplySettings);
         }
     }
