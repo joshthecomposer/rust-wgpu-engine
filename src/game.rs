@@ -90,6 +90,29 @@ impl Game {
         }
     }
 
+    /// Check if any settings changed that require an application restart.
+    /// Returns true if restart is required, false otherwise.
+    fn check_settings_require_restart(&self, old_config: &GameConfig) -> bool {
+        let msaa_changed = old_config.msaa_level != self.config.msaa_level;
+        let debug_mode_changed = old_config.debug_mode != self.config.debug_mode;
+
+        // log individual changes for debugging
+        if msaa_changed {
+            println!(
+                "[DEBUG] MSAA changed: {} -> {}",
+                old_config.msaa_level, self.config.msaa_level
+            );
+        }
+        if debug_mode_changed {
+            println!(
+                "[DEBUG] Debug mode changed: {} -> {}",
+                old_config.debug_mode, self.config.debug_mode
+            );
+        }
+
+        msaa_changed || debug_mode_changed
+    }
+
     pub fn tick(&mut self, now_seconds: f32) {
         self.time.begin_frame(now_seconds);
 
@@ -417,12 +440,7 @@ impl Game {
                 UiMessage::ApplySettings => {
                     // load old config to detect changes that require restart
                     let old_config = GameConfig::load_from_file(&self.config_path);
-                    let msaa_changed = old_config.msaa_level != self.config.msaa_level;
-
-                    println!(
-                        "[DEBUG] ApplySettings - Old MSAA: {}, New MSAA: {}, Changed: {}",
-                        old_config.msaa_level, self.config.msaa_level, msaa_changed
-                    );
+                    let requires_restart = self.check_settings_require_restart(&old_config);
 
                     // sync renderer state to config before saving
                     self.config.render_gizmos = self.renderer.render_gizmos;
@@ -499,12 +517,12 @@ impl Game {
 
                     println!("[DEBUG] ApplySettings - Configs saved to disk");
 
-                    // show restart toast if MSAA changed
-                    if msaa_changed {
+                    // show appropriate toast based on whether restart is required
+                    if requires_restart {
                         toast!(
                             Info,
                             "Restart Required",
-                            "MSAA changes will take effect after restarting the application."
+                            "Some changes will take effect after restarting the application."
                         );
                     } else {
                         toast!(
