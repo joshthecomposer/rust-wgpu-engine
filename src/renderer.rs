@@ -52,8 +52,9 @@ pub struct Renderer {
     pub bloom_strength: f32,
     pub do_msaa: bool,
     pub do_fxaa: bool,
-    pub fxaa_level: FxaaLevels,
 
+    // COMING SOON
+    //pub fxaa_level: FxaaLevels,
     pub fxaa_fbo: u32,
     pub fxaa_tex: u32,
 }
@@ -729,8 +730,7 @@ impl Renderer {
             bloom_strength: 0.1,
             do_msaa,
             do_fxaa: config.msaa_level < 2 && config.fxaa_level != FxaaLevels::Off,
-            fxaa_level: config.fxaa_level.clone(),
-
+            //fxaa_level: config.fxaa_level.clone(),
             fxaa_fbo,
             fxaa_tex,
         }

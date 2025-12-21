@@ -875,7 +875,7 @@ impl EntityManager {
         &mut self,
         position: Vec3,
         rotation: Quat,
-        scale: Vec3,
+        _scale: Vec3,
         shape: HitboxShape,
         parent_id: usize,
         ps: &mut PhysicsState,
