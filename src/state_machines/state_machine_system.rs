@@ -6,7 +6,8 @@ use crate::{
     physics::PhysicsState,
     sound::sound_manager::SoundManager,
     state_machines::{
-        enemy_state_machine::enemy_sim_state_machine, player_state_machine::player_state_machine,
+        enemy_state_machine::enemy_sim_state_machine,
+        player_state_machine::{player_state_machine, process_ability_input},
     },
 };
 
@@ -19,6 +20,9 @@ pub fn update(
     sm: &mut SoundManager,
     camera: &Camera,
 ) {
+    // process ability input to trigger cooldowns
+    process_ability_input(em, input);
+
     player_state_machine(em, dt, input, ps, sm, particles, camera);
 
     // TODO: gather entity IDs once somewhere and use for the entire game loop?

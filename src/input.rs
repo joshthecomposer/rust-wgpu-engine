@@ -95,10 +95,10 @@ impl InputState {
     //         && self.mouse_previous.contains(&MouseButton::Left)
     // }
 
-    // pub fn right_mouse_just_pressed(&self) -> bool {
-    //     self.mouse_current.contains(&MouseButton::Right)
-    //         && !self.mouse_previous.contains(&MouseButton::Right)
-    // }
+    pub fn right_mouse_just_pressed(&self) -> bool {
+        self.mouse_current.contains(&MouseButton::Right)
+            && !self.mouse_previous.contains(&MouseButton::Right)
+    }
 
     // pub fn right_mouse_just_released(&self) -> bool {
     //     !self.mouse_current.contains(&MouseButton::Right)

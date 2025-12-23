@@ -1,0 +1,29 @@
+{
+  "weapon_types": {
+    "Sword": {
+      "m1": 1,
+      "m2": 2,
+      "shift": 14,
+      "skill_pool": [3, 4, 5, 6, 12],
+      "ultimate_pool": [15]
+    },
+    "Axe": {
+      "m1": 7,
+      "m2": 8,
+      "shift": 14,
+      "skill_pool": [9, 10, 11, 12, 13],
+      "ultimate_pool": [16, 17]
+    }
+  },
+  "entity_type_mapping": {
+    "OrcSword": "Sword",
+    "DoubleAxe": "Axe"
+  },
+  "starter_abilities": {
+    "entity_type": "OrcSword",
+    "q": 3,
+    "e": 4,
+    "r": 15
+  }
+}
+

@@ -1,0 +1,106 @@
+{
+  "abilities": {
+    "1": {
+      "id": 1,
+      "name": "Slash",
+      "cooldown": 0.5,
+      "description": "Quick horizontal slash"
+    },
+    "2": {
+      "id": 2,
+      "name": "Thrust",
+      "cooldown": 0.8,
+      "description": "Forward thrust attack"
+    },
+    "3": {
+      "id": 3,
+      "name": "Whirlwind",
+      "cooldown": 6.0,
+      "description": "Spin attack hitting all nearby"
+    },
+    "4": {
+      "id": 4,
+      "name": "Parry",
+      "cooldown": 4.0,
+      "description": "Defensive stance that counters"
+    },
+    "5": {
+      "id": 5,
+      "name": "Lunge",
+      "cooldown": 5.0,
+      "description": "Dash forward with blade"
+    },
+    "6": {
+      "id": 6,
+      "name": "Blade Storm",
+      "cooldown": 8.0,
+      "description": "Multiple rapid strikes"
+    },
+    "7": {
+      "id": 7,
+      "name": "Cleave",
+      "cooldown": 1.0,
+      "description": "Heavy downward chop"
+    },
+    "8": {
+      "id": 8,
+      "name": "Overhead Smash",
+      "cooldown": 1.2,
+      "description": "Powerful overhead strike"
+    },
+    "9": {
+      "id": 9,
+      "name": "Ground Pound",
+      "cooldown": 7.0,
+      "description": "Slam weapon into ground"
+    },
+    "10": {
+      "id": 10,
+      "name": "Berserker Rage",
+      "cooldown": 6.0,
+      "description": "Enter frenzied state"
+    },
+    "11": {
+      "id": 11,
+      "name": "Execute",
+      "cooldown": 10.0,
+      "description": "Devastating finisher"
+    },
+    "12": {
+      "id": 12,
+      "name": "Rending Strike",
+      "cooldown": 5.0,
+      "description": "Causes bleeding"
+    },
+    "13": {
+      "id": 13,
+      "name": "Shield Breaker",
+      "cooldown": 8.0,
+      "description": "Ignore enemy defenses"
+    },
+    "14": {
+      "id": 14,
+      "name": "Roll Dodge",
+      "cooldown": 2.0,
+      "description": "Quick evasive roll"
+    },
+    "15": {
+      "id": 15,
+      "name": "Blade Dance",
+      "cooldown": 30.0,
+      "description": "Ultimate: Graceful deadly combo"
+    },
+    "16": {
+      "id": 16,
+      "name": "Earthquake",
+      "cooldown": 35.0,
+      "description": "Ultimate: Massive ground slam"
+    },
+    "17": {
+      "id": 17,
+      "name": "Rampage",
+      "cooldown": 40.0,
+      "description": "Ultimate: Unstoppable assault"
+    }
+  }
+}

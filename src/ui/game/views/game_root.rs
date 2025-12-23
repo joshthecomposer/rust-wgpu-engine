@@ -10,6 +10,7 @@ use slint::PhysicalSize;
 use crate::entity_manager::EntityManager;
 use crate::ui::message_queue::MessageQueue;
 
+use super::ability_bar::{AbilityBarContext, AbilityBarView};
 use super::pause_menu::{PauseMenuContext, PauseMenuView};
 use super::player_hud::{PlayerHudContext, PlayerHudView};
 use super::toast::ToastView;
@@ -45,6 +46,7 @@ pub struct GameRootView {
     game_root: GameRoot,
     pause_menu_view: PauseMenuView,
     player_hud_view: PlayerHudView,
+    ability_bar_view: AbilityBarView,
     toast_view: ToastView,
 }
 
@@ -65,12 +67,14 @@ impl GameRootView {
         // create child views that wire up their callbacks to game_root
         let pause_menu_view = PauseMenuView::new(&game_root);
         let player_hud_view = PlayerHudView::new();
+        let ability_bar_view = AbilityBarView::new();
         let toast_view = ToastView::new(&game_root);
 
         let view = Self {
             game_root,
             pause_menu_view,
             player_hud_view,
+            ability_bar_view,
             toast_view,
         };
 
@@ -95,6 +99,10 @@ impl GameRootView {
             );
         }
 
+        const PICKUP_RANGE: f32 = 3.0;
+        let show_pickup_prompt = !paused && entity_manager.has_nearby_weapon(PICKUP_RANGE);
+        self.game_root.set_show_pickup_prompt(show_pickup_prompt);
+
         // delegate to pause menu view
         let pause_ctx = PauseMenuContext {
             paused: ctx.paused,
@@ -109,6 +117,13 @@ impl GameRootView {
             paused,
         };
         self.player_hud_view.update(&self.game_root, hud_ctx);
+
+        // delegate to ability bar view
+        let ability_ctx = AbilityBarContext {
+            entity_manager,
+            paused,
+        };
+        self.ability_bar_view.update(&self.game_root, ability_ctx);
 
         self.toast_view.update(&self.game_root, elapsed_time);
     }
