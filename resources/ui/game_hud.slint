@@ -1,34 +1,60 @@
 // game HUD window - always visible during gameplay
 import { PlayerContainer } from "components/player_container.slint";
+import { AbilityBar, AbilitySlotData } from "components/ability_bar.slint";
 import { Theme } from "components/theme.slint";
+
+export { AbilitySlotData }
 
 export component GameHud inherits Window {
     background: transparent;
     default-font-family: Theme.font-family;
-    
+
     // player container visibility
     in property <bool> show-player-hud: true;
-    
-    // player stats (passed in from Rust)
+
+    // player stats
     in property <string> player-name: "PLAYER";
     in property <int> player-level: 1;
     in property <float> player-health: 100;
     in property <float> player-health-max: 100;
     in property <float> player-mana: 100;
     in property <float> player-mana-max: 100;
-    
+
+    // ability bar visibility and data
+    in property <bool> show-ability-bar: true;
+    in property <AbilitySlotData> ability-m1: { visible: true, ability-id: 0, key-label: "M1", cooldown-progress: 0, is-ready: true };
+    in property <AbilitySlotData> ability-m2: { visible: true, ability-id: 0, key-label: "M2", cooldown-progress: 0, is-ready: true };
+    in property <AbilitySlotData> ability-q: { visible: true, ability-id: 0, key-label: "Q", cooldown-progress: 0, is-ready: true };
+    in property <AbilitySlotData> ability-e: { visible: true, ability-id: 0, key-label: "E", cooldown-progress: 0, is-ready: true };
+    in property <AbilitySlotData> ability-shift: { visible: true, ability-id: 0, key-label: "Shift", cooldown-progress: 0, is-ready: true };
+    in property <AbilitySlotData> ability-r: { visible: true, ability-id: 0, key-label: "R", cooldown-progress: 0, is-ready: true };
+
     // position player container in bottom-left
     PlayerContainer {
         x: 16px;
         y: parent.height - self.height - 16px;
 
-        show-container: show-player-hud;
+        show-hud: show-player-hud;
         player-name: root.player-name;
         level: root.player-level;
         health-current: root.player-health;
         health-max: root.player-health-max;
         mana-current: root.player-mana;
         mana-max: root.player-mana-max;
+    }
+
+    // position ability bar at bottom-center
+    AbilityBar {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - self.height - 16px;
+
+        show: root.show-ability-bar;
+        slot-m1: root.ability-m1;
+        slot-m2: root.ability-m2;
+        slot-q: root.ability-q;
+        slot-e: root.ability-e;
+        slot-shift: root.ability-shift;
+        slot-r: root.ability-r;
     }
 }
 

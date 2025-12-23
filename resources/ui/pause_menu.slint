@@ -26,6 +26,8 @@ export component PauseMenu inherits Rectangle {
     in-out property <bool> vsync: true;
     in-out property <bool> debug-mode: false;
     in-out property <string> msaa: "16x MSAA";
+    in-out property <string> font-family: "Weiholmir"; // display name
+    in-out property <string> actual-font-family: "Weiholmir"; // actual font family name
 
     // tab state
     in-out property <int> active-tab: 0; // 0 = System, 1 = Settings
@@ -117,6 +119,7 @@ export component PauseMenu inherits Rectangle {
                 vsync <=> root.vsync;
                 debug-mode <=> root.debug-mode;
                 msaa <=> root.msaa;
+                font-family <=> root.font-family;
                 apply_clicked => { root.apply_settings_clicked(); }
                 cancel_clicked => {
                     root.cancel_settings_clicked();

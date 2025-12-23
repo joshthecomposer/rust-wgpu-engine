@@ -20,6 +20,7 @@ export component SettingsMenu inherits Rectangle {
     in-out property <bool> vsync: true;
     in-out property <bool> debug-mode: false;
     in-out property <string> msaa: "16x MSAA";
+    in-out property <string> font-family: "Weiholmir";
 
     callback apply_clicked();
     callback cancel_clicked();
@@ -59,6 +60,7 @@ export component SettingsMenu inherits Rectangle {
                             opened => {
                                 window-mode-select.is-open = false;
                                 msaa-select.is-open = false;
+                                font-select.is-open = false;
                             }
                         }
                     }
@@ -73,6 +75,7 @@ export component SettingsMenu inherits Rectangle {
                             }
                             opened => {
                                 resolution-select.is-open = false;
+                                font-select.is-open = false;
                             }
                         }
                     }
@@ -98,6 +101,7 @@ export component SettingsMenu inherits Rectangle {
                             opened => {
                                 resolution-select.is-open = false;
                                 window-mode-select.is-open = false;
+                                font-select.is-open = false;
                             }
                         }
                     }
@@ -132,6 +136,22 @@ export component SettingsMenu inherits Rectangle {
                             checked: debug-mode;
                             toggled => {
                                 debug-mode = !debug-mode;
+                            }
+                        }
+                    }
+
+                    RunicSettingsRow {
+                        label: "Font";
+                        font-select := RunicSelect {
+                            current-value: font-family;
+                            options: ["Weiholmir", "JetBrains Mono", "OpenDyslexic"];
+                            selected(value) => {
+                                font-family = value;
+                            }
+                            opened => {
+                                resolution-select.is-open = false;
+                                window-mode-select.is-open = false;
+                                msaa-select.is-open = false;
                             }
                         }
                     }
@@ -199,7 +219,7 @@ export component SettingsMenu inherits Rectangle {
 
     if resolution-select.is-open: Rectangle {
         x: root.width - 160px - 22px; // align to right side where dropdowns are (accounting for scrollbar)
-        y: base-y; // first dropdown (section header + resolution row)
+        y: base-y - scroll-view.viewport-y; // first dropdown (section header + resolution row) - scroll offset
         width: 164px; // wider to accommodate border
         height: 3 * 28px + 4px; // taller to accommodate border
         background: Theme.stone-light; // subtle border
@@ -252,7 +272,7 @@ export component SettingsMenu inherits Rectangle {
 
     if window-mode-select.is-open: Rectangle {
         x: root.width - 160px - 22px;
-        y: base-y + row-height + row-spacing; // second dropdown (resolution + spacing)
+        y: base-y + row-height + row-spacing - scroll-view.viewport-y; // second dropdown (resolution + spacing) - scroll offset
         width: 164px; // wider to accommodate border
         height: 3 * 28px + 4px; // taller to accommodate border
         background: Theme.stone-light; // subtle border
@@ -305,7 +325,7 @@ export component SettingsMenu inherits Rectangle {
 
     if msaa-select.is-open: Rectangle {
         x: root.width - 160px - 22px;
-        y: base-y + 3 * (row-height + row-spacing); // fourth dropdown (resolution + window-mode + vsync + spacing)
+        y: base-y + 3 * (row-height + row-spacing) - scroll-view.viewport-y; // fourth dropdown (resolution + window-mode + vsync + spacing) - scroll offset
         width: 164px; // wider to accommodate border
         height: 5 * 28px + 4px; // taller to accommodate border (5 options)
         background: Theme.stone-light;
@@ -341,6 +361,59 @@ export component SettingsMenu inherits Rectangle {
                         x: 12px;
                         text: option;
                         color: msaa-touch.has-hover ? Theme.runic-gold : Theme.old-text;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+
+    // click-outside-to-close for font dropdown
+    if font-select.is-open: TouchArea {
+        width: root.width;
+        height: root.height;
+        clicked => {
+            font-select.is-open = false;
+        }
+    }
+
+    if font-select.is-open: Rectangle {
+        x: root.width - 240px - 22px; // dropdown for font names
+        y: base-y + 7 * (row-height + row-spacing) + section-header-height + row-spacing - scroll-view.viewport-y; // 4 DISPLAY rows + 3 INTERFACE rows + header + spacing - scroll offset
+        width: 244px; // wide enough to fit "JetBrains Mono"
+        height: 3 * 28px + 4px; // taller to accommodate border (3 font options)
+        background: Theme.stone-light;
+        drop-shadow-blur: 8px;
+        drop-shadow-color: #00000080;
+        drop-shadow-offset-y: 4px;
+
+        // content background (inset to create border effect)
+        Rectangle {
+            x: 2px;
+            y: 2px;
+            width: parent.width - 4px;
+            height: parent.height - 4px;
+            background: #0f172a;
+
+            VerticalLayout {
+                padding: 0px;
+
+                for option in ["Weiholmir", "JetBrains Mono", "OpenDyslexic"]: Rectangle {
+                    height: 28px;
+                    background: font-touch.has-hover ? Theme.stone-dark : #0f172a;
+
+                    font-touch := TouchArea {
+                        clicked => {
+                            font-family = option;
+                            font-select.is-open = false;
+                        }
+                    }
+
+                    Text {
+                        x: 12px;
+                        text: option;
+                        color: font-touch.has-hover ? Theme.runic-gold : Theme.old-text;
                         font-size: 11px;
                         vertical-alignment: center;
                     }

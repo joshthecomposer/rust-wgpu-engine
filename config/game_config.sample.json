@@ -11,6 +11,7 @@
   "fps_counter": true,
   "render_gizmos": false,
   "msaa_level": 4,
-  "fxaa_level": "High"
+  "fxaa_level": "Off",
+  "font_family": "Weiholmir"
 }
 

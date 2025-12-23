@@ -16,6 +16,7 @@ pub struct GameConfig {
     pub render_gizmos: bool,
     pub msaa_level: i32,
     pub fxaa_level: FxaaLevels,
+    pub font_family: String,
 }
 
 impl Default for GameConfig {
@@ -34,6 +35,7 @@ impl Default for GameConfig {
             render_gizmos: false,
             msaa_level: 16,
             fxaa_level: FxaaLevels::Off,
+            font_family: "Weiholmir".to_string(),
         }
     }
 }

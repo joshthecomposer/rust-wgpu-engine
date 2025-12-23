@@ -1,18 +1,23 @@
 // Root Slint file for in-game UI (pause menu, HUD, etc.)
 // This single component manages all game UI in one window.
 
-// import custom font for game UI - must be at root level for embedding
+// import custom fonts for game UI - must be at root level for embedding
 import "../fonts/weiholmir.ttf";
+import "../fonts/JetBrainsMono-Medium.ttf";
+import "../fonts/OpenDyslexic-Regular.otf";
 
 import { PlayerContainer } from "components/player_container.slint";
 import { PauseMenu } from "pause_menu.slint";
 import { FpsCounter } from "components/fps_counter.slint";
 import { Toast } from "components/toast.slint";
 import { Theme } from "components/theme.slint";
+import { AbilityBar, AbilitySlotData } from "components/ability_bar.slint";
 
 export component GameRoot inherits Window {
     background: transparent;
-    default-font-family: Theme.font-family;
+    in-out property <string> font-family: "Weiholmir"; // display name for UI
+    in-out property <string> actual-font-family: "Weiholmir"; // actual font family name for rendering
+    default-font-family: root.actual-font-family;
 
     // pause menu properties
     in property <bool> show-pause-menu: false;
@@ -52,6 +57,18 @@ export component GameRoot inherits Window {
     in property <float> player-mana: 100;
     in property <float> player-mana-max: 100;
 
+    // ==================== ABILITY BAR PROPERTIES ====================
+    in property <bool> show-ability-bar: true;
+    in property <AbilitySlotData> ability-slot-m1: { visible: true, ability-id: 0, key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> ability-slot-m2: { visible: true, ability-id: 0, key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> ability-slot-q: { visible: true, ability-id: 0, key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> ability-slot-e: { visible: true, ability-id: 0, key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> ability-slot-shift: { visible: true, ability-id: 0, key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> ability-slot-r: { visible: true, ability-id: 0, key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+
+    // ==================== PICKUP PROMPT ====================
+    in property <bool> show-pickup-prompt: false;
+
     // expose portrait rect for GL rendering (absolute screen position)
     out property <length> portrait-x: player-hud.x + player-hud.portrait-x;
     out property <length> portrait-y: player-hud.y + player-hud.portrait-y;
@@ -72,12 +89,46 @@ export component GameRoot inherits Window {
         mana-max: root.player-mana-max;
     }
 
+    // ==================== ABILITY BAR ====================
+    ability-bar := AbilityBar {
+        x: 16px;
+        y: parent.height - self.height - 24px;
+        show: root.show-ability-bar && !root.show-pause-menu;
+        slot-m1: root.ability-slot-m1;
+        slot-m2: root.ability-slot-m2;
+        slot-q: root.ability-slot-q;
+        slot-e: root.ability-slot-e;
+        slot-shift: root.ability-slot-shift;
+        slot-r: root.ability-slot-r;
+    }
+
     // ==================== FPS COUNTER ====================
     FpsCounter {
         x: parent.width - self.width - 16px;
         y: 16px;
         fps: root.current-fps;
         show: root.show-fps;
+    }
+
+    // ==================== PICKUP PROMPT ====================
+    if root.show-pickup-prompt: Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: parent.height * 0.6;
+        width: prompt-text.preferred-width + 32px;
+        height: prompt-text.preferred-height + 16px;
+        background: #000000.with-alpha(0.7);
+        border-radius: 8px;
+        border-width: 2px;
+        border-color: Theme.highlight;
+
+        prompt-text := Text {
+            x: 16px;
+            y: 8px;
+            text: "Press G to pick up";
+            color: Theme.highlight;
+            font-size: 18px;
+            font-weight: 600;
+        }
     }
 
     // ==================== PAUSE MENU ====================
@@ -93,6 +144,8 @@ export component GameRoot inherits Window {
         vsync <=> root.vsync;
         debug-mode <=> root.debug-mode;
         msaa <=> root.msaa;
+        font-family <=> root.font-family;
+        actual-font-family <=> root.actual-font-family;
 
         close_clicked => { root.close_clicked(); }
         reload_world_clicked => { root.reload_world_clicked(); }

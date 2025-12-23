@@ -45,6 +45,26 @@ fn msaa_string_to_level(s: &str) -> i32 {
     }
 }
 
+/// Convert UI font name to actual font family name.
+/// "JetBrains Mono" -> "JetBrains Mono Medium" (because we use the Medium weight TTF)
+/// All other fonts use their display name as-is.
+fn ui_font_to_family(ui_name: &str) -> String {
+    match ui_name {
+        "JetBrains Mono" => "JetBrains Mono Medium".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Convert font family name to UI display name.
+/// "JetBrains Mono Medium" -> "JetBrains Mono"
+/// All other fonts use their family name as-is.
+fn family_to_ui_font(family: &str) -> String {
+    match family {
+        "JetBrains Mono Medium" => "JetBrains Mono".to_string(),
+        other => other.to_string(),
+    }
+}
+
 /// Context passed to PauseMenuView::update().
 /// Uses nested contexts to logically group settings and system resources.
 pub struct PauseMenuContext<'a> {
@@ -131,6 +151,10 @@ impl PauseMenuView {
             game_root.set_vsync(ctx.settings.game_config.vsync);
             game_root.set_debug_mode(ctx.settings.game_config.debug_mode);
             game_root.set_msaa(msaa_level_to_string(ctx.settings.game_config.msaa_level).into());
+            // set font family - UI shows simplified name, actual-font-family uses full name for rendering
+            game_root
+                .set_font_family(family_to_ui_font(&ctx.settings.game_config.font_family).into());
+            game_root.set_actual_font_family(ctx.settings.game_config.font_family.clone().into());
             self.settings_initialized.set(true);
         }
 
@@ -158,6 +182,21 @@ impl PauseMenuView {
         let msaa_level = msaa_string_to_level(&msaa_str);
 
         ctx.settings.game_config.msaa_level = msaa_level;
+
+        let ui_font_name = game_root.get_font_family().to_string();
+        let font_family = ui_font_to_family(&ui_font_name);
+
+        // debug logging to verify font family names
+        if ctx.settings.game_config.font_family != font_family {
+            println!(
+                "Font changed: '{}' -> '{}'",
+                ctx.settings.game_config.font_family, font_family
+            );
+        }
+
+        ctx.settings.game_config.font_family = font_family.clone();
+        // also update the actual font family for rendering
+        game_root.set_actual_font_family(font_family.into());
 
         self.handle_unpause(ctx.paused);
         self.handle_reload_world(ctx.system.message_queue);

@@ -1,4 +1,5 @@
 use rapier3d::prelude::RigidBody;
+use winit::keyboard::KeyCode;
 
 use crate::{
     animation::animator::Animator,
@@ -15,6 +16,14 @@ use crate::{
     util::constants::DECREASED_GRAVITY_SCALAR,
     util::data_structure::HashMapGetPairMut,
 };
+
+/// Ability slot indices.
+const SLOT_M1: usize = 0;
+const SLOT_M2: usize = 1;
+const SLOT_Q: usize = 2;
+const SLOT_E: usize = 3;
+const SLOT_SHIFT: usize = 4;
+const SLOT_R: usize = 5;
 
 pub fn player_state_machine(
     em: &mut EntityManager,
@@ -558,3 +567,60 @@ fn player_non_combat_transition(
 //     }
 //     false
 // }
+
+/// Try to trigger an ability for the player's equipped weapon.
+/// Returns true if the ability was triggered (not on cooldown).
+fn try_trigger_ability(em: &mut EntityManager, player_id: usize, slot_index: usize) -> bool {
+    let equipped_weapon_id = match em.active_items.get(player_id) {
+        Some(active) => match active.right_hand {
+            Some(id) => id,
+            None => return false,
+        },
+        None => return false,
+    };
+
+    let abilities_config = em.abilities_config.clone();
+
+    // try to trigger the ability
+    if let Some(abilities) = em.weapon_abilities.get_mut(equipped_weapon_id) {
+        abilities.trigger(slot_index, &abilities_config).is_some()
+    } else {
+        false
+    }
+}
+
+/// Check which ability slot(s) are being triggered by input.
+/// This is called from the player state machine to start cooldowns.
+pub fn process_ability_input(em: &mut EntityManager, input: &InputState) {
+    let player_id = match em.factions.iter().find(|f| *f.value() == "Player") {
+        Some(e) => e.key(),
+        None => return,
+    };
+
+    if input.left_mouse_just_pressed() {
+        try_trigger_ability(em, player_id, SLOT_M1);
+    }
+
+    if input.right_mouse_just_pressed() {
+        try_trigger_ability(em, player_id, SLOT_M2);
+    }
+
+    if input.just_pressed(KeyCode::KeyQ) {
+        try_trigger_ability(em, player_id, SLOT_Q);
+    }
+
+    if input.just_pressed(KeyCode::KeyE) {
+        try_trigger_ability(em, player_id, SLOT_E);
+    }
+
+    // Shift utility
+    // only trigger if not also pressing space (dash combo)
+    // TODO: remove the requirement of space and make shift our dash
+    if input.just_pressed(KeyCode::ShiftLeft) && !input.is_down(KeyCode::Space) {
+        try_trigger_ability(em, player_id, SLOT_SHIFT);
+    }
+
+    if input.just_pressed(KeyCode::KeyR) {
+        try_trigger_ability(em, player_id, SLOT_R);
+    }
+}

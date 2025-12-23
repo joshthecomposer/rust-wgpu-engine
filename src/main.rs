@@ -1,3 +1,4 @@
+mod abilities;
 mod camera;
 mod shaders;
 // mod game_state;
