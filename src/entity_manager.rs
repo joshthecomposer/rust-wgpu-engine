@@ -14,6 +14,7 @@ use rapier3d::prelude::*;
 use winit::keyboard::KeyCode;
 
 use crate::{
+    abilities::{AbilitiesConfig, WeaponAbilities, WeaponPoolsConfig},
     animation::{self, animation::Animation, animator::Animator, model::Model, skellington::Bone},
     config::{
         entity_config::{
@@ -93,8 +94,16 @@ pub struct EntityManager {
     pub grounded_states: SparseSet<GroundedState>,
     pub cleanup_timer: SparseSet<f32>,
 
+    /// Abilities assigned to weapon entities.
+    pub weapon_abilities: SparseSet<WeaponAbilities>,
+
     pub entity_type_register: HashMap<String, EntityTypeHelper>,
     pub faction_register: HashSet<String>,
+
+    /// Ability definitions (loaded from config).
+    pub abilities_config: AbilitiesConfig,
+    /// Weapon ability pool configuration.
+    pub weapon_pools_config: WeaponPoolsConfig,
 
     pub serializable_world_data: WorldData,
 }
@@ -149,12 +158,19 @@ impl EntityManager {
             model_heights: SparseSet::with_capacity(max_entities),
             grounded_states: SparseSet::with_capacity(max_entities),
             cleanup_timer: SparseSet::with_capacity(max_entities),
+            weapon_abilities: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json")
                 .entity_types,
             faction_register: FactionsConfig::load_from_file("config/factions_config.json")
                 .factions,
+            abilities_config: AbilitiesConfig::load_or_create_default(
+                "config/abilities_config.json",
+            ),
+            weapon_pools_config: WeaponPoolsConfig::load_or_create_default(
+                "config/weapon_pools_config.json",
+            ),
             serializable_world_data: wd,
         }
     }
@@ -188,13 +204,32 @@ impl EntityManager {
         instance: &EntityInstance,
         ps: &mut PhysicsState,
     ) {
+        // check if this is the player (for starter weapon detection)
+        let is_player = self
+            .factions
+            .get(parent_id)
+            .map(|f| f == "Player")
+            .unwrap_or(false);
+
         if let Some(weapons_list) = &instance.weapons {
-            for weapon in weapons_list.iter() {
+            for (idx, weapon) in weapons_list.iter().enumerate() {
                 let weapon_id = self.create_mesh_entity(weapon, ps);
 
                 self.hitsets.insert(weapon_id, HashSet::new());
 
                 self.owners.insert(weapon_id, parent_id);
+
+                // generate abilities for this weapon
+                // first weapon of player gets fixed starter abilities
+                let is_starter = is_player && idx == 0;
+                if let Some(abilities) = WeaponAbilities::generate(
+                    &weapon.entity_type,
+                    &self.weapon_pools_config,
+                    &mut self.rng,
+                    is_starter,
+                ) {
+                    self.weapon_abilities.insert(weapon_id, abilities);
+                }
 
                 match self.inventories.get_mut(parent_id) {
                     Some(inv) => {
@@ -920,6 +955,8 @@ impl EntityManager {
         input: &mut InputState,
         dt: f32,
     ) {
+        self.tick_weapon_cooldowns(dt);
+
         for o in self.cleanup_timer.iter_mut() {
             o.value += dt;
 
@@ -934,6 +971,13 @@ impl EntityManager {
             }
         }
         self.delete_entities(sm, ps);
+    }
+
+    /// Tick all weapon ability cooldowns.
+    fn tick_weapon_cooldowns(&mut self, dt: f32) {
+        for abilities in self.weapon_abilities.iter_mut() {
+            abilities.value.tick(dt);
+        }
     }
 
     pub fn delete_entities(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
@@ -1113,6 +1157,116 @@ impl EntityManager {
             .filter(|w_type| *w_type.value() == "Item" && self.owners.get(w_type.key()).is_none())
             .map(|e| e.key())
             .collect::<Vec<usize>>()
+    }
+
+    /// check if there are any weapons nearby the player
+    pub fn has_nearby_weapon(&self, pickup_range: f32) -> bool {
+        let player_id = match self.factions.iter().find(|e| *e.value() == "Player") {
+            Some(entry) => entry.key(),
+            None => return false,
+        };
+
+        let player_pos = match self.transforms.get(player_id) {
+            Some(t) => t.position,
+            None => return false,
+        };
+
+        let orphaned_weapons = self.get_all_orphaned_weapon_ids();
+
+        for weapon_id in orphaned_weapons {
+            if let Some(weapon_trans) = self.transforms.get(weapon_id) {
+                let distance = (weapon_trans.position - player_pos).length();
+
+                if distance <= pickup_range {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    /// try to pick up a nearby weapon for the player
+    pub fn try_pickup_weapon(
+        &mut self,
+        pickup_range: f32,
+        ps: &mut crate::physics::PhysicsState,
+    ) -> bool {
+        let player_id = match self.factions.iter().find(|e| *e.value() == "Player") {
+            Some(entry) => entry.key(),
+            None => return false,
+        };
+
+        let player_pos = match self.transforms.get(player_id) {
+            Some(t) => t.position,
+            None => return false,
+        };
+
+        let orphaned_weapons = self.get_all_orphaned_weapon_ids();
+
+        for weapon_id in orphaned_weapons {
+            if let Some(weapon_trans) = self.transforms.get(weapon_id) {
+                let distance = (weapon_trans.position - player_pos).length();
+
+                if distance <= pickup_range {
+                    self.owners.insert(weapon_id, player_id);
+
+                    // remove cleanup timer so it doesn't despawn
+                    self.cleanup_timer.remove(weapon_id);
+
+                    // equip the weapon immediately (similar to populate_inventory logic)
+                    // unequip current weapon if any
+                    if let Some(active) = self.active_items.get(player_id) {
+                        if let Some(current_weapon) = active.right_hand {
+                            // move current weapon to inventory and mark as unequipped
+                            self.is_equipped.remove(current_weapon);
+                            match self.inventories.get_mut(player_id) {
+                                Some(inv) => {
+                                    if !inv.contains(&current_weapon) {
+                                        inv.push(current_weapon);
+                                    }
+                                }
+                                None => {
+                                    self.inventories.insert(player_id, vec![current_weapon]);
+                                }
+                            }
+                        }
+                    }
+
+                    // equip the new weapon
+                    self.active_items.insert(
+                        player_id,
+                        ActiveItem {
+                            right_hand: Some(weapon_id),
+                            left_hand: None,
+                        },
+                    );
+                    self.is_equipped.insert(weapon_id, true);
+
+                    // change the weapon's physics body from dynamic to kinematic
+                    // TODO: handle this better
+                    if let Some(ph) = self.physics_handles.get(weapon_id) {
+                        if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
+                            rb.set_body_type(
+                                rapier3d::prelude::RigidBodyType::KinematicPositionBased,
+                                false,
+                            );
+                            rb.set_gravity_scale(0.0, false);
+                            rb.enable_ccd(false);
+                            rb.wake_up(true);
+                        }
+                        if let Some(col) = ps.collider_set.get_mut(ph.collider) {
+                            col.set_sensor(true);
+                            col.set_enabled(true);
+                        }
+                    }
+
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     pub fn get_all_unequipped_owned_ids(&self) -> Vec<usize> {

@@ -9,6 +9,9 @@ use crate::{
     physics::PhysicsState, util::constants::GROUP_TERRAIN,
 };
 
+/// Available weapon entity types for enemy spawns.
+const ENEMY_WEAPON_TYPES: &[&str] = &["OrcSword", "DoubleAxe"];
+
 pub struct SpawnManager {
     pub spawn_every: f32, // seconds
     pub amount_per: u32,  // how many guys
@@ -24,13 +27,16 @@ impl SpawnManager {
             match Self::find_spawn_point(em, ps) {
                 Some(point) => {
                     for _ in 0..self.amount_per {
+                        let weapon_type =
+                            ENEMY_WEAPON_TYPES[em.rng.random_range(0..ENEMY_WEAPON_TYPES.len())];
+
                         let instance = EntityInstance {
                             entity_type: "TrashGuy".to_string(),
                             position: point,
                             faction: Some("Enemy".to_string()),
                             rotation: Quat::IDENTITY,
                             weapons: Some(vec![EntityInstance {
-                                entity_type: "DoubleAxe".to_string(),
+                                entity_type: weapon_type.to_string(),
                                 position: Vec3::ZERO,
                                 rotation: Quat::IDENTITY,
                                 faction: Some("Item".to_string()),
