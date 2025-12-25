@@ -75,6 +75,12 @@ export component GameRoot inherits Window {
     out property <length> portrait-width: player-hud.portrait-width;
     out property <length> portrait-height: player-hud.portrait-height;
 
+    // expose ability bar rect for GL rendering (absolute screen position)
+    out property <length> ability_bar_x: ability-bar.x;
+    out property <length> ability_bar_y: ability-bar.y;
+    out property <length> ability_bar_width: ability-bar.width;
+    out property <length> ability_bar_height: ability-bar.height;
+
     // ==================== PLAYER HUD ====================
     player-hud := PlayerContainer {
         x: 16px;
@@ -179,5 +185,32 @@ export component GameRoot inherits Window {
                 close-clicked(id) => { root.toast_close_clicked(id); }
             }
         }
+    }
+}
+
+// Export AbilityBarStandalone component for FBO rendering
+// This is a separate component from the main UI to avoid triggering re-renders
+export component AbilityBarStandalone inherits Window {
+    background: transparent;
+    default-font-family: "Weiholmir";
+
+    in property <bool> show: true;
+    in property <AbilitySlotData> slot-m1: { visible: true, ability-id: 0, key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> slot-m2: { visible: true, ability-id: 0, key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> slot-q: { visible: true, ability-id: 0, key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> slot-e: { visible: true, ability-id: 0, key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> slot-shift: { visible: true, ability-id: 0, key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> slot-r: { visible: true, ability-id: 0, key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+
+    AbilityBar {
+        x: 0;
+        y: 0;
+        show: root.show;
+        slot-m1: root.slot-m1;
+        slot-m2: root.slot-m2;
+        slot-q: root.slot-q;
+        slot-e: root.slot-e;
+        slot-shift: root.slot-shift;
+        slot-r: root.slot-r;
     }
 }

@@ -18,6 +18,7 @@ use crate::input::InputState;
 use crate::lights::Lights;
 use crate::renderer::DefaultTextures;
 use crate::shaders::Shader;
+use crate::ui::ability_bar_renderer::AbilityBarRenderer;
 use crate::ui::game::views::{GameRootContext, GameRootView, SettingsContext, SystemContext};
 use crate::ui::message_queue::MessageQueue;
 use crate::ui::portrait_renderer::PortraitRenderer;
@@ -41,6 +42,7 @@ pub struct PortraitRenderContext<'a> {
     pub lights: &'a Lights,
     pub defaults: &'a DefaultTextures,
     pub cubemap: u32,
+    pub elapsed_time: f64,
 }
 
 /// Manages the Slint-based game UI as an overlay on top of the OpenGL scene.
@@ -51,6 +53,7 @@ pub struct GameUiManager {
     texture: u32,
     game_root_view: GameRootView,
     portrait_renderer: PortraitRenderer,
+    ability_bar_renderer: AbilityBarRenderer,
 
     width: u32,
     height: u32,
@@ -63,6 +66,20 @@ pub struct GameUiManager {
     pbo: u32,
 
     is_paused: bool,
+
+    // cached ability bar compositing data (to avoid calling Slint every frame)
+    ability_bar_ndc_x: f32,
+    ability_bar_ndc_y: f32,
+    ability_bar_ndc_w: f32,
+    ability_bar_ndc_h: f32,
+
+    // throttling for main UI update and render (pause menu + HUD)
+    last_update_time: f64,
+    last_render_time: f64,
+
+    // scroll event accumulation (to throttle scroll event dispatching)
+    accumulated_scroll_x: f32,
+    accumulated_scroll_y: f32,
 }
 
 impl GameUiManager {
@@ -89,12 +106,16 @@ impl GameUiManager {
         // create portrait renderer for player HUD
         let portrait_renderer = PortraitRenderer::new();
 
-        Self {
+        // create ability bar renderer (platform already initialized)
+        let ability_bar_renderer = AbilityBarRenderer::new(scale_factor);
+
+        let mut manager = Self {
             window,
             buffer,
             texture,
             game_root_view,
             portrait_renderer,
+            ability_bar_renderer,
             width,
             height,
             scale_factor,
@@ -104,7 +125,19 @@ impl GameUiManager {
             overlay_vbo,
             pbo,
             is_paused: false,
-        }
+            ability_bar_ndc_x: 0.0,
+            ability_bar_ndc_y: 0.0,
+            ability_bar_ndc_w: 0.0,
+            ability_bar_ndc_h: 0.0,
+            last_update_time: -999.0, // force first update
+            last_render_time: -999.0, // force first render
+            accumulated_scroll_x: 0.0,
+            accumulated_scroll_y: 0.0,
+        };
+
+        // compute ability bar NDC coordinates once
+        manager.update_ability_bar_ndc();
+        manager
     }
 
     /// Create a GL texture for UI overlay
@@ -232,11 +265,11 @@ impl GameUiManager {
                     }
                     MouseScrollDelta::PixelDelta(p) => (p.x as f32, p.y as f32),
                 };
-                Some(SlintWindowEvent::PointerScrolled {
-                    position: self.last_cursor_pos,
-                    delta_x,
-                    delta_y,
-                })
+                // accumulate scroll deltas instead of immediately dispatching
+                // (will be dispatched in update() at 60 Hz to prevent Slint from doing expensive work 100+ times/sec)
+                self.accumulated_scroll_x += delta_x;
+                self.accumulated_scroll_y += delta_y;
+                None // don't dispatch immediately
             }
             WindowEvent::Resized(size) => {
                 self.resize(size.width, size.height);
@@ -271,11 +304,37 @@ impl GameUiManager {
             .resize(pixel_count, PremultipliedRgbaColor::default());
         self.window.set_size(PhysicalSize::new(width, height));
         self.needs_texture_resize = true;
+
+        // recalculate ability bar NDC coordinates for new window size
+        self.update_ability_bar_ndc();
     }
 
     /// Update the UI each frame.
     pub fn update(&mut self, ctx: GameUiUpdateContext) {
+        // always call update_timers_and_animations for Slint's internal state
         slint::platform::update_timers_and_animations();
+
+        // throttle UI updates to 60 Hz to avoid expensive work during scroll spam
+        const UPDATE_INTERVAL: f64 = 1.0 / 60.0; // 60 Hz = ~16.6ms
+        let should_update = ctx.elapsed_time - self.last_update_time >= UPDATE_INTERVAL;
+
+        if !should_update {
+            return;
+        }
+
+        self.last_update_time = ctx.elapsed_time;
+
+        // dispatch accumulated scroll events (throttled to 60 Hz to prevent Slint from doing expensive work)
+        if self.accumulated_scroll_x != 0.0 || self.accumulated_scroll_y != 0.0 {
+            self.window
+                .dispatch_event(SlintWindowEvent::PointerScrolled {
+                    position: self.last_cursor_pos,
+                    delta_x: self.accumulated_scroll_x,
+                    delta_y: self.accumulated_scroll_y,
+                });
+            self.accumulated_scroll_x = 0.0;
+            self.accumulated_scroll_y = 0.0;
+        }
 
         // Sync our local paused state with the engine state
         self.is_paused = *ctx.paused;
@@ -294,6 +353,16 @@ impl GameUiManager {
             elapsed_time: ctx.elapsed_time,
         };
         self.game_root_view.update(game_ctx);
+
+        // update ability bar renderer (has built-in throttling to avoid querying entity manager every frame)
+        use crate::ui::game::views::ability_bar::{AbilityBarContext, AbilityBarView};
+        let ability_ctx = AbilityBarContext {
+            entity_manager: ctx.entity_manager,
+            paused: *ctx.paused,
+            elapsed_time: ctx.elapsed_time,
+        };
+        let ability_bar_view = AbilityBarView::new();
+        ability_bar_view.update(&mut self.ability_bar_renderer, ability_ctx);
     }
 
     /// Set the current FPS for the FPS counter.
@@ -301,8 +370,37 @@ impl GameUiManager {
         self.game_root_view.set_fps(fps);
     }
 
+    /// Update cached ability bar NDC coordinates.
+    /// Call this when the window is resized or UI layout changes.
+    fn update_ability_bar_ndc(&mut self) {
+        // get ability bar rect from Slint (in logical pixels)
+        let (ax, ay, aw, ah) = self.game_root_view.get_ability_bar_rect();
+
+        // convert logical pixels to physical pixels
+        let ax_phys = ax * self.scale_factor;
+        let ay_phys = ay * self.scale_factor;
+        let aw_phys = aw * self.scale_factor;
+        let ah_phys = ah * self.scale_factor;
+
+        // convert to NDC
+        self.ability_bar_ndc_w = aw_phys / self.width as f32;
+        self.ability_bar_ndc_h = ah_phys / self.height as f32;
+
+        // compute center of the ability bar rect in NDC
+        let center_x_px = ax_phys + aw_phys / 2.0;
+        let center_y_px = ay_phys + ah_phys / 2.0;
+        self.ability_bar_ndc_x = (2.0 * center_x_px / self.width as f32) - 1.0;
+        self.ability_bar_ndc_y = 1.0 - (2.0 * center_y_px / self.height as f32);
+    }
+
     /// Render the player portrait to the HUD. Call this before render().
+    /// Uses throttling to avoid rendering every frame (30 Hz is plenty for a small portrait).
     pub fn render_portrait(&mut self, ctx: PortraitRenderContext) {
+        // only render if enough time has passed (throttled to 30 Hz)
+        if !self.portrait_renderer.should_update(ctx.elapsed_time) {
+            return;
+        }
+
         if let Some(player_id) = ctx.entity_manager.get_player_id() {
             self.portrait_renderer.render_portrait(
                 ctx.entity_manager,
@@ -311,11 +409,24 @@ impl GameUiManager {
                 ctx.lights,
                 ctx.defaults,
                 ctx.cubemap,
+                ctx.elapsed_time,
             );
         }
     }
 
-    pub fn render(&mut self, shader: &mut Shader) {
+    pub fn render(&mut self, shader: &mut Shader, elapsed_time: f64) {
+        // throttle main UI render to 60 Hz to avoid re-rendering pause menu at 700 Hz during scrolling
+        const RENDER_INTERVAL: f64 = 1.0 / 60.0; // 60 Hz = ~16.6ms
+        let should_render = elapsed_time - self.last_render_time >= RENDER_INTERVAL;
+
+        if !should_render {
+            // still draw the cached texture, just don't re-render Slint
+            self.draw_cached_ui(shader);
+            return;
+        }
+
+        self.last_render_time = elapsed_time;
+
         // --------------------------------------------------------
         // PART 1: PBO Upload (Zero-Copy Slint Render)
         // --------------------------------------------------------
@@ -323,6 +434,8 @@ impl GameUiManager {
             Self::resize_texture(self.texture, self.width, self.height);
         }
 
+        // always call request_redraw - Slint's internal dirty tracking handles optimization
+        // (attempting to throttle this causes crashes due to Slint's internal state management)
         self.window.request_redraw();
 
         self.window.draw_if_needed(|renderer| unsafe {
@@ -380,7 +493,25 @@ impl GameUiManager {
         // A. DRAW UI (Background Layer)
         self.draw_overlay(shader, self.texture);
 
-        // B. DRAW PORTRAIT (Foreground Layer - inside the transparent frame)
+        // B. DRAW ABILITY BAR (Middle Layer)
+        // Only draw if NOT paused!
+        if !self.is_paused {
+            self.ability_bar_renderer.render();
+            let ability_bar_tex = self.ability_bar_renderer.get_texture_id();
+
+            // use cached NDC coordinates (no Slint property access or math per frame)
+            self.draw_screen_quad(
+                shader,
+                ability_bar_tex,
+                self.ability_bar_ndc_x,
+                self.ability_bar_ndc_y,
+                self.ability_bar_ndc_w,
+                self.ability_bar_ndc_h,
+                false, // no flip for Slint UI
+            );
+        }
+
+        // C. DRAW PORTRAIT (Foreground Layer - inside the transparent frame)
         // Only draw if NOT paused!
         if !self.is_paused {
             let portrait_tex = self.portrait_renderer.get_texture_id();
@@ -416,6 +547,59 @@ impl GameUiManager {
                 ndc_h, // half-height in NDC
                 true,  // flip_v for FBO texture
             );
+        }
+
+        unsafe {
+            gl_call!(gl::Enable(gl::DEPTH_TEST));
+            gl_call!(gl::Disable(gl::BLEND));
+        }
+    }
+
+    /// Draw the cached UI textures without re-rendering Slint.
+    /// Used when throttling to avoid re-rendering at 700 Hz.
+    fn draw_cached_ui(&mut self, shader: &mut Shader) {
+        unsafe {
+            gl_call!(gl::Enable(gl::BLEND));
+            gl_call!(gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
+            gl_call!(gl::Disable(gl::DEPTH_TEST));
+        }
+
+        // A. DRAW UI (Background Layer) - use cached texture
+        self.draw_overlay(shader, self.texture);
+
+        // B. DRAW ABILITY BAR (Middle Layer)
+        if !self.is_paused {
+            let ability_bar_tex = self.ability_bar_renderer.get_texture_id();
+            self.draw_screen_quad(
+                shader,
+                ability_bar_tex,
+                self.ability_bar_ndc_x,
+                self.ability_bar_ndc_y,
+                self.ability_bar_ndc_w,
+                self.ability_bar_ndc_h,
+                false,
+            );
+        }
+
+        // C. DRAW PORTRAIT (Foreground Layer)
+        if !self.is_paused {
+            let portrait_tex = self.portrait_renderer.get_texture_id();
+            let (px, py, pw, ph) = self.game_root_view.get_portrait_rect();
+
+            let px_phys = px * self.scale_factor;
+            let py_phys = py * self.scale_factor;
+            let pw_phys = pw * self.scale_factor;
+            let ph_phys = ph * self.scale_factor;
+
+            let ndc_w = pw_phys / self.width as f32;
+            let ndc_h = ph_phys / self.height as f32;
+
+            let center_x_px = px_phys + pw_phys / 2.0;
+            let center_y_px = py_phys + ph_phys / 2.0;
+            let ndc_x = (2.0 * center_x_px / self.width as f32) - 1.0;
+            let ndc_y = 1.0 - (2.0 * center_y_px / self.height as f32);
+
+            self.draw_screen_quad(shader, portrait_tex, ndc_x, ndc_y, ndc_w, ndc_h, true);
         }
 
         unsafe {

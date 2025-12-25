@@ -10,12 +10,15 @@ use slint::PhysicalSize;
 use crate::entity_manager::EntityManager;
 use crate::ui::message_queue::MessageQueue;
 
-use super::ability_bar::{AbilityBarContext, AbilityBarView};
 use super::pause_menu::{PauseMenuContext, PauseMenuView};
 use super::player_hud::{PlayerHudContext, PlayerHudView};
 use super::toast::ToastView;
 
 slint::include_modules!();
+
+/// Update interval for pickup indicator check in seconds.
+/// 10 Hz is plenty responsive for showing/hiding the pickup prompt.
+const PICKUP_CHECK_INTERVAL: f64 = 0.1;
 
 /// Context for settings-related state (debug, audio, graphics, etc.).
 /// Groups all user-configurable settings to avoid bloating parent contexts.
@@ -46,8 +49,10 @@ pub struct GameRootView {
     game_root: GameRoot,
     pause_menu_view: PauseMenuView,
     player_hud_view: PlayerHudView,
-    ability_bar_view: AbilityBarView,
     toast_view: ToastView,
+    // throttling for pickup indicator check
+    last_pickup_check_time: f64,
+    cached_show_pickup: bool,
 }
 
 impl GameRootView {
@@ -67,15 +72,15 @@ impl GameRootView {
         // create child views that wire up their callbacks to game_root
         let pause_menu_view = PauseMenuView::new(&game_root);
         let player_hud_view = PlayerHudView::new();
-        let ability_bar_view = AbilityBarView::new();
         let toast_view = ToastView::new(&game_root);
 
         let view = Self {
             game_root,
             pause_menu_view,
             player_hud_view,
-            ability_bar_view,
             toast_view,
+            last_pickup_check_time: -999.0, // force first check
+            cached_show_pickup: false,
         };
 
         (view, window)
@@ -99,9 +104,18 @@ impl GameRootView {
             );
         }
 
+        // throttle pickup indicator check to 10 Hz (avoid expensive entity iteration every frame)
         const PICKUP_RANGE: f32 = 3.0;
-        let show_pickup_prompt = !paused && entity_manager.has_nearby_weapon(PICKUP_RANGE);
-        self.game_root.set_show_pickup_prompt(show_pickup_prompt);
+        let should_check = elapsed_time - self.last_pickup_check_time >= PICKUP_CHECK_INTERVAL;
+
+        if should_check {
+            let show_pickup_prompt = !paused && entity_manager.has_nearby_weapon(PICKUP_RANGE);
+            self.cached_show_pickup = show_pickup_prompt;
+            self.last_pickup_check_time = elapsed_time;
+        }
+
+        self.game_root
+            .set_show_pickup_prompt(self.cached_show_pickup);
 
         // delegate to pause menu view
         let pause_ctx = PauseMenuContext {
@@ -118,13 +132,6 @@ impl GameRootView {
         };
         self.player_hud_view.update(&self.game_root, hud_ctx);
 
-        // delegate to ability bar view
-        let ability_ctx = AbilityBarContext {
-            entity_manager,
-            paused,
-        };
-        self.ability_bar_view.update(&self.game_root, ability_ctx);
-
         self.toast_view.update(&self.game_root, elapsed_time);
     }
 
@@ -135,6 +142,16 @@ impl GameRootView {
         let y = self.game_root.get_portrait_y();
         let w = self.game_root.get_portrait_width();
         let h = self.game_root.get_portrait_height();
+        (x, y, w, h)
+    }
+
+    /// Get the ability bar rect position and size in logical pixels.
+    /// Returns (x, y, width, height) for positioning the GL-rendered ability bar.
+    pub fn get_ability_bar_rect(&self) -> (f32, f32, f32, f32) {
+        let x = self.game_root.get_ability_bar_x();
+        let y = self.game_root.get_ability_bar_y();
+        let w = self.game_root.get_ability_bar_width();
+        let h = self.game_root.get_ability_bar_height();
         (x, y, w, h)
     }
 

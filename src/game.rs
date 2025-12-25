@@ -584,6 +584,7 @@ impl Game {
                 lights: &self.world.lights,
                 defaults: &self.renderer.defaults,
                 cubemap: self.renderer.cubemap_texture,
+                elapsed_time: self.time.elapsed as f64,
             };
             self.game_ui.render_portrait(portrait_ctx);
         }
@@ -594,7 +595,7 @@ impl Game {
             .shaders
             .get_mut(&ShaderType::UiOverlay)
             .unwrap();
-        self.game_ui.render(ui_shader);
+        self.game_ui.render(ui_shader, self.time.elapsed as f64);
 
         if let Some(imgui_manager) = &mut self.imgui_manager {
             imgui_manager.draw(

@@ -1,3 +1,4 @@
+pub mod ability_bar_renderer;
 pub mod color;
 pub mod game;
 pub mod game_ui_manager;

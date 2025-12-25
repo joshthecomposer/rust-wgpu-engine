@@ -7,7 +7,7 @@ import { RunicCheckbox } from "runic_checkbox.slint";
 import { RunicSlider } from "runic_slider.slint";
 import { RunicSelect } from "runic_select.slint";
 import { RunicMenuSeparator } from "runic_menu_separator.slint";
-import { RunicScrollView } from "runic_scroll_view.slint";
+import { RunicTabButton } from "runic_tab_button.slint";
 
 export component SettingsMenu inherits Rectangle {
     // settings properties
@@ -25,166 +25,235 @@ export component SettingsMenu inherits Rectangle {
     callback apply_clicked();
     callback cancel_clicked();
 
+    // tab state: 0 = DISPLAY, 1 = INTERFACE, 2 = SOUND
+    in-out property <int> active-settings-tab: 0;
+
+    // dropdown state tracking
+    private property <bool> resolution-dropdown-open: false;
+    private property <bool> window-mode-dropdown-open: false;
+    private property <bool> msaa-dropdown-open: false;
+    private property <bool> font-dropdown-open: false;
+
     // dropdown positioning constants
     property <length> row-height: 32px;
     property <length> row-spacing: 12px;
     property <length> section-header-height: 28px;
-    property <length> base-y: 60px; // starting Y position for first dropdown
+    property <length> tab-content-top: 12px; // top of tab content area
+    property <length> tab-header-height: 24px; // height of tab buttons area (smaller for secondary tabs)
 
     background: transparent;
 
     VerticalLayout {
         spacing: 0px;
 
-        scroll-view := RunicScrollView {
-            vertical-stretch: 1;
-            viewport-height: 550px;
+        // tab buttons
+        HorizontalLayout {
+            width: parent.width;
+            height: tab-header-height;
+            spacing: 20px;
+            alignment: center;
 
-            VerticalLayout {
+            RunicTabButton {
+                label: "DISPLAY";
+                active: active-settings-tab == 0;
+                button-height: 24px;
+                font-size: 11px;
+                clicked => {
+                    active-settings-tab = 0;
+                    resolution-dropdown-open = false;
+                    window-mode-dropdown-open = false;
+                    msaa-dropdown-open = false;
+                    font-dropdown-open = false;
+                }
+            }
+
+            RunicTabButton {
+                label: "INTERFACE";
+                active: active-settings-tab == 1;
+                button-height: 24px;
+                font-size: 11px;
+                clicked => {
+                    active-settings-tab = 1;
+                    resolution-dropdown-open = false;
+                    window-mode-dropdown-open = false;
+                    msaa-dropdown-open = false;
+                    font-dropdown-open = false;
+                }
+            }
+
+            RunicTabButton {
+                label: "SOUND";
+                active: active-settings-tab == 2;
+                button-height: 24px;
+                font-size: 11px;
+                clicked => {
+                    active-settings-tab = 2;
+                    resolution-dropdown-open = false;
+                    window-mode-dropdown-open = false;
+                    msaa-dropdown-open = false;
+                    font-dropdown-open = false;
+                }
+            }
+        }
+
+        // tab content container
+        Rectangle {
+            width: parent.width;
+            vertical-stretch: 1;
+            background: transparent;
+
+            // DISPLAY tab content
+            if active-settings-tab == 0: VerticalLayout {
                 spacing: 12px;
                 padding-right: 8px;
-                padding-bottom: 32px;
+                padding-top: tab-content-top;
 
-                    RunicSettingsSectionHeader {
-                        title: "DISPLAY";
-                    }
-
-                    RunicSettingsRow {
-                        label: "Resolution";
-                        resolution-select := RunicSelect {
-                            current-value: resolution;
-                            options: ["1280 x 720", "1920 x 1080", "2560 x 1440"];
-                            selected(value) => {
-                                resolution = value;
-                            }
-                            opened => {
-                                window-mode-select.is-open = false;
-                                msaa-select.is-open = false;
-                                font-select.is-open = false;
-                            }
+                RunicSettingsRow {
+                    label: "Resolution";
+                    resolution-select := RunicSelect {
+                        is-open <=> root.resolution-dropdown-open;
+                        current-value: resolution;
+                        options: ["1280 x 720", "1920 x 1080", "2560 x 1440"];
+                        selected(value) => {
+                            resolution = value;
+                        }
+                        opened => {
+                            window-mode-dropdown-open = false;
+                            msaa-dropdown-open = false;
+                            font-dropdown-open = false;
                         }
                     }
+                }
 
-                    RunicSettingsRow {
-                        label: "Window Mode";
-                        window-mode-select := RunicSelect {
-                            current-value: window-mode;
-                            options: ["Windowed", "Fullscreen", "Borderless"];
-                            selected(value) => {
-                                window-mode = value;
-                            }
-                            opened => {
-                                resolution-select.is-open = false;
-                                font-select.is-open = false;
-                            }
+                RunicSettingsRow {
+                    label: "Window Mode";
+                    window-mode-select := RunicSelect {
+                        is-open <=> root.window-mode-dropdown-open;
+                        current-value: window-mode;
+                        options: ["Windowed", "Fullscreen", "Borderless"];
+                        selected(value) => {
+                            window-mode = value;
+                        }
+                        opened => {
+                            resolution-dropdown-open = false;
+                            font-dropdown-open = false;
                         }
                     }
+                }
 
-                    RunicSettingsRow {
-                        label: "VSync";
-                        RunicCheckbox {
-                            checked: vsync;
-                            toggled => {
-                                vsync = !vsync;
-                            }
+                RunicSettingsRow {
+                    label: "VSync";
+                    RunicCheckbox {
+                        checked: vsync;
+                        toggled => {
+                            vsync = !vsync;
                         }
                     }
+                }
 
-                    RunicSettingsRow {
-                        label: "MSAA";
-                        msaa-select := RunicSelect {
-                            current-value: msaa;
-                            options: ["None", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA"];
-                            selected(value) => {
-                                msaa = value;
-                            }
-                            opened => {
-                                resolution-select.is-open = false;
-                                window-mode-select.is-open = false;
-                                font-select.is-open = false;
-                            }
+                RunicSettingsRow {
+                    label: "MSAA";
+                    msaa-select := RunicSelect {
+                        is-open <=> root.msaa-dropdown-open;
+                        current-value: msaa;
+                        options: ["None", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA"];
+                        selected(value) => {
+                            msaa = value;
                         }
-                    }
-
-                    RunicSettingsSectionHeader {
-                        title: "INTERFACE";
-                    }
-
-                    RunicSettingsRow {
-                        label: "Gizmo Rendering";
-                        RunicCheckbox {
-                            checked: gizmo-enabled;
-                            toggled => {
-                                gizmo-enabled = !gizmo-enabled;
-                            }
-                        }
-                    }
-
-                    RunicSettingsRow {
-                        label: "Show FPS Counter";
-                        RunicCheckbox {
-                            checked: show-fps;
-                            toggled => {
-                                show-fps = !show-fps;
-                            }
-                        }
-                    }
-
-                    RunicSettingsRow {
-                        label: "Debug Mode";
-                        RunicCheckbox {
-                            checked: debug-mode;
-                            toggled => {
-                                debug-mode = !debug-mode;
-                            }
-                        }
-                    }
-
-                    RunicSettingsRow {
-                        label: "Font";
-                        font-select := RunicSelect {
-                            current-value: font-family;
-                            options: ["Weiholmir", "JetBrains Mono", "OpenDyslexic"];
-                            selected(value) => {
-                                font-family = value;
-                            }
-                            opened => {
-                                resolution-select.is-open = false;
-                                window-mode-select.is-open = false;
-                                msaa-select.is-open = false;
-                            }
-                        }
-                    }
-
-                    RunicSettingsSectionHeader {
-                        title: "SOUND";
-                    }
-
-                    RunicSettingsRow {
-                        label: "BGM Volume";
-                        RunicSlider {
-                            minimum: 0.0;
-                            maximum: 100.0;
-                            value: bgm-volume;
-                            changed(v) => {
-                                bgm-volume = v;
-                            }
-                        }
-                    }
-
-                    RunicSettingsRow {
-                        label: "SFX Volume";
-                        RunicSlider {
-                            minimum: 0.0;
-                            maximum: 100.0;
-                            value: sfx-volume;
-                            changed(v) => {
-                                sfx-volume = v;
-                            }
+                        opened => {
+                            resolution-dropdown-open = false;
+                            window-mode-dropdown-open = false;
+                            font-dropdown-open = false;
                         }
                     }
                 }
             }
+
+            // INTERFACE tab content
+            if active-settings-tab == 1: VerticalLayout {
+                spacing: 12px;
+                padding-right: 8px;
+                padding-top: tab-content-top;
+
+                RunicSettingsRow {
+                    label: "Gizmo Rendering";
+                    RunicCheckbox {
+                        checked: gizmo-enabled;
+                        toggled => {
+                            gizmo-enabled = !gizmo-enabled;
+                        }
+                    }
+                }
+
+                RunicSettingsRow {
+                    label: "Show FPS Counter";
+                    RunicCheckbox {
+                        checked: show-fps;
+                        toggled => {
+                            show-fps = !show-fps;
+                        }
+                    }
+                }
+
+                RunicSettingsRow {
+                    label: "Debug Mode";
+                    RunicCheckbox {
+                        checked: debug-mode;
+                        toggled => {
+                            debug-mode = !debug-mode;
+                        }
+                    }
+                }
+
+                RunicSettingsRow {
+                    label: "Font";
+                    font-select := RunicSelect {
+                        is-open <=> root.font-dropdown-open;
+                        current-value: font-family;
+                        options: ["Weiholmir", "JetBrains Mono", "OpenDyslexic"];
+                        selected(value) => {
+                            font-family = value;
+                        }
+                        opened => {
+                            resolution-dropdown-open = false;
+                            window-mode-dropdown-open = false;
+                            msaa-dropdown-open = false;
+                        }
+                    }
+                }
+            }
+
+            // SOUND tab content
+            if active-settings-tab == 2: VerticalLayout {
+                spacing: 12px;
+                padding-right: 8px;
+                padding-top: tab-content-top;
+
+                RunicSettingsRow {
+                    label: "BGM Volume";
+                    RunicSlider {
+                        minimum: 0.0;
+                        maximum: 100.0;
+                        value: bgm-volume;
+                        changed(v) => {
+                            bgm-volume = v;
+                        }
+                    }
+                }
+
+                RunicSettingsRow {
+                    label: "SFX Volume";
+                    RunicSlider {
+                        minimum: 0.0;
+                        maximum: 100.0;
+                        value: sfx-volume;
+                        changed(v) => {
+                            sfx-volume = v;
+                        }
+                    }
+                }
+            }
+        }
 
         RunicMenuSeparator { }
 
@@ -209,17 +278,17 @@ export component SettingsMenu inherits Rectangle {
     // positioned manually based on layout
 
     // click-outside-to-close for resolution dropdown
-    if resolution-select.is-open: TouchArea {
+    if resolution-dropdown-open && active-settings-tab == 0: TouchArea {
         width: root.width;
         height: root.height;
         clicked => {
-            resolution-select.is-open = false;
+            resolution-dropdown-open = false;
         }
     }
 
-    if resolution-select.is-open: Rectangle {
-        x: root.width - 160px - 22px; // align to right side where dropdowns are (accounting for scrollbar)
-        y: base-y - scroll-view.viewport-y; // first dropdown (section header + resolution row) - scroll offset
+    if resolution-dropdown-open && active-settings-tab == 0: Rectangle {
+        x: root.width - 160px - 8px; // align to right side where dropdowns are
+        y: tab-header-height + tab-content-top + row-height; // first row in DISPLAY tab
         width: 164px; // wider to accommodate border
         height: 3 * 28px + 4px; // taller to accommodate border
         background: Theme.stone-light; // subtle border
@@ -245,7 +314,7 @@ export component SettingsMenu inherits Rectangle {
                     res-touch := TouchArea {
                         clicked => {
                             resolution = option;
-                            resolution-select.is-open = false;
+                            resolution-dropdown-open = false;
                         }
                     }
 
@@ -262,17 +331,17 @@ export component SettingsMenu inherits Rectangle {
     }
 
     // click-outside-to-close for window mode dropdown
-    if window-mode-select.is-open: TouchArea {
+    if window-mode-dropdown-open && active-settings-tab == 0: TouchArea {
         width: root.width;
         height: root.height;
         clicked => {
-            window-mode-select.is-open = false;
+            window-mode-dropdown-open = false;
         }
     }
 
-    if window-mode-select.is-open: Rectangle {
-        x: root.width - 160px - 22px;
-        y: base-y + row-height + row-spacing - scroll-view.viewport-y; // second dropdown (resolution + spacing) - scroll offset
+    if window-mode-dropdown-open && active-settings-tab == 0: Rectangle {
+        x: root.width - 160px - 8px;
+        y: tab-header-height + tab-content-top + row-height + row-spacing + row-height; // second row in DISPLAY tab
         width: 164px; // wider to accommodate border
         height: 3 * 28px + 4px; // taller to accommodate border
         background: Theme.stone-light; // subtle border
@@ -298,7 +367,7 @@ export component SettingsMenu inherits Rectangle {
                     wm-touch := TouchArea {
                         clicked => {
                             window-mode = option;
-                            window-mode-select.is-open = false;
+                            window-mode-dropdown-open = false;
                         }
                     }
 
@@ -315,17 +384,17 @@ export component SettingsMenu inherits Rectangle {
     }
 
     // click-outside-to-close for msaa dropdown
-    if msaa-select.is-open: TouchArea {
+    if msaa-dropdown-open && active-settings-tab == 0: TouchArea {
         width: root.width;
         height: root.height;
         clicked => {
-            msaa-select.is-open = false;
+            msaa-dropdown-open = false;
         }
     }
 
-    if msaa-select.is-open: Rectangle {
-        x: root.width - 160px - 22px;
-        y: base-y + 3 * (row-height + row-spacing) - scroll-view.viewport-y; // fourth dropdown (resolution + window-mode + vsync + spacing) - scroll offset
+    if msaa-dropdown-open && active-settings-tab == 0: Rectangle {
+        x: root.width - 160px - 8px;
+        y: tab-header-height + tab-content-top + 3 * (row-height + row-spacing) + row-height; // fourth row in DISPLAY tab
         width: 164px; // wider to accommodate border
         height: 5 * 28px + 4px; // taller to accommodate border (5 options)
         background: Theme.stone-light;
@@ -353,7 +422,7 @@ export component SettingsMenu inherits Rectangle {
                             debug("MSAA dropdown clicked:", option);
                             msaa = option;
                             debug("MSAA property set to:", msaa);
-                            msaa-select.is-open = false;
+                            msaa-dropdown-open = false;
                         }
                     }
 
@@ -370,17 +439,17 @@ export component SettingsMenu inherits Rectangle {
     }
 
     // click-outside-to-close for font dropdown
-    if font-select.is-open: TouchArea {
+    if font-dropdown-open && active-settings-tab == 1: TouchArea {
         width: root.width;
         height: root.height;
         clicked => {
-            font-select.is-open = false;
+            font-dropdown-open = false;
         }
     }
 
-    if font-select.is-open: Rectangle {
-        x: root.width - 240px - 22px; // dropdown for font names
-        y: base-y + 7 * (row-height + row-spacing) + section-header-height + row-spacing - scroll-view.viewport-y; // 4 DISPLAY rows + 3 INTERFACE rows + header + spacing - scroll offset
+    if font-dropdown-open && active-settings-tab == 1: Rectangle {
+        x: root.width - 240px - 8px; // dropdown for font names
+        y: tab-header-height + tab-content-top + 3 * (row-height + row-spacing) + row-height; // fourth row in INTERFACE tab
         width: 244px; // wide enough to fit "JetBrains Mono"
         height: 3 * 28px + 4px; // taller to accommodate border (3 font options)
         background: Theme.stone-light;
@@ -406,7 +475,7 @@ export component SettingsMenu inherits Rectangle {
                     font-touch := TouchArea {
                         clicked => {
                             font-family = option;
-                            font-select.is-open = false;
+                            font-dropdown-open = false;
                         }
                     }
 

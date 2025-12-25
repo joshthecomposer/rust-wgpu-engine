@@ -4,12 +4,13 @@
 use crate::abilities::{AbilitiesConfig, WeaponAbilities};
 use crate::entity_manager::EntityManager;
 
-use super::game_root::{AbilitySlotData, GameRoot};
+use super::game_root::AbilitySlotData;
 
 /// Context passed to AbilityBarView::update().
 pub struct AbilityBarContext<'a> {
     pub entity_manager: &'a EntityManager,
     pub paused: bool,
+    pub elapsed_time: f64,
 }
 
 /// Data for a single ability slot.
@@ -152,17 +153,20 @@ impl AbilityBarView {
     }
 
     /// Update the ability bar view.
-    pub fn update(&self, game_root: &GameRoot, ctx: AbilityBarContext) {
+    /// Now works with AbilityBarRenderer instead of GameRoot for optimized rendering.
+    pub fn update(
+        &self,
+        renderer: &mut crate::ui::ability_bar_renderer::AbilityBarRenderer,
+        ctx: AbilityBarContext,
+    ) {
         let data = AbilityBarData::from_entity_manager(ctx.entity_manager);
         let show = data.visible && !ctx.paused;
 
-        game_root.set_show_ability_bar(show);
-        game_root.set_ability_slot_m1(data.m1.to_slint());
-        game_root.set_ability_slot_m2(data.m2.to_slint());
-        game_root.set_ability_slot_q(data.q.to_slint());
-        game_root.set_ability_slot_e(data.e.to_slint());
-        game_root.set_ability_slot_shift(data.shift.to_slint());
-        game_root.set_ability_slot_r(data.r.to_slint());
+        // build the slots array for the renderer
+        let slots = [data.m1, data.m2, data.q, data.e, data.shift, data.r];
+
+        // update the renderer with throttling and change detection
+        renderer.update(show, slots, ctx.elapsed_time);
     }
 }
 
