@@ -1,0 +1,63 @@
+---
+description: When working with any UI, including but not limited to slint files, game_ui_manager and game_root.
+alwaysApply: false
+---
+
+## Slint Component Reuse Policy
+
+### 1. Search before creating
+
+Before implementing any UI element, **always search** for existing reusable components:
+
+```
+resources/ui/components/
+```
+
+Use `codebase-retrieval` or `view` to check what's already available. Common reusable components include:
+
+- `RunicButton` – styled menu button with hover/danger states
+- `RunicWindow` – modal window frame with border and corner runes
+- `RunicCloseButton` – "×" close button with hover color
+- `RunicWindowHeader` – title + underline + diamond decoration
+- `RunicMenuSeparator` – double-line divider
+- `RunicFooterLabel` – muted footer text (e.g., build version)
+
+### 2. Create components, don't inline
+
+If no existing component fits, **create a new reusable component** in `resources/ui/components/` rather than inlining styles directly in the view file.
+
+**Bad** – inlined styling in a view:
+
+```slint
+// pause_menu.slint
+Rectangle {
+    height: 1px;
+    background: #3a3a3a;
+    Rectangle {
+        y: 1px;
+        width: parent.width;
+        height: 1px;
+        background: #5a5a5a.with-alpha(0.4);
+    }
+}
+```
+
+**Good** – reusable component:
+
+```slint
+// components/runic_menu_separator.slint
+export component RunicMenuSeparator inherits Rectangle { ... }
+
+// pause_menu.slint
+RunicMenuSeparator { }
+```
+
+### 3. Component authoring rules
+
+When creating new components:
+
+- **Do not use `parent` at the component root.** Slint disallows `parent.width` / `parent.height` at the top-level element. Instead, accept an `in property` or let the call site set `width`/`height`.
+- **Use `Theme` tokens** from `theme.slint` for colors, not raw hex values.
+- **Keep components single-purpose** – one visual concept per file.
+- **Export the component** so it can be imported elsewhere.
+```
