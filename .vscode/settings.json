@@ -67,6 +67,7 @@
 		"opengl",
 		"Parameteri",
 		"pingpong",
+		"readback",
 		"rects",
 		"renderbuffer",
 		"Renderbuffers",

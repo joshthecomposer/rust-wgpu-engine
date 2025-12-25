@@ -13,12 +13,17 @@ use crate::shaders::Shader;
 /// Size of the portrait texture in pixels.
 pub const PORTRAIT_SIZE: u32 = 64;
 
+/// Update interval in seconds - only render portrait this often.
+/// 30 FPS is plenty smooth for a small portrait with animations.
+const UPDATE_INTERVAL: f64 = 1.0 / 30.0;
+
 /// Renders entity portraits to an offscreen FBO.
 /// The portrait texture can be sampled directly for rendering without CPU readback.
 pub struct PortraitRenderer {
     fbo: u32,
     texture: u32,
     depth_rbo: u32,
+    last_update_time: f64,
 }
 
 impl PortraitRenderer {
@@ -104,7 +109,14 @@ impl PortraitRenderer {
             fbo,
             texture,
             depth_rbo,
+            last_update_time: -999.0, // force first update
         }
+    }
+
+    /// Check if enough time has passed to warrant a portrait update.
+    /// Call this BEFORE rendering to avoid wasted GPU work.
+    pub fn should_update(&self, elapsed_time: f64) -> bool {
+        elapsed_time - self.last_update_time >= UPDATE_INTERVAL
     }
 
     pub fn render_portrait(
@@ -115,6 +127,7 @@ impl PortraitRenderer {
         lights: &crate::lights::Lights,
         defaults: &crate::renderer::DefaultTextures,
         cubemap: u32,
+        elapsed_time: f64,
     ) {
         let trans = match em.transforms.get(player_id) {
             Some(t) => t,
@@ -124,6 +137,9 @@ impl PortraitRenderer {
             Some(m) => m,
             None => return,
         };
+
+        // update timestamp to track when we last rendered
+        self.last_update_time = elapsed_time;
 
         let (view, projection) = self.create_portrait_camera(trans);
 

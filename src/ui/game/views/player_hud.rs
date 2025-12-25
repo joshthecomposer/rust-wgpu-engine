@@ -12,6 +12,7 @@ pub struct PlayerHudContext<'a> {
 }
 
 /// Data extracted from entity manager for the player HUD.
+#[derive(PartialEq, Clone)]
 pub struct PlayerHudData {
     pub visible: bool,
     pub name: String,
@@ -60,26 +61,40 @@ impl PlayerHudData {
 }
 
 /// Manages the player HUD portion of the GameRoot component.
-pub struct PlayerHudView;
+pub struct PlayerHudView {
+    cached_data: std::cell::Cell<Option<PlayerHudData>>,
+}
 
 impl PlayerHudView {
     /// Create a new PlayerHudView.
     pub fn new() -> Self {
-        Self
+        Self {
+            cached_data: std::cell::Cell::new(None),
+        }
     }
 
-    /// Update the player HUD view.
+    /// Update the player HUD view with change detection to avoid unnecessary Slint updates.
     pub fn update(&self, game_root: &GameRoot, ctx: PlayerHudContext) {
         let hud_data = PlayerHudData::from_entity_manager(ctx.entity_manager);
         let show_hud = hud_data.visible && !ctx.paused;
 
-        game_root.set_show_player_hud(show_hud);
-        game_root.set_player_name(hud_data.name.into());
-        game_root.set_player_level(hud_data.level as i32);
-        game_root.set_player_health(hud_data.health);
-        game_root.set_player_health_max(hud_data.max_health);
-        game_root.set_player_mana(hud_data.mana);
-        game_root.set_player_mana_max(hud_data.max_mana);
+        // only update Slint properties if data actually changed
+        let needs_update = match self.cached_data.take() {
+            Some(cached) => cached != hud_data || show_hud != game_root.get_show_player_hud(),
+            None => true, // first update
+        };
+
+        if needs_update {
+            game_root.set_show_player_hud(show_hud);
+            game_root.set_player_name(hud_data.name.clone().into());
+            game_root.set_player_level(hud_data.level as i32);
+            game_root.set_player_health(hud_data.health);
+            game_root.set_player_health_max(hud_data.max_health);
+            game_root.set_player_mana(hud_data.mana);
+            game_root.set_player_mana_max(hud_data.max_mana);
+        }
+
+        self.cached_data.set(Some(hud_data));
     }
 }
 
