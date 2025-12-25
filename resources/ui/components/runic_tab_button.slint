@@ -4,9 +4,11 @@ import { Theme } from "theme.slint";
 export component RunicTabButton inherits Rectangle {
     in property <string> label;
     in property <bool> active: false;
+    in property <length> button-height: 32px;
+    in property <length> font-size: 14px;
     callback clicked();
 
-    height: 32px;
+    height: button-height;
     background: transparent;
 
     touch := TouchArea {
@@ -17,7 +19,7 @@ export component RunicTabButton inherits Rectangle {
         width: parent.width;
         text: label;
         color: active ? Theme.highlight : Theme.stone-edge;
-        font-size: 14px;
+        font-size: root.font-size;
         font-weight: active ? 700 : 400;
         letter-spacing: 2px;
         horizontal-alignment: center;
@@ -25,10 +27,12 @@ export component RunicTabButton inherits Rectangle {
     }
 
     if active: Rectangle {
-        y: parent.height - 6px;
+        property <float> indicator-size-ratio: 0.1875; // 6px for 32px button
+        property <length> indicator-size: button-height / 1px * indicator-size-ratio * 1px;
+        y: parent.height - indicator-size;
         x: (parent.width - self.width) / 2;
-        width: 6px;
-        height: 6px;
+        width: indicator-size;
+        height: indicator-size;
         background: Theme.runic-gold;
     }
 }
