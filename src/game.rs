@@ -331,39 +331,80 @@ impl Game {
                 if let PhysicalKey::Code(code) = physical_key {
                     let keycode: KeyCode = *code;
 
-                    input::handle_keyboard_input(keycode, *state, &mut self.input);
+                    if let Some(imgui_manager) = &mut self.imgui_manager {
+                        let io = imgui_manager.imgui.io();
+                        // ignore if imgui has keyboard focus
+                        if !io.want_capture_keyboard {
+                            input::handle_keyboard_input(keycode, *state, &mut self.input);
 
-                    if keycode == KeyCode::Escape && *state == ElementState::Pressed {
-                        self.paused = !self.paused;
-                    }
-
-                    // F toggles camera mode (Free <-> Third <-> Locked)
-                    if keycode == KeyCode::KeyF && *state == ElementState::Pressed {
-                        let maybe_player_id = self
-                            .world
-                            .ecs
-                            .factions
-                            .iter()
-                            .find(|e| *e.value() == "Player");
-
-                        self.world.camera.move_state = match self.world.camera.move_state {
-                            CameraState::Free => {
-                                if maybe_player_id.is_none() {
-                                    CameraState::Locked
-                                } else {
-                                    CameraState::Third
-                                }
+                            if keycode == KeyCode::Escape && *state == ElementState::Pressed {
+                                self.paused = !self.paused;
                             }
-                            CameraState::Third => CameraState::Locked,
-                            CameraState::Locked => CameraState::Free,
-                        };
-                    }
 
-                    if keycode == KeyCode::KeyG && *state == ElementState::Pressed {
-                        const PICKUP_RANGE: f32 = 3.0;
-                        self.world
-                            .ecs
-                            .try_pickup_weapon(PICKUP_RANGE, &mut self.physics);
+                            // F toggles camera mode (Free <-> Third <-> Locked)
+                            if keycode == KeyCode::KeyF && *state == ElementState::Pressed {
+                                let maybe_player_id = self
+                                    .world
+                                    .ecs
+                                    .factions
+                                    .iter()
+                                    .find(|e| *e.value() == "Player");
+
+                                self.world.camera.move_state = match self.world.camera.move_state {
+                                    CameraState::Free => {
+                                        if maybe_player_id.is_none() {
+                                            CameraState::Locked
+                                        } else {
+                                            CameraState::Third
+                                        }
+                                    }
+                                    CameraState::Third => CameraState::Locked,
+                                    CameraState::Locked => CameraState::Free,
+                                };
+                            }
+
+                            if keycode == KeyCode::KeyG && *state == ElementState::Pressed {
+                                const PICKUP_RANGE: f32 = 3.0;
+                                self.world
+                                    .ecs
+                                    .try_pickup_weapon(PICKUP_RANGE, &mut self.physics);
+                            }
+                        }
+                    } else {
+                        input::handle_keyboard_input(keycode, *state, &mut self.input);
+
+                        if keycode == KeyCode::Escape && *state == ElementState::Pressed {
+                            self.paused = !self.paused;
+                        }
+
+                        // F toggles camera mode (Free <-> Third <-> Locked)
+                        if keycode == KeyCode::KeyF && *state == ElementState::Pressed {
+                            let maybe_player_id = self
+                                .world
+                                .ecs
+                                .factions
+                                .iter()
+                                .find(|e| *e.value() == "Player");
+
+                            self.world.camera.move_state = match self.world.camera.move_state {
+                                CameraState::Free => {
+                                    if maybe_player_id.is_none() {
+                                        CameraState::Locked
+                                    } else {
+                                        CameraState::Third
+                                    }
+                                }
+                                CameraState::Third => CameraState::Locked,
+                                CameraState::Locked => CameraState::Free,
+                            };
+                        }
+
+                        if keycode == KeyCode::KeyG && *state == ElementState::Pressed {
+                            const PICKUP_RANGE: f32 = 3.0;
+                            self.world
+                                .ecs
+                                .try_pickup_weapon(PICKUP_RANGE, &mut self.physics);
+                        }
                     }
                 }
             }
