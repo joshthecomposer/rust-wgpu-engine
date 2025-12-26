@@ -24,6 +24,8 @@ pub struct AbilityDefinition {
     pub cooldown: f32,
     #[serde(default)]
     pub description: String,
+    #[serde(default)]
+    pub icon: String,
 }
 
 /// All ability definitions (loaded from abilities_config.json).

@@ -5,7 +5,7 @@ import { AbilityTooltip } from "ability_tooltip.slint";
 // data model for a single ability slot
 export struct AbilitySlotData {
     visible: bool,
-    ability-id: int,
+    icon: image,
     key-label: string,
     cooldown-progress: float, // 0.0 = ready, 1.0 = full cooldown
     cooldown-time-remaining: float, // time in seconds until ready
@@ -33,16 +33,14 @@ component AbilitySlot inherits Rectangle {
         height: 100%;
     }
     
-    // ability icon/number display
-    Text {
+    // ability icon display
+    Image {
         width: 100%;
         height: 100%;
-        text: data.ability-id > 0 ? data.ability-id : "-";
-        color: data.is-ready ? Theme.highlight : Theme.old-text;
-        font-size: 18px;
-        font-weight: 700;
-        horizontal-alignment: center;
-        vertical-alignment: center;
+        source: data.icon;
+        image-fit: contain;
+        // darken if not ready
+        colorize: data.is-ready ? transparent : #000000.with-alpha(0.4);
     }
     
     // cooldown overlay
@@ -105,12 +103,12 @@ export component AbilityBar inherits Rectangle {
     in property <bool> show: true;
 
     // slot data for each ability (M1, M2, Q, E, Shift, R)
-    in property <AbilitySlotData> slot-m1: { visible: true, ability-id: 0, key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
-    in property <AbilitySlotData> slot-m2: { visible: true, ability-id: 0, key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
-    in property <AbilitySlotData> slot-q: { visible: true, ability-id: 0, key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
-    in property <AbilitySlotData> slot-e: { visible: true, ability-id: 0, key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
-    in property <AbilitySlotData> slot-shift: { visible: true, ability-id: 0, key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
-    in property <AbilitySlotData> slot-r: { visible: true, ability-id: 0, key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-m1: { visible: true, icon: @image-url(""), key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-m2: { visible: true, icon: @image-url(""), key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-q: { visible: true, icon: @image-url(""), key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-e: { visible: true, icon: @image-url(""), key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-shift: { visible: true, icon: @image-url(""), key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-r: { visible: true, icon: @image-url(""), key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
 
     // calculate width based on visible slots (6 slots * 48px + 5 gaps * 6px + 2 separators * 8px + padding)
     width: show ? 380px : 0px;

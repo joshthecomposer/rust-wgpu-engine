@@ -4,103 +4,120 @@
       "id": 1,
       "name": "Slash",
       "cooldown": 0.5,
-      "description": "Quick horizontal slash"
+      "description": "Quick horizontal slash",
+      "icon": "resources/ui/icons/slash.png"
     },
     "2": {
       "id": 2,
       "name": "Thrust",
       "cooldown": 0.8,
-      "description": "Forward thrust attack"
+      "description": "Forward thrust attack",
+      "icon": "resources/ui/icons/thrust.png"
     },
     "3": {
       "id": 3,
       "name": "Whirlwind",
       "cooldown": 6.0,
-      "description": "Spin attack hitting all nearby"
+      "description": "Spin attack hitting all nearby",
+      "icon": "resources/ui/icons/whirlwind.png"
     },
     "4": {
       "id": 4,
       "name": "Parry",
       "cooldown": 4.0,
-      "description": "Defensive stance that counters"
+      "description": "Defensive stance that counters",
+      "icon": "resources/ui/icons/parry.png"
     },
     "5": {
       "id": 5,
       "name": "Lunge",
       "cooldown": 5.0,
-      "description": "Dash forward with blade"
+      "description": "Dash forward with blade",
+      "icon": "resources/ui/icons/lunge.png"
     },
     "6": {
       "id": 6,
       "name": "Blade Storm",
       "cooldown": 8.0,
-      "description": "Multiple rapid strikes"
+      "description": "Multiple rapid strikes",
+      "icon": "resources/ui/icons/blade_storm.png"
     },
     "7": {
       "id": 7,
       "name": "Cleave",
       "cooldown": 1.0,
-      "description": "Heavy downward chop"
+      "description": "Heavy downward chop",
+      "icon": "resources/ui/icons/cleave.png"
     },
     "8": {
       "id": 8,
       "name": "Overhead Smash",
       "cooldown": 1.2,
-      "description": "Powerful overhead strike"
+      "description": "Powerful overhead strike",
+      "icon": "resources/ui/icons/overhead_smash.png"
     },
     "9": {
       "id": 9,
       "name": "Ground Pound",
       "cooldown": 7.0,
-      "description": "Slam weapon into ground"
+      "description": "Slam weapon into ground",
+      "icon": "resources/ui/icons/ground_pound.png"
     },
     "10": {
       "id": 10,
       "name": "Berserker Rage",
       "cooldown": 6.0,
-      "description": "Enter frenzied state"
+      "description": "Enter frenzied state",
+      "icon": "resources/ui/icons/berserker_rage.png"
     },
     "11": {
       "id": 11,
       "name": "Execute",
       "cooldown": 10.0,
-      "description": "Devastating finisher"
+      "description": "Devastating finisher",
+      "icon": "resources/ui/icons/execute.png"
     },
     "12": {
       "id": 12,
       "name": "Rending Strike",
       "cooldown": 5.0,
-      "description": "Causes bleeding"
+      "description": "Causes bleeding",
+      "icon": "resources/ui/icons/rending_strike.png"
     },
     "13": {
       "id": 13,
       "name": "Shield Breaker",
       "cooldown": 8.0,
-      "description": "Ignore enemy defenses"
+      "description": "Ignore enemy defenses",
+      "icon": "resources/ui/icons/shield_breaker.png"
     },
     "14": {
       "id": 14,
       "name": "Roll Dodge",
       "cooldown": 2.0,
-      "description": "Quick evasive roll"
+      "description": "Quick evasive roll",
+      "icon": "resources/ui/icons/roll_dodge.png"
     },
     "15": {
       "id": 15,
       "name": "Blade Dance",
       "cooldown": 30.0,
-      "description": "Ultimate: Graceful deadly combo"
+      "description": "Ultimate: Graceful deadly combo",
+      "icon": "resources/ui/icons/blade_dance.png"
     },
     "16": {
       "id": 16,
       "name": "Earthquake",
       "cooldown": 35.0,
-      "description": "Ultimate: Massive ground slam"
+      "description": "Ultimate: Massive ground slam",
+      "icon": "resources/ui/icons/earthquake.png"
     },
     "17": {
       "id": 17,
       "name": "Rampage",
       "cooldown": 40.0,
-      "description": "Ultimate: Unstoppable assault"
+      "description": "Ultimate: Unstoppable assault",
+      "icon": "resources/ui/icons/rampage.png"
     }
   }
 }

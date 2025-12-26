@@ -20,6 +20,7 @@ use crate::renderer::DefaultTextures;
 use crate::shaders::Shader;
 use crate::ui::ability_bar_renderer::AbilityBarRenderer;
 use crate::ui::game::views::{GameRootContext, GameRootView, SettingsContext, SystemContext};
+use crate::ui::image_cache::UiImageCache;
 use crate::ui::message_queue::MessageQueue;
 use crate::ui::portrait_renderer::PortraitRenderer;
 use crate::ui::slint_platform::init_slint_platform;
@@ -54,6 +55,7 @@ pub struct GameUiManager {
     game_root_view: GameRootView,
     portrait_renderer: PortraitRenderer,
     ability_bar_renderer: AbilityBarRenderer,
+    image_cache: UiImageCache,
 
     width: u32,
     height: u32,
@@ -116,6 +118,7 @@ impl GameUiManager {
             game_root_view,
             portrait_renderer,
             ability_bar_renderer,
+            image_cache: UiImageCache::new(),
             width,
             height,
             scale_factor,
@@ -350,6 +353,7 @@ impl GameUiManager {
                 entity_manager: ctx.entity_manager,
                 message_queue: ctx.message_queue,
             },
+            image_cache: &mut self.image_cache,
             elapsed_time: ctx.elapsed_time,
         };
         self.game_root_view.update(game_ctx);
@@ -359,6 +363,7 @@ impl GameUiManager {
         let ability_ctx = AbilityBarContext {
             entity_manager: ctx.entity_manager,
             paused: *ctx.paused,
+            image_cache: &mut self.image_cache,
             elapsed_time: ctx.elapsed_time,
         };
         let ability_bar_view = AbilityBarView::new();

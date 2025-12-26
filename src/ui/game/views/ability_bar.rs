@@ -3,6 +3,7 @@
 
 use crate::abilities::{AbilitiesConfig, WeaponAbilities};
 use crate::entity_manager::EntityManager;
+use crate::ui::image_cache::UiImageCache;
 
 use super::game_root::AbilitySlotData;
 
@@ -10,14 +11,15 @@ use super::game_root::AbilitySlotData;
 pub struct AbilityBarContext<'a> {
     pub entity_manager: &'a EntityManager,
     pub paused: bool,
+    pub image_cache: &'a mut UiImageCache,
     pub elapsed_time: f64,
 }
 
 /// Data for a single ability slot.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SlotDisplayData {
     pub visible: bool,
-    pub ability_id: i32,
+    pub icon_path: String,
     pub key_label: String,
     pub cooldown_progress: f32,
     pub cooldown_time_remaining: f32,
@@ -28,10 +30,10 @@ pub struct SlotDisplayData {
 }
 
 impl SlotDisplayData {
-    pub fn to_slint(&self) -> AbilitySlotData {
+    pub fn to_slint(&self, image_cache: &mut UiImageCache) -> AbilitySlotData {
         AbilitySlotData {
             visible: self.visible,
-            ability_id: self.ability_id,
+            icon: image_cache.get(&self.icon_path),
             key_label: self.key_label.clone().into(),
             cooldown_progress: self.cooldown_progress,
             cooldown_time_remaining: self.cooldown_time_remaining,
@@ -128,16 +130,19 @@ impl AbilityBarData {
             Some(id) => {
                 let progress = abilities.get_cooldown_progress(slot_index, config);
                 let time_remaining = abilities.get_cooldown(slot_index);
-                
+
                 // fetch ability definition for tooltip data
                 let (name, description) = match config.get(id) {
                     Some(def) => (def.name.clone(), def.description.clone()),
                     None => (String::new(), String::new()),
                 };
-                
+
                 SlotDisplayData {
                     visible: true,
-                    ability_id: id as i32,
+                    icon_path: match config.get(id) {
+                        Some(def) => def.icon.clone(),
+                        None => String::new(),
+                    },
                     key_label: key_label.to_string(),
                     cooldown_progress: progress,
                     cooldown_time_remaining: time_remaining,
@@ -149,7 +154,7 @@ impl AbilityBarData {
             }
             None => SlotDisplayData {
                 visible: false,
-                ability_id: 0,
+                icon_path: String::new(),
                 key_label: key_label.to_string(),
                 cooldown_progress: 0.0,
                 cooldown_time_remaining: 0.0,
@@ -185,7 +190,7 @@ impl AbilityBarView {
         let slots = [data.m1, data.m2, data.q, data.e, data.shift, data.r];
 
         // update the renderer with throttling and change detection
-        renderer.update(show, slots, ctx.elapsed_time);
+        renderer.update(show, slots, ctx.image_cache, ctx.elapsed_time);
     }
 }
 

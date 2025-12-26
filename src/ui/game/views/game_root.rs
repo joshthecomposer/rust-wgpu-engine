@@ -8,6 +8,7 @@ use slint::platform::software_renderer::MinimalSoftwareWindow;
 use slint::PhysicalSize;
 
 use crate::entity_manager::EntityManager;
+use crate::ui::image_cache::UiImageCache;
 use crate::ui::message_queue::MessageQueue;
 
 use super::ability_bar::AbilityBarData;
@@ -42,6 +43,7 @@ pub struct GameRootContext<'a> {
     pub paused: &'a mut bool,
     pub settings: SettingsContext<'a>,
     pub system: SystemContext<'a>,
+    pub image_cache: &'a mut UiImageCache,
     pub elapsed_time: f64,
 }
 
@@ -137,12 +139,18 @@ impl GameRootView {
         // (the visual rendering is done separately by AbilityBarRenderer, but GameRoot
         // needs the data for its TouchArea hover detection to show tooltips)
         let ability_data = AbilityBarData::from_entity_manager(entity_manager);
-        self.game_root.set_ability_slot_m1(ability_data.m1.to_slint());
-        self.game_root.set_ability_slot_m2(ability_data.m2.to_slint());
-        self.game_root.set_ability_slot_q(ability_data.q.to_slint());
-        self.game_root.set_ability_slot_e(ability_data.e.to_slint());
-        self.game_root.set_ability_slot_shift(ability_data.shift.to_slint());
-        self.game_root.set_ability_slot_r(ability_data.r.to_slint());
+        self.game_root
+            .set_ability_slot_m1(ability_data.m1.to_slint(ctx.image_cache));
+        self.game_root
+            .set_ability_slot_m2(ability_data.m2.to_slint(ctx.image_cache));
+        self.game_root
+            .set_ability_slot_q(ability_data.q.to_slint(ctx.image_cache));
+        self.game_root
+            .set_ability_slot_e(ability_data.e.to_slint(ctx.image_cache));
+        self.game_root
+            .set_ability_slot_shift(ability_data.shift.to_slint(ctx.image_cache));
+        self.game_root
+            .set_ability_slot_r(ability_data.r.to_slint(ctx.image_cache));
 
         self.toast_view.update(&self.game_root, elapsed_time);
     }
