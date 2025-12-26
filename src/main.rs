@@ -104,7 +104,8 @@ impl ApplicationHandler for App {
         if let DeviceEvent::MouseMotion { delta } = event {
             // delta: (dx, dy) in f64
             let (dx, dy) = delta;
-            if !self.game.paused {
+            // only process camera input when not paused AND cursor is locked
+            if !self.game.paused && !self.game.cursor_unlocked() {
                 self.game.world.camera.process_mouse_input(dx, dy);
             }
         }

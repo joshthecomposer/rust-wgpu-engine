@@ -1,5 +1,6 @@
 // ability bar component - shows 6 ability slots (M1, M2, Q, E, Shift, R)
 import { Theme } from "theme.slint";
+import { AbilityTooltip } from "ability_tooltip.slint";
 
 // data model for a single ability slot
 export struct AbilitySlotData {
@@ -9,6 +10,9 @@ export struct AbilitySlotData {
     cooldown-progress: float, // 0.0 = ready, 1.0 = full cooldown
     cooldown-time-remaining: float, // time in seconds until ready
     is-ready: bool,
+    ability-name: string,
+    ability-description: string,
+    ability-effects: string,
 }
 
 // single ability slot component
@@ -21,6 +25,13 @@ component AbilitySlot inherits Rectangle {
     border-radius: 4px;
     border-width: 1px;
     border-color: data.is-ready ? Theme.runic-gold : Theme.stone-light;
+    clip: false;
+    
+    // touch area for hover detection
+    touch := TouchArea {
+        width: 100%;
+        height: 100%;
+    }
     
     // ability icon/number display
     Text {
@@ -76,18 +87,30 @@ component AbilitySlot inherits Rectangle {
         border-width: 1px;
         border-color: Theme.runic-gold.with-alpha(0.5);
     }
+    
+    // tooltip (positioned above the slot)
+    // x: align left edge with slot to prevent clipping off left screen edge
+    // y: position above slot using negative offset (tooltip bottom above slot top)
+    if touch.has-hover && data.ability-name != "": AbilityTooltip {
+        x: 0px;
+        y: -self.height - 8px;
+        ability-name: data.ability-name;
+        ability-description: data.ability-description;
+        ability-effects: data.ability-effects;
+        show: true;
+    }
 }
 
 export component AbilityBar inherits Rectangle {
     in property <bool> show: true;
 
     // slot data for each ability (M1, M2, Q, E, Shift, R)
-    in property <AbilitySlotData> slot-m1: { visible: true, ability-id: 0, key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-m2: { visible: true, ability-id: 0, key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-q: { visible: true, ability-id: 0, key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-e: { visible: true, ability-id: 0, key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-shift: { visible: true, ability-id: 0, key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-r: { visible: true, ability-id: 0, key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> slot-m1: { visible: true, ability-id: 0, key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-m2: { visible: true, ability-id: 0, key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-q: { visible: true, ability-id: 0, key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-e: { visible: true, ability-id: 0, key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-shift: { visible: true, ability-id: 0, key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-r: { visible: true, ability-id: 0, key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
 
     // calculate width based on visible slots (6 slots * 48px + 5 gaps * 6px + 2 separators * 8px + padding)
     width: show ? 380px : 0px;

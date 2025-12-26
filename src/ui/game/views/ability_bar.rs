@@ -22,6 +22,9 @@ pub struct SlotDisplayData {
     pub cooldown_progress: f32,
     pub cooldown_time_remaining: f32,
     pub is_ready: bool,
+    pub ability_name: String,
+    pub ability_description: String,
+    pub ability_effects: String,
 }
 
 impl SlotDisplayData {
@@ -33,6 +36,9 @@ impl SlotDisplayData {
             cooldown_progress: self.cooldown_progress,
             cooldown_time_remaining: self.cooldown_time_remaining,
             is_ready: self.is_ready,
+            ability_name: self.ability_name.clone().into(),
+            ability_description: self.ability_description.clone().into(),
+            ability_effects: self.ability_effects.clone().into(),
         }
     }
 }
@@ -122,6 +128,13 @@ impl AbilityBarData {
             Some(id) => {
                 let progress = abilities.get_cooldown_progress(slot_index, config);
                 let time_remaining = abilities.get_cooldown(slot_index);
+                
+                // fetch ability definition for tooltip data
+                let (name, description) = match config.get(id) {
+                    Some(def) => (def.name.clone(), def.description.clone()),
+                    None => (String::new(), String::new()),
+                };
+                
                 SlotDisplayData {
                     visible: true,
                     ability_id: id as i32,
@@ -129,6 +142,9 @@ impl AbilityBarData {
                     cooldown_progress: progress,
                     cooldown_time_remaining: time_remaining,
                     is_ready: abilities.is_ready(slot_index),
+                    ability_name: name,
+                    ability_description: description,
+                    ability_effects: String::new(), // empty for now, ready for future
                 }
             }
             None => SlotDisplayData {
@@ -138,6 +154,9 @@ impl AbilityBarData {
                 cooldown_progress: 0.0,
                 cooldown_time_remaining: 0.0,
                 is_ready: false,
+                ability_name: String::new(),
+                ability_description: String::new(),
+                ability_effects: String::new(),
             },
         }
     }

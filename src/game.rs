@@ -35,6 +35,7 @@ pub struct Game {
     pub input: InputState,
     // imgui_manager: ImguiManager,
     pub paused: bool,
+    cursor_unlocked: bool,
     message_queue: MessageQueue,
     game_ui: GameUiManager,
     pub should_quit: bool,
@@ -46,6 +47,10 @@ pub struct Game {
 }
 
 impl Game {
+    pub fn cursor_unlocked(&self) -> bool {
+        self.cursor_unlocked
+    }
+
     pub fn new(platform: Platform, config: GameConfig) -> Self {
         let start_seconds = 0.0;
         let time = Time::new(60.0, start_seconds);
@@ -79,6 +84,7 @@ impl Game {
             sound,
             input: InputState::new(),
             paused: false,
+            cursor_unlocked: false,
             message_queue: MessageQueue::new(),
             game_ui,
             should_quit: false,
@@ -117,7 +123,7 @@ impl Game {
         self.time.begin_frame(now_seconds);
 
         // Mouse lock / cursor mode
-        if self.paused || self.world.camera.move_state == CameraState::Locked {
+        if self.paused || self.cursor_unlocked || self.world.camera.move_state == CameraState::Locked {
             self.platform.window.set_cursor_visible(true);
             let _ = self.platform.window.set_cursor_grab(CursorGrabMode::None);
             self.platform.cursor_mode = CursorMode::Normal;
@@ -364,6 +370,11 @@ impl Game {
                         self.world
                             .ecs
                             .try_pickup_weapon(PICKUP_RANGE, &mut self.physics);
+                    }
+
+                    // Tab toggles cursor unlock (for hovering over abilities)
+                    if keycode == KeyCode::Tab && *state == ElementState::Pressed {
+                        self.cursor_unlocked = !self.cursor_unlocked;
                     }
                 }
             }

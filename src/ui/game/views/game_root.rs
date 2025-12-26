@@ -10,6 +10,7 @@ use slint::PhysicalSize;
 use crate::entity_manager::EntityManager;
 use crate::ui::message_queue::MessageQueue;
 
+use super::ability_bar::AbilityBarData;
 use super::pause_menu::{PauseMenuContext, PauseMenuView};
 use super::player_hud::{PlayerHudContext, PlayerHudView};
 use super::toast::ToastView;
@@ -131,6 +132,17 @@ impl GameRootView {
             paused,
         };
         self.player_hud_view.update(&self.game_root, hud_ctx);
+
+        // update ability bar slot data on game_root for tooltip hover detection
+        // (the visual rendering is done separately by AbilityBarRenderer, but GameRoot
+        // needs the data for its TouchArea hover detection to show tooltips)
+        let ability_data = AbilityBarData::from_entity_manager(entity_manager);
+        self.game_root.set_ability_slot_m1(ability_data.m1.to_slint());
+        self.game_root.set_ability_slot_m2(ability_data.m2.to_slint());
+        self.game_root.set_ability_slot_q(ability_data.q.to_slint());
+        self.game_root.set_ability_slot_e(ability_data.e.to_slint());
+        self.game_root.set_ability_slot_shift(ability_data.shift.to_slint());
+        self.game_root.set_ability_slot_r(ability_data.r.to_slint());
 
         self.toast_view.update(&self.game_root, elapsed_time);
     }
