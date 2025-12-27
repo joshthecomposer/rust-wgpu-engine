@@ -100,6 +100,7 @@ export component GameRoot inherits Window {
         x: 16px;
         y: parent.height - self.height - 24px;
         show: root.show-ability-bar && !root.show-pause-menu;
+        detect-only: true;
         slot-m1: root.ability-slot-m1;
         slot-m2: root.ability-slot-m2;
         slot-q: root.ability-slot-q;

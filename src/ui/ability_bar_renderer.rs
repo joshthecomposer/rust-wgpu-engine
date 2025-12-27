@@ -21,8 +21,8 @@ const ABILITY_BAR_WIDTH: u32 = 380;
 const ABILITY_BAR_HEIGHT: u32 = 68;
 
 /// Update interval in seconds - only update Slint properties this often.
-/// 33ms = ~30 updates/sec, which is plenty for cooldown animations.
-const UPDATE_INTERVAL: f64 = 0.033;
+/// 100ms = 10 updates/sec, which is plenty for cooldown animations.
+const UPDATE_INTERVAL: f64 = 0.1;
 
 /// Renders the ability bar to an offscreen FBO using Slint software rendering.
 /// The texture can be sampled directly for compositing without CPU readback.
@@ -136,9 +136,23 @@ impl AbilityBarRenderer {
         let time_since_update = elapsed_time - self.last_update_time;
         let should_update_time = time_since_update >= UPDATE_INTERVAL;
 
-        // always update immediately if show state changes or any ability becomes ready or slots change
+        // check for structural changes (not cooldown progress) that should trigger immediate update
         let show_changed = show != self.cached_show;
-        let slots_changed = slots != self.cached_slots;
+
+        // compare slots while ignoring cooldown progress
+        let mut slots_changed = false;
+        for i in 0..6 {
+            let s1 = &slots[i];
+            let s2 = &self.cached_slots[i];
+            if s1.visible != s2.visible
+                || s1.icon_path != s2.icon_path
+                || s1.is_ready != s2.is_ready
+                || s1.ability_name != s2.ability_name
+            {
+                slots_changed = true;
+                break;
+            }
+        }
 
         let should_update = should_update_time || show_changed || slots_changed;
 

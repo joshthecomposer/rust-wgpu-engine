@@ -18,12 +18,13 @@ export struct AbilitySlotData {
 // single ability slot component
 component AbilitySlot inherits Rectangle {
     in property <AbilitySlotData> data;
+    in property <bool> detect-only: false;
     
     width: 48px;
     height: 48px;
-    background: Theme.deep-void.with-alpha(0.9);
+    background: detect-only ? transparent : Theme.deep-void.with-alpha(0.9);
     border-radius: 4px;
-    border-width: 1px;
+    border-width: detect-only ? 0px : 1px;
     border-color: data.is-ready ? Theme.runic-gold : Theme.stone-light;
     clip: false;
     
@@ -34,7 +35,7 @@ component AbilitySlot inherits Rectangle {
     }
     
     // ability icon display
-    Image {
+    if !detect-only: Image {
         width: 100%;
         height: 100%;
         source: data.icon;
@@ -44,7 +45,7 @@ component AbilitySlot inherits Rectangle {
     }
     
     // cooldown overlay
-    if data.cooldown-progress > 0: Rectangle {
+    if !detect-only && data.cooldown-progress > 0: Rectangle {
         x: 0;
         y: 0;
         width: parent.width;
@@ -54,7 +55,7 @@ component AbilitySlot inherits Rectangle {
     }
     
     // key label
-    Rectangle {
+    if !detect-only: Rectangle {
         x: parent.width - self.width - 2px;
         y: 2px;
         width: key-text.preferred-width + 6px;
@@ -75,7 +76,7 @@ component AbilitySlot inherits Rectangle {
     }
     
     // ready glow effect
-    if data.is-ready && data.cooldown-progress == 0: Rectangle {
+    if !detect-only && data.is-ready && data.cooldown-progress == 0: Rectangle {
         x: -2px;
         y: -2px;
         width: parent.width + 4px;
@@ -101,6 +102,7 @@ component AbilitySlot inherits Rectangle {
 
 export component AbilityBar inherits Rectangle {
     in property <bool> show: true;
+    in property <bool> detect-only: false;
 
     // slot data for each ability (M1, M2, Q, E, Shift, R)
     in property <AbilitySlotData> slot-m1: { visible: true, icon: @image-url(""), key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-name: "", ability-description: "", ability-effects: "" };
@@ -118,9 +120,9 @@ export component AbilityBar inherits Rectangle {
     if show: Rectangle {
         width: 100%;
         height: 100%;
-        background: Theme.deep-void.with-alpha(0.7);
+        background: detect-only ? transparent : Theme.deep-void.with-alpha(0.7);
         border-radius: 6px;
-        border-width: 1px;
+        border-width: detect-only ? 0px : 1px;
         border-color: Theme.stone-light;
 
         HorizontalLayout {
@@ -128,22 +130,22 @@ export component AbilityBar inherits Rectangle {
             spacing: 6px;
             alignment: center;
 
-            if slot-m1.visible: AbilitySlot { data: slot-m1; }
+            if slot-m1.visible: AbilitySlot { data: slot-m1; detect-only: root.detect-only; }
 
-            if slot-m2.visible: AbilitySlot { data: slot-m2; }
+            if slot-m2.visible: AbilitySlot { data: slot-m2; detect-only: root.detect-only; }
 
             // separator
             Rectangle { width: 8px; }
 
-            if slot-q.visible: AbilitySlot { data: slot-q; }
+            if slot-q.visible: AbilitySlot { data: slot-q; detect-only: root.detect-only; }
 
-            if slot-e.visible: AbilitySlot { data: slot-e; }
+            if slot-e.visible: AbilitySlot { data: slot-e; detect-only: root.detect-only; }
 
-            if slot-shift.visible: AbilitySlot { data: slot-shift; }
+            if slot-shift.visible: AbilitySlot { data: slot-shift; detect-only: root.detect-only; }
 
             Rectangle { width: 8px; }
 
-            if slot-r.visible: AbilitySlot { data: slot-r; }
+            if slot-r.visible: AbilitySlot { data: slot-r; detect-only: root.detect-only; }
         }
     }
 }

@@ -56,6 +56,7 @@ pub struct GameRootView {
     // throttling for pickup indicator check
     last_pickup_check_time: f64,
     cached_show_pickup: bool,
+    cached_ability_data: Option<AbilityBarData>,
 }
 
 impl GameRootView {
@@ -84,6 +85,7 @@ impl GameRootView {
             toast_view,
             last_pickup_check_time: -999.0, // force first check
             cached_show_pickup: false,
+            cached_ability_data: None,
         };
 
         (view, window)
@@ -139,18 +141,41 @@ impl GameRootView {
         // (the visual rendering is done separately by AbilityBarRenderer, but GameRoot
         // needs the data for its TouchArea hover detection to show tooltips)
         let ability_data = AbilityBarData::from_entity_manager(entity_manager);
-        self.game_root
-            .set_ability_slot_m1(ability_data.m1.to_slint(ctx.image_cache));
-        self.game_root
-            .set_ability_slot_m2(ability_data.m2.to_slint(ctx.image_cache));
-        self.game_root
-            .set_ability_slot_q(ability_data.q.to_slint(ctx.image_cache));
-        self.game_root
-            .set_ability_slot_e(ability_data.e.to_slint(ctx.image_cache));
-        self.game_root
-            .set_ability_slot_shift(ability_data.shift.to_slint(ctx.image_cache));
-        self.game_root
-            .set_ability_slot_r(ability_data.r.to_slint(ctx.image_cache));
+        
+        // change detection: for tooltips, we only care about structural changes (name, description, visibility)
+        // we don't need to update Slint properties for cooldown progress every frame in GameRoot!
+        let needs_ability_sync = match &self.cached_ability_data {
+            Some(cached) => {
+                // simple equality check works but might be too aggressive (cooldown progress)
+                // However, Slint property setting is the expensive part.
+                // Let's do a smarter check for tooltips:
+                cached.visible != ability_data.visible ||
+                cached.m1.ability_name != ability_data.m1.ability_name ||
+                cached.m2.ability_name != ability_data.m2.ability_name ||
+                cached.q.ability_name != ability_data.q.ability_name ||
+                cached.e.ability_name != ability_data.e.ability_name ||
+                cached.shift.ability_name != ability_data.shift.ability_name ||
+                cached.r.ability_name != ability_data.r.ability_name
+            }
+            None => true,
+        };
+
+        if needs_ability_sync {
+            self.game_root
+                .set_ability_slot_m1(ability_data.m1.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_m2(ability_data.m2.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_q(ability_data.q.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_e(ability_data.e.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_shift(ability_data.shift.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_r(ability_data.r.to_slint(ctx.image_cache));
+            
+            self.cached_ability_data = Some(ability_data);
+        }
 
         self.toast_view.update(&self.game_root, elapsed_time);
     }

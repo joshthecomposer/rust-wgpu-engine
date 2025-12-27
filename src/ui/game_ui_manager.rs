@@ -314,16 +314,16 @@ impl GameUiManager {
 
     /// Update the UI each frame.
     pub fn update(&mut self, ctx: GameUiUpdateContext) {
-        // always call update_timers_and_animations for Slint's internal state
-        slint::platform::update_timers_and_animations();
-
-        // throttle UI updates to 60 Hz to avoid expensive work during scroll spam
+        // throttle UI updates to 60 Hz to avoid expensive work during scroll spam or high FPS
         const UPDATE_INTERVAL: f64 = 1.0 / 60.0; // 60 Hz = ~16.6ms
         let should_update = ctx.elapsed_time - self.last_update_time >= UPDATE_INTERVAL;
 
         if !should_update {
             return;
         }
+
+        // always call update_timers_and_animations for Slint's internal state, but throttled to 60Hz
+        slint::platform::update_timers_and_animations();
 
         self.last_update_time = ctx.elapsed_time;
 
