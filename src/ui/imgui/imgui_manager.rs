@@ -23,7 +23,9 @@ use crate::{
     sound::sound_manager::SoundManager,
     ui::{
         imgui::{
-            entity_editor::EntityEditor, particle_editor::ParticleEditor, player_data::PlayerData,
+            ability_editor::AbilityEditor, entity_editor::EntityEditor,
+            particle_editor::ParticleEditor, player_data::PlayerData,
+            weapon_pool_editor::WeaponPoolEditor,
         },
         message_queue::MessageQueue,
     },
@@ -34,6 +36,8 @@ pub struct ImguiManager {
     pub renderer: imgui_opengl_renderer::Renderer,
     pub entity_editor: EntityEditor,
     pub particle_editor: ParticleEditor,
+    pub ability_editor: AbilityEditor,
+    pub weapon_pool_editor: WeaponPoolEditor,
     pub _player_data: PlayerData,
 }
 
@@ -64,6 +68,8 @@ impl ImguiManager {
                 new_entity_count: 1,
             },
             particle_editor: ParticleEditor::default(),
+            ability_editor: AbilityEditor::default(),
+            weapon_pool_editor: WeaponPoolEditor::default(),
             _player_data: PlayerData {},
         }
     }
@@ -206,6 +212,8 @@ impl ImguiManager {
                     delta,
                     message_queue,
                 );
+                self.ability_editor.draw(ui, em, &[width, height]);
+                self.weapon_pool_editor.draw(ui, em, &[width, height]);
             } else {
                 //self.player_data.draw(ui, em, &[width, height]);
             }

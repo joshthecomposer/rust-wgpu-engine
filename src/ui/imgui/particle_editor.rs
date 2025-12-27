@@ -50,7 +50,8 @@ impl ParticleEditor {
     ) {
         ui.window("Particle Editor")
             .size([500.0, size[1]], imgui::Condition::FirstUseEver)
-            .position([size[0] - 500.0, 0.0], imgui::Condition::FirstUseEver)
+            .position([0.0, 75.0], imgui::Condition::FirstUseEver)
+            .collapsed(true, imgui::Condition::FirstUseEver)
             .build(|| {
                 let mut emitter_types: Vec<String> = particles
                     .emitter_data

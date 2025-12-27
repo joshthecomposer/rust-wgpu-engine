@@ -268,6 +268,8 @@ impl Game {
                                     path.to_string_lossy().into_owned();
                                 imgui_manager.particle_editor.staged_texture =
                                     path.to_string_lossy().into_owned();
+                                imgui_manager.ability_editor.staged_icon =
+                                    path.to_string_lossy().into_owned();
                             }
                             _ => {}
                         }

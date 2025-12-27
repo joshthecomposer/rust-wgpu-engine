@@ -10,11 +10,11 @@ use crate::{
 };
 
 /// Available weapon entity types for enemy spawns.
-const ENEMY_WEAPON_TYPES: &[&str] = &["OrcSword", "DoubleAxe"];
+const ENEMY_WEAPON_TYPES: &[&str] = &["OrcSword", "DoubleAxe", "IceStaff", "Staff", "FireStaff"];
 
 pub struct SpawnManager {
     pub spawn_every: f32, // seconds
-    pub amount_per: u32,  // how many guys
+    pub amount_per: u32,  // how many guysf
     pub accumulator: f32,
 }
 
