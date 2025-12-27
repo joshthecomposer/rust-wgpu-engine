@@ -63,6 +63,8 @@ pub enum ShaderType {
     StaticModel,
     AnimatedModel,
     Fxaa,
+    BloomUpsample,
+    BloomDownsample,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]

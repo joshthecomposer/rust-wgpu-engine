@@ -49,6 +49,7 @@ pub struct EmitterBlackboard {
 
     pub direction: Vec3,
     pub pps: Option<usize>,
+    pub has_bloom: bool,
 }
 
 // fn load_texture<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
@@ -145,6 +146,7 @@ pub struct UiEmitterBlackboard {
 
     // !!! Having a value > 0 makes this a continuous emitter !!!
     pub pps: i32,
+    pub has_bloom: bool,
 }
 
 impl Default for UiEmitterBlackboard {
@@ -179,6 +181,7 @@ impl Default for UiEmitterBlackboard {
             direction: [0.0, 1.0, 0.0],
 
             pps: 0,
+            has_bloom: false,
         }
     }
 }
