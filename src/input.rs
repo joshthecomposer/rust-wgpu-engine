@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::collections::HashSet;
 
 use glam::{vec4, Vec2, Vec3, Vec4Swizzles};
@@ -50,9 +51,9 @@ impl InputState {
         self.keys_current.contains(&key) && !self.keys_previous.contains(&key)
     }
 
-    // pub fn just_released(&self, key: KeyCode) -> bool {
-    //     !self.keys_current.contains(&key) && self.keys_previous.contains(&key)
-    // }
+    pub fn just_released(&self, key: KeyCode) -> bool {
+        !self.keys_current.contains(&key) && self.keys_previous.contains(&key)
+    }
 
     pub fn space_just_pressed(&self) -> bool {
         self.keys_current.contains(&KeyCode::Space) && !self.keys_previous.contains(&KeyCode::Space)
@@ -73,13 +74,13 @@ impl InputState {
         self.keys_current.contains(&KeyCode::ShiftLeft)
     }
 
-    // pub fn mouse_just_pressed(&self, b: MouseButton) -> bool {
-    //     self.mouse_current.contains(&b) && !self.mouse_previous.contains(&b)
-    // }
+    pub fn mouse_just_pressed(&self, b: MouseButton) -> bool {
+        self.mouse_current.contains(&b) && !self.mouse_previous.contains(&b)
+    }
 
-    // pub fn mouse_just_released(&self, b: MouseButton) -> bool {
-    //     !self.mouse_current.contains(&b) && self.mouse_previous.contains(&b)
-    // }
+    pub fn mouse_just_released(&self, b: MouseButton) -> bool {
+        !self.mouse_current.contains(&b) && self.mouse_previous.contains(&b)
+    }
 
     pub fn left_mouse_just_pressed(&self) -> bool {
         // Return false if UI consumed the click
@@ -90,20 +91,20 @@ impl InputState {
             && !self.mouse_previous.contains(&MouseButton::Left)
     }
 
-    // pub fn left_mouse_just_released(&self) -> bool {
-    //     !self.mouse_current.contains(&MouseButton::Left)
-    //         && self.mouse_previous.contains(&MouseButton::Left)
-    // }
+    pub fn left_mouse_just_released(&self) -> bool {
+        !self.mouse_current.contains(&MouseButton::Left)
+            && self.mouse_previous.contains(&MouseButton::Left)
+    }
 
     pub fn right_mouse_just_pressed(&self) -> bool {
         self.mouse_current.contains(&MouseButton::Right)
             && !self.mouse_previous.contains(&MouseButton::Right)
     }
 
-    // pub fn right_mouse_just_released(&self) -> bool {
-    //     !self.mouse_current.contains(&MouseButton::Right)
-    //         && self.mouse_previous.contains(&MouseButton::Right)
-    // }
+    pub fn right_mouse_just_released(&self) -> bool {
+        !self.mouse_current.contains(&MouseButton::Right)
+            && self.mouse_previous.contains(&MouseButton::Right)
+    }
 
     pub fn mouse_is_down(&self, b: MouseButton) -> bool {
         self.mouse_current.contains(&b)

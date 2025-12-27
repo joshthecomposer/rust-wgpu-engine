@@ -7,3 +7,4 @@ pub mod message_queue;
 pub mod portrait_renderer;
 pub mod slint_platform;
 pub mod toast;
+pub mod image_cache;

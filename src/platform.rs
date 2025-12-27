@@ -15,7 +15,7 @@ use winit::raw_window_handle::HasWindowHandle;
 use winit::{
     dpi::LogicalSize,
     event_loop::EventLoop,
-    window::{Window, WindowAttributes},
+    window::{CursorGrabMode, Window, WindowAttributes},
 };
 
 use crate::gl_call;
@@ -24,7 +24,7 @@ use crate::gl_call;
 pub enum CursorMode {
     Normal,
     Hidden,
-    // Disabled,
+    Disabled,
 }
 
 pub struct Platform {
@@ -120,39 +120,44 @@ impl Platform {
         let size = window.inner_size();
         let scale_factor = window.scale_factor();
 
-        (
-            Self {
-                window,
-                gl_context,
-                surface,
-                fb_width: size.width,
-                fb_height: size.height,
-                scale_factor,
-                cursor_mode: CursorMode::Hidden,
-                display,
-            },
-            event_loop,
-        )
+        let mut platform = Self {
+            window,
+            gl_context,
+            surface,
+            fb_width: size.width,
+            fb_height: size.height,
+            scale_factor,
+            cursor_mode: CursorMode::Normal,
+            display,
+        };
+
+        platform.set_cursor_mode(CursorMode::Hidden);
+
+        (platform, event_loop)
     }
 
-    // pub fn set_cursor_mode(&mut self, mode: CursorMode) {
-    //     match mode {
-    //         CursorMode::Normal => {
-    //             let _ = self.window.set_cursor_grab(CursorGrabMode::None);
-    //             self.window.set_cursor_visible(true);
-    //         }
-    //         CursorMode::Hidden => {
-    //             let _ = self.window.set_cursor_grab(CursorGrabMode::None);
-    //             self.window.set_cursor_visible(false);
-    //         }
-    //         CursorMode::Disabled => {
-    //             let _ = self.window.set_cursor_grab(CursorGrabMode::Locked);
-    //             self.window.set_cursor_visible(false);
-    //         }
-    //     }
+    pub fn set_cursor_mode(&mut self, mode: CursorMode) {
+        if self.cursor_mode == mode {
+            return;
+        }
 
-    //     self.cursor_mode = mode;
-    // }
+        match mode {
+            CursorMode::Normal => {
+                let _ = self.window.set_cursor_grab(CursorGrabMode::None);
+                self.window.set_cursor_visible(true);
+            }
+            CursorMode::Hidden => {
+                let _ = self.window.set_cursor_grab(CursorGrabMode::Locked);
+                self.window.set_cursor_visible(false);
+            }
+            CursorMode::Disabled => {
+                let _ = self.window.set_cursor_grab(CursorGrabMode::Locked);
+                self.window.set_cursor_visible(false);
+            }
+        }
+
+        self.cursor_mode = mode;
+    }
 }
 
 fn pick_config<'a>(configs: Box<dyn Iterator<Item = Config> + 'a>) -> Config {
