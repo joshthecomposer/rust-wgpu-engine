@@ -84,7 +84,11 @@ pub fn sync_transforms_from_physics(em: &mut EntityManager, ps: &PhysicsState) {
         let PhysicsHandle { rigid_body, .. } = *ph.value();
 
         if let Some(rb) = ps.rigid_body_set.get(rigid_body) {
-            let iso = rb.position();
+            let iso = if rb.is_kinematic() {
+                rb.next_position()
+            } else {
+                rb.position()
+            };
             let pos = glam::Vec3::from_slice(iso.translation.vector.as_slice());
             let rot = {
                 let c = iso.rotation.coords;
@@ -149,6 +153,11 @@ pub fn push_weapon_kinematics_from_bones(em: &mut EntityManager, ps: &mut Physic
                 let final_m = pm * m * corr_m;
 
                 let (_, rot, pos) = final_m.to_scale_rotation_translation();
+
+                if let Some(t) = em.transforms.get_mut(wid) {
+                    t.position = pos;
+                    t.rotation = rot;
+                }
 
                 if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
                     if rb.is_kinematic() {
@@ -242,7 +251,7 @@ pub fn grounding_solver(em: &mut EntityManager, ps: &PhysicsState) {
         em.get_ids_for_type("TrashGuy"),
         em.get_ids_for_type("MooseMan"),
     ]
-    .concat();
+        .concat();
 
     for id in ids.iter() {
         let ph = em.physics_handles.get(*id).unwrap();

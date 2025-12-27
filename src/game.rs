@@ -196,7 +196,6 @@ impl Game {
                     self.time.fixed_dt,
                 );
 
-                physics::push_weapon_kinematics_from_bones(&mut self.world.ecs, &mut self.physics);
                 physics::push_static_kinematics(&self.world.ecs, &mut self.physics);
 
                 match self.world.camera.move_state {
@@ -211,13 +210,15 @@ impl Game {
                     }
                     _ => {}
                 }
+                
 
                 self.physics.step();
+
+                physics::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
+                physics::sync_collider_transforms_with_physics(&mut self.world.ecs, &mut self.physics);
+                physics::push_weapon_kinematics_from_bones(&mut self.world.ecs, &mut self.physics);
             }
 
-            physics::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
-
-            physics::sync_collider_transforms_with_physics(&mut self.world.ecs, &mut self.physics);
 
             self.time.end_fixed_step();
         }
