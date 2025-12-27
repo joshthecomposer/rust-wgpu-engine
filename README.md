@@ -28,8 +28,8 @@ Run `cargo run` from the root directory.
 5. In the script section, open up the `blender_mesh_only_export.py`
 <img width="2558" height="1427" alt="image" src="https://github.com/user-attachments/assets/0d50c575-6c91-4ff8-9424-d1b22e326238" />
 6. At the bottom of the script, fill in the mesh_output variable with the path you want it to go to, we use .txt files like chads.
-7. Also fill out the diffuse texture name.
-8. ???
-9. Profit
-### Exporting Animated Models
-1. TBD
+7. Also fill out the diffuse texture name.  
+8. ???  
+9. Profit  
+### Exporting Animated Models  
+1. TBD  
