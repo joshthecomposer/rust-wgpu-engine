@@ -19,6 +19,7 @@ export component SettingsMenu inherits Rectangle {
     in-out property <float> sfx-volume: 80.0;
     in-out property <bool> vsync: true;
     in-out property <bool> debug-mode: false;
+    in-out property <bool> spawn-system-enabled: true;
     in-out property <string> msaa: "16x MSAA";
     in-out property <string> font-family: "Weiholmir";
 
@@ -201,6 +202,16 @@ export component SettingsMenu inherits Rectangle {
                         checked: debug-mode;
                         toggled => {
                             debug-mode = !debug-mode;
+                        }
+                    }
+                }
+
+                if debug-mode : RunicSettingsRow {
+                    label: "Spawn System";
+                    RunicCheckbox {
+                        checked: spawn-system-enabled;
+                        toggled => {
+                            spawn-system-enabled = !spawn-system-enabled;
                         }
                     }
                 }
