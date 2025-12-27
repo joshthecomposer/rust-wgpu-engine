@@ -50,6 +50,7 @@ impl SpawnManager {
                                 name: None,
                                 weapons: None,
                                 cleanup_timer: None,
+                                pickup_range: None,
                             }]),
                             base_speed: Some(3.5),
                             health: Some(100.0),
@@ -60,6 +61,7 @@ impl SpawnManager {
                             name: None,
                             jump_height: Some(1.0),
                             cleanup_timer: None,
+                            pickup_range: None,
                         };
                         let parent_id = em.create_mesh_entity(&instance, ps);
                         em.populate_inventory(parent_id, &instance, ps);

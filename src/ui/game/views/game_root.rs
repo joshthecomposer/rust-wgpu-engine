@@ -110,11 +110,10 @@ impl GameRootView {
         }
 
         // throttle pickup indicator check to 10 Hz (avoid expensive entity iteration every frame)
-        const PICKUP_RANGE: f32 = 3.0;
         let should_check = elapsed_time - self.last_pickup_check_time >= PICKUP_CHECK_INTERVAL;
 
         if should_check {
-            let show_pickup_prompt = !paused && entity_manager.has_nearby_weapon(PICKUP_RANGE);
+            let show_pickup_prompt = !paused && entity_manager.has_nearby_weapon();
             self.cached_show_pickup = show_pickup_prompt;
             self.last_pickup_check_time = elapsed_time;
         }
