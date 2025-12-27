@@ -1516,7 +1516,7 @@ impl Renderer {
         for mip in &self.bloom_mips {
             {
                 let s = self.shaders.get_mut(&ShaderType::BloomDownsample).unwrap();
-                s.set_vec2("texelSize", 1.0 / src_w, 1.0 / src_h); // ✅ based on SOURCE
+                s.set_vec2("texelSize", 1.0 / src_w, 1.0 / src_h);
             }
 
             unsafe {
@@ -1524,7 +1524,6 @@ impl Renderer {
                 let bufs = [gl::COLOR_ATTACHMENT0];
                 gl_call!(gl::DrawBuffers(1, bufs.as_ptr()));
                 gl_call!(gl::Viewport(0, 0, mip.w, mip.h));
-                gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT));
                 gl_call!(gl::ActiveTexture(gl::TEXTURE0));
                 gl_call!(gl::BindTexture(gl::TEXTURE_2D, src_tex));
             }
@@ -1555,7 +1554,6 @@ impl Renderer {
             {
                 let s = self.shaders.get_mut(&ShaderType::BloomUpsample).unwrap();
                 s.set_vec2("texelSize", 1.0 / small.w as f32, 1.0 / small.h as f32);
-                // ✅ based on sampled tex
             }
 
             unsafe {
