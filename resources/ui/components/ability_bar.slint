@@ -10,6 +10,7 @@ export struct AbilitySlotData {
     cooldown-progress: float, // 0.0 = ready, 1.0 = full cooldown
     cooldown-time-remaining: float, // time in seconds until ready
     is-ready: bool,
+    ability-id: string,
     ability-name: string,
     ability-description: string,
     ability-effects: string,
@@ -32,6 +33,18 @@ component AbilitySlot inherits Rectangle {
     touch := TouchArea {
         width: 100%;
         height: 100%;
+    }
+    
+    // fallback ability ID display (shows if icon is missing or transparent)
+    if !detect-only && data.ability-id != "": Text {
+        width: 100%;
+        height: 100%;
+        text: data.ability-id;
+        color: Theme.old-text.with-alpha(0.3);
+        font-size: 20px;
+        font-weight: 800;
+        horizontal-alignment: center;
+        vertical-alignment: center;
     }
     
     // ability icon display

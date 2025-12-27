@@ -141,21 +141,24 @@ impl GameRootView {
         // (the visual rendering is done separately by AbilityBarRenderer, but GameRoot
         // needs the data for its TouchArea hover detection to show tooltips)
         let ability_data = AbilityBarData::from_entity_manager(entity_manager);
-        
+
         // change detection: for tooltips, we only care about structural changes (name, description, visibility)
         // we don't need to update Slint properties for cooldown progress every frame in GameRoot!
         let needs_ability_sync = match &self.cached_ability_data {
             Some(cached) => {
-                // simple equality check works but might be too aggressive (cooldown progress)
-                // However, Slint property setting is the expensive part.
-                // Let's do a smarter check for tooltips:
-                cached.visible != ability_data.visible ||
-                cached.m1.ability_name != ability_data.m1.ability_name ||
-                cached.m2.ability_name != ability_data.m2.ability_name ||
-                cached.q.ability_name != ability_data.q.ability_name ||
-                cached.e.ability_name != ability_data.e.ability_name ||
-                cached.shift.ability_name != ability_data.shift.ability_name ||
-                cached.r.ability_name != ability_data.r.ability_name
+                cached.visible != ability_data.visible
+                    || cached.m1.ability_id != ability_data.m1.ability_id
+                    || cached.m2.ability_id != ability_data.m2.ability_id
+                    || cached.q.ability_id != ability_data.q.ability_id
+                    || cached.e.ability_id != ability_data.e.ability_id
+                    || cached.shift.ability_id != ability_data.shift.ability_id
+                    || cached.r.ability_id != ability_data.r.ability_id
+                    || cached.m1.ability_name != ability_data.m1.ability_name
+                    || cached.m2.ability_name != ability_data.m2.ability_name
+                    || cached.q.ability_name != ability_data.q.ability_name
+                    || cached.e.ability_name != ability_data.e.ability_name
+                    || cached.shift.ability_name != ability_data.shift.ability_name
+                    || cached.r.ability_name != ability_data.r.ability_name
             }
             None => true,
         };
@@ -173,7 +176,7 @@ impl GameRootView {
                 .set_ability_slot_shift(ability_data.shift.to_slint(ctx.image_cache));
             self.game_root
                 .set_ability_slot_r(ability_data.r.to_slint(ctx.image_cache));
-            
+
             self.cached_ability_data = Some(ability_data);
         }
 

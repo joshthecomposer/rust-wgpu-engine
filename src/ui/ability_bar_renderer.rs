@@ -147,6 +147,7 @@ impl AbilityBarRenderer {
             if s1.visible != s2.visible
                 || s1.icon_path != s2.icon_path
                 || s1.is_ready != s2.is_ready
+                || s1.ability_id != s2.ability_id
                 || s1.ability_name != s2.ability_name
             {
                 slots_changed = true;
