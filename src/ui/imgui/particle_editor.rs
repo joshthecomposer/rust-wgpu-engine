@@ -184,6 +184,8 @@ impl ParticleEditor {
                         new_emitter.colors.remove(self.clr_idx);
                     };
 
+                    ui.checkbox("Do bloom??", &mut new_emitter.has_bloom);
+
                     if ui.button("Use Staged Texture") {
                         new_emitter.texture_path = self.staged_texture.clone();
                     };
@@ -294,6 +296,7 @@ impl ParticleEditor {
 
                         direction: new_emitter.direction.into(),
                         pps,
+                        has_bloom: new_emitter.has_bloom,
                     };
 
                     if self.do_render {

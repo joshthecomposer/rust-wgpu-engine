@@ -48,6 +48,7 @@ pub struct Emitter {
     pub scale_powers: Vec<f32>,
 
     pub editor_blackboard: Option<EmitterBlackboard>,
+    pub has_bloom: bool,
 }
 
 impl Emitter {
@@ -94,6 +95,7 @@ impl Emitter {
             end_scales: vec![],
 
             editor_blackboard: None,
+            has_bloom: false,
         }
     }
 
@@ -177,6 +179,7 @@ impl Emitter {
         shader.set_mat4("view", camera.view);
         shader.set_mat4("projection", camera.projection);
         shader.set_bool("has_tex", self.texture.is_some());
+        shader.set_bool("has_bloom", self.has_bloom);
 
         if let Some(texture) = self.texture {
             unsafe {
@@ -432,6 +435,7 @@ impl ParticleSystem {
 
         emitter.origin = origin;
         emitter.gravity = ed.gravity;
+        emitter.has_bloom = ed.has_bloom;
 
         let desired_dir = if ed.direction.length_squared() > 0.0 {
             ed.direction.normalize()

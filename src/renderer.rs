@@ -23,6 +23,13 @@ use crate::{
     },
 };
 
+struct BloomMip {
+    fbo: u32,
+    tex: u32,
+    w: i32,
+    h: i32,
+}
+
 pub struct DefaultTextures {
     pub white: u32,
     pub black: u32,
@@ -57,6 +64,8 @@ pub struct Renderer {
     //pub fxaa_level: FxaaLevels,
     pub fxaa_fbo: u32,
     pub fxaa_tex: u32,
+
+    pub bloom_mips: Vec<BloomMip>,
 }
 
 impl Renderer {
@@ -106,6 +115,8 @@ impl Renderer {
         let hdr_shader = Shader::new("resources/shaders/hdr.glsl");
         let blur_shader = Shader::new("resources/shaders/blur.glsl");
         let fxaa_shader = Shader::new("resources/shaders/fxaa.glsl");
+        let bloom_down_shader = Shader::new("resources/shaders/bloom/bloom_downsample.glsl");
+        let bloom_up_shader = Shader::new("resources/shaders/bloom/bloom_upsample.glsl");
 
         let mut vao = 0;
         let mut vbo = 0;
@@ -700,6 +711,8 @@ impl Renderer {
         shaders.insert(ShaderType::StaticModel, static_model_shader);
         shaders.insert(ShaderType::AnimatedModel, animated_model_shader);
         shaders.insert(ShaderType::Fxaa, fxaa_shader);
+        shaders.insert(ShaderType::BloomDownsample, bloom_down_shader);
+        shaders.insert(ShaderType::BloomUpsample, bloom_up_shader);
 
         // DEFAULT TEXTURES
         let defaults = DefaultTextures {
@@ -708,7 +721,7 @@ impl Renderer {
             opaque: Self::make_solid_texture(255, 255, 255, 255),
         };
 
-        Self {
+        let mut renderer = Self {
             shaders,
             vaos,
             fbos,
@@ -733,7 +746,12 @@ impl Renderer {
             //fxaa_level: config.fxaa_level.clone(),
             fxaa_fbo,
             fxaa_tex,
-        }
+
+            bloom_mips: vec![],
+        };
+
+        renderer.create_bloom_chain(width, height);
+        renderer
     }
 
     pub fn draw(
@@ -836,6 +854,8 @@ impl Renderer {
             };
 
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, scene_target));
+            let attachments = [gl::COLOR_ATTACHMENT0, gl::COLOR_ATTACHMENT1];
+            gl_call!(gl::DrawBuffers(2, attachments.as_ptr()));
             gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
             gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
         }
@@ -914,7 +934,7 @@ impl Renderer {
             }
         }
 
-        let blurred_bloom_tex = self.blur_bloom(fb_width, fb_height);
+        let blurred_bloom_tex = self.bloom_down_up(fb_width, fb_height);
 
         // ==========================================================
         // HDR COMBINE (and do fxaa if enabled)
@@ -1400,60 +1420,161 @@ impl Renderer {
         }
     }
 
-    fn blur_bloom(&mut self, fb_width: u32, fb_height: u32) -> u32 {
-        {
-            let blur_shader = self.shaders.get_mut(&ShaderType::Blur).unwrap();
-            blur_shader.activate();
-            blur_shader.set_int("image", 0);
+    fn create_bloom_chain(&mut self, fb_width: u32, fb_height: u32) {
+        let mut w = (fb_width as i32) / 2;
+        let mut h = (fb_height as i32) / 2;
+
+        self.bloom_mips.clear();
+
+        // 5 levels of downsample
+        for _level in 0..6 {
+            if w < 2 || h < 2 {
+                break;
+            }
+
+            let mut fbo = 0;
+            let mut tex = 0;
+
+            unsafe {
+                gl_call!(gl::GenFramebuffers(1, &mut fbo));
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, fbo));
+
+                gl_call!(gl::GenTextures(1, &mut tex));
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
+
+                gl_call!(gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    gl::RGBA16F as i32,
+                    w,
+                    h,
+                    0,
+                    gl::RGBA,
+                    gl::FLOAT,
+                    std::ptr::null()
+                ));
+
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_MIN_FILTER,
+                    gl::LINEAR as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_MAG_FILTER,
+                    gl::LINEAR as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_S,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_T,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+
+                gl_call!(gl::FramebufferTexture2D(
+                    gl::FRAMEBUFFER,
+                    gl::COLOR_ATTACHMENT0,
+                    gl::TEXTURE_2D,
+                    tex,
+                    0
+                ));
+
+                let bufs = [gl::COLOR_ATTACHMENT0];
+                gl_call!(gl::DrawBuffers(1, bufs.as_ptr()));
+
+                // optionally assert framebuffer complete
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            }
+
+            self.bloom_mips.push(BloomMip { fbo, tex, w, h });
+
+            w /= 2;
+            h /= 2;
         }
+    }
 
-        let mut horizontal = true;
-        let mut first_iteration = true;
-        let passes = 10;
-
+    fn bloom_down_up(&mut self, fb_width: u32, fb_height: u32) -> u32 {
         unsafe {
             gl_call!(gl::Disable(gl::DEPTH_TEST));
         }
 
-        for _ in 0..passes {
-            let target_fbo = self.pingpong_fbos[if horizontal { 0 } else { 1 }];
-            unsafe {
-                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, target_fbo));
-                gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
-                gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT));
-            }
+        // ---- downsample ----
+        {
+            let s = self.shaders.get_mut(&ShaderType::BloomDownsample).unwrap();
+            s.activate();
+            s.set_int("src", 0);
+        }
 
+        let mut src_tex = self.hdr_bright;
+        let mut src_w = fb_width as f32;
+        let mut src_h = fb_height as f32;
+
+        for mip in &self.bloom_mips {
             {
-                let blur_shader = self.shaders.get_mut(&ShaderType::Blur).unwrap();
-                blur_shader.set_bool("horizontal", horizontal);
+                let s = self.shaders.get_mut(&ShaderType::BloomDownsample).unwrap();
+                s.set_vec2("texelSize", 1.0 / src_w, 1.0 / src_h); // ✅ based on SOURCE
             }
 
             unsafe {
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, mip.fbo));
+                let bufs = [gl::COLOR_ATTACHMENT0];
+                gl_call!(gl::DrawBuffers(1, bufs.as_ptr()));
+                gl_call!(gl::Viewport(0, 0, mip.w, mip.h));
+                gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT));
                 gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-                if first_iteration {
-                    // first pass: source is the bright texture from HDR FBO
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_bright));
-                } else {
-                    // subsequent passes: source is the previous pingpong texture
-                    let src_tex = self.pingpong_tex[if horizontal { 1 } else { 0 }];
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, src_tex));
-                }
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, src_tex));
             }
 
             self.render_quad();
 
-            if first_iteration {
-                first_iteration = false;
+            src_tex = mip.tex;
+            src_w = mip.w as f32;
+            src_h = mip.h as f32;
+        }
+
+        // ---- upsample ----
+        unsafe {
+            gl_call!(gl::Enable(gl::BLEND));
+            gl_call!(gl::BlendFunc(gl::ONE, gl::ONE));
+        }
+
+        {
+            let s = self.shaders.get_mut(&ShaderType::BloomUpsample).unwrap();
+            s.activate();
+            s.set_int("src", 0);
+        }
+
+        for i in (1..self.bloom_mips.len()).rev() {
+            let small = &self.bloom_mips[i];
+            let big = &self.bloom_mips[i - 1];
+
+            {
+                let s = self.shaders.get_mut(&ShaderType::BloomUpsample).unwrap();
+                s.set_vec2("texelSize", 1.0 / small.w as f32, 1.0 / small.h as f32);
+                // ✅ based on sampled tex
             }
-            horizontal = !horizontal;
+
+            unsafe {
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, big.fbo));
+                gl_call!(gl::Viewport(0, 0, big.w, big.h));
+                let bufs = [gl::COLOR_ATTACHMENT0];
+                gl_call!(gl::DrawBuffers(1, bufs.as_ptr()));
+                gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, small.tex));
+            }
+
+            self.render_quad();
         }
 
         unsafe {
+            gl_call!(gl::Disable(gl::BLEND));
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
         }
 
-        // After the loop, the "last written" texture is the one in the opposite index of `horizontal`
-        let final_index = if horizontal { 1 } else { 0 };
-        self.pingpong_tex[final_index]
+        self.bloom_mips[0].tex
     }
 }

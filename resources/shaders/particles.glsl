@@ -33,6 +33,7 @@ in vec4 particle_color;
 uniform sampler2D texture1;
 uniform bool has_tex;
 uniform bool texture_has_alpha;
+uniform bool has_bloom;
 
 //out vec4 FragColor;
 
@@ -67,15 +68,37 @@ vec4 alpha_texture() {
 }
 
 void main() {
-	vec4 color;
 
-	if (texture_has_alpha) {
-		color = alpha_texture();
+	if (has_bloom) {
+		float emissive_strength = 50.0;
+		float bloom_threshold = 0.9;
+
+		vec4 color = texture_has_alpha ? alpha_texture() : luminance_texture();
+
+		FragColor = color;
+
+		// emissive energy injected into bloom buffer
+		vec3 hdr = color.rgb * emissive_strength * color.a;
+
+		float br = dot(hdr, vec3(0.2126, 0.7152, 0.0722));
+
+		if (br > bloom_threshold)
+			BrightColor = vec4(hdr, 1.0);
+		else
+			BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
 	} else {
-		color = luminance_texture();
-	}
+		vec4 color;
 
-	FragColor = color;
+		if (texture_has_alpha) {
+			color = alpha_texture();
+		} else {
+			color = luminance_texture();
+		}
+
+		FragColor = color;
+		BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
+
+	}
 }
 
 
