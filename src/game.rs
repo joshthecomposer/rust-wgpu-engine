@@ -4,7 +4,7 @@ use glutin::surface::{GlSurface, SwapInterval};
 use winit::dpi::LogicalSize;
 use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
-use winit::window::{CursorGrabMode, Fullscreen};
+use winit::window::Fullscreen;
 
 use crate::animation::animation_system;
 use crate::config::game_config::GameConfig;
@@ -35,7 +35,7 @@ pub struct Game {
     pub input: InputState,
     // imgui_manager: ImguiManager,
     pub paused: bool,
-    cursor_unlocked: bool,
+    cursor_mode: CursorMode,
     message_queue: MessageQueue,
     game_ui: GameUiManager,
     pub should_quit: bool,
@@ -48,7 +48,7 @@ pub struct Game {
 
 impl Game {
     pub fn cursor_unlocked(&self) -> bool {
-        self.cursor_unlocked
+        self.cursor_mode == CursorMode::Normal
     }
 
     pub fn new(platform: Platform, config: GameConfig) -> Self {
@@ -84,7 +84,7 @@ impl Game {
             sound,
             input: InputState::new(),
             paused: false,
-            cursor_unlocked: false,
+            cursor_mode: CursorMode::Hidden,
             message_queue: MessageQueue::new(),
             game_ui,
             should_quit: false,
@@ -123,18 +123,12 @@ impl Game {
         self.time.begin_frame(now_seconds);
 
         // Mouse lock / cursor mode
-        if self.paused || self.cursor_unlocked || self.world.camera.move_state == CameraState::Locked {
-            self.platform.window.set_cursor_visible(true);
-            let _ = self.platform.window.set_cursor_grab(CursorGrabMode::None);
-            self.platform.cursor_mode = CursorMode::Normal;
+        let hardware_mode = if self.paused || self.world.camera.move_state == CameraState::Locked {
+            CursorMode::Normal
         } else {
-            self.platform.window.set_cursor_visible(false);
-            let _ = self
-                .platform
-                .window
-                .set_cursor_grab(CursorGrabMode::Confined);
-            self.platform.cursor_mode = CursorMode::Hidden;
-        }
+            self.cursor_mode
+        };
+        self.platform.set_cursor_mode(hardware_mode);
 
         let mut stepped = false;
 
@@ -374,7 +368,10 @@ impl Game {
 
                     // Tab toggles cursor unlock (for hovering over abilities)
                     if keycode == KeyCode::Tab && *state == ElementState::Pressed {
-                        self.cursor_unlocked = !self.cursor_unlocked;
+                        self.cursor_mode = match self.cursor_mode {
+                            CursorMode::Normal => CursorMode::Hidden,
+                            _ => CursorMode::Normal,
+                        };
                     }
                 }
             }
