@@ -59,12 +59,12 @@ export component GameRoot inherits Window {
 
     // ==================== ABILITY BAR PROPERTIES ====================
     in property <bool> show-ability-bar: true;
-    in property <AbilitySlotData> ability-slot-m1: { visible: true, ability-id: 0, key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> ability-slot-m2: { visible: true, ability-id: 0, key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> ability-slot-q: { visible: true, ability-id: 0, key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> ability-slot-e: { visible: true, ability-id: 0, key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> ability-slot-shift: { visible: true, ability-id: 0, key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> ability-slot-r: { visible: true, ability-id: 0, key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> ability-slot-m1: { visible: true, icon: @image-url(""), key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> ability-slot-m2: { visible: true, icon: @image-url(""), key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> ability-slot-q: { visible: true, icon: @image-url(""), key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> ability-slot-e: { visible: true, icon: @image-url(""), key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> ability-slot-shift: { visible: true, icon: @image-url(""), key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> ability-slot-r: { visible: true, icon: @image-url(""), key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
 
     // ==================== PICKUP PROMPT ====================
     in property <bool> show-pickup-prompt: false;
@@ -100,6 +100,7 @@ export component GameRoot inherits Window {
         x: 16px;
         y: parent.height - self.height - 24px;
         show: root.show-ability-bar && !root.show-pause-menu;
+        detect-only: true;
         slot-m1: root.ability-slot-m1;
         slot-m2: root.ability-slot-m2;
         slot-q: root.ability-slot-q;
@@ -195,12 +196,12 @@ export component AbilityBarStandalone inherits Window {
     default-font-family: "Weiholmir";
 
     in property <bool> show: true;
-    in property <AbilitySlotData> slot-m1: { visible: true, ability-id: 0, key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-m2: { visible: true, ability-id: 0, key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-q: { visible: true, ability-id: 0, key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-e: { visible: true, ability-id: 0, key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-shift: { visible: true, ability-id: 0, key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
-    in property <AbilitySlotData> slot-r: { visible: true, ability-id: 0, key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true };
+    in property <AbilitySlotData> slot-m1: { visible: true, icon: @image-url(""), key-label: "M1", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-m2: { visible: true, icon: @image-url(""), key-label: "M2", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-q: { visible: true, icon: @image-url(""), key-label: "Q", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-e: { visible: true, icon: @image-url(""), key-label: "E", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-shift: { visible: true, icon: @image-url(""), key-label: "Shift", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
+    in property <AbilitySlotData> slot-r: { visible: true, icon: @image-url(""), key-label: "R", cooldown-progress: 0, cooldown-time-remaining: 0, is-ready: true, ability-id: "", ability-name: "", ability-description: "", ability-effects: "" };
 
     AbilityBar {
         x: 0;

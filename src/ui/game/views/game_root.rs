@@ -8,8 +8,10 @@ use slint::platform::software_renderer::MinimalSoftwareWindow;
 use slint::PhysicalSize;
 
 use crate::entity_manager::EntityManager;
+use crate::ui::image_cache::UiImageCache;
 use crate::ui::message_queue::MessageQueue;
 
+use super::ability_bar::AbilityBarData;
 use super::pause_menu::{PauseMenuContext, PauseMenuView};
 use super::player_hud::{PlayerHudContext, PlayerHudView};
 use super::toast::ToastView;
@@ -41,6 +43,7 @@ pub struct GameRootContext<'a> {
     pub paused: &'a mut bool,
     pub settings: SettingsContext<'a>,
     pub system: SystemContext<'a>,
+    pub image_cache: &'a mut UiImageCache,
     pub elapsed_time: f64,
 }
 
@@ -53,6 +56,7 @@ pub struct GameRootView {
     // throttling for pickup indicator check
     last_pickup_check_time: f64,
     cached_show_pickup: bool,
+    cached_ability_data: Option<AbilityBarData>,
 }
 
 impl GameRootView {
@@ -81,6 +85,7 @@ impl GameRootView {
             toast_view,
             last_pickup_check_time: -999.0, // force first check
             cached_show_pickup: false,
+            cached_ability_data: None,
         };
 
         (view, window)
@@ -131,6 +136,49 @@ impl GameRootView {
             paused,
         };
         self.player_hud_view.update(&self.game_root, hud_ctx);
+
+        // update ability bar slot data on game_root for tooltip hover detection
+        // (the visual rendering is done separately by AbilityBarRenderer, but GameRoot
+        // needs the data for its TouchArea hover detection to show tooltips)
+        let ability_data = AbilityBarData::from_entity_manager(entity_manager);
+
+        // change detection: for tooltips, we only care about structural changes (name, description, visibility)
+        // we don't need to update Slint properties for cooldown progress every frame in GameRoot!
+        let needs_ability_sync = match &self.cached_ability_data {
+            Some(cached) => {
+                cached.visible != ability_data.visible
+                    || cached.m1.ability_id != ability_data.m1.ability_id
+                    || cached.m2.ability_id != ability_data.m2.ability_id
+                    || cached.q.ability_id != ability_data.q.ability_id
+                    || cached.e.ability_id != ability_data.e.ability_id
+                    || cached.shift.ability_id != ability_data.shift.ability_id
+                    || cached.r.ability_id != ability_data.r.ability_id
+                    || cached.m1.ability_name != ability_data.m1.ability_name
+                    || cached.m2.ability_name != ability_data.m2.ability_name
+                    || cached.q.ability_name != ability_data.q.ability_name
+                    || cached.e.ability_name != ability_data.e.ability_name
+                    || cached.shift.ability_name != ability_data.shift.ability_name
+                    || cached.r.ability_name != ability_data.r.ability_name
+            }
+            None => true,
+        };
+
+        if needs_ability_sync {
+            self.game_root
+                .set_ability_slot_m1(ability_data.m1.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_m2(ability_data.m2.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_q(ability_data.q.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_e(ability_data.e.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_shift(ability_data.shift.to_slint(ctx.image_cache));
+            self.game_root
+                .set_ability_slot_r(ability_data.r.to_slint(ctx.image_cache));
+
+            self.cached_ability_data = Some(ability_data);
+        }
 
         self.toast_view.update(&self.game_root, elapsed_time);
     }

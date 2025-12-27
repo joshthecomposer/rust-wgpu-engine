@@ -1,0 +1,91 @@
+import { Theme } from "theme.slint";
+
+export component AbilityTooltip inherits Rectangle {
+    in property <string> ability-name;
+    in property <string> ability-description;
+    in property <string> ability-effects;
+    in property <bool> show: false;
+
+    width: 220px;
+    height: body.preferred-height;
+    background: transparent;
+    clip: false;
+
+    // hard shadow (offset behind)
+    shadow := Rectangle {
+        x: 4px;
+        y: 4px;
+        width: parent.width;
+        height: parent.height;
+        background: #000000.with-alpha(0.5);
+        opacity: show ? 1 : 0;
+
+        animate opacity {
+            duration: 200ms;
+            easing: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    }
+
+    // main tooltip body
+    body := Rectangle {
+        width: parent.width;
+        height: parent.height;
+        background: @linear-gradient(90deg, Theme.stone-dark 0%, Theme.deep-void 100%);
+        border-width: 1px;
+        border-color: Theme.stone-light;
+        clip: false;
+        opacity: show ? 1 : 0;
+
+        animate opacity {
+            duration: 200ms;
+            easing: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        // horizontal layout containing accent bar and content
+        HorizontalLayout {
+            spacing: 0;
+
+            // left accent bar (4px wide)
+            Rectangle {
+                width: 4px;
+                background: Theme.runic-gold;
+            }
+
+            // content layout
+            content-layout := VerticalLayout {
+                padding: 12px;
+                spacing: 6px;
+                alignment: start;
+
+                // title (ability name in uppercase)
+                if ability-name != "": Text {
+                    text: ability-name;
+                    color: Theme.highlight;
+                    font-size: 14px;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                    wrap: word-wrap;
+                }
+
+                // description
+                if ability-description != "": Text {
+                    text: ability-description;
+                    color: Theme.old-text;
+                    font-size: 12px;
+                    wrap: word-wrap;
+                }
+
+                // effects (if non-empty)
+                if ability-effects != "": Text {
+                    text: ability-effects;
+                    color: Theme.mana-sky;
+                    font-size: 12px;
+                    font-weight: 700;
+                    wrap: word-wrap;
+                }
+            }
+        }
+    }
+}
+
+
