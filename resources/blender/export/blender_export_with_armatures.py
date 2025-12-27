@@ -251,15 +251,16 @@ def move_texture_file(diffuse_texture_path, parent_dir):
 # ===================================================
 # Output vars, CHANGE STUFF HERE
 # ===================================================
-# these output paths can be anything now that the engine supports file drop / saving.
-output_diffuse_texture_path = Path(r"E:\Software_Dev\rust\rust-opengl-engine\resources\textures\ai_slop\dark_wood.png")
-output_mesh_path = Path(r"C:\Users\jdwis\OneDrive\Desktop\Output\tube.txt")
-diffuse_texture_filename = "dark_wood.png"
-export_armature_data = True
+# where is the texture file located currently
+diffuse_texture_path = Path(r"C:\Users\jdwis\OneDrive\Desktop\blue_noise.png")
+# where should we put the mesh/armature
+output_mesh_path = Path(r"C:\Users\jdwis\OneDrive\Desktop\Output\testerino.txt")
+# what should we name the texture file (it will go where the mesh goes)
+diffuse_texture_filename = "testtext.png"
 # ===================================================
 # ===================================================
 
 output_parent_dir = output_mesh_path.parent
 os.makedirs(output_parent_dir, exist_ok=True)
-move_texture_file(output_diffuse_texture_path, output_parent_dir)
-export_game_data(output_mesh_path, diffuse_texture_flename)
+move_texture_file(diffuse_texture_path, output_parent_dir)
+export_game_data(output_mesh_path, diffuse_texture_filename)
