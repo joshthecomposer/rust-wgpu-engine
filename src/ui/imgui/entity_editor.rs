@@ -44,6 +44,7 @@ impl EntityEditor {
         ui.window("Entity Editor")
             .size([500.0, size[1]], imgui::Condition::FirstUseEver)
             .position([0.0, 0.0], imgui::Condition::FirstUseEver)
+            .collapsed(true, imgui::Condition::FirstUseEver)
             .build(|| {
                 // Hoist the vars!
                 let mut entity_types: Vec<String> =

@@ -41,6 +41,16 @@ impl AbilitiesConfig {
     pub fn get(&self, id: AbilityId) -> Option<&AbilityDefinition> {
         self.abilities.get(&id.to_string())
     }
+
+    /// Get the next available ability ID based on existing keys.
+    pub fn get_next_id(&self) -> AbilityId {
+        self.abilities
+            .keys()
+            .filter_map(|k| k.parse::<u32>().ok())
+            .max()
+            .unwrap_or(0)
+            + 1
+    }
 }
 
 /// Weapon type definition with fixed abilities and pools.

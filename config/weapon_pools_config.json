@@ -13,11 +13,35 @@
       "shift": 14,
       "skill_pool": [9, 10, 11, 12, 13],
       "ultimate_pool": [16, 17]
+    },
+    "Staff": {
+      "m1": 34,
+      "m2": 35,
+      "shift": 14,
+      "skill_pool": [36, 37, 38],
+      "ultimate_pool": [39, 40]
+    },
+    "IceStaff": {
+      "m1": 18,
+      "m2": 19,
+      "shift": 14,
+      "skill_pool": [20, 21, 22, 23, 24],
+      "ultimate_pool": [25, 26]
+    },
+    "FireStaff": {
+      "m1": 27,
+      "m2": 28,
+      "shift": 14,
+      "skill_pool": [29, 30, 31],
+      "ultimate_pool": [32, 33]
     }
   },
   "entity_type_mapping": {
     "OrcSword": "Sword",
-    "DoubleAxe": "Axe"
+    "DoubleAxe": "Axe",
+    "IceStaff": "IceStaff",
+    "FireStaff": "FireStaff",
+    "Staff": "Staff"
   },
   "starter_abilities": {
     "entity_type": "OrcSword",
