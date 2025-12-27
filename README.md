@@ -16,8 +16,9 @@ Run `cargo run` from the root directory.
 ---
 ## Exporting Models with Blender
 ### Exporting Static Models (No animation)
-1. All models need to have at-minimum a diffuse texture. Also we don't currently support PBR textures. If you don't want to deal with textures, just use a dummy texture file.  
-2. Triangulate all faces in blender, when the texture is exported we use the standard of trianguated vertices with a list of indices that map to vertices (for less overall data)  
+1. All models need to have at-minimum a diffuse texture. Also we don't currently support PBR textures. If you don't want to deal with textures, just use a dummy texture file.
+2. All models need to be facing +Y for the easiest integration. It is possible to do a local transform correction, but just align your model with +Y. With weapons this means the weapon should be standing straight up wth the sharp part of the blade facing +Y.
+3. Triangulate all faces in blender, when the texture is exported we use the standard of trianguated vertices with a list of indices that map to vertices (for less overall data)  
    - Select your model  
    - switch to edit mode  
    - ctrl + T to triangulate
