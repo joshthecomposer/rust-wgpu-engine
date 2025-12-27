@@ -1364,29 +1364,6 @@ impl Renderer {
         }
     }
 
-    // fn debug_light_pass(&mut self, camera: &mut Camera) {
-    //     let debug_light_shader = self.shaders.get(&ShaderType::DebugLight).unwrap();
-    //     debug_light_shader.activate();
-    //     debug_light_shader.set_mat4("view", camera.view);
-    //     debug_light_shader.set_mat4("projection", camera.projection);
-
-    //     unsafe {
-    //         gl_call!(gl::BindVertexArray(
-    //             *self.vaos.get(&VaoType::DebugLight).unwrap()
-    //         ));
-    //         for light_pos in &POINT_LIGHT_POSITIONS {
-    //             let mut m_mat = Mat4::IDENTITY;
-    //             m_mat *= Mat4::from_translation(*light_pos);
-    //             m_mat *= Mat4::from_scale(vec3(0.2, 0.2, 0.2));
-
-    //             debug_light_shader.set_mat4("model", m_mat);
-    //             debug_light_shader.set_vec3("LightColor", vec3(1.0, 1.0, 1.0));
-
-    //             gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 36));
-    //         }
-    //     }
-    // }
-
     pub fn render_quad(&self) {
         unsafe {
             gl_call!(gl::BindVertexArray(
