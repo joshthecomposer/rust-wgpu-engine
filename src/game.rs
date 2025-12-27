@@ -364,10 +364,7 @@ impl Game {
                             }
 
                             if keycode == KeyCode::KeyG && *state == ElementState::Pressed {
-                                const PICKUP_RANGE: f32 = 3.0;
-                                self.world
-                                    .ecs
-                                    .try_pickup_weapon(PICKUP_RANGE, &mut self.physics);
+                                self.world.ecs.try_pickup_weapon(&mut self.physics);
                             }
                         }
                     } else {
@@ -400,10 +397,7 @@ impl Game {
                         }
 
                         if keycode == KeyCode::KeyG && *state == ElementState::Pressed {
-                            const PICKUP_RANGE: f32 = 3.0;
-                            self.world
-                                .ecs
-                                .try_pickup_weapon(PICKUP_RANGE, &mut self.physics);
+                            self.world.ecs.try_pickup_weapon(&mut self.physics);
                         }
                     }
 

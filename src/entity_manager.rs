@@ -93,6 +93,7 @@ pub struct EntityManager {
     pub model_heights: SparseSet<f32>,
     pub grounded_states: SparseSet<GroundedState>,
     pub cleanup_timer: SparseSet<f32>,
+    pub pickup_ranges: SparseSet<f32>,
 
     /// Abilities assigned to weapon entities.
     pub weapon_abilities: SparseSet<WeaponAbilities>,
@@ -158,6 +159,7 @@ impl EntityManager {
             model_heights: SparseSet::with_capacity(max_entities),
             grounded_states: SparseSet::with_capacity(max_entities),
             cleanup_timer: SparseSet::with_capacity(max_entities),
+            pickup_ranges: SparseSet::with_capacity(max_entities),
             weapon_abilities: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
@@ -348,6 +350,9 @@ impl EntityManager {
                                 time_in_state: 0.0,
                             },
                         );
+
+                        // default player pickup range
+                        self.pickup_ranges.insert(parent_id, 3.0);
                     }
                     "Enemy" => {
                         self.simstate_controllers.insert(
@@ -397,6 +402,12 @@ impl EntityManager {
 
         if let Some(level) = instance.level {
             self.levels.insert(parent_id, level);
+        }
+
+        if let Some(pr) = instance.pickup_range {
+            self.pickup_ranges.insert(parent_id, pr);
+        } else if let Some(pr) = archetype.pickup_range {
+            self.pickup_ranges.insert(parent_id, pr);
         }
 
         if let Some(name) = &instance.name {
@@ -1160,11 +1171,13 @@ impl EntityManager {
     }
 
     /// check if there are any weapons nearby the player
-    pub fn has_nearby_weapon(&self, pickup_range: f32) -> bool {
+    pub fn has_nearby_weapon(&self) -> bool {
         let player_id = match self.factions.iter().find(|e| *e.value() == "Player") {
             Some(entry) => entry.key(),
             None => return false,
         };
+
+        let pickup_range = self.pickup_ranges.get(player_id).copied().unwrap_or(3.0);
 
         let player_pos = match self.transforms.get(player_id) {
             Some(t) => t.position,
@@ -1187,15 +1200,13 @@ impl EntityManager {
     }
 
     /// try to pick up a nearby weapon for the player
-    pub fn try_pickup_weapon(
-        &mut self,
-        pickup_range: f32,
-        ps: &mut crate::physics::PhysicsState,
-    ) -> bool {
+    pub fn try_pickup_weapon(&mut self, ps: &mut crate::physics::PhysicsState) -> bool {
         let player_id = match self.factions.iter().find(|e| *e.value() == "Player") {
             Some(entry) => entry.key(),
             None => return false,
         };
+
+        let pickup_range = self.pickup_ranges.get(player_id).copied().unwrap_or(3.0);
 
         let player_pos = match self.transforms.get(player_id) {
             Some(t) => t.position,
@@ -1361,6 +1372,7 @@ impl EntityManager {
                 level: self.levels.get(id).copied(),
                 name: self.names.get(id).cloned(),
                 cleanup_timer: self.cleanup_timer.get(id).copied(),
+                pickup_range: self.pickup_ranges.get(id).copied(),
             };
 
             wd.entities.push(instance);
@@ -1400,6 +1412,7 @@ impl EntityManager {
                     level: None,
                     name: None,
                     cleanup_timer: None,
+                    pickup_range: None,
                 });
             }
 

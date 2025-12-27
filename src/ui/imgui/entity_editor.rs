@@ -249,6 +249,7 @@ impl EntityEditor {
                                 level: Some(1),
                                 name: None,
                                 cleanup_timer: None,
+                                pickup_range: None,
                             };
                             em.create_meshless_entity(&instance);
                             self.create_mode = false;
@@ -272,6 +273,7 @@ impl EntityEditor {
                                 name: None,
                                 weapons: None,
                                 cleanup_timer: None,
+                                pickup_range: None,
                             }])
                         } else {
                             None
@@ -291,6 +293,7 @@ impl EntityEditor {
                             level: Some(1),
                             name: None,
                             cleanup_timer: None,
+                            pickup_range: None,
                         };
 
                         let parent_id = em.create_mesh_entity(&instance, ps);

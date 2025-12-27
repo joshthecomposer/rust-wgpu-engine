@@ -58,6 +58,7 @@ pub struct EntityTypeHelper {
     #[serde(default)]
     pub item_bones: Option<ItemBoneNames>,
     pub aggro_range: Option<f32>,
+    pub pickup_range: Option<f32>,
     pub hitbox: HitboxShape,
     #[serde(default)]
     pub total_mass: Option<f32>,
@@ -74,6 +75,7 @@ impl Default for EntityTypeHelper {
             animation_properties: None,
             item_bones: None,
             aggro_range: None,
+            pickup_range: None,
             hitbox: HitboxShape::BoundingBox,
             total_mass: None,
         }
