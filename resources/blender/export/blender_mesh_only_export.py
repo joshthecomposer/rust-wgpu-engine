@@ -22,7 +22,7 @@ def convert_y_up_quaternion(blender_quaternion):
     q_new = q_convert @ blender_quaternion @ q_convert.inverted()
     return q_new
 
-def export_mesh_with_indices(filepath):
+def export_mesh_with_indices(filepath, diffuse_texture_name):
     def get_material_rgba(mat):
         # Try Principled BSDF base color first
         if mat and mat.use_nodes and mat.node_tree:
@@ -160,9 +160,12 @@ def export_mesh_with_indices(filepath):
                 if i + 2 < len(indices):
                     f.write(f"{indices[i]} {indices[i+1]} {indices[i+2]} ")
 
-mesh_output = os.path.expanduser("E:/Software_Dev/rust/rust-opengl-engine/resources/models/static/desert_mountains/mountain_010.txt")
+# the output path of the mesh data
+mesh_output = os.path.expanduser("E:/Software_Dev/rust/rust-opengl-engine/resources/models/static/desert_mountains/mountain_999.txt")
+# the diffuse texture name."
+diff = "some_texture.png"
 
 current_frame = bpy.context.scene.frame_current
 bpy.context.scene.frame_set(0)
-export_mesh_with_indices(mesh_output)
+export_mesh_with_indices(mesh_output, diff)
 bpy.context.scene.frame_set(current_frame)
