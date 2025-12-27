@@ -5,8 +5,8 @@ import math
 from bpy_extras.io_utils import axis_conversion
 from mathutils import Color
 
+# Convert Blender z-up coordinate system to opengl y-up system
 def convert_y_up(matrix):
-    """Convert Blender’s Z-up coordinate system to OpenGL’s Y-up system."""
     conversion_matrix = mathutils.Matrix((
         (1,  0,  0,  0),
         (0,  0,  1,  0),
@@ -15,21 +15,11 @@ def convert_y_up(matrix):
     ))
     return conversion_matrix @ matrix
 
+# convert blender quaternion to opengl
 def convert_y_up_quaternion(blender_quaternion):
-    """
-    Converts a Blender quaternion to an OpenGL-compatible quaternion.
-
-    Args:
-        blender_quaternion: A mathutils.Quaternion representing the rotation in Blender's coordinate system.
-
-    Returns:
-        A mathutils.Quaternion representing the rotation in OpenGL's coordinate system.
-    """
     mat_convert = axis_conversion(from_forward='-Y', from_up='Z', to_forward='-Z', to_up='Y').to_4x4()
-
     q_convert = mat_convert.to_quaternion()
     q_new = q_convert @ blender_quaternion @ q_convert.inverted()
-
     return q_new
 
 def export_mesh_with_indices(filepath):
@@ -170,12 +160,7 @@ def export_mesh_with_indices(filepath):
                 if i + 2 < len(indices):
                     f.write(f"{indices[i]} {indices[i+1]} {indices[i+2]} ")
 
-#armature_output = os.path.expanduser("E:/Software_Dev/rust/rust-opengl-engine/resources/models/animated/002_y_robot/y_robot_base_color_bones.txt")
 mesh_output = os.path.expanduser("E:/Software_Dev/rust/rust-opengl-engine/resources/models/static/desert_mountains/mountain_010.txt")
-
-
-#export_animation_data(armature_output)
-#bpy.context.scene.frame_set(current_frame)
 
 current_frame = bpy.context.scene.frame_current
 bpy.context.scene.frame_set(0)

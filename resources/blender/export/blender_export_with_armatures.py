@@ -5,7 +5,9 @@ from pathlib import Path
 import os
 import shutil
 
-# ---------- Helpers ----------
+# =========================
+# Helpers
+# =========================
 C_LEGACY = mathutils.Matrix((
     (1,  0,  0,  0),
     (0,  0,  1,  0),
@@ -14,7 +16,7 @@ C_LEGACY = mathutils.Matrix((
 ))
 
 def conv_mats():
-    # Z-up, -Y fwd  ->  Y-up, -Z fwd  (Blender -> your OpenGL convention)
+    # Z-up, -Y fwd  ->  Y-up, -Z fwd  (blender space converted to our opengl convention)
     C = axis_conversion(from_forward='-Y', from_up='Z', to_forward='-Z', to_up='Y').to_4x4()
     C3 = C.to_3x3()
     # For normals
@@ -36,7 +38,7 @@ def inv_bind_matrix(C, armW, bone_rest_local):
 def convert_TRS_local(C3, Qc, T, Q, S):
     Tp = C3 @ T
     Qp = Qc @ Q @ Qc.inverted()
-    # S is fine in most axis changes (uniform/non-shearing)
+    # S is fine in most axis changes 
     return Tp, Qp, S
 
 def invT_linear(M4):
@@ -48,8 +50,6 @@ def write_mat_like_old(f, M: mathutils.Matrix):
     Mt = M.transposed()               # <-- transpose for legacy row-major on disk
     for r in Mt:
         f.write(f"{r[0]:.5f} {r[1]:.5f} {r[2]:.5f} {r[3]:.5f}\n")
-
-# ---------- Skeleton + Anim export (fixed) ----------
 
 # =========================
 # Skeleton + Anim Export
@@ -65,13 +65,12 @@ def write_skeleton_and_anims(f, armature, mesh_obj):
     f.write("\nSKELETON_DATA ####################################\n\n")
     f.write(f"BONECOUNT: {len(bones)}\n")
 
-    # Match old: global = armature.matrix_world^-1 (old code transposed the matrix; we transpose on write)
-    G = armature.matrix_world.copy().inverted()    # <-- NO .transposed() here
+    G = armature.matrix_world.copy().inverted()
     f.write("GLOBAL_TRANSFORM:\n")
-    write_mat_like_old(f, G)                       # <-- this transposes on write
+    write_mat_like_old(f, G)
     f.write("\n")
 
-    # Temporarily convert armature DATA like before (we'll undo later)
+    # Temporarily convert armature DATA
     armature.data.transform(C)
     try:
         for pbone in bones:
@@ -79,9 +78,7 @@ def write_skeleton_and_anims(f, armature, mesh_obj):
             f.write(f"BONE_NAME: {pbone.name}\nPARENT_INDEX: {parent_index}\n")
             f.write("OFFSET_MATRIX:\n")
 
-            # Old exporter did: bone.bone.matrix_local.inverted().transposed()
-            # We avoid double transpose by leaving it untransposed here:
-            Off = pbone.bone.matrix_local.inverted()   # <-- NO .transposed() here
+            Off = pbone.bone.matrix_local.inverted()
             write_mat_like_old(f, Off)                 # <-- transposes on write
             f.write("\n")
 
@@ -108,7 +105,7 @@ def write_skeleton_and_anims(f, armature, mesh_obj):
                     f.write(f"KEYFRAME: {frame}\n")
                     f.write(f"TIMESTAMP: {t:.5f}\n")
 
-                    for pb in bones:  # <-- SAME ORDER as skeleton
+                    for pb in bones:  # SAME ORDER as skellington
                         pbone = pose_bones[pb.name]
                         parent_matrix = pbone.parent.matrix if pbone.parent else mathutils.Matrix.Identity(4)
                         local_matrix = parent_matrix.inverted_safe() @ pbone.matrix
@@ -131,8 +128,6 @@ def write_skeleton_and_anims(f, armature, mesh_obj):
 
     return name_to_index
 
-# ---------- Mesh export (fixed normals + winding + weights) ----------
-
 # =========================
 # Mesh Export
 # =========================
@@ -152,14 +147,14 @@ def write_mesh(f, mesh_obj, bone_index_of, diffuse_texture):
 
         unique, vmap, indices = [], {}, []
 
-        # If you want to split by materials, you can track poly.material_index
+        # if we want to split on materials we can track poly.material_index
         for poly in me_eval.polygons:
             face_idx = []
             for li in poly.loop_indices:
                 loop = me_eval.loops[li]
                 v = me_eval.vertices[loop.vertex_index]
 
-                # Positions/normals in world space (like the working script)
+                # Positions/normals in world space
                 p = mesh_obj.matrix_world @ v.co
                 n = (mesh_obj.matrix_world.to_3x3() @ v.normal).normalized()
 
@@ -242,7 +237,7 @@ def export_game_data(filepath, diffuse_texture):
 
             bone_index_of = write_skeleton_and_anims(f, arm, mesh)
 
-            # ✅ freeze pose for mesh export
+            # freeze pose for mesh export
             bpy.context.scene.frame_set(0)
             write_mesh(f, mesh, bone_index_of, diffuse_texture)
 
@@ -253,14 +248,18 @@ def export_game_data(filepath, diffuse_texture):
 def move_texture_file(diffuse_texture_path, parent_dir):
     shutil.copy(diffuse_texture_path, parent_dir)
         
+# ===================================================
+# Output vars, CHANGE STUFF HERE
+# ===================================================
+# these output paths can be anything now that the engine supports file drop / saving.
+output_diffuse_texture_path = Path(r"E:\Software_Dev\rust\rust-opengl-engine\resources\textures\ai_slop\dark_wood.png")
+output_mesh_path = Path(r"C:\Users\jdwis\OneDrive\Desktop\Output\tube.txt")
+diffuse_texture_filename = "dark_wood.png"
+export_armature_data = True
+# ===================================================
+# ===================================================
 
-diffuse_texture_path = Path(r"E:\Software_Dev\rust\rust-opengl-engine\resources\textures\ai_slop\dark_wood.png")
-mesh_output_path = Path(r"C:\Users\jdwis\OneDrive\Desktop\Output\tube.txt")
-output_parent_dir = mesh_output_path.parent
+output_parent_dir = output_mesh_path.parent
 os.makedirs(output_parent_dir, exist_ok=True)
-
-diffuse_texture = "dark_wood.png"
-diffuse_texture_path = Path(r"E:\Software_Dev\rust\rust-opengl-engine\resources\textures\ai_slop\dark_wood.png")
-
-move_texture_file(diffuse_texture_path, output_parent_dir)
-export_game_data(mesh_output_path, diffuse_texture)
+move_texture_file(output_diffuse_texture_path, output_parent_dir)
+export_game_data(output_mesh_path, diffuse_texture_flename)
