@@ -35,8 +35,8 @@ pub struct UiRenderer {
     // Text Rendering
     white_texture: u32,
     font_texture: u32,
-    queued_text: Vec<(String, f32, f32, f32, [f32; 4])>, // (text, x, y, font_size, color)
-    cached_glyphs: Vec<UiGlyph>,                         // cache last successfully rendered glyphs
+    queued_text: Vec<(String, f32, f32, f32, [f32; 4], Option<String>)>, // (text, x, y, font_size, color, font_family)
+    cached_glyphs: Vec<UiGlyph>, // cache last successfully rendered glyphs
 }
 
 impl UiRenderer {
@@ -169,9 +169,17 @@ impl UiRenderer {
     }
 
     /// queues text to be rendered at the specified position with the given size and color
-    pub fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: [f32; 4]) {
+    pub fn draw_text(
+        &mut self,
+        text: &str,
+        x: f32,
+        y: f32,
+        font_size: f32,
+        color: [f32; 4],
+        font_family: Option<String>,
+    ) {
         self.queued_text
-            .push((text.to_string(), x, y, font_size, color));
+            .push((text.to_string(), x, y, font_size, color, font_family));
     }
 
     /// Flushes the current render batch to the GPU using the specified texture.
@@ -248,13 +256,15 @@ impl UiRenderer {
         self.flush(self.white_texture);
 
         // queue all text
-        for (text, x, y, font_size, color) in self.queued_text.drain(..) {
+        for (text, x, y, font_size, color, font_family) in self.queued_text.drain(..) {
+            let font_id = font_system.get_font_id(font_family.as_deref());
             font_system.glyph_brush.queue(Section {
                 screen_position: (x, y),
                 bounds: (self.screen_width, self.screen_height),
                 text: vec![Text::new(&text)
                     .with_scale(PxScale::from(font_size))
-                    .with_color(color)],
+                    .with_color(color)
+                    .with_font_id(font_id)],
                 ..Section::default()
             });
         }

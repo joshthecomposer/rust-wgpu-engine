@@ -19,7 +19,7 @@ use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
 use crate::toast;
-use crate::ui::game_new::parser::load_view;
+use crate::ui::game_new::parser::load_view_or_fallback;
 use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
 use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PortraitRenderContext};
 use crate::ui::imgui::imgui_manager::ImguiManager;
@@ -80,16 +80,10 @@ impl Game {
             false => None,
         };
 
-        let custom_ui = match load_view("src/ui/game_new/views/test_view.ron") {
-            Ok(mut tree) => {
-                tree.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
-                Some(tree)
-            }
-            Err(e) => {
-                eprintln!("[Custom UI] Failed to load test view: {}", e);
-                None
-            }
-        };
+        use crate::ui::game_new::parser::load_view_or_fallback;
+        let mut custom_ui = load_view_or_fallback("src/ui/game_new/views/test_view.ron");
+        custom_ui.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+        let custom_ui = Some(custom_ui);
 
         let mut custom_ui_renderer = UiRenderer::new();
         let font_system = FontSystem::new();

@@ -17,4 +17,4 @@ pub use tree::UiTree;
 #[allow(unused_imports)]
 pub use styles::{Color, Length, Rect, Style};
 #[allow(unused_imports)]
-pub use widgets::{BoxWidget, Column, Row, Widget};
+pub use widgets::{BoxWidget, Column, Label, Row, Text, Widget};

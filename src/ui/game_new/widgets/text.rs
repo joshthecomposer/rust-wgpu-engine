@@ -15,6 +15,8 @@ pub struct Text {
     pub style: Style,
     /// The computed layout bounds of the widget.
     rect: Rect,
+    /// The measured size of the text content
+    text_size: (f32, f32),
 }
 
 impl Text {
@@ -24,6 +26,7 @@ impl Text {
             content,
             style,
             rect: Rect::default(),
+            text_size: (0.0, 0.0),
         }
     }
 }
@@ -43,7 +46,9 @@ impl Widget for Text {
         let max_available_height = available.height - margin_top - margin_bottom;
 
         let font_size = self.style.font_size.unwrap_or(16.0);
-        let (measured_width, measured_height) = font_system.measure_text(&self.content, font_size);
+        self.text_size =
+            font_system.measure_text(&self.content, font_size, self.style.font_family.as_deref());
+        let (measured_width, measured_height) = self.text_size;
 
         // determine final dimensions: prefer explicit style size, fallback to measured text size.
         let width = self
@@ -87,13 +92,27 @@ impl Widget for Text {
         if let Some(color) = &self.style.color {
             let font_size = self.style.font_size.unwrap_or(16.0);
 
+            let align = self
+                .style
+                .text_align
+                .unwrap_or(crate::ui::game_new::styles::Alignment::Start);
+            let x_offset = match align {
+                crate::ui::game_new::styles::Alignment::Start => 0.0,
+                crate::ui::game_new::styles::Alignment::Center => {
+                    (self.rect.width - self.text_size.0) / 2.0
+                }
+                crate::ui::game_new::styles::Alignment::End => self.rect.width - self.text_size.0,
+                _ => 0.0,
+            };
+
             // Render text at the top-left of the computed rect.
             renderer.draw_text(
                 &self.content,
-                self.rect.x,
+                self.rect.x + x_offset,
                 self.rect.y,
                 font_size,
                 color.to_rgba(),
+                self.style.font_family.clone(),
             );
         }
     }
