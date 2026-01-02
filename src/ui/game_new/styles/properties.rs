@@ -54,6 +54,9 @@ pub struct Style {
 
     #[serde(default)]
     pub font_family: Option<String>,
+
+    #[serde(default)]
+    pub text_align: Option<super::layout::Alignment>,
 }
 
 impl Style {

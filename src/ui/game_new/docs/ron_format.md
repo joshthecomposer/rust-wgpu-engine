@@ -56,6 +56,19 @@ Text(
     style: (
         color: Some(Rgba(1.0, 1.0, 1.0, 1.0)),
         font_size: Some(24.0),
+        font_family: Some("weiholmir"),
+        text_align: Some(Center),
+    )
+)
+```
+
+### Label
+Wrapper around Text.
+```ron
+Label(
+    content: "Label Text",
+    style: (
+        font_size: Some(14.0),
     )
 )
 ```

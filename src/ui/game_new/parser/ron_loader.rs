@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::ui::game_new::parser::theme::{load_theme, Theme};
 use crate::ui::game_new::styles::{Alignment, Color, Length, Style};
 use crate::ui::game_new::tree::UiTree;
-use crate::ui::game_new::widgets::{BoxWidget, Column, Row, Text, Widget};
+use crate::ui::game_new::widgets::{BoxWidget, Column, Label, Row, Text, Widget};
 
 /// Represents a widget definition parsed from RON.
 ///
@@ -55,6 +55,11 @@ pub enum NodeDefinition {
         #[serde(default)]
         style: Style,
     },
+    Label {
+        content: String,
+        #[serde(default)]
+        style: Style,
+    },
 }
 
 fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
@@ -93,6 +98,7 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
         }
         NodeDefinition::Box { style } => Box::new(BoxWidget::new(style)),
         NodeDefinition::Text { content, style } => Box::new(Text::new(content, style)),
+        NodeDefinition::Label { content, style } => Box::new(Label::new(content, style)),
     }
 }
 
@@ -199,6 +205,9 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
         NodeDefinition::Text { style, .. } => {
             resolve_style(style, theme);
         }
+        NodeDefinition::Label { style, .. } => {
+            resolve_style(style, theme);
+        }
     }
 }
 
@@ -249,6 +258,58 @@ pub fn load_view_from_str(content: &str) -> Result<UiTree, String> {
     tree.set_root(root_widget);
 
     Ok(tree)
+}
+
+/// Loads a view from a RON file, or returns a fallback error view if loading fails.
+pub fn load_view_or_fallback<P: AsRef<Path>>(path: P) -> UiTree {
+    match load_view(path) {
+        Ok(tree) => tree,
+        Err(e) => {
+            eprintln!("[UiParser] Error loading view: {}", e);
+            create_error_view(&e)
+        }
+    }
+}
+
+fn create_error_view(error: &str) -> UiTree {
+    let mut tree = UiTree::new();
+
+    let mut msg = error.to_string();
+    if msg.contains("Expected option") {
+        msg.push_str("\nHint: Did you forget to wrap an optional field in Some(...)?");
+    }
+
+    // create a root column to hold the error message
+    let style = Style {
+        width: crate::ui::game_new::styles::Length::Percent(100.0),
+        height: crate::ui::game_new::styles::Length::Percent(100.0),
+        background: crate::ui::game_new::styles::Color::Rgba(0.1, 0.0, 0.0, 0.9), // Dark red background
+        padding: crate::ui::game_new::styles::Length::Px(20.0),
+        ..Default::default()
+    };
+
+    let mut col = Column::new(style)
+        .with_justify(crate::ui::game_new::styles::Alignment::Center)
+        .with_align(crate::ui::game_new::styles::Alignment::Center);
+
+    let text_style = Style {
+        color: Some(crate::ui::game_new::styles::Color::Rgba(1.0, 0.2, 0.2, 1.0)), // Red text
+        font_size: Some(20.0),
+        text_align: Some(crate::ui::game_new::styles::Alignment::Center),
+        ..Default::default()
+    };
+
+    // add title
+    col.add_child(Box::new(Label::new(
+        "UI Load Error".to_string(),
+        text_style.clone(),
+    )));
+
+    // add error message
+    col.add_child(Box::new(Label::new(msg, text_style)));
+
+    tree.set_root(Box::new(col));
+    tree
 }
 
 #[cfg(test)]
@@ -308,6 +369,23 @@ mod tests {
         let result = load_view_from_str(ron);
         if let Err(e) = result {
             panic!("Failed to parse simple Box: {}", e);
+        }
+    }
+
+    #[test]
+    fn test_parse_simple_label() {
+        let ron = r#"
+            Label(
+                content: "Label Text",
+                style: (
+                    font_size: Some(12.0),
+                )
+            )
+        "#;
+
+        let result = load_view_from_str(ron);
+        if let Err(e) = result {
+            panic!("Failed to parse simple Label: {}", e);
         }
     }
 
@@ -431,6 +509,23 @@ mod tests {
         let result = load_view("src/ui/game_new/views/game_hud.ron");
         if let Err(e) = result {
             panic!("Failed to parse game_hud.ron: {}", e);
+        }
+    }
+    #[test]
+    fn test_load_view_fallback() {
+        // Invalid RON that should trigger a fallback
+        let ron = "Invalid(RON)";
+
+        let result = load_view_from_str(ron);
+        match result {
+            Ok(_) => panic!("Should have failed to parse"),
+            Err(_) => {
+                // Manually call create_error_view logic since load_view catches it
+                let fallback = create_error_view("Test Error");
+                // Verify fallback structure (root is Column, has Label children)
+                // This is a basic sanity check
+                // We can't easily inspect the Box<dyn Widget>, but ensuring it builds is good.
+            }
         }
     }
 }

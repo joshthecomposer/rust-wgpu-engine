@@ -43,6 +43,7 @@
 | `color` | Color | Text color |
 | `font_size` | f32 | Font size in pixels |
 | `font_family` | String | Font family name |
+| `text_align` | Alignment | Text alignment (Start, Center, End) |
 
 ## Length Values
 

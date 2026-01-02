@@ -8,13 +8,15 @@ Row(
     ),
     justify: SpaceBetween,
     children: [
-        Text(
+        Label(
             content: "Hello World",
             style: (
                 id: Some("text_hello"),
                 color: Some(Rgba(1.0, 0.0, 0.0, 1.0)),
                 font_size: Some(24.0),
                 margin: Px(10.0),
+                font_family: Some("weiholmir"),
+                text_align: Some(Center),
             )
         ),
         Column(
