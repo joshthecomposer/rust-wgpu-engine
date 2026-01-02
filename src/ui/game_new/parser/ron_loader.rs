@@ -4,7 +4,7 @@ use std::path::Path;
 use serde::Deserialize;
 
 use crate::ui::game_new::parser::theme::{load_theme, Theme};
-use crate::ui::game_new::styles::{Alignment, Color, Length, Style};
+use crate::ui::game_new::styles::{Alignment, Color, Length, ScrollbarStyle, Style};
 use crate::ui::game_new::tree::UiTree;
 use crate::ui::game_new::widgets::{
     BoxWidget, Column, Label, ProgressBar, Row, ScrollView, Text, TextureRect, Widget,
@@ -86,6 +86,8 @@ pub enum NodeDefinition {
         #[serde(default)]
         style: Style,
         #[serde(default)]
+        scrollbar_style: ScrollbarStyle,
+        #[serde(default)]
         children: Vec<NodeDefinition>,
     },
 }
@@ -147,9 +149,12 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
             content_height,
             justify,
             style,
+            scrollbar_style,
             children,
         } => {
-            let mut scroll = ScrollView::new(style, content_height).with_justify(justify);
+            let mut scroll = ScrollView::new(style, content_height)
+                .with_justify(justify)
+                .with_scrollbar_style(scrollbar_style);
 
             for child_def in children {
                 scroll.add_child(build_widget(child_def));
@@ -280,9 +285,25 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
             resolve_color(outline_color, theme);
         }
         NodeDefinition::ScrollView {
-            style, children, ..
+            style,
+            scrollbar_style,
+            children,
+            ..
         } => {
             resolve_style(style, theme);
+            // resolve scrollbar colors if using theme variables
+            if let Some(c) = &mut scrollbar_style.track_color {
+                resolve_color(c, theme);
+            }
+            if let Some(c) = &mut scrollbar_style.thumb_color {
+                resolve_color(c, theme);
+            }
+            if let Some(c) = &mut scrollbar_style.thumb_hover_color {
+                resolve_color(c, theme);
+            }
+            if let Some(c) = &mut scrollbar_style.thumb_active_color {
+                resolve_color(c, theme);
+            }
             for child in children {
                 resolve_variables(child, theme);
             }

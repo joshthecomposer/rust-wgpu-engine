@@ -6,21 +6,9 @@
 use crate::ui::game_new::context::UiContext;
 use crate::ui::game_new::font_system::FontSystem;
 use crate::ui::game_new::render::UiRenderer;
-use crate::ui::game_new::styles::{Alignment, Rect, Style};
+use crate::ui::game_new::styles::{Alignment, Rect, ScrollbarStyle, Style};
 
 use super::Widget;
-
-/// Width of the scrollbar track in pixels.
-const SCROLLBAR_WIDTH: f32 = 10.0;
-
-/// Minimum height of the scrollbar thumb in pixels.
-const THUMB_MIN_HEIGHT: f32 = 30.0;
-
-// Scrollbar colors (runic theme)
-const TRACK_COLOR: [f32; 4] = [0.06, 0.09, 0.16, 0.5]; // stone-dark with alpha
-const THUMB_COLOR: [f32; 4] = [0.4, 0.38, 0.33, 1.0]; // stone-mild
-const THUMB_HOVER_COLOR: [f32; 4] = [0.55, 0.53, 0.48, 1.0]; // stone-light
-const THUMB_ACTIVE_COLOR: [f32; 4] = [0.85, 0.68, 0.42, 1.0]; // runic-gold
 
 /// A scrollable container widget that clips children to a viewport.
 ///
@@ -34,12 +22,28 @@ const THUMB_ACTIVE_COLOR: [f32; 4] = [0.85, 0.68, 0.42, 1.0]; // runic-gold
 /// Unlike other widgets, ScrollView uses its explicit `height` style property
 /// directly, rather than clamping to the parent's available space. This allows
 /// it to maintain a fixed viewport size regardless of parent constraints.
+///
+/// # Scrollbar Styling
+///
+/// The scrollbar appearance can be customized via `scrollbar_style`:
+/// ```ron
+/// ScrollView(
+///     scrollbar_style: (
+///         width: 12.0,
+///         thumb_color: Rgba(0.5, 0.5, 0.5, 1.0),
+///         thumb_hover_color: Variable("accent"),
+///     ),
+///     // ...
+/// )
+/// ```
 pub struct ScrollView {
     pub style: Style,
     /// Total height of the scrollable content area.
     pub content_height: f32,
     pub justify: Alignment,
     pub children: Vec<Box<dyn Widget>>,
+    /// Configurable scrollbar appearance.
+    pub scrollbar_style: ScrollbarStyle,
 
     /// Computed bounding rect after layout.
     rect: Rect,
@@ -61,6 +65,7 @@ impl ScrollView {
             content_height,
             justify: Alignment::Start,
             children: Vec::new(),
+            scrollbar_style: ScrollbarStyle::default(),
             rect: Rect::default(),
             scroll_offset: 0.0,
             is_dragging: false,
@@ -76,6 +81,12 @@ impl ScrollView {
         self
     }
 
+    /// Sets custom scrollbar styling.
+    pub fn with_scrollbar_style(mut self, scrollbar_style: ScrollbarStyle) -> Self {
+        self.scrollbar_style = scrollbar_style;
+        self
+    }
+
     /// Adds a child widget to this ScrollView.
     pub fn add_child(&mut self, child: Box<dyn Widget>) {
         self.children.push(child);
@@ -85,7 +96,7 @@ impl ScrollView {
     fn viewport_rect(&self) -> Rect {
         let scrollbar_visible = self.content_height > self.rect.height;
         let width_reduction = if scrollbar_visible {
-            SCROLLBAR_WIDTH
+            self.scrollbar_style.width()
         } else {
             0.0
         };
@@ -99,10 +110,11 @@ impl ScrollView {
 
     /// Returns the scrollbar track rect (full vertical area for the scrollbar).
     fn scrollbar_track_rect(&self) -> Rect {
+        let width = self.scrollbar_style.width();
         Rect::new(
-            self.rect.x + self.rect.width - SCROLLBAR_WIDTH,
+            self.rect.x + self.rect.width - width,
             self.rect.y,
-            SCROLLBAR_WIDTH,
+            width,
             self.rect.height,
         )
     }
@@ -112,6 +124,8 @@ impl ScrollView {
     /// The thumb size is proportional to the viewport/content ratio,
     /// and its position reflects the current scroll offset.
     fn scrollbar_thumb_rect(&self) -> Rect {
+        let width = self.scrollbar_style.width();
+        let min_height = self.scrollbar_style.thumb_min_height();
         let viewport_height = self.rect.height;
         let max_scroll = (self.content_height - viewport_height).max(0.0);
         let scroll_ratio = if max_scroll > 0.0 {
@@ -121,15 +135,15 @@ impl ScrollView {
         };
 
         let thumb_height = (viewport_height * (viewport_height / self.content_height))
-            .max(THUMB_MIN_HEIGHT)
+            .max(min_height)
             .min(viewport_height);
         let available_track = viewport_height - thumb_height;
         let thumb_y = self.rect.y + scroll_ratio * available_track;
 
         Rect::new(
-            self.rect.x + self.rect.width - SCROLLBAR_WIDTH,
+            self.rect.x + self.rect.width - width,
             thumb_y,
-            SCROLLBAR_WIDTH,
+            width,
             thumb_height,
         )
     }
@@ -204,6 +218,7 @@ impl Widget for ScrollView {
     fn update(&mut self, ctx: &mut UiContext) -> bool {
         let mouse_pos = ctx.mouse_pos();
         let viewport = self.viewport_rect();
+        let min_height = self.scrollbar_style.thumb_min_height();
 
         // Handle active scrollbar drag
         if self.is_dragging {
@@ -213,7 +228,7 @@ impl Widget for ScrollView {
                 let max_scroll = (self.content_height - viewport_height).max(0.0);
 
                 let thumb_height = (viewport_height * (viewport_height / self.content_height))
-                    .max(THUMB_MIN_HEIGHT)
+                    .max(min_height)
                     .min(viewport_height);
                 let available_track = viewport_height - thumb_height;
 
@@ -292,7 +307,7 @@ impl Widget for ScrollView {
         // Draw track behind content
         if scrollbar_visible {
             let track_rect = self.scrollbar_track_rect();
-            renderer.draw_rect(track_rect, TRACK_COLOR);
+            renderer.draw_rect(track_rect, self.scrollbar_style.track_color());
         }
 
         // Clip children to viewport
@@ -309,11 +324,11 @@ impl Widget for ScrollView {
         if scrollbar_visible {
             let thumb_rect = self.scrollbar_thumb_rect();
             let thumb_color = if self.is_dragging {
-                THUMB_ACTIVE_COLOR
+                self.scrollbar_style.thumb_active_color()
             } else if self.is_hovered {
-                THUMB_HOVER_COLOR
+                self.scrollbar_style.thumb_hover_color()
             } else {
-                THUMB_COLOR
+                self.scrollbar_style.thumb_color()
             };
             renderer.draw_rect(thumb_rect, thumb_color);
         }
