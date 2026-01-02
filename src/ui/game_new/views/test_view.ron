@@ -1,0 +1,29 @@
+Row(
+    style: (
+        width: Px(400.0),
+        height: Px(100.0),
+        padding: Px(8.0),
+        background: Rgba(0.1, 0.1, 0.1, 0.9),
+    ),
+    justify: SpaceBetween,
+    children: [
+        Column(
+            span: 4,
+            style: (
+                background: Rgba(0.8, 0.2, 0.2, 1.0),
+            ),
+        ),
+        Column(
+            span: 4,
+            style: (
+                background: Rgba(0.2, 0.8, 0.2, 1.0),
+            ),
+        ),
+        Column(
+            span: 4,
+            style: (
+                background: Rgba(0.2, 0.2, 0.8, 1.0),
+            ),
+        ),
+    ]
+)

@@ -19,6 +19,8 @@ use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
 use crate::toast; // import toast macro
+use crate::ui::game_new::{UiContext, UiRenderer, UiTree};
+use crate::ui::game_new::parser::load_view;
 use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PortraitRenderContext};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
@@ -38,6 +40,8 @@ pub struct Game {
     cursor_mode: CursorMode,
     message_queue: MessageQueue,
     game_ui: GameUiManager,
+    custom_ui: Option<UiTree>,
+    custom_ui_renderer: UiRenderer,
     pub should_quit: bool,
     imgui_manager: Option<ImguiManager>,
     config: GameConfig,
@@ -75,6 +79,20 @@ impl Game {
             false => None,
         };
 
+        let custom_ui = match load_view("src/ui/game_new/views/test_view.ron") {
+            Ok(mut tree) => {
+                tree.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+                Some(tree)
+            }
+            Err(e) => {
+                eprintln!("[Custom UI] Failed to load test view: {}", e);
+                None
+            }
+        };
+
+        let mut custom_ui_renderer = UiRenderer::new();
+        custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+
         Self {
             platform,
             time,
@@ -87,6 +105,8 @@ impl Game {
             cursor_mode: CursorMode::Hidden,
             message_queue: MessageQueue::new(),
             game_ui,
+            custom_ui,
+            custom_ui_renderer,
             should_quit: false,
             imgui_manager,
             config,
@@ -242,6 +262,10 @@ impl Game {
             WindowEvent::Resized(size) => {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
+                if let Some(tree) = &mut self.custom_ui {
+                    tree.set_screen_size(size.width as f32, size.height as f32);
+                }
+                self.custom_ui_renderer.set_screen_size(size.width as f32, size.height as f32);
             }
 
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
@@ -430,6 +454,16 @@ impl Game {
         self.sound.update(&self.world.camera);
         self.world.lights.update(&self.time.dt);
         self.world.particles.update(self.time.dt);
+
+        // update custom GPU UI
+        if let Some(tree) = &mut self.custom_ui {
+            tree.layout();
+            let mut ctx = UiContext {
+                input: &self.input,
+                messages: &mut self.message_queue,
+            };
+            tree.update(&mut ctx);
+        }
 
         // update game UI (pause menu, HUD, etc.) BEFORE processing messages
         // this ensures UI values are synced to game state before ApplySettings saves
@@ -642,6 +676,13 @@ impl Game {
             .get_mut(&ShaderType::UiOverlay)
             .unwrap();
         self.game_ui.render(ui_shader, self.time.elapsed as f64);
+
+        // render custom GPU UI (test view)
+        if let Some(tree) = &self.custom_ui {
+            self.custom_ui_renderer.begin();
+            tree.render(&mut self.custom_ui_renderer);
+            self.custom_ui_renderer.end();
+        }
 
         if let Some(imgui_manager) = &mut self.imgui_manager {
             imgui_manager.draw(
