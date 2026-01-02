@@ -1,10 +1,12 @@
-mod traits;
 mod box_widget;
-mod row;
 mod column;
+mod row;
+mod text;
+mod traits;
 
-pub use traits::Widget;
 pub use box_widget::BoxWidget;
-pub use row::Row;
 pub use column::Column;
+pub use row::Row;
+pub use text::Text;
+pub use traits::Widget;
 

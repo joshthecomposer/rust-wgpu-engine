@@ -1,4 +1,5 @@
 use super::context::UiContext;
+use super::font_system::FontSystem;
 use super::render::UiRenderer;
 use super::styles::Rect;
 use super::widgets::Widget;
@@ -31,13 +32,13 @@ impl UiTree {
         }
     }
 
-    pub fn layout(&mut self) {
+    pub fn layout(&mut self, font_system: &mut FontSystem) {
         if !self.needs_layout {
             return;
         }
 
         if let Some(root) = &mut self.root {
-            root.layout(self.screen_rect);
+            root.layout(font_system, self.screen_rect);
         }
 
         self.needs_layout = false;
@@ -45,7 +46,6 @@ impl UiTree {
 
     pub fn force_layout(&mut self) {
         self.needs_layout = true;
-        self.layout();
     }
 
     pub fn update(&mut self, ctx: &mut UiContext) -> bool {
@@ -68,4 +68,3 @@ impl Default for UiTree {
         Self::new()
     }
 }
-

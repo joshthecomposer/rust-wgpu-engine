@@ -7,11 +7,13 @@ Row(
     ),
     justify: SpaceBetween,
     children: [
-        Column(
-            span: 4,
+        Text(
+            content: "Hello World",
             style: (
-                background: Variable("accent"),
-            ),
+                color: Some(Rgba(1.0, 0.0, 0.0, 1.0)),
+                font_size: Some(24.0),
+                margin: Px(10.0),
+            )
         ),
         Column(
             span: 4,

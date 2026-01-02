@@ -27,10 +27,13 @@ impl RenderBatch {
         let x1 = rect.x + rect.width;
         let y1 = rect.y + rect.height;
 
-        self.vertices.push(UiVertex::new(x0, y0, color)); // top-left
-        self.vertices.push(UiVertex::new(x1, y0, color)); // top-right
-        self.vertices.push(UiVertex::new(x1, y1, color)); // bottom-right
-        self.vertices.push(UiVertex::new(x0, y1, color)); // bottom-left
+        // use the center of a 1x1 white pixel in the texture atlas to avoid edge filtering artifacts.
+        let uv = [0.5, 0.5];
+
+        self.vertices.push(UiVertex::new(x0, y0, color, uv)); // top-left
+        self.vertices.push(UiVertex::new(x1, y0, color, uv)); // top-right
+        self.vertices.push(UiVertex::new(x1, y1, color, uv)); // bottom-right
+        self.vertices.push(UiVertex::new(x0, y1, color, uv)); // bottom-left
 
         self.indices.push(base_idx);
         self.indices.push(base_idx + 1);

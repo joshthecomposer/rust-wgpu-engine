@@ -35,4 +35,3 @@ impl GridSpan {
         self.0 as f32 / 12.0
     }
 }
-

@@ -1,10 +1,11 @@
 use crate::ui::game_new::context::UiContext;
+use crate::ui::game_new::font_system::FontSystem;
 use crate::ui::game_new::render::UiRenderer;
 use crate::ui::game_new::styles::{GridSpan, Rect};
 
 pub trait Widget {
     /// layout phase: given a bounding rect, compute positions for self and children
-    fn layout(&mut self, available: Rect);
+    fn layout(&mut self, font_system: &mut FontSystem, available: Rect);
 
     /// update phase: process input events, return true if event was consumed
     fn update(&mut self, ctx: &mut UiContext) -> bool;
@@ -20,4 +21,3 @@ pub trait Widget {
         None
     }
 }
-

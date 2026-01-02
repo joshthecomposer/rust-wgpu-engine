@@ -18,9 +18,9 @@ use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
-use crate::toast; // import toast macro
-use crate::ui::game_new::{UiContext, UiRenderer, UiTree};
+use crate::toast;
 use crate::ui::game_new::parser::load_view;
+use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
 use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PortraitRenderContext};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
@@ -42,6 +42,7 @@ pub struct Game {
     game_ui: GameUiManager,
     custom_ui: Option<UiTree>,
     custom_ui_renderer: UiRenderer,
+    font_system: FontSystem,
     pub should_quit: bool,
     imgui_manager: Option<ImguiManager>,
     config: GameConfig,
@@ -91,6 +92,7 @@ impl Game {
         };
 
         let mut custom_ui_renderer = UiRenderer::new();
+        let font_system = FontSystem::new();
         custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
         Self {
@@ -107,6 +109,7 @@ impl Game {
             game_ui,
             custom_ui,
             custom_ui_renderer,
+            font_system,
             should_quit: false,
             imgui_manager,
             config,
@@ -230,15 +233,16 @@ impl Game {
                     }
                     _ => {}
                 }
-                
 
                 self.physics.step();
 
                 physics::sync_transforms_from_physics(&mut self.world.ecs, &self.physics);
-                physics::sync_collider_transforms_with_physics(&mut self.world.ecs, &mut self.physics);
+                physics::sync_collider_transforms_with_physics(
+                    &mut self.world.ecs,
+                    &mut self.physics,
+                );
                 physics::push_weapon_kinematics_from_bones(&mut self.world.ecs, &mut self.physics);
             }
-
 
             self.time.end_fixed_step();
         }
@@ -265,7 +269,8 @@ impl Game {
                 if let Some(tree) = &mut self.custom_ui {
                     tree.set_screen_size(size.width as f32, size.height as f32);
                 }
-                self.custom_ui_renderer.set_screen_size(size.width as f32, size.height as f32);
+                self.custom_ui_renderer
+                    .set_screen_size(size.width as f32, size.height as f32);
             }
 
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
@@ -457,7 +462,7 @@ impl Game {
 
         // update custom GPU UI
         if let Some(tree) = &mut self.custom_ui {
-            tree.layout();
+            tree.layout(&mut self.font_system);
             let mut ctx = UiContext {
                 input: &self.input,
                 messages: &mut self.message_queue,
@@ -681,7 +686,7 @@ impl Game {
         if let Some(tree) = &self.custom_ui {
             self.custom_ui_renderer.begin();
             tree.render(&mut self.custom_ui_renderer);
-            self.custom_ui_renderer.end();
+            self.custom_ui_renderer.end(&mut self.font_system);
         }
 
         if let Some(imgui_manager) = &mut self.imgui_manager {

@@ -42,6 +42,15 @@ pub struct Style {
 
     #[serde(default)]
     pub background: Color,
+    // text color
+    #[serde(default)]
+    pub color: Option<Color>,
+
+    #[serde(default)]
+    pub font_size: Option<f32>,
+
+    #[serde(default)]
+    pub font_family: Option<String>,
 }
 
 impl Style {

@@ -35,6 +35,15 @@
 | `border_width` | Length | Border width (future) |
 | `border_radius` | Length | Corner radius (future) |
 
+## Text Properties
+(These properties apply to Text widgets)
+
+| Property | Type | Description |
+|---|---|---|
+| `color` | Color | Text color |
+| `font_size` | f32 | Font size in pixels |
+| `font_family` | String | Font family name |
+
 ## Length Values
 
 ```ron
@@ -76,4 +85,5 @@ If a property is not specified, these defaults are used:
 - `margin_*`: `Px(0.0)`
 - `padding_*`: `Px(0.0)`
 - `background`: `Rgba(0.0, 0.0, 0.0, 0.0)` (transparent)
+
 

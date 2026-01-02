@@ -1,4 +1,5 @@
 use crate::ui::game_new::context::UiContext;
+use crate::ui::game_new::font_system::FontSystem;
 use crate::ui::game_new::render::UiRenderer;
 use crate::ui::game_new::styles::{Alignment, GridSpan, Rect, Style};
 
@@ -46,8 +47,10 @@ impl Column {
 }
 
 impl Widget for Column {
-    fn layout(&mut self, available: Rect) {
-        let (mt, mr, mb, ml) = self.style.resolve_margins(available.width, available.height);
+    fn layout(&mut self, font_system: &mut FontSystem, available: Rect) {
+        let (mt, mr, mb, ml) = self
+            .style
+            .resolve_margins(available.width, available.height);
 
         let content_x = available.x + ml;
         let content_y = available.y + mt;
@@ -57,9 +60,16 @@ impl Widget for Column {
         let width = self.style.width.resolve_or(max_width, max_width);
         let height = self.style.height.resolve_or(max_height, max_height);
 
-        self.rect = Rect::new(content_x, content_y, width.min(max_width), height.min(max_height));
+        self.rect = Rect::new(
+            content_x,
+            content_y,
+            width.min(max_width),
+            height.min(max_height),
+        );
 
-        let (pt, pr, pb, pl) = self.style.resolve_padding(self.rect.width, self.rect.height);
+        let (pt, pr, pb, pl) = self
+            .style
+            .resolve_padding(self.rect.width, self.rect.height);
         let inner_rect = self.rect.shrink_by(pt, pr, pb, pl);
 
         if self.children.is_empty() {
@@ -73,7 +83,10 @@ impl Widget for Column {
             Alignment::Start => (0.0, 0.0),
             Alignment::Center => {
                 let child_height = total_height / child_count as f32;
-                (0.0, (total_height - child_height * child_count as f32) / 2.0)
+                (
+                    0.0,
+                    (total_height - child_height * child_count as f32) / 2.0,
+                )
             }
             Alignment::End => {
                 let child_height = total_height / child_count as f32;
@@ -82,7 +95,8 @@ impl Widget for Column {
             Alignment::SpaceBetween => {
                 if child_count > 1 {
                     let child_height = total_height / child_count as f32;
-                    let gap = (total_height - child_height * child_count as f32) / (child_count - 1) as f32;
+                    let gap = (total_height - child_height * child_count as f32)
+                        / (child_count - 1) as f32;
                     (gap, 0.0)
                 } else {
                     (0.0, 0.0)
@@ -105,7 +119,7 @@ impl Widget for Column {
                 inner_rect.width,
                 child_height,
             );
-            child.layout(child_rect);
+            child.layout(font_system, child_rect);
             y_offset += child_height + gap;
         }
     }
@@ -138,4 +152,3 @@ impl Widget for Column {
         Some(self.span)
     }
 }
-

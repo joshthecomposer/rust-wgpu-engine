@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::ui::game_new::parser::theme::{load_theme, Theme};
 use crate::ui::game_new::styles::{Alignment, Color, Length, Style};
 use crate::ui::game_new::tree::UiTree;
-use crate::ui::game_new::widgets::{BoxWidget, Column, Row, Widget};
+use crate::ui::game_new::widgets::{BoxWidget, Column, Row, Text, Widget};
 
 /// Represents a widget definition parsed from RON.
 ///
@@ -50,6 +50,11 @@ pub enum NodeDefinition {
         #[serde(default)]
         style: Style,
     },
+    Text {
+        content: String,
+        #[serde(default)]
+        style: Style,
+    },
 }
 
 fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
@@ -87,6 +92,7 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
             Box::new(col)
         }
         NodeDefinition::Box { style } => Box::new(BoxWidget::new(style)),
+        NodeDefinition::Text { content, style } => Box::new(Text::new(content, style)),
     }
 }
 
@@ -188,6 +194,9 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
             }
         }
         NodeDefinition::Box { style } => {
+            resolve_style(style, theme);
+        }
+        NodeDefinition::Text { style, .. } => {
             resolve_style(style, theme);
         }
     }

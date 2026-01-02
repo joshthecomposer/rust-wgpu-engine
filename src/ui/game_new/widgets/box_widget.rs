@@ -18,9 +18,13 @@ impl BoxWidget {
     }
 }
 
+use crate::ui::game_new::font_system::FontSystem;
+
 impl Widget for BoxWidget {
-    fn layout(&mut self, available: Rect) {
-        let (mt, mr, mb, ml) = self.style.resolve_margins(available.width, available.height);
+    fn layout(&mut self, _font_system: &mut FontSystem, available: Rect) {
+        let (mt, mr, mb, ml) = self
+            .style
+            .resolve_margins(available.width, available.height);
 
         let content_x = available.x + ml;
         let content_y = available.y + mt;
@@ -30,7 +34,12 @@ impl Widget for BoxWidget {
         let width = self.style.width.resolve_or(max_width, max_width);
         let height = self.style.height.resolve_or(max_height, max_height);
 
-        self.rect = Rect::new(content_x, content_y, width.min(max_width), height.min(max_height));
+        self.rect = Rect::new(
+            content_x,
+            content_y,
+            width.min(max_width),
+            height.min(max_height),
+        );
     }
 
     fn update(&mut self, _ctx: &mut UiContext) -> bool {
@@ -48,4 +57,3 @@ impl Widget for BoxWidget {
         self.rect
     }
 }
-

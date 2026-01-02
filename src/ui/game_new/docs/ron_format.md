@@ -48,6 +48,18 @@ Column(
 )
 ```
 
+### Text
+Displays a text string.
+```ron
+Text(
+    content: "Hello World",
+    style: (
+        color: Some(Rgba(1.0, 1.0, 1.0, 1.0)),
+        font_size: Some(24.0),
+    )
+)
+```
+
 ### Box
 
 Simple colored rectangle. A leaf widget with no children.
@@ -180,4 +192,5 @@ If parsing succeeds but you see no UI:
 2. Verify `UiTree::layout()` is called before `UiTree::render()`
 3. Add debug logging in `RenderBatch::push_rect()` to see if geometry is being generated
 4. Ensure the UI renderer's OpenGL state is correct (blending, viewport, etc.)
+
 

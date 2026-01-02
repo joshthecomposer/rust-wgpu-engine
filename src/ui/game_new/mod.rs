@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 pub mod context;
+pub mod font_system;
 pub mod layout;
 pub mod parser;
 pub mod render;
@@ -9,6 +10,7 @@ pub mod tree;
 pub mod widgets;
 
 pub use context::UiContext;
+pub use font_system::FontSystem;
 pub use render::UiRenderer;
 pub use tree::UiTree;
 
