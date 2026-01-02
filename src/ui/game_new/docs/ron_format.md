@@ -76,9 +76,14 @@ Box(
 
 ## Style Properties
 
-See `style_properties.md` for full list of available style properties.
+The `Style` struct supports the following properties:
 
-## Length Values
+### Common Properties (All Widgets)
+- `id` (Option<String>): Unique identifier for the widget. Used for debugging (logs on click) and event routing.
+- `width` (Length): Width of the widget.
+- `height` (Length): Height of the widget.
+- `background` (Color): Background color.
+
 
 - `Px(f32)` - Absolute pixels
 - `Percent(f32)` - Percentage of parent (0.0 - 100.0)

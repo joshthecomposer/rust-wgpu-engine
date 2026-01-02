@@ -5,6 +5,9 @@ use super::types::{Color, Length};
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Style {
     #[serde(default)]
+    pub id: Option<String>,
+
+    #[serde(default)]
     pub width: Length,
     #[serde(default)]
     pub height: Length,

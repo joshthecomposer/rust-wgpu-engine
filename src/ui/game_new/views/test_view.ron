@@ -1,5 +1,6 @@
 Row(
     style: (
+        id: Some("main_row"),
         width: Px(400.0),
         height: Px(100.0),
         padding: Px(8.0),
@@ -10,6 +11,7 @@ Row(
         Text(
             content: "Hello World",
             style: (
+                id: Some("text_hello"),
                 color: Some(Rgba(1.0, 0.0, 0.0, 1.0)),
                 font_size: Some(24.0),
                 margin: Px(10.0),
@@ -18,14 +20,17 @@ Row(
         Column(
             span: 4,
             style: (
+                id: Some("col_1"),
                 background: Variable("uncommon-moss"),
             ),
         ),
         Column(
             span: 4,
             style: (
+                id: Some("col_2"),
                 background: Variable("mana-sky"),
             ),
         ),
+
     ]
 )

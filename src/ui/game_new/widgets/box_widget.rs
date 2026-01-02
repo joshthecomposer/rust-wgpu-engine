@@ -42,7 +42,17 @@ impl Widget for BoxWidget {
         );
     }
 
-    fn update(&mut self, _ctx: &mut UiContext) -> bool {
+    fn update(&mut self, ctx: &mut UiContext) -> bool {
+        // Check if mouse is over this widget
+        if self.rect.contains(ctx.mouse_pos()) {
+            // Check if processed a click
+            if ctx.is_click_start() {
+                if let Some(id) = &self.style.id {
+                    println!("[BoxWidget] Clicked. ID: {}", id);
+                }
+                return true;
+            }
+        }
         false
     }
 

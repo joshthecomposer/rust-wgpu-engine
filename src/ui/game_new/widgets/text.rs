@@ -66,7 +66,15 @@ impl Widget for Text {
         );
     }
 
-    fn update(&mut self, _ctx: &mut UiContext) -> bool {
+    fn update(&mut self, ctx: &mut UiContext) -> bool {
+        if self.rect.contains(ctx.mouse_pos()) {
+            if ctx.is_click_start() {
+                if let Some(id) = &self.style.id {
+                    println!("[Text] Clicked. ID: {}", id);
+                }
+                return true;
+            }
+        }
         false
     }
 
