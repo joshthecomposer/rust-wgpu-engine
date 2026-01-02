@@ -98,6 +98,58 @@ Column(
                 )
             ]
         ),
+        Row(
+            style: (
+                id: Some("progress_row"),
+                width: Percent(100.0),
+                height: Px(100.0),
+            ),
+            justify: Center,
+            align: Center,
+            children: [
+                Column(
+                    style: (
+                        width: Px(300.0),
+                        height: Px(100.0),
+                    ),
+                    justify: Center,
+                    align: Center,
+                    children: [
+                        Label(
+                            content: "Health",
+                            style: ( color: Some(Variable("highlight")), font_size: Some(14.0) )
+                        ),
+                        ProgressBar(
+                            current_value: 75.0,
+                            max_value: 100.0,
+                            fill_color: Variable("blood-hp"),
+                            outline_color: Variable("stone-light"),
+                            style: (
+                                width: Px(250.0),
+                                height: Px(20.0),
+                                background: Variable("deep-void"),
+                                margin_bottom: Some(Px(10.0)),
+                            )
+                        ),
+                        Label(
+                            content: "Mana",
+                            style: ( color: Some(Variable("highlight")), font_size: Some(14.0) )
+                        ),
+                        ProgressBar(
+                            current_value: 40.0,
+                            max_value: 100.0,
+                            fill_color: Variable("mana-sky"),
+                            outline_color: Variable("stone-light"),
+                            style: (
+                                width: Px(250.0),
+                                height: Px(20.0),
+                                background: Variable("deep-void"),
+                            )
+                        ),
+                    ]
+                )
+            ]
+        ),
         Label(
             content: "Press 'F' to cycle views",
             style: (

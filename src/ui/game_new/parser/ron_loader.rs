@@ -6,7 +6,9 @@ use serde::Deserialize;
 use crate::ui::game_new::parser::theme::{load_theme, Theme};
 use crate::ui::game_new::styles::{Alignment, Color, Length, Style};
 use crate::ui::game_new::tree::UiTree;
-use crate::ui::game_new::widgets::{BoxWidget, Column, Label, Row, Text, TextureRect, Widget};
+use crate::ui::game_new::widgets::{
+    BoxWidget, Column, Label, ProgressBar, Row, Text, TextureRect, Widget,
+};
 
 /// Represents a widget definition parsed from RON.
 ///
@@ -65,6 +67,18 @@ pub enum NodeDefinition {
         #[serde(default)]
         style: Style,
     },
+    ProgressBar {
+        #[serde(default)]
+        current_value: f32,
+        #[serde(default)]
+        max_value: f32,
+        #[serde(default)]
+        fill_color: Color,
+        #[serde(default)]
+        outline_color: Color,
+        #[serde(default)]
+        style: Style,
+    },
 }
 
 fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
@@ -107,6 +121,19 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
         NodeDefinition::TextureRect { texture_id, style } => {
             Box::new(TextureRect::new(texture_id, style))
         }
+        NodeDefinition::ProgressBar {
+            current_value,
+            max_value,
+            fill_color,
+            outline_color,
+            style,
+        } => Box::new(ProgressBar::new(
+            style,
+            current_value,
+            max_value,
+            fill_color,
+            outline_color,
+        )),
     }
 }
 
@@ -218,6 +245,16 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
         }
         NodeDefinition::TextureRect { style, .. } => {
             resolve_style(style, theme);
+        }
+        NodeDefinition::ProgressBar {
+            fill_color,
+            outline_color,
+            style,
+            ..
+        } => {
+            resolve_style(style, theme);
+            resolve_color(fill_color, theme);
+            resolve_color(outline_color, theme);
         }
     }
 }

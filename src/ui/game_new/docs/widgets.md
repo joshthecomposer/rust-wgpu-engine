@@ -53,3 +53,28 @@ TextureRect(
     )
 )
 ```
+
+### ProgressBar
+A bar that visualizes a value within a range.
+
+**Properties:**
+- `current_value`: `f32` - The current progress value.
+- `max_value`: `f32` - The maximum value (100% full).
+- `fill_color`: `Color` - Color of the filled portion.
+- `outline_color`: `Color` - Color of the border/outline.
+- `style`: Standard style properties.
+
+**Example:**
+```ron
+ProgressBar(
+    current_value: 75.0,
+    max_value: 100.0,
+    fill_color: Rgba(0.8, 0.2, 0.2, 1.0),
+    outline_color: Rgba(1.0, 1.0, 1.0, 1.0),
+    style: (
+        width: Px(200.0),
+        height: Px(20.0),
+        background: Rgba(0.1, 0.1, 0.1, 1.0), // Empty background color
+    )
+)
+```
