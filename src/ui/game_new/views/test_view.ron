@@ -33,6 +33,13 @@ Row(
                 background: Variable("mana-sky"),
             ),
         ),
-
+        TextureRect(
+            texture_id: 0, // Placeholder ID
+            style: (
+                 width: Px(64.0),
+                 height: Px(64.0),
+                 margin: Px(10.0),
+            )
+        )
     ]
 )

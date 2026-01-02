@@ -37,6 +37,7 @@ pub struct UiRenderer {
     font_texture: u32,
     queued_text: Vec<(String, f32, f32, f32, [f32; 4], Option<String>)>, // (text, x, y, font_size, color, font_family)
     cached_glyphs: Vec<UiGlyph>, // cache last successfully rendered glyphs
+    active_texture: u32,
 }
 
 impl UiRenderer {
@@ -149,6 +150,7 @@ impl UiRenderer {
             font_texture: 0,
             queued_text: Vec::new(),
             cached_glyphs: Vec::new(),
+            active_texture: white_texture,
         }
     }
 
@@ -162,10 +164,26 @@ impl UiRenderer {
     pub fn begin(&mut self) {
         self.batch.clear();
         self.queued_text.clear();
+        self.active_texture = self.white_texture;
     }
 
     pub fn draw_rect(&mut self, rect: Rect, color: [f32; 4]) {
+        if self.active_texture != self.white_texture {
+            self.flush(self.active_texture);
+            self.active_texture = self.white_texture;
+        }
         self.batch.push_rect(rect, color);
+    }
+
+    pub fn draw_textured_rect(&mut self, rect: Rect, texture_id: u32, color: Option<[f32; 4]>) {
+        if self.active_texture != texture_id {
+            self.flush(self.active_texture);
+            self.active_texture = texture_id;
+        }
+        let color = color.unwrap_or([1.0, 1.0, 1.0, 1.0]);
+        // Default standard UVs for a full texture
+        let uv = [0.0, 0.0, 1.0, 1.0];
+        self.batch.push_textured_rect(rect, uv, color);
     }
 
     /// queues text to be rendered at the specified position with the given size and color
@@ -253,7 +271,7 @@ impl UiRenderer {
     /// Ends the current frame by flushing the rectangle batch and processing/flushing queued text.
     /// Ends the current frame by flushing the rectangle batch and processing/flushing queued text.
     pub fn end(&mut self, font_system: &mut FontSystem) {
-        self.flush(self.white_texture);
+        self.flush(self.active_texture);
 
         // queue all text
         for (text, x, y, font_size, color, font_family) in self.queued_text.drain(..) {
