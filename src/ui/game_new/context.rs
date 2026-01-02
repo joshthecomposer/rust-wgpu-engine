@@ -25,4 +25,9 @@ impl<'a> UiContext<'a> {
     pub fn is_mouse_down(&self) -> bool {
         self.input.mouse_current.contains(&MouseButton::Left)
     }
+
+    /// Helper: Get mouse scroll wheel delta (y is vertical: positive = scroll up/away)
+    pub fn scroll_delta(&self) -> Vec2 {
+        self.input.scroll_delta
+    }
 }

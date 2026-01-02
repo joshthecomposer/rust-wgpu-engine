@@ -113,7 +113,7 @@ impl Widget for Text {
                 self.rect.y,
                 font_size,
                 color.to_rgba(),
-                self.style.font_family.clone(),
+                self.style.font_family.as_deref(),
             );
         }
     }

@@ -23,6 +23,9 @@ pub struct InputState {
 
     pub mouse_pos_current: Vec2,
 
+    /// Mouse scroll wheel delta for this frame (y is vertical scroll)
+    pub scroll_delta: Vec2,
+
     pub ray_just_hit: bool,
     pub ray_pos: Vec3,
 
@@ -40,6 +43,8 @@ impl InputState {
             mouse_previous: HashSet::new(),
 
             mouse_pos_current: Vec2::splat(0.0),
+
+            scroll_delta: Vec2::ZERO,
 
             ray_just_hit: false,
             ray_pos: Vec3::splat(0.0),
@@ -117,6 +122,8 @@ impl InputState {
     pub fn update(&mut self) {
         self.keys_previous = self.keys_current.clone();
         self.mouse_previous = self.mouse_current.clone();
+        // Reset scroll delta each frame
+        self.scroll_delta = Vec2::ZERO;
     }
 }
 

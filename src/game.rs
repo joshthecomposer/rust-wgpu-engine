@@ -308,6 +308,16 @@ impl Game {
 
             WindowEvent::CloseRequested => {}
 
+            WindowEvent::MouseWheel { delta, .. } => {
+                // Capture scroll wheel delta for UI
+                use winit::event::MouseScrollDelta;
+                let scroll = match delta {
+                    MouseScrollDelta::LineDelta(x, y) => glam::vec2(*x, *y),
+                    MouseScrollDelta::PixelDelta(pos) => glam::vec2(pos.x as f32, pos.y as f32),
+                };
+                self.input.scroll_delta = scroll;
+            }
+
             WindowEvent::CursorMoved { position, .. } => {
                 if !self.paused {
                     self.world.camera.process_mouse_input_movement(*position);
@@ -470,7 +480,11 @@ impl Game {
                     input: &self.input,
                     messages: &mut self.message_queue,
                 };
-                tree.update(&mut ctx);
+                if tree.update(&mut ctx) {
+                    // Widget state changed (e.g., scrolling), re-layout to apply changes
+                    tree.force_layout();
+                    tree.layout(&mut self.font_system);
+                }
             }
         } else {
             if let Some(tree) = &mut self.custom_ui {
@@ -479,7 +493,11 @@ impl Game {
                     input: &self.input,
                     messages: &mut self.message_queue,
                 };
-                tree.update(&mut ctx);
+                if tree.update(&mut ctx) {
+                    // Widget state changed, re-layout
+                    tree.force_layout();
+                    tree.layout(&mut self.font_system);
+                }
             }
         }
 

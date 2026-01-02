@@ -7,7 +7,7 @@ use crate::ui::game_new::parser::theme::{load_theme, Theme};
 use crate::ui::game_new::styles::{Alignment, Color, Length, Style};
 use crate::ui::game_new::tree::UiTree;
 use crate::ui::game_new::widgets::{
-    BoxWidget, Column, Label, ProgressBar, Row, Text, TextureRect, Widget,
+    BoxWidget, Column, Label, ProgressBar, Row, ScrollView, Text, TextureRect, Widget,
 };
 
 /// Represents a widget definition parsed from RON.
@@ -79,6 +79,15 @@ pub enum NodeDefinition {
         #[serde(default)]
         style: Style,
     },
+    ScrollView {
+        content_height: f32,
+        #[serde(default)]
+        justify: Alignment,
+        #[serde(default)]
+        style: Style,
+        #[serde(default)]
+        children: Vec<NodeDefinition>,
+    },
 }
 
 fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
@@ -134,6 +143,20 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
             fill_color,
             outline_color,
         )),
+        NodeDefinition::ScrollView {
+            content_height,
+            justify,
+            style,
+            children,
+        } => {
+            let mut scroll = ScrollView::new(style, content_height).with_justify(justify);
+
+            for child_def in children {
+                scroll.add_child(build_widget(child_def));
+            }
+
+            Box::new(scroll)
+        }
     }
 }
 
@@ -255,6 +278,14 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
             resolve_style(style, theme);
             resolve_color(fill_color, theme);
             resolve_color(outline_color, theme);
+        }
+        NodeDefinition::ScrollView {
+            style, children, ..
+        } => {
+            resolve_style(style, theme);
+            for child in children {
+                resolve_variables(child, theme);
+            }
         }
     }
 }

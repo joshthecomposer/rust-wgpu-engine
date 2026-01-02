@@ -78,3 +78,39 @@ ProgressBar(
     )
 )
 ```
+
+## Container Widgets
+
+### ScrollView
+A scrollable container that clips children to a viewport using GPU scissor testing. Includes a draggable scrollbar.
+
+**Properties:**
+- `content_height`: `f32` - The total height of the scrollable content area.
+- `justify`: `Alignment` - Vertical alignment of children (Start, Center, End, SpaceBetween, SpaceAround).
+- `style`: Standard style properties. `width` and `height` define the viewport (visible) size.
+- `children`: Child widgets to render inside the scrollable area.
+
+**Behavior:**
+- Children outside the viewport are clipped (not visible).
+- A scrollbar appears on the right edge when `content_height > viewport_height`.
+- Click and drag the scrollbar thumb to scroll.
+- Click on the scrollbar track to jump to that position.
+
+**Example:**
+```ron
+ScrollView(
+    content_height: 500.0,
+    style: (
+        id: Some("my_scroll"),
+        width: Px(300.0),
+        height: Px(200.0),
+        background: Rgba(0.1, 0.1, 0.1, 0.9),
+    ),
+    children: [
+        Label(content: "Item 1", style: ( color: Some(Rgba(1.0, 1.0, 1.0, 1.0)) )),
+        Label(content: "Item 2", style: ( color: Some(Rgba(1.0, 1.0, 1.0, 1.0)) )),
+        Label(content: "Item 3", style: ( color: Some(Rgba(1.0, 1.0, 1.0, 1.0)) )),
+        // ... more items
+    ]
+)
+```

@@ -35,9 +35,20 @@ pub struct UiRenderer {
     // Text Rendering
     white_texture: u32,
     font_texture: u32,
-    queued_text: Vec<(String, f32, f32, f32, [f32; 4], Option<String>)>, // (text, x, y, font_size, color, font_family)
+    queued_text: Vec<(
+        String,
+        f32,
+        f32,
+        f32,
+        [f32; 4],
+        Option<String>,
+        Option<[i32; 4]>,
+    )>, // (text, x, y, font_size, color, font_family, scissor)
     cached_glyphs: Vec<UiGlyph>, // cache last successfully rendered glyphs
     active_texture: u32,
+
+    // scissor clipping (for ScrollView)
+    scissor_stack: Vec<[i32; 4]>, // [x, y, width, height] in GL coordinates
 }
 
 impl UiRenderer {
@@ -151,6 +162,7 @@ impl UiRenderer {
             queued_text: Vec::new(),
             cached_glyphs: Vec::new(),
             active_texture: white_texture,
+            scissor_stack: Vec::new(),
         }
     }
 
@@ -160,11 +172,51 @@ impl UiRenderer {
         self.screen_height = height;
     }
 
-    /// prepares the renderer for a new frame by clearing the current batch and queued text
+    /// Prepares the renderer for a new frame by clearing the current batch and queued text
     pub fn begin(&mut self) {
         self.batch.clear();
         self.queued_text.clear();
         self.active_texture = self.white_texture;
+        self.scissor_stack.clear();
+    }
+
+    /// Pushes a scissor rect onto the stack for clipping.
+    /// UI coordinates (top-left origin) are converted to GL coordinates (bottom-left origin).
+    /// If there's already a scissor rect, the new rect is intersected with it.
+    pub fn push_scissor(&mut self, rect: Rect) {
+        // Flush pending draws before changing scissor state
+        self.flush(self.active_texture);
+
+        // Convert UI coordinates (top-left origin) to GL coordinates (bottom-left origin)
+        let gl_x = rect.x as i32;
+        let gl_y = (self.screen_height - rect.y - rect.height) as i32;
+        let gl_w = rect.width as i32;
+        let gl_h = rect.height as i32;
+
+        let new_scissor = if let Some(current) = self.scissor_stack.last() {
+            // Intersect with current scissor rect for nested clipping
+            Self::intersect_rects(*current, [gl_x, gl_y, gl_w, gl_h])
+        } else {
+            [gl_x, gl_y, gl_w, gl_h]
+        };
+
+        self.scissor_stack.push(new_scissor);
+    }
+
+    /// Pops the current scissor rect from the stack, restoring the previous state.
+    pub fn pop_scissor(&mut self) {
+        // Flush pending draws before changing scissor state
+        self.flush(self.active_texture);
+        self.scissor_stack.pop();
+    }
+
+    /// Intersects two rects in GL coordinates. Returns a rect that is the intersection.
+    fn intersect_rects(a: [i32; 4], b: [i32; 4]) -> [i32; 4] {
+        let x = a[0].max(b[0]);
+        let y = a[1].max(b[1]);
+        let right = (a[0] + a[2]).min(b[0] + b[2]);
+        let top = (a[1] + a[3]).min(b[1] + b[3]);
+        [x, y, (right - x).max(0), (top - y).max(0)]
     }
 
     pub fn draw_rect(&mut self, rect: Rect, color: [f32; 4]) {
@@ -194,10 +246,18 @@ impl UiRenderer {
         y: f32,
         font_size: f32,
         color: [f32; 4],
-        font_family: Option<String>,
+        font_family: Option<&str>,
     ) {
-        self.queued_text
-            .push((text.to_string(), x, y, font_size, color, font_family));
+        let scissor = self.scissor_stack.last().copied();
+        self.queued_text.push((
+            text.to_string(),
+            x,
+            y,
+            font_size,
+            color,
+            font_family.map(|s| s.to_string()),
+            scissor,
+        ));
     }
 
     /// Flushes the current render batch to the GPU using the specified texture.
@@ -247,7 +307,14 @@ impl UiRenderer {
             gl_call!(gl::Disable(gl::DEPTH_TEST));
             gl_call!(gl::DepthMask(gl::FALSE));
             gl_call!(gl::Disable(gl::CULL_FACE));
-            gl_call!(gl::Disable(gl::SCISSOR_TEST));
+
+            // Respect current scissor state (for ScrollView clipping)
+            if let Some(scissor) = self.scissor_stack.last() {
+                gl_call!(gl::Enable(gl::SCISSOR_TEST));
+                gl_call!(gl::Scissor(scissor[0], scissor[1], scissor[2], scissor[3]));
+            } else {
+                gl_call!(gl::Disable(gl::SCISSOR_TEST));
+            }
 
             gl_call!(gl::Enable(gl::BLEND));
             gl_call!(gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA));
@@ -273,8 +340,32 @@ impl UiRenderer {
     pub fn end(&mut self, font_system: &mut FontSystem) {
         self.flush(self.active_texture);
 
-        // queue all text
-        for (text, x, y, font_size, color, font_family) in self.queued_text.drain(..) {
+        // Collect all text to avoid borrowing self.queued_text
+        let all_text: Vec<_> = self.queued_text.drain(..).collect();
+
+        if all_text.is_empty() {
+            return;
+        }
+
+        // Sort text by scissor state to minimize state changes
+        // This assumes Option<[i32; 4]> can be compared, which it can.
+        let mut sorted_text = all_text;
+        sorted_text.sort_by_key(|(_, _, _, _, _, _, scissor)| *scissor);
+
+        let mut current_scissor = sorted_text[0].6;
+        let mut batch_started = false;
+
+        for (text, x, y, font_size, color, font_family, scissor) in sorted_text {
+            // If scissor state changes, flush the previous batch
+            if scissor != current_scissor {
+                if batch_started {
+                    self.render_text_batch(font_system, current_scissor);
+                }
+                current_scissor = scissor;
+                batch_started = false;
+            }
+
+            // Queue text to glyph brush
             let font_id = font_system.get_font_id(font_family.as_deref());
             font_system.glyph_brush.queue(Section {
                 screen_position: (x, y),
@@ -285,19 +376,39 @@ impl UiRenderer {
                     .with_font_id(font_id)],
                 ..Section::default()
             });
+            batch_started = true;
+        }
+
+        // Flush final batch
+        if batch_started {
+            self.render_text_batch(font_system, current_scissor);
+        }
+
+        // Ensure scissor test is disabled and stack is cleared after UI rendering
+        self.scissor_stack.clear();
+        unsafe {
+            gl_call!(gl::Disable(gl::SCISSOR_TEST));
+        }
+    }
+
+    /// Helper to process currently queued text in glyph_brush and render it with a specific scissor
+    fn render_text_batch(&mut self, font_system: &mut FontSystem, scissor: Option<[i32; 4]>) {
+        if let Some(s) = scissor {
+            self.scissor_stack.push(s);
         }
 
         let mut font_texture = self.font_texture;
-        let (cache_width, cache_height) = font_system.glyph_brush.texture_dimensions();
         let mut loop_iteration = 0;
-        const MAX_ITERATIONS: usize = 10;
+        const MAX_ITERATIONS: usize = 100;
 
         loop {
             loop_iteration += 1;
             if loop_iteration > MAX_ITERATIONS {
-                eprintln!("[UiRenderer] Warning: process_queued loop reached max iterations ({}), breaking to prevent infinite loop", MAX_ITERATIONS);
+                eprintln!("[UiRenderer] Warning: process_queued loop reached max iterations ({}), breaking", MAX_ITERATIONS);
                 break;
             }
+
+            let (cache_width, cache_height) = font_system.glyph_brush.texture_dimensions();
 
             let result = font_system.glyph_brush.process_queued(
                 |rect, tex_data| unsafe {
@@ -374,10 +485,10 @@ impl UiRenderer {
             );
 
             match result {
-                Ok(BrushAction::Draw(glyphs)) => {
-                    self.cached_glyphs = glyphs.iter().copied().collect();
+                Ok(BrushAction::Draw(vertices)) => {
+                    self.cached_glyphs = vertices.iter().copied().collect();
 
-                    for glyph in glyphs {
+                    for glyph in vertices {
                         let idx = self.batch.vertices.len() as u32;
                         self.batch.vertices.push(UiVertex::new(
                             glyph.x0,
@@ -456,47 +567,17 @@ impl UiRenderer {
                 }
                 Err(BrushError::TextureTooSmall { suggested }) => {
                     let (new_width, new_height) = suggested;
+
+                    // CRITICAL FIX: Tell glyph_brush that the texture is being resized!
+                    font_system
+                        .glyph_brush
+                        .resize_texture(new_width, new_height);
+
                     unsafe {
                         if font_texture != 0 {
                             gl_call!(gl::DeleteTextures(1, &font_texture));
                         }
-                        gl_call!(gl::GenTextures(1, &mut font_texture));
-                        gl_call!(gl::BindTexture(gl::TEXTURE_2D, font_texture));
-                        gl_call!(gl::TexParameteri(
-                            gl::TEXTURE_2D,
-                            gl::TEXTURE_WRAP_S,
-                            gl::CLAMP_TO_EDGE as i32
-                        ));
-                        gl_call!(gl::TexParameteri(
-                            gl::TEXTURE_2D,
-                            gl::TEXTURE_WRAP_T,
-                            gl::CLAMP_TO_EDGE as i32
-                        ));
-                        gl_call!(gl::TexParameteri(
-                            gl::TEXTURE_2D,
-                            gl::TEXTURE_MIN_FILTER,
-                            gl::LINEAR as i32
-                        ));
-                        gl_call!(gl::TexParameteri(
-                            gl::TEXTURE_2D,
-                            gl::TEXTURE_MAG_FILTER,
-                            gl::LINEAR as i32
-                        ));
-
-                        gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 1));
-                        gl_call!(gl::TexImage2D(
-                            gl::TEXTURE_2D,
-                            0,
-                            gl::R8 as i32,
-                            new_width as i32,
-                            new_height as i32,
-                            0,
-                            gl::RED,
-                            gl::UNSIGNED_BYTE,
-                            ptr::null()
-                        ));
-                        self.font_texture = font_texture;
-                        gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 4));
+                        font_texture = 0;
                     }
                 }
             }
@@ -504,6 +585,10 @@ impl UiRenderer {
 
         self.font_texture = font_texture;
         self.flush(self.font_texture);
+
+        if scissor.is_some() {
+            self.scissor_stack.pop();
+        }
     }
 }
 
