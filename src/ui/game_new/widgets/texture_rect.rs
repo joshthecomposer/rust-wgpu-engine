@@ -54,8 +54,16 @@ impl Widget for TextureRect {
         };
     }
 
-    fn update(&mut self, _ctx: &mut UiContext) -> bool {
-        // TextureRect is static for now, no updates needed unless we animate texture_id
+    fn update(&mut self, ctx: &mut UiContext) -> bool {
+        if self.rect.contains(ctx.mouse_pos()) {
+            if ctx.is_click_start() {
+                if let Some(id) = &self.style.id {
+                    println!("[TextureRect] Clicked. ID: {}", id);
+                    return true;
+                }
+                return false;
+            }
+        }
         false
     }
 

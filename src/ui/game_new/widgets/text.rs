@@ -76,8 +76,9 @@ impl Widget for Text {
             if ctx.is_click_start() {
                 if let Some(id) = &self.style.id {
                     println!("[Text] Clicked. ID: {}", id);
+                    return true;
                 }
-                return true;
+                return false;
             }
         }
         false

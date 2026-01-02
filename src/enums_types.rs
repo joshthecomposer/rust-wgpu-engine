@@ -200,6 +200,7 @@ pub enum CameraState {
     Free,
     Third,
     Locked,
+    Gallery,
 }
 
 #[derive(Clone, Debug)]

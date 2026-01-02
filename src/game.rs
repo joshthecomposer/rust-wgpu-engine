@@ -41,6 +41,7 @@ pub struct Game {
     message_queue: MessageQueue,
     game_ui: GameUiManager,
     custom_ui: Option<UiTree>,
+    gallery_ui: Option<UiTree>,
     custom_ui_renderer: UiRenderer,
     font_system: FontSystem,
     pub should_quit: bool,
@@ -80,10 +81,11 @@ impl Game {
             false => None,
         };
 
-        use crate::ui::game_new::parser::load_view_or_fallback;
-        let mut custom_ui = load_view_or_fallback("src/ui/game_new/views/test_view.ron");
-        custom_ui.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
-        let custom_ui = Some(custom_ui);
+        let custom_ui = None;
+
+        let mut gallery_ui = load_view_or_fallback("src/ui/game_new/views/gallery_view.ron");
+        gallery_ui.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+        let gallery_ui = Some(gallery_ui);
 
         let mut custom_ui_renderer = UiRenderer::new();
         let font_system = FontSystem::new();
@@ -102,6 +104,7 @@ impl Game {
             message_queue: MessageQueue::new(),
             game_ui,
             custom_ui,
+            gallery_ui,
             custom_ui_renderer,
             font_system,
             should_quit: false,
@@ -263,6 +266,9 @@ impl Game {
                 if let Some(tree) = &mut self.custom_ui {
                     tree.set_screen_size(size.width as f32, size.height as f32);
                 }
+                if let Some(tree) = &mut self.gallery_ui {
+                    tree.set_screen_size(size.width as f32, size.height as f32);
+                }
                 self.custom_ui_renderer
                     .set_screen_size(size.width as f32, size.height as f32);
             }
@@ -385,7 +391,8 @@ impl Game {
                                         }
                                     }
                                     CameraState::Third => CameraState::Locked,
-                                    CameraState::Locked => CameraState::Free,
+                                    CameraState::Locked => CameraState::Gallery,
+                                    CameraState::Gallery => CameraState::Free,
                                 };
                             }
 
@@ -418,7 +425,8 @@ impl Game {
                                     }
                                 }
                                 CameraState::Third => CameraState::Locked,
-                                CameraState::Locked => CameraState::Free,
+                                CameraState::Locked => CameraState::Gallery,
+                                CameraState::Gallery => CameraState::Free,
                             };
                         }
 
@@ -455,13 +463,24 @@ impl Game {
         self.world.particles.update(self.time.dt);
 
         // update custom GPU UI
-        if let Some(tree) = &mut self.custom_ui {
-            tree.layout(&mut self.font_system);
-            let mut ctx = UiContext {
-                input: &self.input,
-                messages: &mut self.message_queue,
-            };
-            tree.update(&mut ctx);
+        if self.world.camera.move_state == CameraState::Gallery {
+            if let Some(tree) = &mut self.gallery_ui {
+                tree.layout(&mut self.font_system);
+                let mut ctx = UiContext {
+                    input: &self.input,
+                    messages: &mut self.message_queue,
+                };
+                tree.update(&mut ctx);
+            }
+        } else {
+            if let Some(tree) = &mut self.custom_ui {
+                tree.layout(&mut self.font_system);
+                let mut ctx = UiContext {
+                    input: &self.input,
+                    messages: &mut self.message_queue,
+                };
+                tree.update(&mut ctx);
+            }
         }
 
         // update game UI (pause menu, HUD, etc.) BEFORE processing messages
@@ -677,10 +696,18 @@ impl Game {
         self.game_ui.render(ui_shader, self.time.elapsed as f64);
 
         // render custom GPU UI (test view)
-        if let Some(tree) = &self.custom_ui {
-            self.custom_ui_renderer.begin();
-            tree.render(&mut self.custom_ui_renderer);
-            self.custom_ui_renderer.end(&mut self.font_system);
+        if self.world.camera.move_state == CameraState::Gallery {
+            if let Some(tree) = &self.gallery_ui {
+                self.custom_ui_renderer.begin();
+                tree.render(&mut self.custom_ui_renderer);
+                self.custom_ui_renderer.end(&mut self.font_system);
+            }
+        } else {
+            if let Some(tree) = &self.custom_ui {
+                self.custom_ui_renderer.begin();
+                tree.render(&mut self.custom_ui_renderer);
+                self.custom_ui_renderer.end(&mut self.font_system);
+            }
         }
 
         if let Some(imgui_manager) = &mut self.imgui_manager {

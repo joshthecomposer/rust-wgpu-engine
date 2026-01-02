@@ -1,0 +1,110 @@
+Column(
+    style: (
+        id: Some("gallery_root"),
+        width: Percent(100.0),
+        height: Percent(100.0),
+        background: Rgba(0.05, 0.05, 0.1, 0.9),
+        padding: Px(20.0),
+    ),
+    justify: Start,
+    align: Center,
+    children: [
+        Label(
+            content: "Widget Gallery",
+            style: (
+                id: Some("gallery_title"),
+                font_size: Some(48.0),
+                color: Some(Rgba(1.0, 1.0, 1.0, 1.0)),
+                margin: Px(20.0),
+                font_family: Some("weiholmir"),
+            )
+        ),
+        Row(
+            style: (
+                id: Some("buttons_row"),
+                width: Percent(100.0),
+                height: Px(120.0),
+                margin: Px(20.0),
+            ),
+            justify: SpaceAround,
+            children: [
+                Column(
+                    style: (
+                        id: Some("btn_1"),
+                        width: Px(200.0),
+                        height: Px(60.0),
+                        background: Variable("stone-mild"),
+                        padding_top: Some(Px(10.0)),
+                    ),
+                    justify: Center,
+                    align: Center,
+                    children: [
+                        Label(
+                            content: "Button 1",
+                            style: (
+                                color: Some(Rgba(1.0, 1.0, 1.0, 1.0)),
+                                font_size: Some(20.0),
+                                text_align: Some(Center),
+                            )
+                        )
+                    ]
+                ),
+                 Column(
+                    style: (
+                        id: Some("btn_2"),
+                        width: Px(200.0),
+                        height: Px(60.0),
+                        background: Variable("mana-sky"),
+                        padding_top: Some(Px(10.0)),
+                    ),
+                    justify: Center,
+                    align: Center,
+                    children: [
+                        Label(
+                            content: "Button 2",
+                            style: (
+                                color: Some(Rgba(1.0, 1.0, 1.0, 1.0)),
+                                font_size: Some(20.0),
+                                text_align: Some(Center),
+                            )
+                        )
+                    ]
+                )
+            ]
+        ),
+        Row(
+            style: (
+                id: Some("textures_row"),
+                width: Percent(100.0),
+                height: Px(150.0),
+            ),
+            justify: Center,
+            children: [
+                TextureRect(
+                    texture_id: 0,
+                    style: (
+                        id: Some("tex_1"),
+                        width: Px(100.0),
+                        height: Px(100.0),
+                    )
+                ),
+                 TextureRect(
+                    texture_id: 0,
+                    style: (
+                        id: Some("tex_2"),
+                        width: Px(100.0),
+                        height: Px(100.0),
+                    )
+                )
+            ]
+        ),
+        Label(
+            content: "Press 'F' to cycle views",
+            style: (
+                margin: Px(40.0),
+                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                font_size: Some(16.0),
+            )
+        )
+    ]
+)

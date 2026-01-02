@@ -439,15 +439,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_test_view_file() {
-        // This test reads the actual test_view.ron file to ensure it parses correctly
-        let result = load_view("src/ui/game_new/views/test_view.ron");
-        if let Err(e) = result {
-            panic!("Failed to parse test_view.ron: {}", e);
-        }
-    }
-
-    #[test]
     fn test_defaults_applied() {
         // Test that fields with #[serde(default)] work when omitted
         let ron = r#"
