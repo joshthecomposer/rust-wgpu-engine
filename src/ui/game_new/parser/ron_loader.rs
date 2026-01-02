@@ -3,7 +3,8 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use crate::ui::game_new::styles::{Alignment, Style};
+use crate::ui::game_new::parser::theme::{load_theme, Theme};
+use crate::ui::game_new::styles::{Alignment, Color, Length, Style};
 use crate::ui::game_new::tree::UiTree;
 use crate::ui::game_new::widgets::{BoxWidget, Column, Row, Widget};
 
@@ -89,13 +90,129 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
     }
 }
 
+/// Resolves theme variables within a [`Style`] definition.
+///
+/// This function iterates through all length and color properties of the style,
+/// replacing any variable references with their actual values from the provided [`Theme`].
+fn resolve_style(style: &mut Style, theme: &Theme) {
+    resolve_length(&mut style.width, theme);
+    resolve_length(&mut style.height, theme);
+    resolve_length(&mut style.min_width, theme);
+    resolve_length(&mut style.min_height, theme);
+    resolve_length(&mut style.max_width, theme);
+    resolve_length(&mut style.max_height, theme);
+
+    resolve_length(&mut style.margin, theme);
+    if let Some(l) = &mut style.margin_top {
+        resolve_length(l, theme);
+    }
+    if let Some(l) = &mut style.margin_right {
+        resolve_length(l, theme);
+    }
+    if let Some(l) = &mut style.margin_bottom {
+        resolve_length(l, theme);
+    }
+    if let Some(l) = &mut style.margin_left {
+        resolve_length(l, theme);
+    }
+
+    resolve_length(&mut style.padding, theme);
+    if let Some(l) = &mut style.padding_top {
+        resolve_length(l, theme);
+    }
+    if let Some(l) = &mut style.padding_right {
+        resolve_length(l, theme);
+    }
+    if let Some(l) = &mut style.padding_bottom {
+        resolve_length(l, theme);
+    }
+    if let Some(l) = &mut style.padding_left {
+        resolve_length(l, theme);
+    }
+
+    resolve_color(&mut style.background, theme);
+}
+
+/// Resolves a [`Length`] variable within the provided [`Theme`].
+///
+/// Currently, length variables are not fully supported in the theme definition.
+/// This function will log a warning if a variable reference is encountered.
+fn resolve_length(length: &mut Length, theme: &Theme) {
+    if let Length::Variable(name) = length {
+        // TODO: Support Length variables in theme if needed.
+        // For now, theme only has 'color' and 'string' properly typed in our parser,
+        // but we can assume some convention or just support what's needed.
+        // Given the theme file, it's mostly colors.
+        // If we need lengths, we'd need to update theme parser.
+        // For now, let's leave it no-op or maybe log?
+        eprintln!("Warning: Length variable '{}' not supported yet", name);
+    }
+}
+
+/// Resolves a [`Color`] variable within the provided [`Theme`].
+///
+/// This function looks up the color in the theme and replaces the variable reference
+/// with the actual color value. If the color is not found in the theme, a warning
+/// is logged.
+fn resolve_color(color: &mut Color, theme: &Theme) {
+    if let Color::Variable(name) = color {
+        if let Some(resolved) = theme.get_color(name) {
+            *color = resolved;
+        } else {
+            eprintln!("Warning: Theme color '{}' not found", name);
+        }
+    }
+}
+
+/// Recursively resolves variables in a [`NodeDefinition`].
+///
+/// This function traverses the widget tree and resolves any variables
+/// in the style properties of each widget. It also recursively resolves
+/// variables in child widgets.
+fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
+    match def {
+        NodeDefinition::Row {
+            style, children, ..
+        } => {
+            resolve_style(style, theme);
+            for child in children {
+                resolve_variables(child, theme);
+            }
+        }
+        NodeDefinition::Column {
+            style, children, ..
+        } => {
+            resolve_style(style, theme);
+            for child in children {
+                resolve_variables(child, theme);
+            }
+        }
+        NodeDefinition::Box { style } => {
+            resolve_style(style, theme);
+        }
+    }
+}
+
+/// Loads a view from a RON file.
+///
+/// This function reads the RON file, parses it into a [`NodeDefinition`],
+/// resolves any variables in the style properties, and returns a [`UiTree`].
 pub fn load_view<P: AsRef<Path>>(path: P) -> Result<UiTree, String> {
     let content =
         fs::read_to_string(path.as_ref()).map_err(|e| format!("Failed to read RON file: {}", e))?;
 
-    let root_def: NodeDefinition =
+    let mut root_def: NodeDefinition =
         ron::from_str(&content).map_err(|e| format!("Failed to parse RON: {}", e))?;
 
+    // TODO: Pass this in or cache it
+    let theme_path = "resources/ui/theme.ron";
+    let theme = load_theme(theme_path).unwrap_or_else(|e| {
+        eprintln!("Failed to load theme: {}", e);
+        Theme::new()
+    });
+
+    resolve_variables(&mut root_def, &theme);
+
     let root_widget = build_widget(root_def);
 
     let mut tree = UiTree::new();
@@ -104,10 +221,19 @@ pub fn load_view<P: AsRef<Path>>(path: P) -> Result<UiTree, String> {
     Ok(tree)
 }
 
+/// Loads a view from a RON string.
+///
+/// This function parses the RON string into a [`NodeDefinition`],
+/// resolves any variables in the style properties, and returns a [`UiTree`].
 pub fn load_view_from_str(content: &str) -> Result<UiTree, String> {
-    let root_def: NodeDefinition =
+    let mut root_def: NodeDefinition =
         ron::from_str(content).map_err(|e| format!("Failed to parse RON: {}", e))?;
 
+    // for raw string loading (tests), we default to empty theme or could allow passing one.
+    // assuming empty theme for unit tests to avoid FS dependency.
+    let theme = Theme::new();
+    resolve_variables(&mut root_def, &theme);
+
     let root_widget = build_widget(root_def);
 
     let mut tree = UiTree::new();
@@ -115,6 +241,7 @@ pub fn load_view_from_str(content: &str) -> Result<UiTree, String> {
 
     Ok(tree)
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -250,6 +377,51 @@ mod tests {
         let result = load_view_from_str(ron);
         if let Err(e) = result {
             panic!("Failed to parse Column with span=0: {}", e);
+        }
+    }
+
+    #[test]
+    fn test_resolve_theme_variable() {
+        // Create a theme with a specific color
+        let mut theme = Theme::new();
+        theme
+            .colors
+            .insert("test-color".to_string(), Color::Rgba(0.5, 0.5, 0.5, 1.0));
+
+        // Define a node using a variable
+        let mut root_def = NodeDefinition::Box {
+            style: Style {
+                background: Color::Variable("test-color".to_string()),
+                ..Default::default()
+            },
+        };
+
+        // Resolve variables
+        resolve_variables(&mut root_def, &theme);
+
+        // Check if resolved
+        if let NodeDefinition::Box { style } = root_def {
+            if let Color::Rgba(r, g, b, a) = style.background {
+                assert_eq!(r, 0.5);
+                assert_eq!(g, 0.5);
+                assert_eq!(b, 0.5);
+                assert_eq!(a, 1.0);
+            } else {
+                panic!(
+                    "Color should have been resolved to Rgba, found {:?}",
+                    style.background
+                );
+            }
+        } else {
+            panic!("Root should be a Box");
+        }
+    }
+    #[test]
+    fn test_parse_game_hud_file() {
+        // This test reads the newly created game_hud.ron file
+        let result = load_view("src/ui/game_new/views/game_hud.ron");
+        if let Err(e) = result {
+            panic!("Failed to parse game_hud.ron: {}", e);
         }
     }
 }

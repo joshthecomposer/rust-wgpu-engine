@@ -46,6 +46,9 @@ width: Percent(50.0)
 
 // Auto-size based on content
 width: Auto
+
+// Theme variable
+width: Variable("spacing-md")
 ```
 
 ## Color Values
@@ -59,6 +62,9 @@ background: Hex("#FF8000")
 
 // Hex with alpha
 background: Hex("#FF8000FF")
+
+// Theme variable
+background: Variable("accent")
 ```
 
 ## Default Values

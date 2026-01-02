@@ -71,12 +71,14 @@ See `style_properties.md` for full list of available style properties.
 - `Px(f32)` - Absolute pixels
 - `Percent(f32)` - Percentage of parent (0.0 - 100.0)
 - `Auto` - Automatic sizing based on content
+- `Variable(String)` - Reference to a theme variable (e.g., `Variable("spacing-sm")`)
 
 ## Color Values
 
 - `Rgba(r, g, b, a)` - RGBA values from 0.0 to 1.0
 - `Hex("#RRGGBB")` - Hex color string
 - `Hex("#RRGGBBAA")` - Hex color with alpha
+- `Variable(String)` - Reference to a theme variable (e.g., `Variable("panel-background")`)
 
 ## Example View
 

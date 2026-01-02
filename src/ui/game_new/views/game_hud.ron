@@ -1,0 +1,94 @@
+Column(
+    style: (
+        width: Percent(100.0),
+        height: Percent(100.0),
+        background: Variable("dark-panel-background-solid"),
+    ),
+    children: [
+        Row(
+            style: (
+                width: Percent(100.0),
+                height: Px(60.0),
+                background: Variable("dark-panel-background"),
+                padding: Px(10.0),
+            ),
+            justify: SpaceBetween,
+            align: Center,
+            children: [
+                Box(
+                    style: (
+                        width: Px(200.0),
+                        height: Px(40.0),
+                        background: Variable("deep-void"),
+                    )
+                ),
+                Box(
+                    style: (
+                        width: Px(150.0),
+                        height: Px(40.0),
+                        background: Variable("dark-accent"),
+                    )
+                )
+            ]
+        ),
+        Row(
+            style: (
+                width: Percent(100.0),
+                height: Auto,
+                padding: Px(20.0),
+            ),
+            children: [
+                Column(
+                    style: (
+                        width: Px(250.0),
+                        height: Percent(100.0),
+                        background: Variable("stone-dark"),
+                        margin_right: Some(Px(20.0)),
+                    ),
+                    children: [
+                        Box(
+                            style: (
+                                width: Percent(100.0),
+                                height: Px(50.0),
+                                background: Variable("stone-mild"),
+                                margin_bottom: Some(Px(10.0)),
+                            )
+                        ),
+                        Box(
+                            style: (
+                                width: Percent(100.0),
+                                height: Px(50.0),
+                                background: Variable("stone-mild"),
+                                margin_bottom: Some(Px(10.0)),
+                            )
+                        ),
+                         Box(
+                            style: (
+                                width: Percent(100.0),
+                                height: Px(50.0),
+                                background: Variable("stone-mild"),
+                            )
+                        )
+                    ]
+                ),
+                // Game Viewport / content
+                Column(
+                    style: (
+                        width: Percent(70.0),
+                        height: Percent(100.0),
+                        background: Variable("dark-section-background"),
+                    ),
+                    children: [
+                         Box(
+                            style: (
+                                width: Percent(100.0),
+                                height: Px(200.0),
+                                background: Variable("mana-sky"),
+                            )
+                        )
+                    ]
+                )
+            ]
+        )
+    ]
+)

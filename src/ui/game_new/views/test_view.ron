@@ -10,19 +10,19 @@ Row(
         Column(
             span: 4,
             style: (
-                background: Rgba(0.8, 0.2, 0.2, 1.0),
+                background: Variable("accent"),
             ),
         ),
         Column(
             span: 4,
             style: (
-                background: Rgba(0.2, 0.8, 0.2, 1.0),
+                background: Variable("uncommon-moss"),
             ),
         ),
         Column(
             span: 4,
             style: (
-                background: Rgba(0.2, 0.2, 0.8, 1.0),
+                background: Variable("mana-sky"),
             ),
         ),
     ]

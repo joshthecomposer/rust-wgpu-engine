@@ -11,7 +11,12 @@ pub struct Rect {
 
 impl Rect {
     pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
-        Self { x, y, width, height }
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     pub fn contains(&self, point: Vec2) -> bool {
@@ -40,11 +45,12 @@ impl Rect {
     }
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Length {
     Px(f32),
     Percent(f32),
     Auto,
+    Variable(String),
 }
 
 impl Default for Length {
@@ -59,6 +65,7 @@ impl Length {
             Length::Px(px) => Some(*px),
             Length::Percent(pct) => Some(parent_size * pct / 100.0),
             Length::Auto => None,
+            Length::Variable(_) => None, // Variables should be resolved before layout
         }
     }
 
@@ -71,6 +78,7 @@ impl Length {
 pub enum Color {
     Rgba(f32, f32, f32, f32),
     Hex(String),
+    Variable(String),
 }
 
 impl Color {
@@ -102,6 +110,7 @@ impl Color {
         match self {
             Color::Rgba(r, g, b, a) => [*r, *g, *b, *a],
             Color::Hex(hex) => parse_hex_color(hex),
+            Color::Variable(_) => [0.0, 0.0, 0.0, 1.0], // Should be resolved before rendering
         }
     }
 }
@@ -131,4 +140,3 @@ fn parse_hex_color(hex: &str) -> [f32; 4] {
         [0.0, 0.0, 0.0, 1.0]
     }
 }
-

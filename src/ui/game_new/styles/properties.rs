@@ -46,35 +46,35 @@ pub struct Style {
 
 impl Style {
     pub fn margin_top(&self) -> Length {
-        self.margin_top.unwrap_or(self.margin)
+        self.margin_top.clone().unwrap_or(self.margin.clone())
     }
 
     pub fn margin_right(&self) -> Length {
-        self.margin_right.unwrap_or(self.margin)
+        self.margin_right.clone().unwrap_or(self.margin.clone())
     }
 
     pub fn margin_bottom(&self) -> Length {
-        self.margin_bottom.unwrap_or(self.margin)
+        self.margin_bottom.clone().unwrap_or(self.margin.clone())
     }
 
     pub fn margin_left(&self) -> Length {
-        self.margin_left.unwrap_or(self.margin)
+        self.margin_left.clone().unwrap_or(self.margin.clone())
     }
 
     pub fn padding_top(&self) -> Length {
-        self.padding_top.unwrap_or(self.padding)
+        self.padding_top.clone().unwrap_or(self.padding.clone())
     }
 
     pub fn padding_right(&self) -> Length {
-        self.padding_right.unwrap_or(self.padding)
+        self.padding_right.clone().unwrap_or(self.padding.clone())
     }
 
     pub fn padding_bottom(&self) -> Length {
-        self.padding_bottom.unwrap_or(self.padding)
+        self.padding_bottom.clone().unwrap_or(self.padding.clone())
     }
 
     pub fn padding_left(&self) -> Length {
-        self.padding_left.unwrap_or(self.padding)
+        self.padding_left.clone().unwrap_or(self.padding.clone())
     }
 
     pub fn resolve_margins(&self, parent_width: f32, parent_height: f32) -> (f32, f32, f32, f32) {
@@ -95,4 +95,3 @@ impl Style {
         )
     }
 }
-
