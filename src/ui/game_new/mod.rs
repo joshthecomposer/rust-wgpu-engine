@@ -7,6 +7,7 @@ pub mod parser;
 pub mod render;
 pub mod styles;
 pub mod tree;
+pub mod views;
 pub mod widgets;
 
 pub use context::UiContext;

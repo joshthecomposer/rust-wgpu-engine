@@ -55,7 +55,6 @@ Unit tests for the RON parser are located in `src/ui/game_new/parser/ron_loader.
 - Simple widget parsing (Row, Column, Box)
 - Nested widget structures
 - Default value handling
-- The actual `test_view.ron` file parsing
 
 Run tests with: `cargo test ron_loader`
 
@@ -66,12 +65,10 @@ Run tests with: `cargo test ron_loader`
 - Widget tree construction (Row, Column, Box)
 - Layout engine (basic box model)
 - GPU rendering (batched quads with OpenGL)
-- Test view rendering (see `views/test_view.ron`)
 
 🚧 **In Progress:**
 - Additional widget types (Text, Button, Image, etc.)
 - Event handling (mouse clicks, hover states)
 - Animation system
 - Advanced layout features (flexbox, grid)
-
 

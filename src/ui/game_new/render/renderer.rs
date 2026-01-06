@@ -117,6 +117,28 @@ impl UiRenderer {
                 (6 * mem::size_of::<f32>()) as *const _
             ));
 
+            // rect_bounds attribute (location = 3)
+            gl_call!(gl::EnableVertexAttribArray(3));
+            gl_call!(gl::VertexAttribPointer(
+                3,
+                4,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (8 * mem::size_of::<f32>()) as *const _
+            ));
+
+            // border_radius attribute (location = 4)
+            gl_call!(gl::EnableVertexAttribArray(4));
+            gl_call!(gl::VertexAttribPointer(
+                4,
+                1,
+                gl::FLOAT,
+                gl::FALSE,
+                stride,
+                (12 * mem::size_of::<f32>()) as *const _
+            ));
+
             gl_call!(gl::BindVertexArray(0));
         }
 
@@ -219,22 +241,40 @@ impl UiRenderer {
         [x, y, (right - x).max(0), (top - y).max(0)]
     }
 
-    pub fn draw_rect(&mut self, rect: Rect, color: [f32; 4]) {
+    pub fn draw_rect(&mut self, rect: Rect, color: [f32; 4], border_radius: f32) {
         if self.active_texture != self.white_texture {
             self.flush(self.active_texture);
             self.active_texture = self.white_texture;
         }
-        self.batch.push_rect(rect, color);
+        // Clamp border radius to half the minimum dimension to avoid artifacts
+        let clamped_radius = border_radius
+            .min(rect.width.min(rect.height) * 0.5)
+            .max(0.0);
+        self.batch.push_rect(rect, color, clamped_radius);
     }
 
     pub fn draw_textured_rect(&mut self, rect: Rect, texture_id: u32, color: Option<[f32; 4]>) {
+        self.draw_textured_rect_ex(rect, texture_id, color, false);
+    }
+
+    pub fn draw_textured_rect_ex(
+        &mut self,
+        rect: Rect,
+        texture_id: u32,
+        color: Option<[f32; 4]>,
+        flip_v: bool,
+    ) {
         if self.active_texture != texture_id {
             self.flush(self.active_texture);
             self.active_texture = texture_id;
         }
         let color = color.unwrap_or([1.0, 1.0, 1.0, 1.0]);
-        // Default standard UVs for a full texture
-        let uv = [0.0, 0.0, 1.0, 1.0];
+        // Flip V coordinates for FBO textures if needed
+        let uv = if flip_v {
+            [0.0, 1.0, 1.0, 0.0] // Flipped vertically
+        } else {
+            [0.0, 0.0, 1.0, 1.0] // Normal
+        };
         self.batch.push_textured_rect(rect, uv, color);
     }
 
@@ -268,6 +308,8 @@ impl UiRenderer {
         if self.batch.is_empty() {
             return;
         }
+
+        // println!("[UiRenderer] Flushing batch: {} verts, tex: {}", self.batch.vertices.len(), texture_id);
 
         unsafe {
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo));
@@ -362,7 +404,7 @@ impl UiRenderer {
                     self.render_text_batch(font_system, current_scissor);
                 }
                 current_scissor = scissor;
-                batch_started = false;
+                // batch_started = false;
             }
 
             // Queue text to glyph brush
@@ -495,24 +537,32 @@ impl UiRenderer {
                             glyph.y0,
                             glyph.color,
                             [glyph.u0, glyph.v0],
+                            [0.0; 4],
+                            0.0,
                         ));
                         self.batch.vertices.push(UiVertex::new(
                             glyph.x1,
                             glyph.y0,
                             glyph.color,
                             [glyph.u1, glyph.v0],
+                            [0.0; 4],
+                            0.0,
                         ));
                         self.batch.vertices.push(UiVertex::new(
                             glyph.x1,
                             glyph.y1,
                             glyph.color,
                             [glyph.u1, glyph.v1],
+                            [0.0; 4],
+                            0.0,
                         ));
                         self.batch.vertices.push(UiVertex::new(
                             glyph.x0,
                             glyph.y1,
                             glyph.color,
                             [glyph.u0, glyph.v1],
+                            [0.0; 4],
+                            0.0,
                         ));
                         self.batch.indices.extend_from_slice(&[
                             idx,
@@ -534,24 +584,32 @@ impl UiRenderer {
                                 glyph.y0,
                                 glyph.color,
                                 [glyph.u0, glyph.v0],
+                                [0.0; 4],
+                                0.0,
                             ));
                             self.batch.vertices.push(UiVertex::new(
                                 glyph.x1,
                                 glyph.y0,
                                 glyph.color,
                                 [glyph.u1, glyph.v0],
+                                [0.0; 4],
+                                0.0,
                             ));
                             self.batch.vertices.push(UiVertex::new(
                                 glyph.x1,
                                 glyph.y1,
                                 glyph.color,
                                 [glyph.u1, glyph.v1],
+                                [0.0; 4],
+                                0.0,
                             ));
                             self.batch.vertices.push(UiVertex::new(
                                 glyph.x0,
                                 glyph.y1,
                                 glyph.color,
                                 [glyph.u0, glyph.v1],
+                                [0.0; 4],
+                                0.0,
                             ));
                             self.batch.indices.extend_from_slice(&[
                                 idx,

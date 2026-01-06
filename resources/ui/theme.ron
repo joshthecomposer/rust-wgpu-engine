@@ -28,6 +28,7 @@
 
         // ==================== DESIGN SYSTEM COLORS ====================
         "deep-void": Hex("#0f172a"),
+        "deep-void-alpha": Hex("#0f172aD8"),
         "stone-dark": Hex("#1e293b"),
         "stone-mild": Hex("#334155"),
         "stone-light": Hex("#475569"),
@@ -39,6 +40,7 @@
         "icon-glow": Hex("#d97706"),
         "blood-hp": Hex("#991b1b"),
         "mana-sky": Hex("#075985"),
+        "text-light": Hex("#f3f4f6"),
 
         // ==================== RARITY COLORS ====================
         "common-bone": Hex("#e2e8f0"),

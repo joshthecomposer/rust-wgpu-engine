@@ -41,12 +41,14 @@ Renders an OpenGL texture (by ID) within a rectangle. Useful for displaying FBO 
 
 **Properties:**
 - `texture_id`: `u32` - The OpenGL texture ID to render.
+- `flip_v`: `bool` - Whether to flip the texture vertically. **Required for FBO textures** as they render upside-down by default.
 - `style`: Standard style properties (width, height, margin, etc.).
 
 **Example:**
 ```ron
 TextureRect(
     texture_id: 123,
+    flip_v: true,  // Required for FBO/render target textures
     style: (
         width: Px(64.0),
         height: Px(64.0),
@@ -54,8 +56,10 @@ TextureRect(
 )
 ```
 
+> **Note:** When placing TextureRect inside a bordered Column, add `padding` to the Column equal to or greater than `border_width` to prevent the texture from overlapping the border.
+
 ### ProgressBar
-A bar that visualizes a value within a range.
+A bar that visualizes a value within a range. Displays centered text showing "current / max".
 
 **Properties:**
 - `current_value`: `f32` - The current progress value.
@@ -73,11 +77,13 @@ ProgressBar(
     outline_color: Rgba(1.0, 1.0, 1.0, 1.0),
     style: (
         width: Px(200.0),
-        height: Px(20.0),
-        background: Rgba(0.1, 0.1, 0.1, 1.0), // Empty background color
+        height: Px(22.0),  // Recommended minimum for text visibility
+        background: Rgba(0.1, 0.1, 0.1, 1.0),
     )
 )
 ```
+
+> **Note:** When adding margins to ProgressBars, explicit Px heights are correctly preserved. The text is automatically measured and centered both horizontally and vertically.
 
 ## Container Widgets
 

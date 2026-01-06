@@ -110,7 +110,7 @@ impl Color {
         match self {
             Color::Rgba(r, g, b, a) => [*r, *g, *b, *a],
             Color::Hex(hex) => parse_hex_color(hex),
-            Color::Variable(_) => [0.0, 0.0, 0.0, 1.0], // Should be resolved before rendering
+            Color::Variable(_) => [1.0, 0.0, 1.0, 1.0], // MAGENTA for unresolved variables
         }
     }
 }

@@ -18,6 +18,14 @@ impl Label {
             text: Text::new(content, style),
         }
     }
+
+    pub fn set_text(&mut self, new_text: String) {
+        self.text.set_content(new_text);
+    }
+
+    pub fn get_text(&self) -> &str {
+        &self.text.content
+    }
 }
 
 impl Widget for Label {
@@ -35,5 +43,24 @@ impl Widget for Label {
 
     fn rect(&self) -> Rect {
         self.text.rect()
+    }
+
+    fn id(&self) -> Option<&str> {
+        self.text.id()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn find_widget_mut(&mut self, id: &str) -> Option<&mut dyn Widget> {
+        if self.id() == Some(id) {
+            return Some(self);
+        }
+        None
     }
 }

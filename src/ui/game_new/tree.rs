@@ -61,6 +61,14 @@ impl UiTree {
             root.render(renderer);
         }
     }
+
+    pub fn find_widget_mut(&mut self, id: &str) -> Option<&mut dyn Widget> {
+        if let Some(root) = &mut self.root {
+            root.find_widget_mut(id)
+        } else {
+            None
+        }
+    }
 }
 
 impl Default for UiTree {

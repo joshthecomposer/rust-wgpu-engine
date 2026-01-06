@@ -13,7 +13,7 @@ use crate::ui::message_queue::MessageQueue;
 
 use super::ability_bar::AbilityBarData;
 use super::pause_menu::{PauseMenuContext, PauseMenuView};
-use super::player_hud::{PlayerHudContext, PlayerHudView};
+use super::player_hud::PlayerHudView;
 use super::toast::ToastView;
 
 slint::include_modules!();
@@ -129,12 +129,7 @@ impl GameRootView {
         };
         self.pause_menu_view.update(&self.game_root, pause_ctx);
 
-        // delegate to player HUD view
-        let hud_ctx = PlayerHudContext {
-            entity_manager,
-            paused,
-        };
-        self.player_hud_view.update(&self.game_root, hud_ctx);
+        self.game_root.set_show_player_hud(false);
 
         // update ability bar slot data on game_root for tooltip hover detection
         // (the visual rendering is done separately by AbilityBarRenderer, but GameRoot

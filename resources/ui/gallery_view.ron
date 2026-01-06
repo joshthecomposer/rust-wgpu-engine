@@ -35,6 +35,7 @@ Column(
                         height: Px(60.0),
                         background: Variable("stone-mild"),
                         padding_top: Some(Px(10.0)),
+                        border_radius: 8.0,
                     ),
                     justify: Center,
                     align: Center,

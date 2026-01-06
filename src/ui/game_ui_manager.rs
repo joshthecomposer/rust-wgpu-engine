@@ -20,6 +20,10 @@ use crate::renderer::DefaultTextures;
 use crate::shaders::Shader;
 use crate::ui::ability_bar_renderer::AbilityBarRenderer;
 use crate::ui::game::views::{GameRootContext, GameRootView, SettingsContext, SystemContext};
+use crate::ui::game_new::context::UiContext;
+use crate::ui::game_new::font_system::FontSystem;
+use crate::ui::game_new::render::UiRenderer;
+use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
 use crate::ui::image_cache::UiImageCache;
 use crate::ui::message_queue::MessageQueue;
 use crate::ui::portrait_renderer::PortraitRenderer;
@@ -34,6 +38,7 @@ pub struct GameUiUpdateContext<'a> {
     pub game_config: &'a mut crate::config::game_config::GameConfig,
     pub sound_config: &'a mut crate::config::sound_config::SoundConfig,
     pub elapsed_time: f64,
+    pub input_state: &'a crate::input::InputState,
 }
 
 /// Context for portrait rendering - passed to render().
@@ -75,6 +80,10 @@ pub struct GameUiManager {
     ability_bar_ndc_w: f32,
     ability_bar_ndc_h: f32,
 
+    game_hud_view: GameHudView,
+    ui_renderer: UiRenderer,
+    font_system: FontSystem,
+
     // throttling for main UI update and render (pause menu + HUD)
     last_update_time: f64,
     last_render_time: f64,
@@ -111,6 +120,14 @@ impl GameUiManager {
         // create ability bar renderer (platform already initialized)
         let ability_bar_renderer = AbilityBarRenderer::new(scale_factor);
 
+        let mut font_system = FontSystem::new();
+        let mut ui_renderer = UiRenderer::new();
+        ui_renderer.set_screen_size(width as f32, height as f32);
+        let mut game_hud_view = GameHudView::new(&mut font_system);
+        game_hud_view
+            .tree
+            .set_screen_size(width as f32, height as f32);
+
         let mut manager = Self {
             window,
             buffer,
@@ -132,6 +149,9 @@ impl GameUiManager {
             ability_bar_ndc_y: 0.0,
             ability_bar_ndc_w: 0.0,
             ability_bar_ndc_h: 0.0,
+            game_hud_view,
+            ui_renderer,
+            font_system,
             last_update_time: -999.0, // force first update
             last_render_time: -999.0, // force first render
             accumulated_scroll_x: 0.0,
@@ -308,24 +328,24 @@ impl GameUiManager {
         self.window.set_size(PhysicalSize::new(width, height));
         self.needs_texture_resize = true;
 
+        self.ui_renderer
+            .set_screen_size(width as f32, height as f32);
+        self.game_hud_view
+            .tree
+            .set_screen_size(width as f32, height as f32);
+
         // recalculate ability bar NDC coordinates for new window size
         self.update_ability_bar_ndc();
     }
 
     /// Update the UI each frame.
     pub fn update(&mut self, ctx: GameUiUpdateContext) {
-        // throttle UI updates to 60 Hz to avoid expensive work during scroll spam or high FPS
-        const UPDATE_INTERVAL: f64 = 1.0 / 60.0; // 60 Hz = ~16.6ms
-        let should_update = ctx.elapsed_time - self.last_update_time >= UPDATE_INTERVAL;
-
-        if !should_update {
-            return;
+        // throttle Slint updates to 60 Hz
+        const UPDATE_INTERVAL: f64 = 1.0 / 60.0;
+        if ctx.elapsed_time - self.last_update_time >= UPDATE_INTERVAL {
+            slint::platform::update_timers_and_animations();
+            self.last_update_time = ctx.elapsed_time;
         }
-
-        // always call update_timers_and_animations for Slint's internal state, but throttled to 60Hz
-        slint::platform::update_timers_and_animations();
-
-        self.last_update_time = ctx.elapsed_time;
 
         // dispatch accumulated scroll events (throttled to 60 Hz to prevent Slint from doing expensive work)
         if self.accumulated_scroll_x != 0.0 || self.accumulated_scroll_y != 0.0 {
@@ -357,6 +377,18 @@ impl GameUiManager {
             elapsed_time: ctx.elapsed_time,
         };
         self.game_root_view.update(game_ctx);
+
+        // Update new Game HUD
+        let hud_data = PlayerHudData::from_entity_manager(ctx.entity_manager);
+        let portrait_tex = self.portrait_renderer.get_texture_id();
+
+        let mut ui_ctx = UiContext {
+            input: ctx.input_state,
+            messages: ctx.message_queue,
+        };
+
+        self.game_hud_view
+            .update(&mut ui_ctx, &hud_data, portrait_tex);
 
         // update ability bar renderer (has built-in throttling to avoid querying entity manager every frame)
         use crate::ui::game::views::ability_bar::{AbilityBarContext, AbilityBarView};
@@ -516,42 +548,22 @@ impl GameUiManager {
             );
         }
 
-        // C. DRAW PORTRAIT (Foreground Layer - inside the transparent frame)
+        // C. PORTRAIT & HUD (Custom UI)
         // Only draw if NOT paused!
         if !self.is_paused {
-            let portrait_tex = self.portrait_renderer.get_texture_id();
-
-            // get portrait rect from Slint (in logical pixels)
-            let (px, py, pw, ph) = self.game_root_view.get_portrait_rect();
-
-            // convert logical pixels to physical pixels
-            let px_phys = px * self.scale_factor;
-            let py_phys = py * self.scale_factor;
-            let pw_phys = pw * self.scale_factor;
-            let ph_phys = ph * self.scale_factor;
-
-            // convert to NDC
-            // screen coords: (0,0) = top-left, (width, height) = bottom-right
-            // NDC: (-1,1) = top-left, (1,-1) = bottom-right
-            // the quad vertices go from -1 to 1, so scale represents half-size
-            let ndc_w = pw_phys / self.width as f32; // half-width in NDC
-            let ndc_h = ph_phys / self.height as f32; // half-height in NDC
-
-            // compute center of the portrait rect in NDC
-            let center_x_px = px_phys + pw_phys / 2.0;
-            let center_y_px = py_phys + ph_phys / 2.0;
-            let ndc_x = (2.0 * center_x_px / self.width as f32) - 1.0;
-            let ndc_y = 1.0 - (2.0 * center_y_px / self.height as f32);
-
-            self.draw_screen_quad(
-                shader,
-                portrait_tex,
-                ndc_x, // x center in NDC
-                ndc_y, // y center in NDC
-                ndc_w, // half-width in NDC
-                ndc_h, // half-height in NDC
-                true,  // flip_v for FBO texture
-            );
+            // OLD: Slint-positioned portrait - now handled by custom HUD
+            // (removed to avoid duplicate)
+            
+            // render HUD every frame (GPU is immediate-mode, must draw each frame)
+            // only re-layout when data changes (optimization)
+            if self.game_hud_view.needs_render() {
+                self.game_hud_view.tree.layout(&mut self.font_system);
+                self.game_hud_view.clear_render_flag();
+            }
+            
+            self.ui_renderer.begin();
+            self.game_hud_view.tree.render(&mut self.ui_renderer);
+            self.ui_renderer.end(&mut self.font_system);
         }
 
         unsafe {
@@ -586,25 +598,12 @@ impl GameUiManager {
             );
         }
 
-        // C. DRAW PORTRAIT (Foreground Layer)
+        // C. DRAW HUD (every frame - GPU immediate-mode requires redrawing)
+        // Portrait is now handled by custom UI system via TextureRect widget
         if !self.is_paused {
-            let portrait_tex = self.portrait_renderer.get_texture_id();
-            let (px, py, pw, ph) = self.game_root_view.get_portrait_rect();
-
-            let px_phys = px * self.scale_factor;
-            let py_phys = py * self.scale_factor;
-            let pw_phys = pw * self.scale_factor;
-            let ph_phys = ph * self.scale_factor;
-
-            let ndc_w = pw_phys / self.width as f32;
-            let ndc_h = ph_phys / self.height as f32;
-
-            let center_x_px = px_phys + pw_phys / 2.0;
-            let center_y_px = py_phys + ph_phys / 2.0;
-            let ndc_x = (2.0 * center_x_px / self.width as f32) - 1.0;
-            let ndc_y = 1.0 - (2.0 * center_y_px / self.height as f32);
-
-            self.draw_screen_quad(shader, portrait_tex, ndc_x, ndc_y, ndc_w, ndc_h, true);
+            self.ui_renderer.begin();
+            self.game_hud_view.tree.render(&mut self.ui_renderer);
+            self.ui_renderer.end(&mut self.font_system);
         }
 
         unsafe {

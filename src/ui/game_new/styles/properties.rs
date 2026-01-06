@@ -57,6 +57,13 @@ pub struct Style {
 
     #[serde(default)]
     pub text_align: Option<super::layout::Alignment>,
+
+    #[serde(default)]
+    pub border_width: f32,
+    #[serde(default)]
+    pub border_color: Color,
+    #[serde(default)]
+    pub border_radius: f32,
 }
 
 impl Style {

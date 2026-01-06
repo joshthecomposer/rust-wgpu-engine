@@ -83,7 +83,7 @@ impl Game {
 
         let custom_ui = None;
 
-        let mut gallery_ui = load_view_or_fallback("src/ui/game_new/views/gallery_view.ron");
+        let mut gallery_ui = load_view_or_fallback("resources/ui/gallery_view.ron");
         gallery_ui.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
         let gallery_ui = Some(gallery_ui);
 
@@ -511,6 +511,7 @@ impl Game {
             game_config: &mut self.config,
             sound_config: &mut self.sound_config,
             elapsed_time: self.time.elapsed as f64,
+            input_state: &self.input,
         });
 
         self.game_ui.set_fps(self.time.fps);

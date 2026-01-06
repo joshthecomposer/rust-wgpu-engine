@@ -33,7 +33,7 @@
 | `background` | Color | Background color |
 | `border_color` | Color | Border color (future) |
 | `border_width` | Length | Border width (future) |
-| `border_radius` | Length | Corner radius (future) |
+| `border_radius` | `f32` | `0.0` | Corner radius |
 
 ## Text Properties
 (These properties apply to Text widgets)
@@ -86,5 +86,13 @@ If a property is not specified, these defaults are used:
 - `margin_*`: `Px(0.0)`
 - `padding_*`: `Px(0.0)`
 - `background`: `Rgba(0.0, 0.0, 0.0, 0.0)` (transparent)
+
+
+
+
+
+
+
+
 
 

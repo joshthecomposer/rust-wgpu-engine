@@ -19,7 +19,7 @@ impl RenderBatch {
         self.indices.clear();
     }
 
-    pub fn push_rect(&mut self, rect: Rect, color: [f32; 4]) {
+    pub fn push_rect(&mut self, rect: Rect, color: [f32; 4], border_radius: f32) {
         let base_idx = self.vertices.len() as u32;
 
         let x0 = rect.x;
@@ -27,13 +27,20 @@ impl RenderBatch {
         let x1 = rect.x + rect.width;
         let y1 = rect.y + rect.height;
 
+        // Rect bounds for shader
+        let rect_bounds = [rect.x, rect.y, rect.width, rect.height];
+
         // use the center of a 1x1 white pixel in the texture atlas to avoid edge filtering artifacts.
         let uv = [0.5, 0.5];
 
-        self.vertices.push(UiVertex::new(x0, y0, color, uv)); // top-left
-        self.vertices.push(UiVertex::new(x1, y0, color, uv)); // top-right
-        self.vertices.push(UiVertex::new(x1, y1, color, uv)); // bottom-right
-        self.vertices.push(UiVertex::new(x0, y1, color, uv)); // bottom-left
+        self.vertices
+            .push(UiVertex::new(x0, y0, color, uv, rect_bounds, border_radius)); // top-left
+        self.vertices
+            .push(UiVertex::new(x1, y0, color, uv, rect_bounds, border_radius)); // top-right
+        self.vertices
+            .push(UiVertex::new(x1, y1, color, uv, rect_bounds, border_radius)); // bottom-right
+        self.vertices
+            .push(UiVertex::new(x0, y1, color, uv, rect_bounds, border_radius)); // bottom-left
 
         self.indices.push(base_idx);
         self.indices.push(base_idx + 1);
@@ -58,13 +65,17 @@ impl RenderBatch {
         let v1 = uv[3]; // max v
 
         // Top-left
-        self.vertices.push(UiVertex::new(x0, y0, color, [u0, v0]));
+        self.vertices
+            .push(UiVertex::new(x0, y0, color, [u0, v0], [0.0; 4], 0.0));
         // Top-right
-        self.vertices.push(UiVertex::new(x1, y0, color, [u1, v0]));
+        self.vertices
+            .push(UiVertex::new(x1, y0, color, [u1, v0], [0.0; 4], 0.0));
         // Bottom-right
-        self.vertices.push(UiVertex::new(x1, y1, color, [u1, v1]));
+        self.vertices
+            .push(UiVertex::new(x1, y1, color, [u1, v1], [0.0; 4], 0.0));
         // Bottom-left
-        self.vertices.push(UiVertex::new(x0, y1, color, [u0, v1]));
+        self.vertices
+            .push(UiVertex::new(x0, y1, color, [u0, v1], [0.0; 4], 0.0));
 
         self.indices.push(base_idx);
         self.indices.push(base_idx + 1);

@@ -59,11 +59,30 @@ impl Widget for BoxWidget {
     fn render(&self, renderer: &mut UiRenderer) {
         let color = self.style.background.to_rgba();
         if color[3] > 0.0 {
-            renderer.draw_rect(self.rect, color);
+            renderer.draw_rect(self.rect, color, self.style.border_radius);
         }
     }
 
     fn rect(&self) -> Rect {
         self.rect
+    }
+
+    fn id(&self) -> Option<&str> {
+        self.style.id.as_deref()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn find_widget_mut(&mut self, id: &str) -> Option<&mut dyn Widget> {
+        if self.id() == Some(id) {
+            return Some(self);
+        }
+        None
     }
 }

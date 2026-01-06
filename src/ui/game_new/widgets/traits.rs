@@ -16,8 +16,27 @@ pub trait Widget {
     /// get the computed rect after layout
     fn rect(&self) -> Rect;
 
-    /// get the grid span if this widget is a Column, None otherwise
     fn grid_span(&self) -> Option<GridSpan> {
         None
+    }
+
+    fn id(&self) -> Option<&str> {
+        None
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+
+    /// iterate children (if any)
+    fn for_each_child_mut(&mut self, _f: &mut dyn FnMut(&mut dyn Widget)) {}
+
+    /// recursively find a widget by ID
+    fn find_widget_mut(&mut self, id: &str) -> Option<&mut dyn Widget> {
+        // TODO: implement
+        if self.id() == Some(id) {
+            None
+        } else {
+            None
+        }
     }
 }

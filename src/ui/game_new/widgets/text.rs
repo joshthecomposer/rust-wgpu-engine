@@ -29,6 +29,13 @@ impl Text {
             text_size: (0.0, 0.0),
         }
     }
+
+    pub fn set_content(&mut self, new_content: String) {
+        if self.content == new_content {
+            return; // avoid relayout when content hasn't changed
+        }
+        self.content = new_content;
+    }
 }
 
 use crate::ui::game_new::font_system::FontSystem;
@@ -51,14 +58,15 @@ impl Widget for Text {
         let (measured_width, measured_height) = self.text_size;
 
         // determine final dimensions: prefer explicit style size, fallback to measured text size.
+        // resolve_or(parent_size, default): parent_size for % calc, default for Auto
         let width = self
             .style
             .width
-            .resolve_or(measured_width, max_available_width);
+            .resolve_or(max_available_width, measured_width);
         let height = self
             .style
             .height
-            .resolve_or(measured_height, max_available_height);
+            .resolve_or(max_available_height, measured_height);
 
         let clipped_width = width.min(max_available_width);
         let clipped_height = height.min(max_available_height);
@@ -87,7 +95,7 @@ impl Widget for Text {
     fn render(&self, renderer: &mut UiRenderer) {
         let bg_color = self.style.background.to_rgba();
         if bg_color[3] > 0.0 {
-            renderer.draw_rect(self.rect, bg_color);
+            renderer.draw_rect(self.rect, bg_color, self.style.border_radius);
         }
 
         if let Some(color) = &self.style.color {
@@ -120,5 +128,24 @@ impl Widget for Text {
 
     fn rect(&self) -> Rect {
         self.rect
+    }
+
+    fn id(&self) -> Option<&str> {
+        self.style.id.as_deref()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn find_widget_mut(&mut self, id: &str) -> Option<&mut dyn Widget> {
+        if self.id() == Some(id) {
+            return Some(self);
+        }
+        None
     }
 }

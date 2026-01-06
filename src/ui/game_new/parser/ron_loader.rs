@@ -66,6 +66,8 @@ pub enum NodeDefinition {
         texture_id: u32,
         #[serde(default)]
         style: Style,
+        #[serde(default)]
+        flip_v: bool,
     },
     ProgressBar {
         #[serde(default)]
@@ -129,9 +131,11 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
         NodeDefinition::Box { style } => Box::new(BoxWidget::new(style)),
         NodeDefinition::Text { content, style } => Box::new(Text::new(content, style)),
         NodeDefinition::Label { content, style } => Box::new(Label::new(content, style)),
-        NodeDefinition::TextureRect { texture_id, style } => {
-            Box::new(TextureRect::new(texture_id, style))
-        }
+        NodeDefinition::TextureRect {
+            texture_id,
+            style,
+            flip_v,
+        } => Box::new(TextureRect::new(texture_id, style).with_flip_v(flip_v)),
         NodeDefinition::ProgressBar {
             current_value,
             max_value,
@@ -206,13 +210,17 @@ fn resolve_style(style: &mut Style, theme: &Theme) {
     }
 
     resolve_color(&mut style.background, theme);
+    resolve_color(&mut style.border_color, theme);
+    if let Some(c) = &mut style.color {
+        resolve_color(c, theme);
+    }
 }
 
 /// Resolves a [`Length`] variable within the provided [`Theme`].
 ///
 /// Currently, length variables are not fully supported in the theme definition.
 /// This function will log a warning if a variable reference is encountered.
-fn resolve_length(length: &mut Length, theme: &Theme) {
+fn resolve_length(length: &mut Length, _theme: &Theme) {
     if let Length::Variable(name) = length {
         // TODO: Support Length variables in theme if needed.
         // For now, theme only has 'color' and 'string' properly typed in our parser,
@@ -612,7 +620,7 @@ mod tests {
             Ok(_) => panic!("Should have failed to parse"),
             Err(_) => {
                 // Manually call create_error_view logic since load_view catches it
-                let fallback = create_error_view("Test Error");
+                let _fallback = create_error_view("Test Error");
                 // Verify fallback structure (root is Column, has Label children)
                 // This is a basic sanity check
                 // We can't easily inspect the Box<dyn Widget>, but ensuring it builds is good.

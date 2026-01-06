@@ -299,7 +299,7 @@ impl Widget for ScrollView {
     fn render(&self, renderer: &mut UiRenderer) {
         let bg_color = self.style.background.to_rgba();
         if bg_color[3] > 0.0 {
-            renderer.draw_rect(self.rect, bg_color);
+            renderer.draw_rect(self.rect, bg_color, self.style.border_radius);
         }
 
         let scrollbar_visible = self.content_height > self.rect.height;
@@ -307,7 +307,7 @@ impl Widget for ScrollView {
         // Draw track behind content
         if scrollbar_visible {
             let track_rect = self.scrollbar_track_rect();
-            renderer.draw_rect(track_rect, self.scrollbar_style.track_color());
+            renderer.draw_rect(track_rect, self.scrollbar_style.track_color(), 0.0);
         }
 
         // Clip children to viewport
@@ -330,11 +330,41 @@ impl Widget for ScrollView {
             } else {
                 self.scrollbar_style.thumb_color()
             };
-            renderer.draw_rect(thumb_rect, thumb_color);
+            renderer.draw_rect(thumb_rect, thumb_color, 0.0);
         }
     }
 
     fn rect(&self) -> Rect {
         self.rect
+    }
+
+    fn id(&self) -> Option<&str> {
+        self.style.id.as_deref()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn for_each_child_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
+        for child in &mut self.children {
+            f(&mut **child);
+        }
+    }
+
+    fn find_widget_mut(&mut self, id: &str) -> Option<&mut dyn Widget> {
+        if self.id() == Some(id) {
+            return Some(self);
+        }
+        for child in &mut self.children {
+            if let Some(w) = child.find_widget_mut(id) {
+                return Some(w);
+            }
+        }
+        None
     }
 }
