@@ -265,46 +265,79 @@ impl Widget for Row {
                 x_offset += child_width + gap;
             }
         } else {
-            // fallback: equal distribution (original behavior)
-            let (gap, start_offset) = match self.justify {
-                Alignment::Start => (0.0, 0.0),
-                Alignment::Center => {
-                    let child_width = total_width / child_count as f32;
-                    (0.0, (total_width - child_width * child_count as f32) / 2.0)
+            // non-grid layout: respect individual child widths
+            // first pass: calculate natural widths for each child
+            let mut child_widths = Vec::new();
+            let mut total_used_width = 0.0;
+            let mut flexible_count = 0;
+
+            for child in &mut self.children {
+                let temp_rect = Rect::new(
+                    inner_rect.x,
+                    inner_rect.y,
+                    999999.0, // unlimited width to get natural size
+                    inner_rect.height,
+                );
+                child.layout(font_system, temp_rect);
+                // calculate child's total "footprint" including any margin offset
+                // footprint = (child.x - available.x) + child.width = margin_offset + content_width
+                let margin_offset = child.rect().x - temp_rect.x;
+                let footprint = margin_offset + child.rect().width;
+                if footprint < 999999.0 {
+                    child_widths.push(footprint);
+                    total_used_width += footprint;
+                } else {
+                    child_widths.push(-1.0); // marker for flexible
+                    flexible_count += 1;
                 }
-                Alignment::End => {
-                    let child_width = total_width / child_count as f32;
-                    (0.0, total_width - child_width * child_count as f32)
+            }
+
+            // distribute remaining space to flexible children
+            let remaining_width = (total_width - total_used_width).max(0.0);
+            let flexible_width = if flexible_count > 0 {
+                remaining_width / flexible_count as f32
+            } else {
+                0.0
+            };
+
+            // replace markers with actual flexible width
+            for w in &mut child_widths {
+                if *w < 0.0 {
+                    *w = flexible_width;
                 }
-                Alignment::SpaceBetween => {
-                    if child_count > 1 {
-                        let child_width = total_width / child_count as f32;
-                        let gap = (total_width - child_width * child_count as f32)
-                            / (child_count - 1) as f32;
-                        (gap, 0.0)
-                    } else {
-                        (0.0, 0.0)
-                    }
+            }
+
+            let total_used: f32 = child_widths.iter().sum();
+
+            let start_offset = match self.justify {
+                Alignment::Start => 0.0,
+                Alignment::Center => (total_width - total_used) / 2.0,
+                Alignment::End => total_width - total_used,
+                Alignment::SpaceBetween => 0.0,
+                Alignment::SpaceAround => (total_width - total_used) / (child_count as f32 * 2.0),
+            };
+
+            let gap = match self.justify {
+                Alignment::SpaceBetween if child_count > 1 => {
+                    (total_width - total_used) / (child_count - 1) as f32
                 }
-                Alignment::SpaceAround => {
-                    let child_width = total_width / child_count as f32;
-                    let total_gap = total_width - child_width * child_count as f32;
-                    let gap = total_gap / child_count as f32;
-                    (gap, gap / 2.0)
-                }
+                Alignment::SpaceAround => (total_width - total_used) / child_count as f32,
+                _ => 0.0,
             };
 
             let mut x_offset = start_offset;
-            for child in &mut self.children {
-                let child_width = total_width / child_count as f32;
+            for (_i, child) in self.children.iter_mut().enumerate() {
+                // give child enough width for its needs - let it determine its own size
+                let remaining = (total_width - x_offset).max(0.0);
                 let child_rect = Rect::new(
                     inner_rect.x + x_offset,
                     inner_rect.y,
-                    child_width,
+                    remaining,
                     inner_rect.height,
                 );
                 child.layout(font_system, child_rect);
-                x_offset += child_width + gap;
+                let child_end = child.rect().x + child.rect().width - inner_rect.x;
+                x_offset = child_end + gap;
             }
         }
     }
