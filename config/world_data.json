@@ -1,57 +1,6 @@
 {
   "entities": [
     {
-      "entity_type": "TrashGuy",
-      "faction": "Player",
-      "position": [
-        4.249803,
-        0.24598932,
-        29.379038
-      ],
-      "rotation": [
-        0.0,
-        -0.9967789,
-        0.0,
-        0.08019893
-      ],
-      "weapons": [
-        {
-          "entity_type": "OrcSword",
-          "faction": "Item",
-          "position": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-          ],
-          "weapons": null,
-          "base_speed": null,
-          "health": null,
-          "max_health": null,
-          "mana": null,
-          "max_mana": null,
-          "level": null,
-          "name": null,
-          "jump_height": null,
-          "cleanup_timer": null
-        }
-      ],
-      "base_speed": 6.5,
-      "health": 98750.0,
-      "max_health": null,
-      "mana": null,
-      "max_mana": null,
-      "level": null,
-      "name": null,
-      "jump_height": 1.0,
-      "cleanup_timer": null
-    },
-    {
       "entity_type": "Mountain3",
       "faction": "World",
       "position": [
@@ -74,7 +23,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Rock1",
@@ -99,7 +49,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain10",
@@ -124,7 +75,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain1",
@@ -149,32 +101,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
-    },
-    {
-      "entity_type": "Cactus1",
-      "faction": "World",
-      "position": [
-        10.983,
-        0.207,
-        4.183
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "weapons": null,
-      "base_speed": 4.5,
-      "health": 100.0,
-      "max_health": null,
-      "mana": null,
-      "max_mana": null,
-      "level": null,
-      "name": null,
-      "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "SphereRock",
@@ -199,7 +127,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain2",
@@ -224,7 +153,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain4",
@@ -249,7 +179,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain2",
@@ -274,7 +205,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain6",
@@ -299,7 +231,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain7",
@@ -324,7 +257,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain8",
@@ -349,7 +283,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain9",
@@ -374,7 +309,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain1",
@@ -399,7 +335,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain7",
@@ -424,7 +361,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Mountain4",
@@ -449,7 +387,8 @@
       "level": null,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "MainSpawnableArea",
@@ -474,32 +413,8 @@
       "level": null,
       "name": null,
       "jump_height": null,
-      "cleanup_timer": null
-    },
-    {
-      "entity_type": "DoubleAxe",
-      "faction": "Item",
-      "position": [
-        33.848446,
-        0.5366668,
-        44.955902
-      ],
-      "rotation": [
-        0.39205265,
-        0.38034508,
-        0.5937914,
-        0.5907995
-      ],
-      "weapons": null,
-      "base_speed": null,
-      "health": null,
-      "max_health": null,
-      "mana": null,
-      "max_mana": null,
-      "level": null,
-      "name": null,
-      "jump_height": null,
-      "cleanup_timer": 11.883324
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
       "entity_type": "Boss1",
@@ -524,57 +439,61 @@
       "level": 1,
       "name": null,
       "jump_height": 1.0,
-      "cleanup_timer": null
+      "cleanup_timer": null,
+      "pickup_range": null
     },
     {
-      "entity_type": "DoubleAxe",
-      "faction": "Item",
+      "entity_type": "Peasant1",
+      "faction": "Player",
       "position": [
-        34.895226,
-        0.65038,
-        44.12656
+        14.097553,
+        0.39548385,
+        28.986874
       ],
       "rotation": [
-        -0.59145284,
-        0.40821207,
-        0.40749118,
-        -0.563469
+        0.0,
+        -0.9643268,
+        0.0,
+        0.2647147
       ],
-      "weapons": null,
-      "base_speed": null,
-      "health": null,
-      "max_health": null,
-      "mana": null,
-      "max_mana": null,
-      "level": null,
+      "weapons": [
+        {
+          "entity_type": "FireStaff",
+          "faction": "Item",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "weapons": null,
+          "base_speed": null,
+          "health": null,
+          "max_health": null,
+          "mana": null,
+          "max_mana": null,
+          "level": null,
+          "name": null,
+          "jump_height": null,
+          "cleanup_timer": null,
+          "pickup_range": null
+        }
+      ],
+      "base_speed": 5.0,
+      "health": 100000.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
       "name": null,
-      "jump_height": null,
-      "cleanup_timer": 11.266666
-    },
-    {
-      "entity_type": "DoubleAxe",
-      "faction": "Item",
-      "position": [
-        35.928074,
-        0.6938113,
-        45.24212
-      ],
-      "rotation": [
-        0.123107284,
-        0.4771066,
-        -0.7006897,
-        -0.5159921
-      ],
-      "weapons": null,
-      "base_speed": null,
-      "health": null,
-      "max_health": null,
-      "mana": null,
-      "max_mana": null,
-      "level": null,
-      "name": null,
-      "jump_height": null,
-      "cleanup_timer": 11.866657
+      "jump_height": 1.0,
+      "cleanup_timer": null,
+      "pickup_range": 3.0
     }
   ]
 }

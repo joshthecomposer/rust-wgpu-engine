@@ -5,10 +5,12 @@ use rapier3d::parry::utils::hashmap::HashMap;
 
 use crate::{
     camera::Camera,
+    command_buffer::{CommandBuffer, PartKind},
     config::{
         emitter_data::{EmitterBlackboard, EmitterData},
         Config,
     },
+    entity_manager::EntityManager,
     gl_call,
     shaders::Shader,
 };
@@ -404,7 +406,7 @@ impl ParticleSystem {
             gl_call!(gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
-                gl::RGBA8 as i32,
+                gl::SRGB8_ALPHA8 as i32,
                 img_width as i32,
                 img_height as i32,
                 0,
@@ -492,6 +494,7 @@ impl ParticleSystem {
         emitter.origin = origin;
         emitter.gravity = ed.gravity;
         emitter.pps = ed.pps;
+        emitter.has_bloom = ed.has_bloom;
 
         Self::calculate_particle_data(ed, origin, direction, &mut emitter);
 
@@ -499,7 +502,49 @@ impl ParticleSystem {
         self.emitters.push(emitter);
     }
 
-    pub fn update(&mut self, dt: f32) {
+    pub fn update(&mut self, dt: f32, cmds: &mut CommandBuffer, em: &EntityManager) {
+        // ==========================
+        // evaluate commands
+        // ==========================
+        let partcmds = std::mem::take(&mut cmds.particles);
+
+        for c in partcmds {
+            match c.kind {
+                PartKind::WeaponOrigin(id) => {
+                    let Some(origin) = em.world_weapon_tips.get(id) else {
+                        eprintln!("Failed to find the tip for the given weapon");
+                        continue;
+                    };
+
+                    let Some(owner) = em.owners.get(id) else {
+                        eprintln!("Weapon has no owner, this seems wrong...");
+                        continue;
+                    };
+
+                    let yaw = em.yaws.get(*owner).unwrap();
+
+                    let direction = vec3(yaw.sin(), 0.0, yaw.cos());
+
+                    self.spawn_oneshot_emitter(&c.name, *origin, Some(direction));
+                }
+                PartKind::EntityOrigin(id) => {
+                    let Some(trans) = em.transforms.get(id) else {
+                        eprintln!("Failed to find the transform for the entity");
+                        continue;
+                    };
+
+                    self.spawn_oneshot_emitter(&c.name, trans.position, Some(c.direction));
+                }
+                PartKind::WorldOrigin(pos) => {
+                    self.spawn_oneshot_emitter(&c.name, pos, Some(c.direction));
+                }
+                _ => eprintln!("Not implemented yet in the command system"),
+            }
+        }
+
+        // ==========================
+        // update emitters
+        // ==========================
         let ed = &self.emitter_data;
 
         for e in self.emitters.iter_mut() {

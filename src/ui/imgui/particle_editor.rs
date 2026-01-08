@@ -82,13 +82,12 @@ impl ParticleEditor {
                     ui.separator();
 
                     if input.ray_just_hit {
-                        self.new_pos = input.ray_pos.into();
-                        input.ray_just_hit = false;
+                        new_emitter.origin = input.ray_pos.into();
                     }
 
                     if Drag::new("Emitter Position")
                         .speed(0.1)
-                        .build_array(ui, &mut self.new_pos)
+                        .build_array(ui, &mut new_emitter.origin)
                     {};
                     if Drag::new("Emitter Direction")
                         .speed(0.1)
@@ -230,6 +229,8 @@ impl ParticleEditor {
                     ui.separator();
                 }
 
+                input.ray_just_hit = false;
+
                 // ===========================================================
                 // Gather Emitter Data
                 // ===========================================================
@@ -301,7 +302,7 @@ impl ParticleEditor {
                     };
 
                     if self.do_render {
-                        let origin = self.new_pos.into();
+                        let origin = new_emitter.origin.into();
 
                         if payload.pps.is_some() {
                             // CONTINUOUS EMITTER PREVIEW
@@ -344,7 +345,7 @@ impl ParticleEditor {
                                     .insert(payload.name.clone(), payload.clone());
                                 particles
                                     .emitter_data
-                                    .save_to_file("config/particle_emitters.toml");
+                                    .save_to_file("config/emitter_data.json");
                             } else {
                                 eprintln!("[Warning] emitter not saved, name was already taken.");
                             }

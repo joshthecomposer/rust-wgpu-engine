@@ -42,6 +42,14 @@ pub struct AnimationPropHelper {
     pub hurtbox_activation: Vec<u32>,
     #[serde(default)]
     pub hold_frame: Option<u32>,
+    #[serde(default)]
+    pub interrupt_frame: Option<u32>,
+    #[serde(default = "default_true")]
+    pub reset_on_change: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Deserialize, Debug, Serialize, Clone)]

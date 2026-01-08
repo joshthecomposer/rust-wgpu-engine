@@ -19,6 +19,7 @@ use crate::lights::Lights;
 use crate::renderer::DefaultTextures;
 use crate::shaders::Shader;
 use crate::ui::ability_bar_renderer::AbilityBarRenderer;
+use crate::ui::game::views::ability_bar::AbilityBarView;
 use crate::ui::game::views::{GameRootContext, GameRootView, SettingsContext, SystemContext};
 use crate::ui::image_cache::UiImageCache;
 use crate::ui::message_queue::MessageQueue;
@@ -82,6 +83,7 @@ pub struct GameUiManager {
     // scroll event accumulation (to throttle scroll event dispatching)
     accumulated_scroll_x: f32,
     accumulated_scroll_y: f32,
+    ability_bar_view: AbilityBarView,
 }
 
 impl GameUiManager {
@@ -136,6 +138,7 @@ impl GameUiManager {
             last_render_time: -999.0, // force first render
             accumulated_scroll_x: 0.0,
             accumulated_scroll_y: 0.0,
+            ability_bar_view: AbilityBarView::new(),
         };
 
         // compute ability bar NDC coordinates once
@@ -366,8 +369,8 @@ impl GameUiManager {
             image_cache: &mut self.image_cache,
             elapsed_time: ctx.elapsed_time,
         };
-        let ability_bar_view = AbilityBarView::new();
-        ability_bar_view.update(&mut self.ability_bar_renderer, ability_ctx);
+        self.ability_bar_view
+            .update(&mut self.ability_bar_renderer, ability_ctx);
     }
 
     /// Set the current FPS for the FPS counter.

@@ -1,0 +1,201 @@
+use glam::{vec3, Vec3};
+
+use crate::{
+    animation::animator::Animator,
+    command_buffer::{
+        CommandBuffer, ImpulseKind, LocoCmd, LocoIntent, PartCmd, PartKind, SoundCmd, SoundKind,
+    },
+    entity_manager::EntityManager,
+    enums_types::{
+        AnimationType, CombatState, ControlState, GroundedState, LocoState, PlayerController,
+        SoundType, ANIMATION_EPSILON,
+    },
+    input::InputState,
+    state_machines::player::{
+        combat::combat_state_machine,
+        orchestrator::{ability_just_pressed, anim_for_loco_state},
+    },
+    util::constants::{BASIC, DEFENSIVE, EVADE, SKILL1, SKILL2, ULTIMATE},
+};
+
+pub fn locomotion_state_machine(
+    ctrl: &mut PlayerController,
+    input: &InputState,
+    cmds: &mut CommandBuffer,
+    player_id: usize,
+    weap_id: Option<usize>,
+    animator: &Animator,
+    dt: f32,
+    gs: &GroundedState,
+    pos: Vec3,
+) {
+    // Are we locked in combat?
+    if !ctrl.can_loco() {
+        return;
+    }
+
+    let intent = LocoIntent::build_loco_intent(input);
+
+    'a: {
+        match ctrl.loco_state {
+            LocoState::Init => {
+                cmds.next_anim(player_id, AnimationType::Idle, None);
+                ctrl.loco_state = LocoState::Idle;
+            }
+            LocoState::Idle => {
+                // Go to combat?
+                if let (Some(ability), Some(weap_id)) = (ability_just_pressed(input), weap_id) {
+                    transition_to_combat(player_id, ctrl, cmds, ability, weap_id);
+                    break 'a;
+                }
+
+                check_new_loco(intent, input, ctrl, cmds, player_id);
+            }
+            LocoState::Running => {
+                if let (Some(ability), Some(weap_id)) = (ability_just_pressed(input), weap_id) {
+                    transition_to_combat(player_id, ctrl, cmds, ability, weap_id);
+                    break 'a;
+                }
+
+                check_new_loco(intent, input, ctrl, cmds, player_id);
+            }
+            LocoState::Jumping => {
+                let jump_anim = animator.animations.get(&AnimationType::Jump).unwrap();
+
+                if jump_anim.current_segment.get() >= 8 && !ctrl.jump_command_issued {
+                    cmds.jump(player_id);
+                    cmds.loco.push(LocoCmd {
+                        target: player_id,
+                        intent,
+                    });
+                    ctrl.jump_command_issued = true;
+                }
+
+                if gs.just_left {
+                    loco_transition(player_id, ctrl, cmds, LocoState::Airborne, intent);
+                    ctrl.jump_command_issued = false;
+                }
+            }
+            LocoState::Airborne => {
+                ctrl.loco_time += dt;
+
+                let jump_anim = animator.animations.get(&AnimationType::Jump).unwrap();
+
+                if gs.just_landed {
+                    loco_transition(player_id, ctrl, cmds, LocoState::Running, intent);
+                    cmds.particles.push(PartCmd {
+                        name: "DesertLand".to_string(),
+                        direction: vec3(0.0, 1.0, 0.0),
+                        kind: PartKind::WorldOrigin(pos),
+                    });
+                    cmds.sound3d(pos);
+                    break 'a;
+                }
+
+                if jump_anim.current_segment.get() >= 15
+                    && animator.next_animation != AnimationType::Freefall
+                {
+                    cmds.next_anim(player_id, AnimationType::Freefall, None);
+                    break 'a;
+                }
+            }
+            _ => println!("this shouldn't have happened dog"),
+        }
+    }
+}
+
+// Should we do a new locomotion state?
+pub fn check_new_loco(
+    intent: LocoIntent,
+    input: &InputState,
+    ctrl: &mut PlayerController,
+    cmds: &mut CommandBuffer,
+    player_id: usize,
+) {
+    if input.space_just_pressed() {
+        loco_transition(player_id, ctrl, cmds, LocoState::Jumping, intent);
+        return;
+    }
+
+    if !intent.is_zero() {
+        loco_transition(player_id, ctrl, cmds, LocoState::Running, intent);
+        return;
+    }
+
+    if intent.is_zero() {
+        loco_transition(player_id, ctrl, cmds, LocoState::Idle, intent);
+        return;
+    }
+}
+
+pub fn loco_transition(
+    player_id: usize,
+    ctrl: &mut PlayerController,
+    cmds: &mut CommandBuffer,
+    state: LocoState,
+    intent: LocoIntent,
+) {
+    if state == LocoState::Jumping {
+        ctrl.loco_time = 0.0;
+        ctrl.loco_state = state;
+        cmds.next_anim(player_id, AnimationType::Jump, None);
+        return;
+    }
+
+    if state == LocoState::Airborne {
+        ctrl.loco_time = 0.0;
+        ctrl.loco_state = state;
+        return;
+    }
+
+    ctrl.loco_state = state;
+    ctrl.loco_time = 0.0;
+    cmds.next_anim(player_id, anim_for_loco_state(&state), None);
+
+    cmds.loco.push(LocoCmd {
+        target: player_id,
+        intent,
+    });
+}
+
+pub fn ability_to_anim(ability: u32) -> AnimationType {
+    match ability {
+        BASIC => AnimationType::Basic1,
+        EVADE => AnimationType::DashF,
+        DEFENSIVE => AnimationType::Block,
+        _ => panic!("Not yet"),
+    }
+}
+
+pub fn ability_to_state(ability: u32) -> CombatState {
+    match ability {
+        BASIC => CombatState::Basic1,
+        EVADE => CombatState::Evade,
+        DEFENSIVE => CombatState::Defensive,
+        _ => panic!("Not yet"),
+    }
+}
+
+fn transition_to_combat(
+    player_id: usize, // id
+    ctrl: &mut PlayerController,
+    cmds: &mut CommandBuffer,
+    ability: u32,
+    weap_id: usize,
+) {
+    match ability {
+        EVADE => {
+            println!("IMPULSE");
+            cmds.impulse(
+                player_id,
+                None,
+                ImpulseKind::Action,
+                glam::vec3(-10.0, 0.0, -10.0),
+            );
+        }
+        _ => (),
+    }
+    ctrl.control_state = ControlState::Combat;
+    cmds.next_anim(player_id, ability_to_anim(ability), Some(weap_id));
+    ctrl.combat_state = Some(ability_to_state(ability));
+}

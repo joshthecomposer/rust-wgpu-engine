@@ -26,9 +26,9 @@ use crate::{
     },
     debug::gizmos::{Cuboid, Cylinder, Dimension, Pill},
     enums_types::{
-        ActiveItem, AnimationType, AttackState, FrameActivation, GroundedState, HitboxShape,
-        JumpHeight, Knockback, PhysicsHandle, PlayerController, PlayerState, Rotator, SimState,
-        SimStateController, Transform, VisualEffect,
+        ActiveItem, AnimationType, AttackState, ControlState, FrameActivation, GroundedState,
+        HitboxShape, JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController,
+        PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect,
     },
     input::InputState,
     physics::PhysicsState,
@@ -49,6 +49,8 @@ pub struct EntityManager {
     pub collider_transforms: SparseSet<Transform>,
     pub prev_collider_transforms: SparseSet<Transform>,
     pub collider_to_entity: HashMap<ColliderHandle, usize>,
+
+    pub world_weapon_tips: SparseSet<Vec3>,
 
     // Mostly for "areas" that are gizmo-only entities.
     pub dimensions: SparseSet<Dimension>,
@@ -95,6 +97,13 @@ pub struct EntityManager {
     pub cleanup_timer: SparseSet<f32>,
     pub pickup_ranges: SparseSet<f32>,
 
+    // Projectile stuff
+    // Source id is the ID of the character who originally spawned this projectile (such as a
+    // wizard casting a fireball, etc.)
+    pub source_ids: SparseSet<usize>,
+    // how long the projectile lasts before dying.
+    pub lifetimes: SparseSet<f32>,
+
     /// Abilities assigned to weapon entities.
     pub weapon_abilities: SparseSet<WeaponAbilities>,
 
@@ -122,6 +131,7 @@ impl EntityManager {
             collider_transforms: SparseSet::with_capacity(max_entities),
             prev_collider_transforms: SparseSet::with_capacity(max_entities),
             collider_to_entity: HashMap::new(),
+            world_weapon_tips: SparseSet::with_capacity(max_entities),
             dimensions: SparseSet::with_capacity(max_entities),
             inventories: SparseSet::with_capacity(max_entities),
             active_items: SparseSet::with_capacity(max_entities),
@@ -160,6 +170,8 @@ impl EntityManager {
             grounded_states: SparseSet::with_capacity(max_entities),
             cleanup_timer: SparseSet::with_capacity(max_entities),
             pickup_ranges: SparseSet::with_capacity(max_entities),
+            source_ids: SparseSet::with_capacity(max_entities),
+            lifetimes: SparseSet::with_capacity(max_entities),
             weapon_abilities: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
@@ -206,32 +218,21 @@ impl EntityManager {
         instance: &EntityInstance,
         ps: &mut PhysicsState,
     ) {
-        // check if this is the player (for starter weapon detection)
-        let is_player = self
-            .factions
-            .get(parent_id)
-            .map(|f| f == "Player")
-            .unwrap_or(false);
-
         if let Some(weapons_list) = &instance.weapons {
-            for (idx, weapon) in weapons_list.iter().enumerate() {
+            for weapon in weapons_list.iter() {
                 let weapon_id = self.create_mesh_entity(weapon, ps);
 
                 self.hitsets.insert(weapon_id, HashSet::new());
-
                 self.owners.insert(weapon_id, parent_id);
 
                 // generate abilities for this weapon
-                // first weapon of player gets fixed starter abilities
-                let is_starter = is_player && idx == 0;
-                if let Some(abilities) = WeaponAbilities::generate(
+                let abilities = WeaponAbilities::generate(
                     &weapon.entity_type,
                     &self.weapon_pools_config,
                     &mut self.rng,
-                    is_starter,
-                ) {
-                    self.weapon_abilities.insert(weapon_id, abilities);
-                }
+                );
+
+                self.weapon_abilities.insert(weapon_id, abilities);
 
                 match self.inventories.get_mut(parent_id) {
                     Some(inv) => {
@@ -316,6 +317,8 @@ impl EntityManager {
         self.next_entity_id += 1;
     }
 
+    pub fn create_fireball(radius: f32, source_id: Option<usize>) {}
+
     pub fn create_mesh_entity(
         &mut self,
         instance: &EntityInstance,
@@ -345,9 +348,16 @@ impl EntityManager {
                         self.player_controllers.insert(
                             parent_id,
                             PlayerController {
-                                state: PlayerState::Init,
-                                attack_state: AttackState::Attack1,
-                                time_in_state: 0.0,
+                                loco_state: LocoState::Init,
+                                loco_time: 0.0,
+                                combat_state: None,
+                                combat_time: 0.0,
+                                life_state: LifeState::Alive,
+                                control_state: ControlState::Player,
+                                buffered_action: None,
+                                buffer_timer: 0.0,
+                                jump_command_issued: false,
+                                particle_cmd_issued: false,
                             },
                         );
 
@@ -515,6 +525,8 @@ impl EntityManager {
                         });
                     }
                     anim.hold_frame = prop.hold_frame;
+                    anim.interrupt_frame = prop.interrupt_frame;
+                    anim.reset_on_change = prop.reset_on_change;
                 }
             }
 
@@ -533,6 +545,8 @@ impl EntityManager {
                 blend_factor: 0.0,
                 blend_time: 0.11,
             };
+
+            animator.set_next_animation(AnimationType::Idle);
 
             self.animators.insert(parent_id, animator);
             self.skellingtons.insert(parent_id, skellington);
@@ -993,8 +1007,14 @@ impl EntityManager {
 
     pub fn delete_entities(&mut self, sm: &mut SoundManager, ps: &mut PhysicsState) {
         for id in &self.entity_trashcan {
-            if let Some(ph) = self.physics_handles.get_mut(*id) {
+            let id = *id;
+
+            // -----------------------------
+            // Physics cleanup
+            // -----------------------------
+            if let Some(ph) = self.physics_handles.get_mut(id) {
                 self.collider_to_entity.remove(&ph.collider);
+
                 ps.rigid_body_set.remove(
                     ph.rigid_body,
                     &mut ps.island_manager,
@@ -1005,73 +1025,113 @@ impl EntityManager {
                 );
             }
 
-            self.transforms.remove(*id);
-            self.prev_transforms.remove(*id);
-            self.local_corrections.remove(*id);
-            self.collider_gizmos.remove(*id);
-            self.collider_transforms.remove(*id);
-            self.prev_collider_transforms.remove(*id);
+            // If you keep per-entity hitsets of collider handles, clear them too.
+            // (Not strictly required, but keeps memory and references tidy.)
+            self.hitsets.remove(id);
 
-            // remove the ownership relation from the inventory item_bones
-            if let Some(inv) = self.inventories.get(*id) {
-                for i in inv.iter() {
-                    self.owners.remove(*i);
-                    self.cleanup_timer.insert(*i, 0.0);
+            // -----------------------------
+            // Core transforms / render gizmos
+            // -----------------------------
+            self.transforms.remove(id);
+            self.prev_transforms.remove(id);
+            self.local_corrections.remove(id);
+            self.collider_gizmos.remove(id);
+            self.collider_transforms.remove(id);
+            self.prev_collider_transforms.remove(id);
+
+            // "Area" / gizmo-only dimensions
+            self.dimensions.remove(id);
+
+            // -----------------------------
+            // Inventory / item ownership relations
+            // -----------------------------
+
+            // remove the ownership relation from the inventory items
+            if let Some(inv) = self.inventories.get(id) {
+                for item_id in inv.iter().copied() {
+                    self.owners.remove(item_id);
+                    self.is_equipped.remove(item_id);
+                    self.cleanup_timer.insert(item_id, 0.0);
                 }
             }
-            self.inventories.remove(*id);
+            self.inventories.remove(id);
 
-            // find the active weapon to drop
-            if let Some(ai) = self.active_items.get(*id) {
-                match ai.right_hand {
-                    Some(rhid) => {
-                        self.owners.remove(rhid);
-                        self.is_equipped.remove(rhid);
-                        self.cleanup_timer.insert(rhid, 0.0);
-                    }
-                    None => (),
+            // drop active held items (weapons etc.)
+            if let Some(ai) = self.active_items.get(id) {
+                if let Some(rhid) = ai.right_hand {
+                    self.owners.remove(rhid);
+                    self.is_equipped.remove(rhid);
+                    self.cleanup_timer.insert(rhid, 0.0);
                 }
-                match ai.left_hand {
-                    Some(lhid) => {
-                        self.owners.remove(lhid);
-                        self.is_equipped.remove(lhid);
-                        self.cleanup_timer.insert(lhid, 0.0);
-                    }
-                    None => (),
+                if let Some(lhid) = ai.left_hand {
+                    self.owners.remove(lhid);
+                    self.is_equipped.remove(lhid);
+                    self.cleanup_timer.insert(lhid, 0.0);
                 }
             }
-            self.active_items.remove(*id);
+            self.active_items.remove(id);
 
-            self.owners.remove(*id);
+            // sockets/attachment metadata for items
+            self.item_bones.remove(id);
 
-            // find the equipped flags to drop
-            self.is_equipped.remove(*id);
+            // if the entity itself is owned by something (i.e. it's an item in an inventory),
+            // clear that too
+            self.owners.remove(id);
+            self.is_equipped.remove(id);
 
-            self.factions.remove(*id);
-            self.entity_types.remove(*id);
-            self.models.remove(*id);
-            self.animators.remove(*id);
-            self.skellingtons.remove(*id);
-            self.rotators.remove(*id);
-            self.impulse_applied.remove(*id);
-            self.player_controllers.remove(*id);
-            self.simstate_controllers.remove(*id);
-            self.destinations.remove(*id);
-            self.v_effects.remove(*id);
-            self.physics_handles.remove(*id);
-            self.hitsets.remove(*id);
-            self.yaws.remove(*id);
-            self.knockbacks.remove(*id);
-            self.healths.remove(*id);
-            self.base_speeds.remove(*id);
-            self.aggro_ranges.remove(*id);
-            self.jump_heights.remove(*id);
-            self.total_masses.remove(*id);
-            self.model_heights.remove(*id);
-            self.grounded_states.remove(*id);
-            self.cleanup_timer.remove(*id);
+            // Abilities assigned to weapon entities
+            self.weapon_abilities.remove(id);
 
-            sm.cleanup_entity_sounds(*id);
+            // -----------------------------
+            // Gameplay state/components
+            // -----------------------------
+            self.factions.remove(id);
+            self.entity_types.remove(id);
+            self.models.remove(id);
+            self.animators.remove(id);
+            self.skellingtons.remove(id);
+            self.rotators.remove(id);
+            self.impulse_applied.remove(id);
+            self.player_controllers.remove(id);
+            self.simstate_controllers.remove(id);
+            self.destinations.remove(id);
+            self.v_effects.remove(id);
+
+            self.yaws.remove(id);
+            self.knockbacks.remove(id);
+
+            self.healths.remove(id);
+            self.max_healths.remove(id);
+
+            self.manas.remove(id);
+            self.max_manas.remove(id);
+
+            self.levels.remove(id);
+            self.names.remove(id);
+
+            self.base_speeds.remove(id);
+            self.aggro_ranges.remove(id);
+            self.jump_heights.remove(id);
+            self.total_masses.remove(id);
+            self.model_heights.remove(id);
+            self.grounded_states.remove(id);
+
+            self.pickup_ranges.remove(id);
+
+            self.cleanup_timer.remove(id);
+
+            // -----------------------------
+            // Misc / bookkeeping
+            // -----------------------------
+
+            // Remove from selection list
+            self.selected.retain(|&x| x != id);
+
+            // Remove mapping last (after physics removal used it)
+            self.physics_handles.remove(id);
+
+            // Sound cleanup last
+            sm.cleanup_entity_sounds(id);
         }
 
         self.entity_trashcan.clear();
@@ -1128,22 +1188,6 @@ impl EntityManager {
         }
 
         map
-    }
-
-    pub fn player_get_ids_for_state(&self, state: PlayerState) -> Vec<usize> {
-        let result: Vec<usize> = self
-            .player_controllers
-            .iter()
-            .filter_map(|f| {
-                if f.value().state == state {
-                    Some(f.key())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        result
     }
 
     pub fn enemy_get_ids_for_state(&self, state: SimState) -> Vec<usize> {
@@ -1526,6 +1570,7 @@ impl EntityManager {
 
                     match parts[0] {
                         "ANIMATION_DATA" => {}
+                        // TODO: We need to save animation data here;
                         "ANIMATION_NAME:" => match parts[1].trim() {
                             "Idle" => anim_props.push(AnimationPropHelper {
                                 name: AnimationType::Idle,
@@ -1533,6 +1578,8 @@ impl EntityManager {
                                 continuous_sounds: vec![],
                                 hurtbox_activation: vec![],
                                 hold_frame: None,
+                                interrupt_frame: None,
+                                reset_on_change: true,
                             }),
                             _ => {}
                         },

@@ -125,48 +125,32 @@ impl AbilityBarData {
             3 => abilities.e,
             4 => abilities.shift,
             5 => abilities.r,
-            _ => None,
+            _ => panic!("cannot be!"),
         };
 
-        match ability_id {
-            Some(id) => {
-                let progress = abilities.get_cooldown_progress(slot_index, config);
-                let time_remaining = abilities.get_cooldown(slot_index);
+        let progress = abilities.get_cooldown_progress(slot_index, config);
+        let time_remaining = abilities.get_cooldown(slot_index);
 
-                // fetch ability definition for tooltip data
-                let (name, description) = match config.get(id) {
-                    Some(def) => (def.name.clone(), def.description.clone()),
-                    None => (String::new(), String::new()),
-                };
+        // fetch ability definition for tooltip data
+        let (name, description) = match config.get(ability_id) {
+            Some(def) => (def.name.clone(), def.description.clone()),
+            None => (String::new(), String::new()),
+        };
 
-                SlotDisplayData {
-                    visible: true,
-                    icon_path: match config.get(id) {
-                        Some(def) => def.icon.clone(),
-                        None => String::new(),
-                    },
-                    key_label: key_label.to_string(),
-                    cooldown_progress: progress,
-                    cooldown_time_remaining: time_remaining,
-                    is_ready: abilities.is_ready(slot_index),
-                    ability_id: id.to_string(),
-                    ability_name: name,
-                    ability_description: description,
-                    ability_effects: String::new(), // empty for now, ready for future
-                }
-            }
-            None => SlotDisplayData {
-                visible: false,
-                icon_path: String::new(),
-                key_label: key_label.to_string(),
-                cooldown_progress: 0.0,
-                cooldown_time_remaining: 0.0,
-                is_ready: false,
-                ability_id: String::new(),
-                ability_name: String::new(),
-                ability_description: String::new(),
-                ability_effects: String::new(),
+        SlotDisplayData {
+            visible: true,
+            icon_path: match config.get(ability_id) {
+                Some(def) => def.icon.clone(),
+                None => String::new(),
             },
+            key_label: key_label.to_string(),
+            cooldown_progress: progress,
+            cooldown_time_remaining: time_remaining,
+            is_ready: abilities.is_ready(slot_index),
+            ability_id: ability_id.to_string(),
+            ability_name: name,
+            ability_description: description,
+            ability_effects: String::new(), // empty for now, ready for future
         }
     }
 }

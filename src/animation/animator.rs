@@ -29,10 +29,11 @@ impl Animator {
     }
 
     pub fn get_current_animation(&self) -> Option<&Animation> {
-        self.animations
-            .get(&self.current_animation)
-            .or_else(|| self.animations.get(&AnimationType::Idle))
-        //.or_else(|| self.animations.values().next())
+        self.animations.get(&self.current_animation)
+    }
+
+    pub fn get_next_animation(&self) -> Option<&Animation> {
+        self.animations.get(&self.next_animation)
     }
 
     pub fn set_current_animation(&mut self, input: AnimationType) {
@@ -40,13 +41,20 @@ impl Animator {
     }
 
     pub fn set_next_animation(&mut self, input: AnimationType) {
-        // match self.animations.get_mut(&input) {
-        //     Some(anim) => anim.current_time = 0.0,
-        //     None => {
-        //         println!("WARNING: passed in an animation that wasn't found: {}", &input);
-        //         self.next_animation = self.current_animation.clone();
-        //     },
-        // }
+        match self.animations.get_mut(&input) {
+            Some(anim) => {
+                if anim.reset_on_change {
+                    anim.current_time = 0.0;
+                }
+            }
+            None => {
+                println!(
+                    "WARNING: passed in an animation that wasn't found: {}",
+                    &input
+                );
+                self.next_animation = self.current_animation.clone();
+            }
+        }
         self.next_animation = input;
     }
 
