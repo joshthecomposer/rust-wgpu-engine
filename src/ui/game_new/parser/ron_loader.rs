@@ -7,8 +7,7 @@ use crate::ui::game_new::parser::theme::{load_theme, Theme};
 use crate::ui::game_new::styles::{Alignment, Color, Length, ScrollbarStyle, Style};
 use crate::ui::game_new::tree::UiTree;
 use crate::ui::game_new::widgets::{
-    AbilitySlot, BoxWidget, Column, Label, ProgressBar, Row, ScrollView, Text, TextureRect,
-    TooltipManager, Widget,
+    BoxWidget, Column, Label, ProgressBar, Row, ScrollView, Text, TextureRect, Widget,
 };
 
 /// Represents a widget definition parsed from RON.
@@ -93,30 +92,6 @@ pub enum NodeDefinition {
         #[serde(default)]
         children: Vec<NodeDefinition>,
     },
-    AbilitySlot {
-        #[serde(default)]
-        key_label: String,
-        #[serde(default)]
-        slot_background: Color,
-        #[serde(default)]
-        ready_border_color: Color,
-        #[serde(default)]
-        normal_border_color: Color,
-        #[serde(default)]
-        style: Style,
-    },
-    TooltipManager {
-        #[serde(default)]
-        background_color: Color,
-        #[serde(default)]
-        border_color: Color,
-        #[serde(default)]
-        title_color: Color,
-        #[serde(default)]
-        description_color: Color,
-        #[serde(default)]
-        style: Style,
-    },
 }
 
 fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
@@ -190,48 +165,6 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
             }
 
             Box::new(scroll)
-        }
-        NodeDefinition::AbilitySlot {
-            key_label,
-            slot_background,
-            ready_border_color,
-            normal_border_color,
-            style,
-        } => {
-            let mut slot = AbilitySlot::new(style).with_key_label(key_label);
-            if !matches!(slot_background, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
-                slot = slot.with_slot_background(slot_background);
-            }
-            if !matches!(ready_border_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
-                slot = slot.with_ready_border_color(ready_border_color);
-            }
-            if !matches!(normal_border_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
-                slot = slot.with_normal_border_color(normal_border_color);
-            }
-            Box::new(slot)
-        }
-        NodeDefinition::TooltipManager {
-            background_color,
-            border_color,
-            title_color,
-            description_color,
-            style,
-        } => {
-            let mut tooltip = TooltipManager::new(style);
-            // Only appl non-default colors
-            if !matches!(background_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
-                tooltip.background_color = background_color;
-            }
-            if !matches!(border_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
-                tooltip.border_color = border_color;
-            }
-            if !matches!(title_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
-                tooltip.title_color = title_color;
-            }
-            if !matches!(description_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
-                tooltip.description_color = description_color;
-            }
-            Box::new(tooltip)
         }
     }
 }
@@ -382,31 +315,6 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
             for child in children {
                 resolve_variables(child, theme);
             }
-        }
-        NodeDefinition::AbilitySlot {
-            slot_background,
-            ready_border_color,
-            normal_border_color,
-            style,
-            ..
-        } => {
-            resolve_style(style, theme);
-            resolve_color(slot_background, theme);
-            resolve_color(ready_border_color, theme);
-            resolve_color(normal_border_color, theme);
-        }
-        NodeDefinition::TooltipManager {
-            background_color,
-            border_color,
-            title_color,
-            description_color,
-            style,
-        } => {
-            resolve_style(style, theme);
-            resolve_color(background_color, theme);
-            resolve_color(border_color, theme);
-            resolve_color(title_color, theme);
-            resolve_color(description_color, theme);
         }
     }
 }
