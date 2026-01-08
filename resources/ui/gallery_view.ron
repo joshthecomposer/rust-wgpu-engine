@@ -170,12 +170,60 @@ Column(
                     align: Start,
                     children: [
                         Label(
-                            content: "Other Widgets",
+                            content: "AbilitySlot Widget",
                             style: ( color: Some(Variable("highlight")), font_size: Some(18.0), margin_bottom: Some(Px(10.0)) )
                         ),
+                        Row(
+                            style: (
+                                width: Px(300.0),
+                                height: Px(60.0),
+                            ),
+                            justify: Start,
+                            align: Center,
+                            children: [
+                                AbilitySlot(
+                                    key_label: "Q",
+                                    slot_background: Variable("deep-void-alpha"),
+                                    ready_border_color: Variable("runic-gold"),
+                                    normal_border_color: Variable("stone-light"),
+                                    style: (
+                                        id: Some("demo_slot_1"),
+                                        width: Px(48.0),
+                                        height: Px(48.0),
+                                        border_radius: 4.0,
+                                    ),
+                                ),
+                                AbilitySlot(
+                                    key_label: "E",
+                                    slot_background: Variable("deep-void-alpha"),
+                                    ready_border_color: Variable("runic-gold"),
+                                    normal_border_color: Variable("stone-light"),
+                                    style: (
+                                        id: Some("demo_slot_2"),
+                                        width: Px(48.0),
+                                        height: Px(48.0),
+                                        margin_left: Some(Px(6.0)),
+                                        border_radius: 4.0,
+                                    ),
+                                ),
+                                AbilitySlot(
+                                    key_label: "R",
+                                    slot_background: Variable("deep-void-alpha"),
+                                    ready_border_color: Variable("runic-gold"),
+                                    normal_border_color: Variable("stone-light"),
+                                    style: (
+                                        id: Some("demo_slot_3"),
+                                        width: Px(48.0),
+                                        height: Px(48.0),
+                                        margin_left: Some(Px(6.0)),
+                                        border_radius: 4.0,
+                                    ),
+                                ),
+                            ]
+                        ),
                         Label(
-                            content: "More widgets can go here...",
-                            style: ( color: Some(Rgba(0.7, 0.7, 0.7, 1.0)), font_size: Some(14.0) )
+                            content: "AbilitySlot widgets for ability bars",
+                            style: ( color: Some(Rgba(0.7, 0.7, 0.7, 1.0)), font_size: Some(14.0), margin_top: Some(Px(10.0)) )
                         ),
                     ]
                 ),

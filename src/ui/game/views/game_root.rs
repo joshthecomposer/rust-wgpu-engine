@@ -157,44 +157,7 @@ impl GameRootView {
             None => true,
         };
 
-        if needs_ability_sync {
-            self.game_root
-                .set_ability_slot_m1(ability_data.m1.to_slint(ctx.image_cache));
-            self.game_root
-                .set_ability_slot_m2(ability_data.m2.to_slint(ctx.image_cache));
-            self.game_root
-                .set_ability_slot_q(ability_data.q.to_slint(ctx.image_cache));
-            self.game_root
-                .set_ability_slot_e(ability_data.e.to_slint(ctx.image_cache));
-            self.game_root
-                .set_ability_slot_shift(ability_data.shift.to_slint(ctx.image_cache));
-            self.game_root
-                .set_ability_slot_r(ability_data.r.to_slint(ctx.image_cache));
-
-            self.cached_ability_data = Some(ability_data);
-        }
-
         self.toast_view.update(&self.game_root, elapsed_time);
-    }
-
-    /// Get the portrait rect position and size in logical pixels.
-    /// Returns (x, y, width, height) for positioning the GL-rendered portrait.
-    pub fn get_portrait_rect(&self) -> (f32, f32, f32, f32) {
-        let x = self.game_root.get_portrait_x();
-        let y = self.game_root.get_portrait_y();
-        let w = self.game_root.get_portrait_width();
-        let h = self.game_root.get_portrait_height();
-        (x, y, w, h)
-    }
-
-    /// Get the ability bar rect position and size in logical pixels.
-    /// Returns (x, y, width, height) for positioning the GL-rendered ability bar.
-    pub fn get_ability_bar_rect(&self) -> (f32, f32, f32, f32) {
-        let x = self.game_root.get_ability_bar_x();
-        let y = self.game_root.get_ability_bar_y();
-        let w = self.game_root.get_ability_bar_width();
-        let h = self.game_root.get_ability_bar_height();
-        (x, y, w, h)
     }
 
     /// Set the current FPS for the FPS counter.

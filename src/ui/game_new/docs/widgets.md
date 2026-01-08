@@ -120,3 +120,99 @@ ScrollView(
     ]
 )
 ```
+
+## Game Widgets
+
+### AbilitySlot
+A single ability slot widget for ability bars. Displays icon, cooldown overlay, key label, and ready glow effect.
+
+**Properties:**
+- `key_label`: `String` - Key binding display (e.g., "M1", "Q", "Shift").
+- `slot_background`: `Color` - Background color of the slot.
+- `ready_border_color`: `Color` - Border color when ability is ready.
+- `normal_border_color`: `Color` - Border color when ability is not ready.
+- `style`: Standard style properties.
+
+**Dynamic Properties (set via Rust):**
+- `texture_id`: `u32` - Icon texture ID.
+- `cooldown_progress`: `f32` - 0.0 = ready, 1.0 = full cooldown.
+- `is_ready`: `bool` - Triggers pulsing gold glow when true.
+- `ability_id`: `String` - Fallback display when no icon.
+- `ability_name`, `ability_description`: Tooltip content.
+
+**Example:**
+```ron
+AbilitySlot(
+    key_label: "Q",
+    slot_background: Variable("deep-void-alpha"),
+    ready_border_color: Variable("runic-gold"),
+    normal_border_color: Variable("stone-light"),
+    style: (
+        id: Some("slot_q"),
+        width: Px(48.0),
+        height: Px(48.0),
+        border_radius: 4.0,
+    ),
+)
+```
+
+### TooltipManager
+A tooltip overlay widget for displaying contextual information on hover.
+
+**Visual Design:**
+- Drop shadow: 4px offset (right and down), 50% opacity black
+- Left accent bar: 4px wide, runic-gold color
+- Sharp corners (no border-radius)
+- Positioned above the hovered widget
+
+**Properties:**
+- `background_color`: `Color` - Tooltip background.
+- `border_color`: `Color` - Tooltip border.
+- `title_color`: `Color` - Title text color.
+- `description_color`: `Color` - Description text color.
+- `style`: Standard style properties.
+
+**Usage (in Rust):**
+```rust
+// During update phase
+tooltip.begin_frame();
+if hovered {
+    tooltip.show("Ability Name", "Description", widget_rect);
+}
+// During render phase
+tooltip.render(renderer);
+```
+
+**Example:**
+```ron
+TooltipManager(
+    background_color: Variable("deep-void"),
+    border_color: Variable("stone-light"),
+    title_color: Variable("runic-gold"),
+    description_color: Variable("old-text"),
+    style: (id: Some("tooltip_overlay")),
+)
+```
+
+> **Note:** TooltipManager should be rendered last to appear above all other UI elements.
+
+---
+
+## Style Properties
+
+### margin_left
+Creates space before a widget. Useful for spacing items within a Row.
+
+```ron
+AbilitySlot(
+    key_label: "M2",
+    style: (
+        width: Px(48.0),
+        height: Px(48.0),
+        margin_left: Some(Px(6.0)),  // 6px gap before this slot
+    ),
+)
+```
+
+> **Note:** The Row widget respects `margin_left` by calculating each child's "footprint" (margin + content width) and positioning children based on where the previous child's rect ends.
+

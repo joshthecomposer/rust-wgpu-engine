@@ -171,3 +171,102 @@ Check `style_properties.md` for which properties require `Some()`.
 3. **Verify border_width < padding** to ensure content doesn't overlap borders
 4. **Use fixed heights** on Columns when you want `justify` to work
 5. **Check resolve_or argument order** - it's `(parent_size, default)`
+
+---
+
+## Row Layout Issues
+
+### Children with Margins Not Spacing Correctly
+
+**Problem:** AbilitySlots with `margin_left: Some(Px(6.0))` all appear squished together, or later children get progressively smaller.
+
+**Cause:** The Row's first-pass width calculation was only using `child.rect().width` (content width), ignoring the margin offset. When the child applies its margin during the second pass, it shifts right but the Row didn't allocate enough space, causing overlaps.
+
+**Solution (implemented in row.rs):** Calculate child "footprint" including margin:
+```rust
+// Calculate child's total "footprint" including any margin offset
+let margin_offset = child.rect().x - temp_rect.x;
+let footprint = margin_offset + child.rect().width;
+```
+
+Then position children based on where the previous child's rect actually ends:
+```rust
+let child_end = child.rect().x + child.rect().width - inner_rect.x;
+x_offset = child_end + gap;
+```
+
+---
+
+### Separator Box Elements Not Creating Gaps
+
+**Problem:** `Box` widgets used as separators between ability slots don't create visible gaps.
+
+**Cause:** Row's `justify: Center` distributes space between children, which counteracts the separator's purpose. With centered justification, children are spread evenly regardless of separator widths.
+
+**Solution:** Use `justify: Start` so children pack from the left, allowing separator Box widths to create actual gaps:
+```ron
+Row(
+    justify: Start,  // NOT Center
+    children: [
+        AbilitySlot(...),
+        AbilitySlot(...),
+        Box(style: (width: Px(12.0), height: Px(48.0))),  // Creates 12px gap
+        AbilitySlot(...),
+    ]
+)
+```
+
+---
+
+## Tooltip Issues
+
+### Double Tooltips Appearing
+
+**Problem:** Two tooltips appear when hovering over ability bar slots - one from the old Slint UI and one from the new GPU UI.
+
+**Cause:** Both tooltip systems were active:
+1. The Slint `GameRoot` component has `AbilityTooltip` components that show on hover
+2. The new `TooltipManager` also renders tooltips based on `AbilitySlot.get_tooltip_info()`
+
+**Solution:** Stop syncing ability data to the old Slint system. In `game_root.rs`, comment out or remove the `set_ability_slot_*` calls:
+```rust
+// NOTE: Slint ability bar tooltips are DISABLED - we now use the new GPU-based tooltips
+// if needs_ability_sync {
+//     self.game_root.set_ability_slot_m1(ability_data.m1.to_slint(ctx.image_cache));
+//     ... etc
+// }
+```
+
+---
+
+### Tooltip Missing Styling (Shadow, Accent Bar)
+
+**Problem:** Tooltip looks plain compared to the original Slint design - missing drop shadow and left accent bar.
+
+**Solution (implemented in tooltip_manager.rs):** Add visual elements in render():
+```rust
+// Draw drop shadow first (offset 4px right and down)
+let shadow_rect = Rect::new(
+    self.tooltip_rect.x + 4.0,
+    self.tooltip_rect.y + 4.0,
+    self.tooltip_rect.width,
+    self.tooltip_rect.height,
+);
+renderer.draw_rect(shadow_rect, [0.0, 0.0, 0.0, 0.5], 0.0);
+
+// Draw left accent bar (4px wide runic-gold)
+let accent_rect = Rect::new(
+    self.tooltip_rect.x + border_width,
+    self.tooltip_rect.y + border_width,
+    4.0,
+    self.tooltip_rect.height - border_width * 2.0,
+);
+renderer.draw_rect(accent_rect, [0.85, 0.68, 0.42, 1.0], 0.0);
+```
+
+Remember to add the accent width to text positioning:
+```rust
+let text_offset_x = accent_width + 4.0;
+renderer.draw_text(&self.title, self.title_pos.0 + text_offset_x, ...);
+```
+

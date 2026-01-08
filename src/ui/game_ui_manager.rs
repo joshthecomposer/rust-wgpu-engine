@@ -18,11 +18,12 @@ use crate::input::InputState;
 use crate::lights::Lights;
 use crate::renderer::DefaultTextures;
 use crate::shaders::Shader;
-use crate::ui::ability_bar_renderer::AbilityBarRenderer;
+use crate::ui::game::views::ability_bar::AbilityBarData;
 use crate::ui::game::views::{GameRootContext, GameRootView, SettingsContext, SystemContext};
 use crate::ui::game_new::context::UiContext;
 use crate::ui::game_new::font_system::FontSystem;
 use crate::ui::game_new::render::UiRenderer;
+use crate::ui::game_new::views::ability_bar_view::AbilityBarView;
 use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
 use crate::ui::image_cache::UiImageCache;
 use crate::ui::message_queue::MessageQueue;
@@ -59,7 +60,7 @@ pub struct GameUiManager {
     texture: u32,
     game_root_view: GameRootView,
     portrait_renderer: PortraitRenderer,
-    ability_bar_renderer: AbilityBarRenderer,
+    ability_bar_view: AbilityBarView,
     image_cache: UiImageCache,
 
     width: u32,
@@ -73,12 +74,6 @@ pub struct GameUiManager {
     pbo: u32,
 
     is_paused: bool,
-
-    // cached ability bar compositing data (to avoid calling Slint every frame)
-    ability_bar_ndc_x: f32,
-    ability_bar_ndc_y: f32,
-    ability_bar_ndc_w: f32,
-    ability_bar_ndc_h: f32,
 
     game_hud_view: GameHudView,
     ui_renderer: UiRenderer,
@@ -117,24 +112,28 @@ impl GameUiManager {
         // create portrait renderer for player HUD
         let portrait_renderer = PortraitRenderer::new();
 
-        // create ability bar renderer (platform already initialized)
-        let ability_bar_renderer = AbilityBarRenderer::new(scale_factor);
-
+        // create font system and UI renderer first (needed for HUD and ability bar)
         let mut font_system = FontSystem::new();
         let mut ui_renderer = UiRenderer::new();
         ui_renderer.set_screen_size(width as f32, height as f32);
+
+        // create ability bar view (new custom UI system)
+        let mut ability_bar_view = AbilityBarView::new(&mut font_system);
+        ability_bar_view.set_screen_size(width as f32, height as f32);
+
+        // create game HUD view
         let mut game_hud_view = GameHudView::new(&mut font_system);
         game_hud_view
             .tree
             .set_screen_size(width as f32, height as f32);
 
-        let mut manager = Self {
+        let manager = Self {
             window,
             buffer,
             texture,
             game_root_view,
             portrait_renderer,
-            ability_bar_renderer,
+            ability_bar_view,
             image_cache: UiImageCache::new(),
             width,
             height,
@@ -145,10 +144,6 @@ impl GameUiManager {
             overlay_vbo,
             pbo,
             is_paused: false,
-            ability_bar_ndc_x: 0.0,
-            ability_bar_ndc_y: 0.0,
-            ability_bar_ndc_w: 0.0,
-            ability_bar_ndc_h: 0.0,
             game_hud_view,
             ui_renderer,
             font_system,
@@ -158,8 +153,6 @@ impl GameUiManager {
             accumulated_scroll_y: 0.0,
         };
 
-        // compute ability bar NDC coordinates once
-        manager.update_ability_bar_ndc();
         manager
     }
 
@@ -334,8 +327,9 @@ impl GameUiManager {
             .tree
             .set_screen_size(width as f32, height as f32);
 
-        // recalculate ability bar NDC coordinates for new window size
-        self.update_ability_bar_ndc();
+        // update ability bar screen size for positioning
+        self.ability_bar_view
+            .set_screen_size(width as f32, height as f32);
     }
 
     /// Update the UI each frame.
@@ -390,44 +384,32 @@ impl GameUiManager {
         self.game_hud_view
             .update(&mut ui_ctx, &hud_data, portrait_tex);
 
-        // update ability bar renderer (has built-in throttling to avoid querying entity manager every frame)
-        use crate::ui::game::views::ability_bar::{AbilityBarContext, AbilityBarView};
-        let ability_ctx = AbilityBarContext {
-            entity_manager: ctx.entity_manager,
-            paused: *ctx.paused,
-            image_cache: &mut self.image_cache,
-            elapsed_time: ctx.elapsed_time,
+        // update ability bar view (new custom UI system)
+        let ability_data = AbilityBarData::from_entity_manager(ctx.entity_manager);
+        let delta_time = (ctx.elapsed_time - self.last_update_time) as f32;
+
+        // Convert AbilityBarData individual fields to array for new view
+        let slots = [
+            ability_data.m1.clone(),
+            ability_data.m2.clone(),
+            ability_data.q.clone(),
+            ability_data.e.clone(),
+            ability_data.shift.clone(),
+            ability_data.r.clone(),
+        ];
+
+        self.ability_bar_view.update_data(&slots, delta_time.abs());
+
+        let mut ui_ctx2 = UiContext {
+            input: ctx.input_state,
+            messages: ctx.message_queue,
         };
-        let ability_bar_view = AbilityBarView::new();
-        ability_bar_view.update(&mut self.ability_bar_renderer, ability_ctx);
+        self.ability_bar_view.update(&mut ui_ctx2);
     }
 
     /// Set the current FPS for the FPS counter.
     pub fn set_fps(&self, fps: i32) {
         self.game_root_view.set_fps(fps);
-    }
-
-    /// Update cached ability bar NDC coordinates.
-    /// Call this when the window is resized or UI layout changes.
-    fn update_ability_bar_ndc(&mut self) {
-        // get ability bar rect from Slint (in logical pixels)
-        let (ax, ay, aw, ah) = self.game_root_view.get_ability_bar_rect();
-
-        // convert logical pixels to physical pixels
-        let ax_phys = ax * self.scale_factor;
-        let ay_phys = ay * self.scale_factor;
-        let aw_phys = aw * self.scale_factor;
-        let ah_phys = ah * self.scale_factor;
-
-        // convert to NDC
-        self.ability_bar_ndc_w = aw_phys / self.width as f32;
-        self.ability_bar_ndc_h = ah_phys / self.height as f32;
-
-        // compute center of the ability bar rect in NDC
-        let center_x_px = ax_phys + aw_phys / 2.0;
-        let center_y_px = ay_phys + ah_phys / 2.0;
-        self.ability_bar_ndc_x = (2.0 * center_x_px / self.width as f32) - 1.0;
-        self.ability_bar_ndc_y = 1.0 - (2.0 * center_y_px / self.height as f32);
     }
 
     /// Render the player portrait to the HUD. Call this before render().
@@ -530,39 +512,21 @@ impl GameUiManager {
         // A. DRAW UI (Background Layer)
         self.draw_overlay(shader, self.texture);
 
-        // B. DRAW ABILITY BAR (Middle Layer)
-        // Only draw if NOT paused!
+        // B. DRAW ABILITY BAR + HUD (Custom UI System)
         if !self.is_paused {
-            self.ability_bar_renderer.render();
-            let ability_bar_tex = self.ability_bar_renderer.get_texture_id();
+            if self.ability_bar_view.needs_layout() {
+                self.ability_bar_view.layout(&mut self.font_system);
+                self.ability_bar_view.clear_layout_flag();
+            }
 
-            // use cached NDC coordinates (no Slint property access or math per frame)
-            self.draw_screen_quad(
-                shader,
-                ability_bar_tex,
-                self.ability_bar_ndc_x,
-                self.ability_bar_ndc_y,
-                self.ability_bar_ndc_w,
-                self.ability_bar_ndc_h,
-                false, // no flip for Slint UI
-            );
-        }
-
-        // C. PORTRAIT & HUD (Custom UI)
-        // Only draw if NOT paused!
-        if !self.is_paused {
-            // OLD: Slint-positioned portrait - now handled by custom HUD
-            // (removed to avoid duplicate)
-            
-            // render HUD every frame (GPU is immediate-mode, must draw each frame)
-            // only re-layout when data changes (optimization)
             if self.game_hud_view.needs_render() {
                 self.game_hud_view.tree.layout(&mut self.font_system);
                 self.game_hud_view.clear_render_flag();
             }
-            
+
             self.ui_renderer.begin();
             self.game_hud_view.tree.render(&mut self.ui_renderer);
+            self.ability_bar_view.render(&mut self.ui_renderer);
             self.ui_renderer.end(&mut self.font_system);
         }
 
@@ -584,59 +548,17 @@ impl GameUiManager {
         // A. DRAW UI (Background Layer) - use cached texture
         self.draw_overlay(shader, self.texture);
 
-        // B. DRAW ABILITY BAR (Middle Layer)
-        if !self.is_paused {
-            let ability_bar_tex = self.ability_bar_renderer.get_texture_id();
-            self.draw_screen_quad(
-                shader,
-                ability_bar_tex,
-                self.ability_bar_ndc_x,
-                self.ability_bar_ndc_y,
-                self.ability_bar_ndc_w,
-                self.ability_bar_ndc_h,
-                false,
-            );
-        }
-
-        // C. DRAW HUD (every frame - GPU immediate-mode requires redrawing)
-        // Portrait is now handled by custom UI system via TextureRect widget
+        // B. DRAW ABILITY BAR + HUD (Custom UI - must redraw each frame in immediate mode)
         if !self.is_paused {
             self.ui_renderer.begin();
             self.game_hud_view.tree.render(&mut self.ui_renderer);
+            self.ability_bar_view.render(&mut self.ui_renderer);
             self.ui_renderer.end(&mut self.font_system);
         }
 
         unsafe {
             gl_call!(gl::Enable(gl::DEPTH_TEST));
             gl_call!(gl::Disable(gl::BLEND));
-        }
-    }
-
-    /// Helper to draw a quad at a specific position/scale
-    fn draw_screen_quad(
-        &self,
-        shader: &mut Shader,
-        texture: u32,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-        flip_v: bool,
-    ) {
-        unsafe {
-            shader.activate();
-
-            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
-            shader.set_int("ui_texture", 0);
-
-            shader.set_vec2("u_offset", x, y);
-            shader.set_vec2("u_scale", w, h);
-            shader.set_bool("u_flip_v", flip_v);
-
-            gl_call!(gl::BindVertexArray(self.overlay_vao));
-            gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
-            gl_call!(gl::BindVertexArray(0));
         }
     }
 

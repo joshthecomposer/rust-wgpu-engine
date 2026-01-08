@@ -1,3 +1,4 @@
+mod ability_slot;
 mod box_widget;
 mod column;
 mod label;
@@ -6,8 +7,10 @@ mod row;
 mod scroll_view;
 mod text;
 mod texture_rect;
+mod tooltip_manager;
 mod traits;
 
+pub use ability_slot::AbilitySlot;
 pub use box_widget::BoxWidget;
 pub use column::Column;
 pub use label::Label;
@@ -16,12 +19,5 @@ pub use row::Row;
 pub use scroll_view::ScrollView;
 pub use text::Text;
 pub use texture_rect::TextureRect;
+pub use tooltip_manager::TooltipManager;
 pub use traits::Widget;
-
-
-
-
-
-
-
-
