@@ -31,6 +31,7 @@ export component GameRoot inherits Window {
     in-out property <float> sfx-volume: 80.0;
     in-out property <bool> vsync: true;
     in-out property <bool> debug-mode: false;
+    in-out property <bool> spawn-system-enabled: true;
     in-out property <string> msaa: "16x MSAA";
 
     in property <int> current-fps: 60;
@@ -150,6 +151,7 @@ export component GameRoot inherits Window {
         sfx-volume <=> root.sfx-volume;
         vsync <=> root.vsync;
         debug-mode <=> root.debug-mode;
+        spawn-system-enabled <=> root.spawn-system-enabled;
         msaa <=> root.msaa;
         font-family <=> root.font-family;
         actual-font-family <=> root.actual-font-family;

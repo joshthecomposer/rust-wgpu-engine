@@ -178,6 +178,7 @@ impl Game {
                     &mut self.world.ecs,
                     &mut self.physics,
                     self.time.fixed_dt,
+                    self.config.spawn_system_enabled,
                 );
 
                 items::update(&mut self.world.ecs, &mut self.physics);
