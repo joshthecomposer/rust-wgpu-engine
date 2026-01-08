@@ -18,7 +18,7 @@ impl World {
         let lights = Lights::new(50);
         let particles = ParticleSystem::new("config/emitter_data.json");
         let spawn_manager = SpawnManager {
-            spawn_every: 5.0,
+            spawn_every: 20.0,
             amount_per: 1,
             accumulator: 0.0,
         };

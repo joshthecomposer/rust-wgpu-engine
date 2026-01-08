@@ -28,6 +28,8 @@ pub struct Animation {
 
     pub lod_skip: u32,
     pub lod_counter: u32,
+    pub interrupt_frame: Option<u32>,
+    pub reset_on_change: bool,
 }
 
 impl Animation {
@@ -51,6 +53,8 @@ impl Animation {
 
             lod_skip: 0,
             lod_counter: 0,
+            interrupt_frame: None,
+            reset_on_change: true,
         }
     }
 

@@ -249,13 +249,15 @@ pub enum PlayerState {
     Init,
     Idle,
     Running,
-    Jumping,
-    Freefalling,
-    Combat,
     Dying,
     Dead,
-    Dashing,
-    Block,
+    Utility,
+    Basic,
+    Defensive,
+    Skill1,
+    Skill2,
+    Ultimate,
+    Airborne,
 }
 
 impl Display for PlayerState {
@@ -264,24 +266,78 @@ impl Display for PlayerState {
             PlayerState::Init => write!(f, "Init"),
             PlayerState::Idle => write!(f, "Idle"),
             PlayerState::Running => write!(f, "Running"),
-            PlayerState::Jumping => write!(f, "Jumping"),
-            PlayerState::Freefalling => write!(f, "Freefalling"),
-            PlayerState::Combat => write!(f, "Combat"),
             PlayerState::Dying => write!(f, "Dying"),
             PlayerState::Dead => write!(f, "Dead"),
-            PlayerState::Dashing => write!(f, "Dashing"),
-            PlayerState::Block => write!(f, "Block"),
+            PlayerState::Utility => write!(f, "Utility"),
+            PlayerState::Basic => write!(f, "Basic"),
+            PlayerState::Defensive => write!(f, "Defensive"),
+            PlayerState::Skill1 => write!(f, "Skill1"),
+            PlayerState::Skill2 => write!(f, "Skill2"),
+            PlayerState::Ultimate => write!(f, "Ultimate"),
+            PlayerState::Airborne => write!(f, "Airborne"),
         }
     }
 }
 
-#[derive(Debug)]
-pub struct PlayerController {
-    pub state: PlayerState,
-    pub attack_state: AttackState,
-    pub time_in_state: f32,
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum LocoState {
+    Init,
+    Idle,
+    Running,
+    Airborne,
+    Jumping,
 }
 
+#[derive(Debug)]
+pub enum LifeState {
+    Alive,
+    Dying,
+    Dead,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ControlState {
+    Player,
+    Combat,
+    Locked,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum CombatState {
+    Basic1,
+    Basic2,
+    Basic3,
+    Defensive,
+    Skill1,
+    Skill2,
+    Evade,
+    Ultimate,
+}
+
+#[derive(Debug)]
+pub struct PlayerController {
+    pub loco_state: LocoState,
+    pub loco_time: f32,
+
+    pub combat_state: Option<CombatState>,
+    pub combat_time: f32,
+
+    pub buffered_action: Option<u32>,
+    pub buffer_timer: f32,
+    pub life_state: LifeState,
+    pub control_state: ControlState,
+
+    pub jump_command_issued: bool,
+    pub particle_cmd_issued: bool,
+}
+
+impl PlayerController {
+    pub fn can_loco(&self) -> bool {
+        self.control_state != ControlState::Locked && self.control_state != ControlState::Combat
+    }
+}
+
+// TODO: deprecate this
 #[derive(Clone, Debug, PartialEq)]
 pub enum AttackState {
     Attack1,
@@ -312,6 +368,9 @@ pub enum AnimationType {
     DashF,
     Block,
     Flinch,
+    Basic1,
+    Basic2,
+    Basic3,
 }
 
 impl Display for AnimationType {
@@ -328,6 +387,9 @@ impl Display for AnimationType {
             AnimationType::DashF => write!(f, "DashF"),
             AnimationType::Block => write!(f, "Block"),
             AnimationType::Flinch => write!(f, "Flinch"),
+            AnimationType::Basic1 => write!(f, "Basic1"),
+            AnimationType::Basic2 => write!(f, "Basic2"),
+            AnimationType::Basic3 => write!(f, "Basic3"),
         }
     }
 }
@@ -346,6 +408,9 @@ impl AnimationType {
             "DashF" => Some(AnimationType::DashF),
             "Block" => Some(AnimationType::Block),
             "Flinch" => Some(AnimationType::Flinch),
+            "Basic1" => Some(AnimationType::Basic1),
+            "Basic2" => Some(AnimationType::Basic2),
+            "Basic3" => Some(AnimationType::Basic3),
             _ => panic!("Invalid AnimationType passed in. {}", input),
         }
     }

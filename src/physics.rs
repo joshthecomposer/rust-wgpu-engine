@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use glam::{Quat, Vec3};
-use nalgebra::Vector3;
+use nalgebra::{Vector, Vector3};
 use rapier3d::prelude::*;
 
+use crate::command_buffer::{CommandBuffer, ImpulseKind, PhysCmd, PhysOp};
 use crate::util::constants::{GROUP_PLAYER, GROUP_TERRAIN};
 use crate::{
     entity_manager::EntityManager,
@@ -42,6 +45,62 @@ impl PhysicsState {
             query_pipeline: Some(QueryPipeline::new()),
             physics_hooks: (),
             event_handler: (),
+        }
+    }
+
+    pub fn evaluate_commands(&mut self, em: &mut EntityManager, cb: &mut CommandBuffer) {
+        let mut by_target: HashMap<usize, Vec<PhysCmd>> = HashMap::new();
+        let phys_cmds = std::mem::take(&mut cb.phys);
+        for cmd in phys_cmds {
+            by_target.entry(cmd.target).or_default().push(cmd);
+        }
+
+        for (target, cmds) in by_target {
+            let kinds: Vec<ImpulseKind> = cmds.iter().map(|c| c.kind).collect();
+
+            let mut kept: Vec<PhysCmd> = Vec::with_capacity(cmds.len());
+            'cmds: for cmd in cmds {
+                for &k in &kinds {
+                    if k.cancels(cmd.kind) && k != cmd.kind {
+                        continue 'cmds;
+                    }
+                }
+
+                kept.push(cmd);
+            }
+
+            let Some(ph) = em.physics_handles.get(target) else {
+                continue;
+            };
+            let Some(rb) = self.rigid_body_set.get_mut(ph.rigid_body) else {
+                continue;
+            };
+
+            for cmd in kept {
+                match cmd.op {
+                    PhysOp::SetLinvel(v) => {
+                        // grab current so we don't touch y
+                        let cur = *rb.linvel();
+                        let vv: rapier3d::math::Vector<rapier3d::math::Real> = v.into();
+                        rb.set_linvel(rapier3d::na::Vector3::new(vv.x, cur.y, vv.z), true);
+                    }
+                    PhysOp::ApplyImpulse(v) => rb.apply_impulse(v.into(), true),
+                    PhysOp::SetRotation(q) => {
+                        let uq = rapier3d::na::UnitQuaternion::from_quaternion(
+                            rapier3d::na::Quaternion::new(q.w, q.x, q.y, q.z),
+                        );
+                        rb.set_rotation(uq, true);
+                    }
+                    PhysOp::Jump => {
+                        let Some(jh) = em.jump_heights.get(target) else {
+                            eprintln!("Tried to jump but no jump height registered");
+                            continue;
+                        };
+
+                        rb.apply_impulse(jh.precalculated.unwrap(), true);
+                    }
+                }
+            }
         }
     }
 
@@ -221,7 +280,13 @@ pub fn sync_collider_transforms_with_physics(em: &mut EntityManager, ps: &mut Ph
             let he = cuboid.half_extents;
 
             let local_down = Vec3::new(0.0, he.y, 0.0);
+
             gizmo_pos = center - rot * local_down;
+
+            // while we're here, we record the world position of the tip of the weapon. mainly for
+            // staves to launch projectiles
+            let top_pos = center + rot * local_down;
+            em.world_weapon_tips.insert(entry.key(), top_pos);
         }
 
         if let Some(cap) = shape.as_capsule() {
@@ -248,10 +313,10 @@ pub fn sync_collider_transforms_with_physics(em: &mut EntityManager, ps: &mut Ph
 
 pub fn grounding_solver(em: &mut EntityManager, ps: &PhysicsState) {
     let ids = vec![
-        em.get_ids_for_type("TrashGuy"),
-        em.get_ids_for_type("MooseMan"),
+        em.get_ids_for_faction("Enemy"),
+        em.get_ids_for_faction("Player"),
     ]
-        .concat();
+    .concat();
 
     for id in ids.iter() {
         let ph = em.physics_handles.get(*id).unwrap();

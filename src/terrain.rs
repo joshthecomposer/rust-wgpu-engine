@@ -176,7 +176,7 @@ impl Terrain {
         model.directory = "resources/models/static/terrain".to_string();
         texture_from_file(
             &mut model,
-            "ai_slop/dirt4.png".to_string(),
+            "ai_slop/dark_dirt_pixelated.png".to_string(),
             TextureType::Diffuse,
             TextureProfile::BroadDefault,
         );

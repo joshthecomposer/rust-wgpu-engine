@@ -147,6 +147,7 @@ pub struct UiEmitterBlackboard {
     // !!! Having a value > 0 makes this a continuous emitter !!!
     pub pps: i32,
     pub has_bloom: bool,
+    pub origin: [f32; 3],
 }
 
 impl Default for UiEmitterBlackboard {
@@ -182,6 +183,7 @@ impl Default for UiEmitterBlackboard {
 
             pps: 0,
             has_bloom: false,
+            origin: [0.0, 0.0, 0.0],
         }
     }
 }

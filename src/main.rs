@@ -29,6 +29,7 @@ mod state_machines;
 mod time;
 mod util;
 
+mod command_buffer;
 mod world;
 
 use config::{game_config::GameConfig, Config};

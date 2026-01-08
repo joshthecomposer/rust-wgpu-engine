@@ -118,14 +118,14 @@ pub const CUBE_POSITIONS: [Vec3; 10] = [
 //    "resources/textures/sky_box2/CosmicCoolCloudBack.png",
 //];
 
-//pub const FACES_CUBEMAP:[&str; 6] = [
-//    "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_2_Left+X.png",
-//    "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_3_Right-X.png",
-//    "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_4_Up+Y.png",
-//    "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_5_Down-Y.png",
-//    "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_0_Front+Z.png",
-//    "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_1_Back-Z.png",
-//];
+// pub const FACES_CUBEMAP:[&str; 6] = [
+//     "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_2_Left+X.png",
+//     "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_3_Right-X.png",
+//     "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_4_Up+Y.png",
+//     "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_5_Down-Y.png",
+//     "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_0_Front+Z.png",
+//     "resources/textures/sky_box/AllSky_Space_Neon_Starless_Cam_1_Back-Z.png",
+// ];
 
 //pub const FACES_CUBEMAP:[&str; 6] = [
 //    "resources/textures/sky_box/Anime Night_Cam_2_Left+X.png",
@@ -136,13 +136,22 @@ pub const CUBE_POSITIONS: [Vec3; 10] = [
 //    "resources/textures/sky_box/Anime Night_Cam_1_Back-Z.png",
 //];
 
-pub const FACES_CUBEMAP:[&str; 6] = [
-    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_1_Right+X.png",
-    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_3_Left-X.png",
-    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_4_Top+Y.png",
-    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_5_Down-Y.png",
-    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_0_Front+Z.png",
-    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_2_Back-Z.png"
+//pub const FACES_CUBEMAP:[&str; 6] = [
+//    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_1_Right+X.png",
+//    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_3_Left-X.png",
+//    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_4_Top+Y.png",
+//    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_5_Down-Y.png",
+//    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_0_Front+Z.png",
+//    "resources/textures/sky_box/Sky_Day Sun High ClearHazy_Cam_2_Back-Z.png"
+//];
+
+pub const FACES_CUBEMAP: [&str; 6] = [
+"resources/textures/sky_box/Sky_Space_Nebula_DeepBlack_Cam_2_Left+X.png",
+"resources/textures/sky_box/Sky_Space_Nebula_DeepBlack_Cam_3_Right-X.png",
+"resources/textures/sky_box/Sky_Space_Nebula_DeepBlack_Cam_4_Up+Y.png",
+"resources/textures/sky_box/Sky_Space_Nebula_DeepBlack_Cam_5_Down-Y.png",
+"resources/textures/sky_box/Sky_Space_Nebula_DeepBlack_Cam_0_Front+Z.png",
+"resources/textures/sky_box/Sky_Space_Nebula_DeepBlack_Cam_1_Back-Z.png",
 ];
 
 
@@ -239,3 +248,10 @@ pub const FREEFALL_DELAY: f32 = 0.35;
 pub const GROUP_TERRAIN: u32 = 0b0001;
 pub const GROUP_PLAYER: u32 = 0b0010;
 
+// Ability slot indices
+pub const BASIC: u32     = 0; // LMouse
+pub const DEFENSIVE: u32 = 1; // RMouse
+pub const SKILL1: u32    = 2; // Q
+pub const SKILL2: u32    = 3; // E
+pub const EVADE: u32     = 4; // SHIFT
+pub const ULTIMATE: u32  = 5; // R
