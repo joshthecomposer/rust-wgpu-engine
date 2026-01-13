@@ -109,5 +109,8 @@
 	"[rust]": {
 		"editor.defaultFormatter": "rust-lang.rust-analyzer",
 		"editor.formatOnSave": true
+	},
+	"chat.tools.terminal.autoApprove": {
+		"cargo build": true
 	}
 }
