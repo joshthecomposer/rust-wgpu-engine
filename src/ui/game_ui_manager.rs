@@ -25,6 +25,7 @@ use crate::ui::game_new::font_system::FontSystem;
 use crate::ui::game_new::render::UiRenderer;
 use crate::ui::game_new::views::ability_bar_view::AbilityBarView;
 use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
+use crate::ui::game_new::views::pause_menu_view::{PauseMenuUpdateContext, PauseMenuView};
 use crate::ui::image_cache::UiImageCache;
 use crate::ui::message_queue::MessageQueue;
 use crate::ui::portrait_renderer::PortraitRenderer;
@@ -76,6 +77,7 @@ pub struct GameUiManager {
     is_paused: bool,
 
     game_hud_view: GameHudView,
+    pause_menu_view: PauseMenuView,
     ui_renderer: UiRenderer,
     font_system: FontSystem,
 
@@ -86,6 +88,9 @@ pub struct GameUiManager {
     // scroll event accumulation (to throttle scroll event dispatching)
     accumulated_scroll_x: f32,
     accumulated_scroll_y: f32,
+
+    // current font family for GPU UI rendering
+    current_font_family: Option<String>,
 }
 
 impl GameUiManager {
@@ -127,6 +132,9 @@ impl GameUiManager {
             .tree
             .set_screen_size(width as f32, height as f32);
 
+        let mut pause_menu_view = PauseMenuView::new(&mut font_system);
+        pause_menu_view.set_screen_size(width as f32, height as f32);
+
         let manager = Self {
             window,
             buffer,
@@ -145,12 +153,14 @@ impl GameUiManager {
             pbo,
             is_paused: false,
             game_hud_view,
+            pause_menu_view,
             ui_renderer,
             font_system,
             last_update_time: -999.0, // force first update
             last_render_time: -999.0, // force first render
             accumulated_scroll_x: 0.0,
             accumulated_scroll_y: 0.0,
+            current_font_family: None,
         };
 
         manager
@@ -330,6 +340,10 @@ impl GameUiManager {
         // update ability bar screen size for positioning
         self.ability_bar_view
             .set_screen_size(width as f32, height as f32);
+
+        // update pause menu screen size
+        self.pause_menu_view
+            .set_screen_size(width as f32, height as f32);
     }
 
     /// Update the UI each frame.
@@ -356,21 +370,23 @@ impl GameUiManager {
         // Sync our local paused state with the engine state
         self.is_paused = *ctx.paused;
 
-        let game_ctx = GameRootContext {
-            paused: ctx.paused,
-            settings: SettingsContext {
-                render_gizmos: ctx.render_gizmos,
-                game_config: ctx.game_config,
-                sound_config: ctx.sound_config,
-            },
-            system: SystemContext {
-                entity_manager: ctx.entity_manager,
-                message_queue: ctx.message_queue,
-            },
-            image_cache: &mut self.image_cache,
-            elapsed_time: ctx.elapsed_time,
-        };
-        self.game_root_view.update(game_ctx);
+        if !self.is_paused {
+            let game_ctx = GameRootContext {
+                paused: ctx.paused,
+                settings: SettingsContext {
+                    render_gizmos: ctx.render_gizmos,
+                    game_config: ctx.game_config,
+                    sound_config: ctx.sound_config,
+                },
+                system: SystemContext {
+                    entity_manager: ctx.entity_manager,
+                    message_queue: ctx.message_queue,
+                },
+                image_cache: &mut self.image_cache,
+                elapsed_time: ctx.elapsed_time,
+            };
+            self.game_root_view.update(game_ctx);
+        }
 
         // Update new Game HUD
         let hud_data = PlayerHudData::from_entity_manager(ctx.entity_manager);
@@ -405,6 +421,22 @@ impl GameUiManager {
             messages: ctx.message_queue,
         };
         self.ability_bar_view.update(&mut ui_ctx2);
+
+        self.current_font_family = Some(ctx.game_config.font_family.clone());
+
+        if self.is_paused {
+            let mut pause_ctx = PauseMenuUpdateContext {
+                paused: ctx.paused,
+                render_gizmos: ctx.render_gizmos,
+                game_config: ctx.game_config,
+                sound_config: ctx.sound_config,
+                entity_manager: ctx.entity_manager,
+                message_queue: ctx.message_queue,
+                input_state: ctx.input_state,
+            };
+            self.pause_menu_view
+                .update(&mut pause_ctx, &mut self.font_system);
+        }
     }
 
     /// Set the current FPS for the FPS counter.
@@ -509,11 +541,14 @@ impl GameUiManager {
             gl_call!(gl::Disable(gl::DEPTH_TEST));
         }
 
-        // A. DRAW UI (Background Layer)
-        self.draw_overlay(shader, self.texture);
-
-        // B. DRAW ABILITY BAR + HUD (Custom UI System)
+        // A. DRAW SLINT UI (only when NOT paused - pause menu is now GPU-rendered)
         if !self.is_paused {
+            self.draw_overlay(shader, self.texture);
+        }
+
+        // B. DRAW Custom GPU UI
+        if !self.is_paused {
+            // When not paused, draw ability bar and HUD
             if self.ability_bar_view.needs_layout() {
                 self.ability_bar_view.layout(&mut self.font_system);
                 self.ability_bar_view.clear_layout_flag();
@@ -524,9 +559,27 @@ impl GameUiManager {
                 self.game_hud_view.clear_render_flag();
             }
 
+            // set current font for GPU UI rendering
+            self.ui_renderer
+                .set_default_font_family(self.current_font_family.clone());
+
             self.ui_renderer.begin();
             self.game_hud_view.tree.render(&mut self.ui_renderer);
             self.ability_bar_view.render(&mut self.ui_renderer);
+            self.ui_renderer.end(&mut self.font_system);
+        } else {
+            // When paused, draw ONLY the GPU pause menu (no Slint overlay)
+            if self.pause_menu_view.needs_layout() {
+                self.pause_menu_view.tree.layout(&mut self.font_system);
+                self.pause_menu_view.clear_layout_flag();
+            }
+
+            // set current font for GPU UI rendering
+            self.ui_renderer
+                .set_default_font_family(self.current_font_family.clone());
+
+            self.ui_renderer.begin();
+            self.pause_menu_view.tree.render(&mut self.ui_renderer);
             self.ui_renderer.end(&mut self.font_system);
         }
 
@@ -545,14 +598,36 @@ impl GameUiManager {
             gl_call!(gl::Disable(gl::DEPTH_TEST));
         }
 
-        // A. DRAW UI (Background Layer) - use cached texture
-        self.draw_overlay(shader, self.texture);
-
-        // B. DRAW ABILITY BAR + HUD (Custom UI - must redraw each frame in immediate mode)
+        // A. DRAW SLINT UI (only when NOT paused)
         if !self.is_paused {
+            self.draw_overlay(shader, self.texture);
+        }
+
+        // B. DRAW Custom GPU UI
+        if !self.is_paused {
+            // set current font for GPU UI rendering
+            self.ui_renderer
+                .set_default_font_family(self.current_font_family.clone());
+
             self.ui_renderer.begin();
             self.game_hud_view.tree.render(&mut self.ui_renderer);
             self.ability_bar_view.render(&mut self.ui_renderer);
+            self.ui_renderer.end(&mut self.font_system);
+        } else {
+            // When paused, draw ONLY pause menu
+            // IMPORTANT: Check needs_layout even in cached render path
+            // to ensure layout is updated after tab selection
+            if self.pause_menu_view.needs_layout() {
+                self.pause_menu_view.tree.layout(&mut self.font_system);
+                self.pause_menu_view.clear_layout_flag();
+            }
+
+            // set current font for GPU UI rendering
+            self.ui_renderer
+                .set_default_font_family(self.current_font_family.clone());
+
+            self.ui_renderer.begin();
+            self.pause_menu_view.tree.render(&mut self.ui_renderer);
             self.ui_renderer.end(&mut self.font_system);
         }
 

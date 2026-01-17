@@ -16,6 +16,14 @@ pub trait Widget {
     /// get the computed rect after layout
     fn rect(&self) -> Rect;
 
+    /// Overlay pre-update pass: called BEFORE regular update.
+    /// Used by widgets with open overlays (dropdowns, popups) that need input priority.
+    /// Returns true if event was consumed by an overlay.
+    /// Default implementation returns false.
+    fn overlay_update(&mut self, _ctx: &mut UiContext) -> bool {
+        false
+    }
+
     fn grid_span(&self) -> Option<GridSpan> {
         None
     }
@@ -32,7 +40,6 @@ pub trait Widget {
 
     /// recursively find a widget by ID
     fn find_widget_mut(&mut self, id: &str) -> Option<&mut dyn Widget> {
-        // TODO: implement
         if self.id() == Some(id) {
             None
         } else {

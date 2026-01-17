@@ -18,7 +18,7 @@ impl<'a> UiContext<'a> {
     /// Logic: It is Down this frame AND Up last frame.
     pub fn is_click_start(&self) -> bool {
         let btn = MouseButton::Left;
-        self.input.mouse_current.contains(&btn) && !self.input.mouse_previous.contains(&btn)
+        self.input.mouse_current.contains(&btn) && !self.input.mouse_previous_ui.contains(&btn)
     }
 
     /// Helper: Is the Left Mouse Button being held down?

@@ -49,6 +49,14 @@ pub struct UiRenderer {
 
     // scissor clipping (for ScrollView)
     scissor_stack: Vec<[i32; 4]>, // [x, y, width, height] in GL coordinates
+
+    // Overlay queue for dropdowns/popups (rendered on top of everything)
+    // Each entry: (rect, color, border_radius) for rect, or text info
+    overlay_rects: Vec<(Rect, [f32; 4], f32)>,
+    overlay_text: Vec<(String, f32, f32, f32, [f32; 4], Option<String>)>,
+
+    // Default font family for text rendering (used when widgets don't specify one)
+    default_font_family: Option<String>,
 }
 
 impl UiRenderer {
@@ -83,6 +91,11 @@ impl UiRenderer {
             ));
 
             let stride = mem::size_of::<UiVertex>() as i32;
+            debug_assert_eq!(
+                mem::size_of::<UiVertex>(),
+                13 * mem::size_of::<f32>(),
+                "UiVertex layout mismatch: expected 13 f32s"
+            );
 
             // position attribute (location = 0)
             gl_call!(gl::EnableVertexAttribArray(0));
@@ -185,6 +198,9 @@ impl UiRenderer {
             cached_glyphs: Vec::new(),
             active_texture: white_texture,
             scissor_stack: Vec::new(),
+            overlay_rects: Vec::new(),
+            overlay_text: Vec::new(),
+            default_font_family: None,
         }
     }
 
@@ -194,12 +210,20 @@ impl UiRenderer {
         self.screen_height = height;
     }
 
+    /// sets the default font family for text rendering
+    /// used when widgets don't specify a font_family
+    pub fn set_default_font_family(&mut self, font_family: Option<String>) {
+        self.default_font_family = font_family;
+    }
+
     /// Prepares the renderer for a new frame by clearing the current batch and queued text
     pub fn begin(&mut self) {
         self.batch.clear();
         self.queued_text.clear();
         self.active_texture = self.white_texture;
         self.scissor_stack.clear();
+        self.overlay_rects.clear();
+        self.overlay_text.clear();
     }
 
     /// Pushes a scissor rect onto the stack for clipping.
@@ -253,6 +277,36 @@ impl UiRenderer {
         self.batch.push_rect(rect, color, clamped_radius);
     }
 
+    pub fn draw_diamond(&mut self, rect: Rect, color: [f32; 4]) {
+        if self.active_texture != self.white_texture {
+            self.flush(self.active_texture);
+            self.active_texture = self.white_texture;
+        }
+        // draw a diamond (rotated square) using 4 triangles
+        let cx = rect.x + rect.width / 2.0;
+        // raise diamond slightly so it visually sits above the divider line
+        let cy = rect.y + rect.height / 2.0 - 4.0;
+
+        // use the smaller dimension to ensure a symmetrical diamond
+        let size = rect.width.min(rect.height) / 2.0;
+
+        // diamond points: top, right, bottom, left (offset from center by size)
+        let top = (cx, cy - size);
+        let right = (cx + size, cy);
+        let bottom = (cx, cy + size);
+        let left = (cx - size, cy);
+
+        // push 4 triangles to form the diamond
+        self.batch
+            .push_triangle([top.0, top.1], [right.0, right.1], [cx, cy], color);
+        self.batch
+            .push_triangle([right.0, right.1], [bottom.0, bottom.1], [cx, cy], color);
+        self.batch
+            .push_triangle([bottom.0, bottom.1], [left.0, left.1], [cx, cy], color);
+        self.batch
+            .push_triangle([left.0, left.1], [top.0, top.1], [cx, cy], color);
+    }
+
     pub fn draw_textured_rect(&mut self, rect: Rect, texture_id: u32, color: Option<[f32; 4]>) {
         self.draw_textured_rect_ex(rect, texture_id, color, false);
     }
@@ -300,6 +354,33 @@ impl UiRenderer {
         ));
     }
 
+    /// Queues a rect to be drawn as an overlay (on top of all other widgets).
+    /// Used for dropdowns, popups, tooltips, etc.
+    pub fn draw_overlay_rect(&mut self, rect: Rect, color: [f32; 4], border_radius: f32) {
+        self.overlay_rects.push((rect, color, border_radius));
+    }
+
+    /// Queues text to be drawn as an overlay (on top of all other widgets).
+    /// Used for dropdown item labels, popup text, etc.
+    pub fn draw_overlay_text(
+        &mut self,
+        text: &str,
+        x: f32,
+        y: f32,
+        font_size: f32,
+        color: [f32; 4],
+        font_family: Option<&str>,
+    ) {
+        self.overlay_text.push((
+            text.to_string(),
+            x,
+            y,
+            font_size,
+            color,
+            font_family.map(|s| s.to_string()),
+        ));
+    }
+
     /// Flushes the current render batch to the GPU using the specified texture.
     ///
     /// This method uploads vertex and index data, configures the shader, sets up
@@ -308,8 +389,6 @@ impl UiRenderer {
         if self.batch.is_empty() {
             return;
         }
-
-        // println!("[UiRenderer] Flushing batch: {} verts, tex: {}", self.batch.vertices.len(), texture_id);
 
         unsafe {
             gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo));
@@ -385,46 +464,93 @@ impl UiRenderer {
         // Collect all text to avoid borrowing self.queued_text
         let all_text: Vec<_> = self.queued_text.drain(..).collect();
 
-        if all_text.is_empty() {
-            return;
-        }
+        if !all_text.is_empty() {
+            // sort text by scissor state to minimize state changes
+            // this assumes Option<[i32; 4]> can be compared, which it can.
+            let mut sorted_text = all_text;
+            sorted_text.sort_by_key(|(_, _, _, _, _, _, scissor)| *scissor);
 
-        // Sort text by scissor state to minimize state changes
-        // This assumes Option<[i32; 4]> can be compared, which it can.
-        let mut sorted_text = all_text;
-        sorted_text.sort_by_key(|(_, _, _, _, _, _, scissor)| *scissor);
+            let mut current_scissor = sorted_text[0].6;
+            let mut batch_started = false;
 
-        let mut current_scissor = sorted_text[0].6;
-        let mut batch_started = false;
-
-        for (text, x, y, font_size, color, font_family, scissor) in sorted_text {
-            // If scissor state changes, flush the previous batch
-            if scissor != current_scissor {
-                if batch_started {
-                    self.render_text_batch(font_system, current_scissor);
+            for (text, x, y, font_size, color, font_family, scissor) in sorted_text {
+                if scissor != current_scissor {
+                    if batch_started {
+                        self.render_text_batch(font_system, current_scissor);
+                    }
+                    current_scissor = scissor;
                 }
-                current_scissor = scissor;
-                // batch_started = false;
+
+                // queue text to glyph brush
+                // use default font if widget doesn't specify one
+                let effective_font = font_family.or(self.default_font_family.clone());
+                let font_id = font_system.get_font_id(effective_font.as_deref());
+                let scale = font_system.get_font_scale(effective_font.as_deref());
+                let scaled_size = font_size * scale;
+                font_system.glyph_brush.queue(Section {
+                    screen_position: (x, y),
+                    bounds: (self.screen_width, self.screen_height),
+                    text: vec![Text::new(&text)
+                        .with_scale(PxScale::from(scaled_size))
+                        .with_color(color)
+                        .with_font_id(font_id)],
+                    ..Section::default()
+                });
+                batch_started = true;
             }
 
-            // Queue text to glyph brush
-            let font_id = font_system.get_font_id(font_family.as_deref());
-            font_system.glyph_brush.queue(Section {
-                screen_position: (x, y),
-                bounds: (self.screen_width, self.screen_height),
-                text: vec![Text::new(&text)
-                    .with_scale(PxScale::from(font_size))
-                    .with_color(color)
-                    .with_font_id(font_id)],
-                ..Section::default()
-            });
-            batch_started = true;
+            if batch_started {
+                self.render_text_batch(font_system, current_scissor);
+            }
         }
 
-        // Flush final batch
-        if batch_started {
-            self.render_text_batch(font_system, current_scissor);
+        // ==========================================
+        // OVERLAY PASS: Render dropdowns/popups on top
+        // ==========================================
+        // Overlays should not be clipped by the current scissor stack (e.g. ScrollView).
+        // Temporarily save and clear scissor state so overlay rects/text render full-size.
+        let saved_scissor = self.scissor_stack.clone();
+        self.scissor_stack.clear();
+        unsafe {
+            gl_call!(gl::Disable(gl::SCISSOR_TEST));
         }
+
+        // ! CRITICAL: Flush any remaining batch items BEFORE drawing overlays
+        // ! this ensures overlays render on top of everything else
+        self.flush(self.active_texture);
+
+        // draw all overlay rects (no clipping for overlays)
+        if !self.overlay_rects.is_empty() {
+            let overlay_rects: Vec<_> = self.overlay_rects.drain(..).collect();
+            for (rect, color, border_radius) in overlay_rects {
+                self.draw_rect(rect, color, border_radius);
+            }
+            self.flush(self.white_texture);
+        }
+
+        // draw all overlay text
+        if !self.overlay_text.is_empty() {
+            let overlay_text: Vec<_> = self.overlay_text.drain(..).collect();
+            for (text, x, y, font_size, color, font_family) in overlay_text {
+                // use default font if widget doesn't specify one
+                let effective_font = font_family.or(self.default_font_family.clone());
+                let font_id = font_system.get_font_id(effective_font.as_deref());
+                let scale = font_system.get_font_scale(effective_font.as_deref());
+                let scaled_size = font_size * scale;
+                font_system.glyph_brush.queue(Section {
+                    screen_position: (x, y),
+                    bounds: (self.screen_width, self.screen_height),
+                    text: vec![Text::new(&text)
+                        .with_scale(PxScale::from(scaled_size))
+                        .with_color(color)
+                        .with_font_id(font_id)],
+                    ..Section::default()
+                });
+            }
+            self.render_text_batch(font_system, None);
+        }
+
+        self.scissor_stack = saved_scissor;
 
         // Ensure scissor test is disabled and stack is cleared after UI rendering
         self.scissor_stack.clear();

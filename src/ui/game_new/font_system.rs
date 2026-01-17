@@ -13,17 +13,31 @@ pub struct FontSystem {
 
 impl FontSystem {
     pub fn new() -> Self {
-        // TODO: Move path configuration to a config or resource manager
-        let font_path = "resources/fonts/weiholmir.ttf";
-        let font_data =
-            fs::read(font_path).unwrap_or_else(|_| panic!("Failed to load font: {}", font_path));
-        let font = FontArc::try_from_vec(font_data).expect("Error parsing font");
-        let glyph_brush = GlyphBrushBuilder::using_font(font).build();
+        let font_paths = [
+            ("resources/fonts/weiholmir.ttf", "Weiholmir"),
+            ("resources/fonts/JetBrainsMono-Medium.ttf", "JetBrains Mono"),
+            ("resources/fonts/OpenDyslexic-Regular.otf", "OpenDyslexic"),
+        ];
+
+        let mut fonts = Vec::new();
+        for (path, name) in &font_paths {
+            let font_data =
+                fs::read(path).unwrap_or_else(|_| panic!("Failed to load font: {}", path));
+            let font = FontArc::try_from_vec(font_data)
+                .unwrap_or_else(|_| panic!("Error parsing font: {}", name));
+            fonts.push(font);
+        }
+
+        let glyph_brush = GlyphBrushBuilder::using_fonts(fonts).build();
 
         let mut font_map = HashMap::new();
         font_map.insert("default".to_string(), FontId(0));
-        // Weiholmir is the default, so map it too
+        font_map.insert("Weiholmir".to_string(), FontId(0));
         font_map.insert("weiholmir".to_string(), FontId(0));
+        font_map.insert("JetBrains Mono".to_string(), FontId(1));
+        font_map.insert("jetbrains mono".to_string(), FontId(1));
+        font_map.insert("OpenDyslexic".to_string(), FontId(2));
+        font_map.insert("opendyslexic".to_string(), FontId(2));
 
         Self {
             glyph_brush,
@@ -33,8 +47,23 @@ impl FontSystem {
 
     pub fn get_font_id(&self, family_name: Option<&str>) -> FontId {
         match family_name {
-            Some(name) => *self.font_map.get(name).unwrap_or(&FontId(0)),
+            Some(name) => self
+                .font_map
+                .get(name)
+                .or_else(|| self.font_map.get(&name.to_lowercase()))
+                .copied()
+                .unwrap_or(FontId(0)),
             None => FontId(0),
+        }
+    }
+
+    /// Get font size multiplier for different fonts.
+    /// Some fonts render smaller than others at the same size, so we scale them up.
+    pub fn get_font_scale(&self, family_name: Option<&str>) -> f32 {
+        match family_name {
+            Some("OpenDyslexic") | Some("opendyslexic") => 1.6, // OpenDyslexic renders smaller
+            Some("JetBrains Mono") | Some("jetbrains mono") => 1.6, // JetBrains Mono also renders smaller
+            _ => 1.0,
         }
     }
 
@@ -46,9 +75,11 @@ impl FontSystem {
         font_family: Option<&str>,
     ) -> (f32, f32) {
         let font_id = self.get_font_id(font_family);
+        let scale = self.get_font_scale(font_family);
+        let scaled_size = font_size * scale;
         let section = Section {
             text: vec![Text::new(text)
-                .with_scale(PxScale::from(font_size))
+                .with_scale(PxScale::from(scaled_size))
                 .with_font_id(font_id)],
             ..Section::default()
         };

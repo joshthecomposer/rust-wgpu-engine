@@ -198,6 +198,77 @@ TooltipManager(
 
 ---
 
+## Interactive Widgets
+
+### MenuButton
+A styled button with hover accent for menu items. Displays an orange left accent bar when hovered.
+
+**Properties:**
+- `text`: `String` - Button label text.
+- `normal_background`: `Color` - Background when not hovered.
+- `hover_background`: `Color` - Background when hovered.
+- `accent_color`: `Color` - Left accent bar color (shown on hover).
+- `border_color`: `Color` - Border color.
+- `text_color`: `Color` - Label text color.
+- `style`: Standard style properties.
+
+**Example:**
+```ron
+MenuButton(
+    text: "RELOAD WORLD DATA",
+    style: (
+        id: Some("btn_reload"),
+        width: Percent(100.0),
+        height: Px(40.0),
+        border_radius: 4.0,
+    ),
+    normal_background: Variable("stone-dark"),
+    hover_background: Variable("stone-mild"),
+    accent_color: Variable("runic-gold"),
+    border_color: Variable("stone-light"),
+    text_color: Variable("text-light"),
+)
+```
+
+---
+
+### ComboBox
+A dropdown select widget with expandable options list.
+
+**Properties:**
+- `options`: `Vec<String>` - List of selectable options.
+- `selected_index`: `usize` - Index of currently selected option.
+- `dropdown_background`: `Color` - Dropdown list background.
+- `item_hover_color`: `Color` - Background of hovered item.
+- `text_color`: `Color` - Text color.
+- `border_color`: `Color` - Border color.
+- `style`: Standard style properties.
+
+**Behavior:**
+- Click main button to toggle dropdown open/closed.
+- Click an option to select it and close the dropdown.
+- Click outside to close the dropdown.
+
+**Example:**
+```ron
+ComboBox(
+    options: ["1280 x 720", "1920 x 1080", "2560 x 1440"],
+    selected_index: 1,
+    style: (
+        id: Some("combo_resolution"),
+        width: Px(150.0),
+        height: Px(30.0),
+        border_radius: 4.0,
+    ),
+    dropdown_background: Variable("stone-dark"),
+    item_hover_color: Variable("stone-mild"),
+    text_color: Variable("text-light"),
+    border_color: Variable("stone-light"),
+)
+```
+
+---
+
 ## Style Properties
 
 ### margin_left

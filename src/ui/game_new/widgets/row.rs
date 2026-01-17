@@ -132,6 +132,18 @@ impl Widget for Row {
                     total_width / child_count as f32
                 };
 
+                // calculate vertical alignment offset for auto-height case
+                let max_child_height = self
+                    .children
+                    .iter()
+                    .map(|c| c.rect().height)
+                    .fold(0.0f32, f32::max);
+                let y_offset = match self.align {
+                    Alignment::Center => (inner_rect.height - max_child_height) / 2.0,
+                    Alignment::End => inner_rect.height - max_child_height,
+                    _ => 0.0,
+                };
+
                 let mut x_offset = 0.0;
                 for (i, child) in self.children.iter_mut().enumerate() {
                     let span = spans[i].unwrap().0;
@@ -139,7 +151,7 @@ impl Widget for Row {
                     let child_height = child.rect().height;
                     let child_rect = Rect::new(
                         inner_rect.x + x_offset,
-                        inner_rect.y,
+                        inner_rect.y + y_offset,
                         child_width,
                         child_height,
                     );
@@ -160,7 +172,11 @@ impl Widget for Row {
                         inner_rect.height,
                     );
                     child.layout(font_system, temp_rect);
-                    let natural_width = child.rect().width;
+                    // include margins in the total width footprint
+                    // left margin offset from temp_rect.x to child.rect().x
+                    // assume symmetric margins (right margin = left margin)
+                    let left_margin = child.rect().x - temp_rect.x;
+                    let natural_width = left_margin + child.rect().width + left_margin;
                     child_widths.push(natural_width);
                     if natural_width < 999999.0 {
                         total_fixed_width += natural_width;
@@ -212,43 +228,104 @@ impl Widget for Row {
                 total_width / child_count as f32
             };
 
-            let (gap, start_offset) = match self.justify {
-                Alignment::Start => (0.0, 0.0),
-                Alignment::Center => {
-                    let used_width: f32 = spans
-                        .iter()
-                        .map(|s| s.unwrap().0 as f32 * span_unit_width)
-                        .sum();
-                    (0.0, (total_width - used_width) / 2.0)
-                }
-                Alignment::End => {
-                    let used_width: f32 = spans
-                        .iter()
-                        .map(|s| s.unwrap().0 as f32 * span_unit_width)
-                        .sum();
-                    (0.0, total_width - used_width)
-                }
-                Alignment::SpaceBetween => {
-                    if child_count > 1 {
-                        let used_width: f32 = spans
-                            .iter()
-                            .map(|s| s.unwrap().0 as f32 * span_unit_width)
-                            .sum();
-                        let gap = (total_width - used_width) / (child_count - 1) as f32;
-                        (gap, 0.0)
-                    } else {
-                        (0.0, 0.0)
+            // for Center/End, layout children first to get actual widths (handles fixed-width Columns)
+            // measure natural heights for vertical alignment
+            let (gap, start_offset, natural_heights) =
+                if matches!(self.justify, Alignment::Center | Alignment::End)
+                    || matches!(self.align, Alignment::Center | Alignment::End)
+                {
+                    // ! first pass: layout children at x=0 with unlimited height to get natural sizes
+                    let mut temp_widths = Vec::new();
+                    let mut temp_heights = Vec::new();
+                    let mut temp_x = 0.0;
+                    for (i, child) in self.children.iter_mut().enumerate() {
+                        let span = spans[i].unwrap().0;
+                        let child_width = span as f32 * span_unit_width;
+                        let child_rect = Rect::new(
+                            inner_rect.x + temp_x,
+                            inner_rect.y,
+                            child_width,
+                            999999.0, // ! unlimited height to get natural size
+                        );
+                        child.layout(font_system, child_rect);
+                        let margin_offset = child.rect().x - child_rect.x;
+                        let footprint = margin_offset + child.rect().width;
+                        temp_widths.push(footprint);
+                        temp_heights.push(child.rect().height);
+                        temp_x += child_width;
                     }
+                    let actual_used: f32 = temp_widths.iter().sum();
+                    let gap_val = 0.0;
+                    let start_off = match self.justify {
+                        Alignment::Center => (total_width - actual_used) / 2.0,
+                        Alignment::End => total_width - actual_used,
+                        _ => 0.0,
+                    };
+                    (gap_val, start_off, Some(temp_heights))
+                } else {
+                    match self.justify {
+                        Alignment::Start => (0.0, 0.0, None),
+                        Alignment::SpaceBetween => {
+                            if child_count > 1 {
+                                let used_width: f32 = spans
+                                    .iter()
+                                    .map(|s| s.unwrap().0 as f32 * span_unit_width)
+                                    .sum();
+                                let gap = (total_width - used_width) / (child_count - 1) as f32;
+                                (gap, 0.0, None)
+                            } else {
+                                (0.0, 0.0, None)
+                            }
+                        }
+                        Alignment::SpaceAround => {
+                            let used_width: f32 = spans
+                                .iter()
+                                .map(|s| s.unwrap().0 as f32 * span_unit_width)
+                                .sum();
+                            let total_gap = total_width - used_width;
+                            let gap = total_gap / child_count as f32;
+                            (gap, gap / 2.0, None)
+                        }
+                        _ => (0.0, 0.0, None),
+                    }
+                };
+
+            // calculate vertical alignment offset using natural heights if available
+            // use natural heights if available, otherwise fall back to current rect heights
+            let max_child_height = if let Some(ref heights) = natural_heights {
+                heights.iter().fold(0.0f32, |a, &b| a.max(b))
+            } else {
+                // ! fallback: use current rect heights (may be expanded)
+                self.children
+                    .iter()
+                    .map(|c| c.rect().height)
+                    .fold(0.0f32, |a, b| a.max(b))
+            };
+
+            // ! calculate y_offset - use inner_rect.height if available, otherwise use Row's rect height
+            // ! the Row should have height: Percent(100.0) which resolves to screen height
+            let available_height_for_alignment = if inner_rect.height > 0.0 {
+                inner_rect.height
+            } else if self.rect.height > 0.0 {
+                // use Row's rect height (after padding is removed, this is the inner height)
+                // but account for padding that was removed
+                let (pt, _pr, pb, _pl) = self
+                    .style
+                    .resolve_padding(self.rect.width, self.rect.height);
+                self.rect.height - pt - pb
+            } else {
+                // ! last resort: use available height from parent
+                available.height.max(720.0)
+            };
+
+            let y_offset = if available_height_for_alignment > 0.0 && max_child_height > 0.0 {
+                match self.align {
+                    Alignment::Center => (available_height_for_alignment - max_child_height) / 2.0,
+                    Alignment::End => available_height_for_alignment - max_child_height,
+                    _ => 0.0,
                 }
-                Alignment::SpaceAround => {
-                    let used_width: f32 = spans
-                        .iter()
-                        .map(|s| s.unwrap().0 as f32 * span_unit_width)
-                        .sum();
-                    let total_gap = total_width - used_width;
-                    let gap = total_gap / child_count as f32;
-                    (gap, gap / 2.0)
-                }
+            } else {
+                0.0
             };
 
             let mut x_offset = start_offset;
@@ -257,11 +334,12 @@ impl Widget for Row {
                 let child_width = span as f32 * span_unit_width;
                 let child_rect = Rect::new(
                     inner_rect.x + x_offset,
-                    inner_rect.y,
+                    inner_rect.y + y_offset,
                     child_width,
                     inner_rect.height,
                 );
                 child.layout(font_system, child_rect);
+
                 x_offset += child_width + gap;
             }
         } else {
@@ -325,17 +403,29 @@ impl Widget for Row {
                 _ => 0.0,
             };
 
+            let max_child_height = self
+                .children
+                .iter()
+                .map(|c| c.rect().height)
+                .fold(0.0f32, f32::max);
+            let y_offset = match self.align {
+                Alignment::Center => (inner_rect.height - max_child_height) / 2.0,
+                Alignment::End => inner_rect.height - max_child_height,
+                _ => 0.0,
+            };
+
             let mut x_offset = start_offset;
             for (_i, child) in self.children.iter_mut().enumerate() {
                 // give child enough width for its needs - let it determine its own size
                 let remaining = (total_width - x_offset).max(0.0);
                 let child_rect = Rect::new(
                     inner_rect.x + x_offset,
-                    inner_rect.y,
+                    inner_rect.y + y_offset,
                     remaining,
                     inner_rect.height,
                 );
                 child.layout(font_system, child_rect);
+
                 let child_end = child.rect().x + child.rect().width - inner_rect.x;
                 x_offset = child_end + gap;
             }
@@ -354,6 +444,15 @@ impl Widget for Row {
                 if let Some(id) = &self.style.id {
                     println!("[Row] Clicked. ID: {}", id);
                 }
+                return true;
+            }
+        }
+        false
+    }
+
+    fn overlay_update(&mut self, ctx: &mut UiContext) -> bool {
+        for child in &mut self.children {
+            if child.overlay_update(ctx) {
                 return true;
             }
         }

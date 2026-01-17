@@ -342,6 +342,15 @@ impl Widget for ScrollView {
         self.style.id.as_deref()
     }
 
+    fn overlay_update(&mut self, ctx: &mut UiContext) -> bool {
+        for child in self.children.iter_mut() {
+            if child.overlay_update(ctx) {
+                return true;
+            }
+        }
+        false
+    }
+
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }

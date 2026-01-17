@@ -86,6 +86,24 @@ impl RenderBatch {
         self.indices.push(base_idx + 3);
     }
 
+    pub fn push_triangle(&mut self, p1: [f32; 2], p2: [f32; 2], p3: [f32; 2], color: [f32; 4]) {
+        let base_idx = self.vertices.len() as u32;
+
+        // use the center of a 1x1 white pixel in the texture atlas
+        let uv = [0.5, 0.5];
+
+        self.vertices
+            .push(UiVertex::new(p1[0], p1[1], color, uv, [0.0; 4], 0.0));
+        self.vertices
+            .push(UiVertex::new(p2[0], p2[1], color, uv, [0.0; 4], 0.0));
+        self.vertices
+            .push(UiVertex::new(p3[0], p3[1], color, uv, [0.0; 4], 0.0));
+
+        self.indices.push(base_idx);
+        self.indices.push(base_idx + 1);
+        self.indices.push(base_idx + 2);
+    }
+
     pub fn is_empty(&self) -> bool {
         self.vertices.is_empty()
     }

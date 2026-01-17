@@ -252,6 +252,8 @@ impl Game {
         if stepped {
             self.input.update();
         }
+
+        self.input.update_ui();
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {

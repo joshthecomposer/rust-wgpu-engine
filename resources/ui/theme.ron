@@ -37,10 +37,16 @@
         "muted-scrawl": Hex("#78716c"),
         "highlight": Hex("#fef3c7"),
         "runic-gold": Hex("#d97706"),
+        "runic-gold-translucent": Rgba(0.85, 0.55, 0.25, 0.5),
         "icon-glow": Hex("#d97706"),
         "blood-hp": Hex("#991b1b"),
         "mana-sky": Hex("#075985"),
         "text-light": Hex("#f3f4f6"),
+        "text-dim": Hex("#6b7280"),
+
+        // ==================== ERROR COLORS ====================
+        "error-background": Rgba(0.1, 0.0, 0.0, 0.9),
+        "error-text": Rgba(1.0, 0.2, 0.2, 1.0),
 
         // ==================== RARITY COLORS ====================
         "common-bone": Hex("#e2e8f0"),

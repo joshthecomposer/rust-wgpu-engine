@@ -7,8 +7,9 @@ use crate::ui::game_new::parser::theme::{load_theme, Theme};
 use crate::ui::game_new::styles::{Alignment, Color, Length, ScrollbarStyle, Style};
 use crate::ui::game_new::tree::UiTree;
 use crate::ui::game_new::widgets::{
-    AbilitySlot, BoxWidget, Column, Label, ProgressBar, Row, ScrollView, Text, TextureRect,
-    TooltipManager, Widget,
+    AbilitySlot, BoxWidget, Checkbox, CloseButton, Column, ComboBox, DiamondWidget, Label,
+    MenuButton, ProgressBar, Row, ScrollView, Slider, TabView, Text, TextureRect, TooltipManager,
+    Widget,
 };
 
 /// Represents a widget definition parsed from RON.
@@ -50,6 +51,10 @@ pub enum NodeDefinition {
         children: Vec<NodeDefinition>,
     },
     Box {
+        #[serde(default)]
+        style: Style,
+    },
+    Diamond {
         #[serde(default)]
         style: Style,
     },
@@ -117,9 +122,94 @@ pub enum NodeDefinition {
         #[serde(default)]
         style: Style,
     },
+    MenuButton {
+        text: String,
+        #[serde(default)]
+        normal_background: Color,
+        #[serde(default)]
+        hover_background: Color,
+        #[serde(default)]
+        accent_color: Color,
+        #[serde(default)]
+        border_color: Color,
+        #[serde(default)]
+        text_color: Color,
+        #[serde(default)]
+        style: Style,
+    },
+    CloseButton {
+        #[serde(default)]
+        normal_color: Color,
+        #[serde(default)]
+        hover_color: Color,
+        #[serde(default)]
+        style: Style,
+    },
+    ComboBox {
+        #[serde(default)]
+        options: Vec<String>,
+        #[serde(default)]
+        selected_index: usize,
+        #[serde(default)]
+        dropdown_background: Color,
+        #[serde(default)]
+        item_hover_color: Color,
+        #[serde(default)]
+        text_color: Color,
+        #[serde(default)]
+        border_color: Color,
+        #[serde(default)]
+        style: Style,
+    },
+    Checkbox {
+        #[serde(default)]
+        checked: bool,
+        #[serde(default)]
+        background_color: Color,
+        #[serde(default)]
+        border_color: Color,
+        #[serde(default)]
+        hover_border_color: Color,
+        #[serde(default)]
+        check_color: Color,
+        #[serde(default)]
+        style: Style,
+    },
+    Slider {
+        #[serde(default)]
+        min_value: f32,
+        #[serde(default)]
+        max_value: f32,
+        #[serde(default)]
+        value: f32,
+        #[serde(default)]
+        track_color: Color,
+        #[serde(default)]
+        fill_color: Color,
+        #[serde(default)]
+        thumb_color: Color,
+        #[serde(default)]
+        style: Style,
+    },
+    TabView {
+        #[serde(default, rename = "tab_labels")]
+        tabs: Vec<String>,
+        #[serde(default)]
+        selected_index: usize,
+        #[serde(default)]
+        active_text_color: Color,
+        #[serde(default)]
+        inactive_text_color: Color,
+        #[serde(default)]
+        underline_color: Color,
+        #[serde(default)]
+        style: Style,
+        #[serde(default, rename = "tab_contents")]
+        children: Vec<NodeDefinition>,
+    },
 }
 
-fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
+fn build_widget(def: NodeDefinition, theme: &Theme) -> Box<dyn Widget> {
     match def {
         NodeDefinition::Row {
             style,
@@ -130,7 +220,7 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
             let mut row = Row::new(style).with_justify(justify).with_align(align);
 
             for child_def in children {
-                row.add_child(build_widget(child_def));
+                row.add_child(build_widget(child_def, theme));
             }
 
             Box::new(row)
@@ -148,12 +238,13 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
                 .with_align(align);
 
             for child_def in children {
-                col.add_child(build_widget(child_def));
+                col.add_child(build_widget(child_def, theme));
             }
 
             Box::new(col)
         }
         NodeDefinition::Box { style } => Box::new(BoxWidget::new(style)),
+        NodeDefinition::Diamond { style } => Box::new(DiamondWidget::new(style)),
         NodeDefinition::Text { content, style } => Box::new(Text::new(content, style)),
         NodeDefinition::Label { content, style } => Box::new(Label::new(content, style)),
         NodeDefinition::TextureRect {
@@ -186,7 +277,7 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
                 .with_scrollbar_style(scrollbar_style);
 
             for child_def in children {
-                scroll.add_child(build_widget(child_def));
+                scroll.add_child(build_widget(child_def, theme));
             }
 
             Box::new(scroll)
@@ -218,7 +309,6 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
             style,
         } => {
             let mut tooltip = TooltipManager::new(style);
-            // Only appl non-default colors
             if !matches!(background_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
                 tooltip.background_color = background_color;
             }
@@ -232,6 +322,271 @@ fn build_widget(def: NodeDefinition) -> Box<dyn Widget> {
                 tooltip.description_color = description_color;
             }
             Box::new(tooltip)
+        }
+        NodeDefinition::MenuButton {
+            text,
+            normal_background,
+            hover_background,
+            accent_color,
+            border_color,
+            text_color,
+            style,
+        } => {
+            let mut btn = MenuButton::new(text, style);
+
+            let mut normal_bg = if !matches!(normal_background, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                normal_background
+            } else {
+                btn.normal_background.clone()
+            };
+
+            let mut hover_bg = if !matches!(hover_background, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                hover_background
+            } else {
+                btn.hover_background.clone()
+            };
+
+            let mut accent = if !matches!(accent_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                accent_color
+            } else {
+                btn.accent_color.clone()
+            };
+
+            let mut border = if !matches!(border_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                border_color
+            } else {
+                btn.border_color.clone()
+            };
+
+            let mut txt_color = if !matches!(text_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                text_color
+            } else {
+                btn.text_color.clone()
+            };
+
+            // resolve any variables
+            resolve_color(&mut normal_bg, theme);
+            resolve_color(&mut hover_bg, theme);
+            resolve_color(&mut accent, theme);
+            resolve_color(&mut border, theme);
+            resolve_color(&mut txt_color, theme);
+
+            btn = btn
+                .with_normal_background(normal_bg)
+                .with_hover_background(hover_bg)
+                .with_accent_color(accent)
+                .with_border_color(border)
+                .with_text_color(txt_color);
+
+            Box::new(btn)
+        }
+        NodeDefinition::CloseButton {
+            normal_color,
+            hover_color,
+            style,
+        } => {
+            let mut close_btn = CloseButton::new(style);
+            if !matches!(normal_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                close_btn = close_btn.with_normal_color(normal_color);
+            }
+            if !matches!(hover_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                close_btn = close_btn.with_hover_color(hover_color);
+            }
+            Box::new(close_btn)
+        }
+        NodeDefinition::ComboBox {
+            options,
+            selected_index,
+            dropdown_background,
+            item_hover_color,
+            text_color,
+            border_color,
+            style,
+        } => {
+            let mut combo = ComboBox::new(options, style).with_selected_index(selected_index);
+
+            let mut dd_bg = if !matches!(dropdown_background, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                dropdown_background
+            } else {
+                combo.dropdown_background.clone()
+            };
+
+            let mut hover_color = if !matches!(item_hover_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                item_hover_color
+            } else {
+                combo.item_hover_color.clone()
+            };
+
+            let mut txt_color = if !matches!(text_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                text_color
+            } else {
+                combo.text_color.clone()
+            };
+
+            let mut bdr_color = if !matches!(border_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                border_color
+            } else {
+                combo.border_color.clone()
+            };
+
+            // resolve any variables
+            resolve_color(&mut dd_bg, theme);
+            resolve_color(&mut hover_color, theme);
+            resolve_color(&mut txt_color, theme);
+            resolve_color(&mut bdr_color, theme);
+
+            combo = combo
+                .with_dropdown_background(dd_bg)
+                .with_item_hover_color(hover_color)
+                .with_text_color(txt_color)
+                .with_border_color(bdr_color);
+
+            Box::new(combo)
+        }
+        NodeDefinition::Checkbox {
+            checked,
+            background_color,
+            border_color,
+            hover_border_color,
+            check_color,
+            style,
+        } => {
+            let mut checkbox = Checkbox::new(style).with_checked(checked);
+
+            let mut bg = if !matches!(background_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                background_color
+            } else {
+                checkbox.background_color.clone()
+            };
+
+            let mut border = if !matches!(border_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                border_color
+            } else {
+                checkbox.border_color.clone()
+            };
+
+            let mut hover_border = if !matches!(hover_border_color, Color::Rgba(0.0, 0.0, 0.0, 0.0))
+            {
+                hover_border_color
+            } else {
+                checkbox.hover_border_color.clone()
+            };
+
+            let mut check = if !matches!(check_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                check_color
+            } else {
+                checkbox.check_color.clone()
+            };
+
+            // resolve any variables
+            resolve_color(&mut bg, theme);
+            resolve_color(&mut border, theme);
+            resolve_color(&mut hover_border, theme);
+            resolve_color(&mut check, theme);
+
+            checkbox = checkbox
+                .with_background_color(bg)
+                .with_border_color(border)
+                .with_hover_border_color(hover_border)
+                .with_check_color(check);
+
+            Box::new(checkbox)
+        }
+        NodeDefinition::Slider {
+            min_value,
+            max_value,
+            value,
+            track_color,
+            fill_color,
+            thumb_color,
+            style,
+        } => {
+            let mut slider = Slider::new(style)
+                .with_range(min_value, max_value)
+                .with_value(value);
+
+            let mut track = if !matches!(track_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                track_color
+            } else {
+                slider.track_color.clone()
+            };
+
+            let mut fill = if !matches!(fill_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                fill_color
+            } else {
+                slider.fill_color.clone()
+            };
+
+            let mut thumb = if !matches!(thumb_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                thumb_color
+            } else {
+                slider.thumb_color.clone()
+            };
+
+            // resolve any variables
+            resolve_color(&mut track, theme);
+            resolve_color(&mut fill, theme);
+            resolve_color(&mut thumb, theme);
+
+            let mut track_border = slider.track_border_color.clone();
+            resolve_color(&mut track_border, theme);
+            slider.track_border_color = track_border;
+
+            let mut thumb_pressed = slider.thumb_pressed_color.clone();
+            resolve_color(&mut thumb_pressed, theme);
+            slider.thumb_pressed_color = thumb_pressed;
+
+            slider = slider
+                .with_track_color(track)
+                .with_fill_color(fill)
+                .with_thumb_color(thumb);
+
+            Box::new(slider)
+        }
+        NodeDefinition::TabView {
+            tabs,
+            selected_index,
+            active_text_color,
+            inactive_text_color,
+            underline_color,
+            style,
+            children,
+        } => {
+            let mut tab_view = TabView::new(tabs, style).with_selected_index(selected_index);
+
+            let mut active_text = if !matches!(active_text_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                active_text_color
+            } else {
+                tab_view.active_text_color.clone()
+            };
+
+            let mut inactive_text =
+                if !matches!(inactive_text_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                    inactive_text_color
+                } else {
+                    tab_view.inactive_text_color.clone()
+                };
+
+            let mut underline = if !matches!(underline_color, Color::Rgba(0.0, 0.0, 0.0, 0.0)) {
+                underline_color
+            } else {
+                tab_view.underline_color.clone()
+            };
+
+            // resolve any variables
+            resolve_color(&mut active_text, theme);
+            resolve_color(&mut inactive_text, theme);
+            resolve_color(&mut underline, theme);
+
+            tab_view = tab_view
+                .with_active_text_color(active_text)
+                .with_inactive_text_color(inactive_text)
+                .with_underline_color(underline);
+
+            for child_def in children {
+                tab_view.add_child(build_widget(child_def, theme));
+            }
+            Box::new(tab_view)
         }
     }
 }
@@ -340,6 +695,9 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
         NodeDefinition::Box { style } => {
             resolve_style(style, theme);
         }
+        NodeDefinition::Diamond { style } => {
+            resolve_style(style, theme);
+        }
         NodeDefinition::Text { style, .. } => {
             resolve_style(style, theme);
         }
@@ -408,6 +766,87 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
             resolve_color(title_color, theme);
             resolve_color(description_color, theme);
         }
+        NodeDefinition::MenuButton {
+            normal_background,
+            hover_background,
+            accent_color,
+            border_color,
+            text_color,
+            style,
+            ..
+        } => {
+            resolve_style(style, theme);
+            resolve_color(normal_background, theme);
+            resolve_color(hover_background, theme);
+            resolve_color(accent_color, theme);
+            resolve_color(border_color, theme);
+            resolve_color(text_color, theme);
+        }
+        NodeDefinition::CloseButton {
+            normal_color,
+            hover_color,
+            style,
+        } => {
+            resolve_style(style, theme);
+            resolve_color(normal_color, theme);
+            resolve_color(hover_color, theme);
+        }
+        NodeDefinition::ComboBox {
+            dropdown_background,
+            item_hover_color,
+            text_color,
+            border_color,
+            style,
+            ..
+        } => {
+            resolve_style(style, theme);
+            resolve_color(dropdown_background, theme);
+            resolve_color(item_hover_color, theme);
+            resolve_color(text_color, theme);
+            resolve_color(border_color, theme);
+        }
+        NodeDefinition::Checkbox {
+            background_color,
+            border_color,
+            hover_border_color,
+            check_color,
+            style,
+            ..
+        } => {
+            resolve_style(style, theme);
+            resolve_color(background_color, theme);
+            resolve_color(border_color, theme);
+            resolve_color(hover_border_color, theme);
+            resolve_color(check_color, theme);
+        }
+        NodeDefinition::Slider {
+            track_color,
+            fill_color,
+            thumb_color,
+            style,
+            ..
+        } => {
+            resolve_style(style, theme);
+            resolve_color(track_color, theme);
+            resolve_color(fill_color, theme);
+            resolve_color(thumb_color, theme);
+        }
+        NodeDefinition::TabView {
+            active_text_color,
+            inactive_text_color,
+            underline_color,
+            style,
+            children,
+            ..
+        } => {
+            resolve_style(style, theme);
+            resolve_color(active_text_color, theme);
+            resolve_color(inactive_text_color, theme);
+            resolve_color(underline_color, theme);
+            for child in children {
+                resolve_variables(child, theme);
+            }
+        }
     }
 }
 
@@ -431,7 +870,7 @@ pub fn load_view<P: AsRef<Path>>(path: P) -> Result<UiTree, String> {
 
     resolve_variables(&mut root_def, &theme);
 
-    let root_widget = build_widget(root_def);
+    let root_widget = build_widget(root_def, &theme);
 
     let mut tree = UiTree::new();
     tree.set_root(root_widget);
@@ -452,7 +891,7 @@ pub fn load_view_from_str(content: &str) -> Result<UiTree, String> {
     let theme = Theme::new();
     resolve_variables(&mut root_def, &theme);
 
-    let root_widget = build_widget(root_def);
+    let root_widget = build_widget(root_def, &theme);
 
     let mut tree = UiTree::new();
     tree.set_root(root_widget);
@@ -483,7 +922,7 @@ fn create_error_view(error: &str) -> UiTree {
     let style = Style {
         width: crate::ui::game_new::styles::Length::Percent(100.0),
         height: crate::ui::game_new::styles::Length::Percent(100.0),
-        background: crate::ui::game_new::styles::Color::Rgba(0.1, 0.0, 0.0, 0.9), // Dark red background
+        background: crate::ui::game_new::styles::Color::Variable("error-background".to_string()),
         padding: crate::ui::game_new::styles::Length::Px(20.0),
         ..Default::default()
     };
@@ -493,7 +932,9 @@ fn create_error_view(error: &str) -> UiTree {
         .with_align(crate::ui::game_new::styles::Alignment::Center);
 
     let text_style = Style {
-        color: Some(crate::ui::game_new::styles::Color::Rgba(1.0, 0.2, 0.2, 1.0)), // Red text
+        color: Some(crate::ui::game_new::styles::Color::Variable(
+            "error-text".to_string(),
+        )),
         font_size: Some(20.0),
         text_align: Some(crate::ui::game_new::styles::Alignment::Center),
         ..Default::default()
@@ -696,8 +1137,7 @@ mod tests {
     }
     #[test]
     fn test_parse_game_hud_file() {
-        // This test reads the newly created game_hud.ron file
-        let result = load_view("src/ui/game_new/views/game_hud.ron");
+        let result = load_view("resources/ui/game_hud.ron");
         if let Err(e) = result {
             panic!("Failed to parse game_hud.ron: {}", e);
         }
@@ -717,6 +1157,50 @@ mod tests {
                 // This is a basic sanity check
                 // We can't easily inspect the Box<dyn Widget>, but ensuring it builds is good.
             }
+        }
+    }
+
+    #[test]
+    fn test_parse_menu_button() {
+        let ron = r#"
+            MenuButton(
+                text: "Click Me",
+                style: (
+                    id: Some("my_button"),
+                    width: Px(200.0),
+                    height: Px(40.0),
+                ),
+                normal_background: Rgba(0.1, 0.1, 0.1, 1.0),
+                hover_background: Rgba(0.2, 0.2, 0.2, 1.0),
+                accent_color: Rgba(0.8, 0.5, 0.0, 1.0),
+            )
+        "#;
+
+        let result = load_view_from_str(ron);
+        if let Err(e) = result {
+            panic!("Failed to parse MenuButton: {}", e);
+        }
+    }
+
+    #[test]
+    fn test_parse_combo_box() {
+        let ron = r#"
+            ComboBox(
+                options: ["Option 1", "Option 2", "Option 3"],
+                selected_index: 1,
+                style: (
+                    id: Some("my_combo"),
+                    width: Px(150.0),
+                    height: Px(30.0),
+                ),
+                dropdown_background: Rgba(0.1, 0.1, 0.1, 1.0),
+                item_hover_color: Rgba(0.2, 0.2, 0.2, 1.0),
+            )
+        "#;
+
+        let result = load_view_from_str(ron);
+        if let Err(e) = result {
+            panic!("Failed to parse ComboBox: {}", e);
         }
     }
 }

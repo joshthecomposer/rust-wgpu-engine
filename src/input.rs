@@ -19,7 +19,8 @@ pub struct InputState {
     pub keys_previous: HashSet<KeyCode>, // held last frame
 
     pub mouse_current: HashSet<MouseButton>, // Held this frame
-    pub mouse_previous: HashSet<MouseButton>, // held last frame
+    pub mouse_previous: HashSet<MouseButton>, // held last fixed step
+    pub mouse_previous_ui: HashSet<MouseButton>, // held last frame (for UI)
 
     pub mouse_pos_current: Vec2,
 
@@ -41,6 +42,7 @@ impl InputState {
 
             mouse_current: HashSet::new(),
             mouse_previous: HashSet::new(),
+            mouse_previous_ui: HashSet::new(),
 
             mouse_pos_current: Vec2::splat(0.0),
 
@@ -124,6 +126,11 @@ impl InputState {
         self.mouse_previous = self.mouse_current.clone();
         // Reset scroll delta each frame
         self.scroll_delta = Vec2::ZERO;
+    }
+
+    pub fn update_ui(&mut self) {
+        // Update UI-specific previous state every frame
+        self.mouse_previous_ui = self.mouse_current.clone();
     }
 }
 

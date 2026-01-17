@@ -70,6 +70,11 @@ impl UiTree {
 
     pub fn update(&mut self, ctx: &mut UiContext) -> bool {
         if let Some(root) = &mut self.root {
+            // First pass: check for open overlays (dropdowns/popups) that need input priority
+            if root.overlay_update(ctx) {
+                return true;
+            }
+            // Second pass: regular widget update
             root.update(ctx)
         } else {
             false

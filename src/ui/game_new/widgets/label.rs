@@ -1,7 +1,7 @@
 use crate::ui::game_new::context::UiContext;
 use crate::ui::game_new::font_system::FontSystem;
 use crate::ui::game_new::render::UiRenderer;
-use crate::ui::game_new::styles::{Rect, Style};
+use crate::ui::game_new::styles::{Color, Rect, Style};
 use crate::ui::game_new::widgets::text::Text;
 use crate::ui::game_new::widgets::Widget;
 
@@ -25,6 +25,10 @@ impl Label {
 
     pub fn get_text(&self) -> &str {
         &self.text.content
+    }
+
+    pub fn set_text_color(&mut self, color: Color) {
+        self.text.style.color = Some(color);
     }
 }
 
