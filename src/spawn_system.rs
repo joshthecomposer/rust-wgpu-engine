@@ -19,7 +19,10 @@ pub struct SpawnManager {
 }
 
 impl SpawnManager {
-    pub fn update(&mut self, em: &mut EntityManager, ps: &mut PhysicsState, dt: f32) {
+    pub fn update(&mut self, em: &mut EntityManager, ps: &mut PhysicsState, dt: f32, enabled: bool) {
+        if !enabled {
+            return;
+        }
         self.accumulator += dt;
 
         if self.accumulator >= self.spawn_every {

@@ -31,6 +31,7 @@ export component GameRoot inherits Window {
     in-out property <float> sfx-volume: 80.0;
     in-out property <bool> vsync: true;
     in-out property <bool> debug-mode: false;
+    in-out property <bool> spawn-system-enabled: true;
     in-out property <string> msaa: "16x MSAA";
 
     in property <int> current-fps: 60;
@@ -150,6 +151,7 @@ export component GameRoot inherits Window {
         sfx-volume <=> root.sfx-volume;
         vsync <=> root.vsync;
         debug-mode <=> root.debug-mode;
+        spawn-system-enabled <=> root.spawn-system-enabled;
         msaa <=> root.msaa;
         font-family <=> root.font-family;
         actual-font-family <=> root.actual-font-family;
@@ -163,6 +165,10 @@ export component GameRoot inherits Window {
     }
 
     // ==================== TOAST NOTIFICATIONS ====================
+    // DEPRECATED: Toast notifications now rendered via custom GPU UI system (game_new)
+    // See ToastView in src/ui/game_new/views/toast_view.rs
+    // The toast_close_clicked callback is kept for compatibility but no longer used.
+    /*
     // positioned in bottom-right corner, stacks vertically
     // accounts for 4px shadow offset on right and bottom
     toast-container := Rectangle {
@@ -187,6 +193,7 @@ export component GameRoot inherits Window {
             }
         }
     }
+    */
 }
 
 // Export AbilityBarStandalone component for FBO rendering

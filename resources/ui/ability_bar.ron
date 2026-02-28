@@ -1,0 +1,122 @@
+// Ability Bar Layout - Custom GPU UI System
+// Displays 6 ability slots: M1, M2 | Q, E, Shift | R
+// Positioned at bottom-left of screen
+
+Row(
+    style: (
+        id: Some("ability_bar"),
+        width: Px(346.0),
+        height: Px(68.0),
+        padding: Px(8.0),
+        background: Variable("deep-void-alpha"),
+        border_radius: 6.0,
+        border_width: 1.0,
+        border_color: Variable("stone-light"),
+    ),
+    justify: Start,
+    align: Center,
+    children: [
+        // M1 slot
+        AbilitySlot(
+            key_label: "M1",
+            slot_background: Variable("deep-void-alpha"),
+            ready_border_color: Variable("runic-gold"),
+            normal_border_color: Variable("stone-light"),
+            style: (
+                id: Some("slot_m1"),
+                width: Px(48.0),
+                height: Px(48.0),
+                border_radius: 4.0,
+            ),
+        ),
+
+        // M2 slot
+        AbilitySlot(
+            key_label: "M2",
+            slot_background: Variable("deep-void-alpha"),
+            ready_border_color: Variable("runic-gold"),
+            normal_border_color: Variable("stone-light"),
+            style: (
+                id: Some("slot_m2"),
+                width: Px(48.0),
+                height: Px(48.0),
+                margin_left: Some(Px(6.0)),
+                border_radius: 4.0,
+            ),
+        ),
+
+        // Separator 1
+        Box(
+            style: (
+                width: Px(12.0),
+                height: Px(48.0),
+            ),
+        ),
+
+        // Q slot
+        AbilitySlot(
+            key_label: "Q",
+            slot_background: Variable("deep-void-alpha"),
+            ready_border_color: Variable("runic-gold"),
+            normal_border_color: Variable("stone-light"),
+            style: (
+                id: Some("slot_q"),
+                width: Px(48.0),
+                height: Px(48.0),
+                border_radius: 4.0,
+            ),
+        ),
+
+        // E slot
+        AbilitySlot(
+            key_label: "E",
+            slot_background: Variable("deep-void-alpha"),
+            ready_border_color: Variable("runic-gold"),
+            normal_border_color: Variable("stone-light"),
+            style: (
+                id: Some("slot_e"),
+                width: Px(48.0),
+                height: Px(48.0),
+                margin_left: Some(Px(6.0)),
+                border_radius: 4.0,
+            ),
+        ),
+
+        // Shift slot
+        AbilitySlot(
+            key_label: "Shift",
+            slot_background: Variable("deep-void-alpha"),
+            ready_border_color: Variable("runic-gold"),
+            normal_border_color: Variable("stone-light"),
+            style: (
+                id: Some("slot_shift"),
+                width: Px(48.0),
+                height: Px(48.0),
+                margin_left: Some(Px(6.0)),
+                border_radius: 4.0,
+            ),
+        ),
+
+        // Separator 2
+        Box(
+            style: (
+                width: Px(12.0),
+                height: Px(48.0),
+            ),
+        ),
+
+        // R slot (ultimate)
+        AbilitySlot(
+            key_label: "R",
+            slot_background: Variable("deep-void-alpha"),
+            ready_border_color: Variable("runic-gold"),
+            normal_border_color: Variable("stone-light"),
+            style: (
+                id: Some("slot_r"),
+                width: Px(48.0),
+                height: Px(48.0),
+                border_radius: 4.0,
+            ),
+        ),
+    ]
+)

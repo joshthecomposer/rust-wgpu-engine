@@ -17,6 +17,7 @@ pub struct GameConfig {
     pub msaa_level: i32,
     pub fxaa_level: FxaaLevels,
     pub font_family: String,
+    pub spawn_system_enabled: bool,
 }
 
 impl Default for GameConfig {
@@ -36,6 +37,7 @@ impl Default for GameConfig {
             msaa_level: 16,
             fxaa_level: FxaaLevels::Off,
             font_family: "Weiholmir".to_string(),
+            spawn_system_enabled: true,
         }
     }
 }

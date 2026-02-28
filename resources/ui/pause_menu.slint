@@ -25,6 +25,7 @@ export component PauseMenu inherits Rectangle {
     in-out property <float> sfx-volume: 80.0;
     in-out property <bool> vsync: true;
     in-out property <bool> debug-mode: false;
+    in-out property <bool> spawn-system-enabled: true;
     in-out property <string> msaa: "16x MSAA";
     in-out property <string> font-family: "Weiholmir"; // display name
     in-out property <string> actual-font-family: "Weiholmir"; // actual font family name
@@ -118,6 +119,7 @@ export component PauseMenu inherits Rectangle {
                 sfx-volume <=> root.sfx-volume;
                 vsync <=> root.vsync;
                 debug-mode <=> root.debug-mode;
+                spawn-system-enabled <=> root.spawn-system-enabled;
                 msaa <=> root.msaa;
                 font-family <=> root.font-family;
                 apply_clicked => { root.apply_settings_clicked(); }

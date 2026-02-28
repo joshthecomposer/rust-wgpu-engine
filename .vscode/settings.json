@@ -17,6 +17,7 @@
 		"EVENTINSTANCE",
 		"extradriverdata",
 		"fbos",
+		"flexbox",
 		"flickable",
 		"FMOD",
 		"fmodstudio",
@@ -44,6 +45,7 @@
 		"keybind",
 		"Knockback",
 		"knockbacks",
+		"layouted",
 		"LEQUAL",
 		"lerp",
 		"lhid",
@@ -64,11 +66,14 @@
 		"nrows",
 		"Numpad",
 		"oneshot",
+		"opendyslexic",
 		"opengl",
 		"Parameteri",
+		"Parameteriv",
 		"pingpong",
 		"readback",
 		"rects",
+		"relayout",
 		"renderbuffer",
 		"Renderbuffers",
 		"repr",
@@ -86,11 +91,14 @@
 		"Spag",
 		"sparseset",
 		"Spawnable",
+		"Storei",
 		"studioextraflags",
 		"studioflags",
+		"tabview",
 		"trimesh",
 		"unequip",
 		"uninit",
+		"untextured",
 		"vaos",
 		"verts",
 		"vsync",
@@ -104,5 +112,9 @@
 	"[rust]": {
 		"editor.defaultFormatter": "rust-lang.rust-analyzer",
 		"editor.formatOnSave": true
+	},
+	"chat.tools.terminal.autoApprove": {
+		"cargo build": true,
+		"cargo test": true
 	}
 }

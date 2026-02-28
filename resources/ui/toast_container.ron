@@ -1,0 +1,27 @@
+// Toast Container Layout - Custom GPU UI System
+// Positioned at bottom-right of screen
+// Stacks toasts vertically upward (newest at bottom)
+
+// Fullscreen container to position toasts at bottom-right
+Row(
+    style: (
+        width: Percent(100.0),
+        height: Percent(100.0),
+    ),
+    justify: End,    // right side
+    align: End,      // bottom
+    children: [
+        ToastContainer(
+            style: (
+                id: Some("toast_container"),
+                width: Px(370.0),
+                height: Auto,  // size based on content
+                max_height: Px(600.0),  // limit to 600px max
+                padding: Px(16.0),
+                margin_right: Some(Px(16.0)),  // 16px from right edge
+                margin_bottom: Some(Px(16.0)), // 16px from bottom edge
+                background: Hex("#00000000"), // transparent container
+            ),
+        ),
+    ],
+)

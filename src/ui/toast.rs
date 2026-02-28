@@ -7,7 +7,7 @@
 use std::cell::RefCell;
 
 /// Type of toast notification, determines styling and icon.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(dead_code)] // variants are used via macro expansion
 pub enum ToastType {
     Success,
@@ -55,13 +55,18 @@ pub fn show_toast(
     message: impl Into<String>,
     duration: Option<f64>,
 ) {
+    let title_str = title.into();
+    let message_str = message.into();
+    println!("[show_toast] Adding toast: {:?} - {} | {}", toast_type, title_str, message_str);
+    
     TOAST_QUEUE.with(|queue| {
         queue.borrow_mut().push(PendingToast {
             toast_type,
-            title: title.into(),
-            message: message.into(),
+            title: title_str,
+            message: message_str,
             duration,
         });
+        println!("[show_toast] Queue now has {} toasts", queue.borrow().len());
     });
 }
 

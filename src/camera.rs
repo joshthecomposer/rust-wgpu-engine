@@ -147,7 +147,7 @@ impl Camera {
                     self.forward = (self.target - self.position).normalize();
                 }
             }
-            CameraState::Locked => {
+            CameraState::Locked | CameraState::Gallery => {
                 self.target = self.locked_target;
                 self.position = self.locked_position;
                 self.forward = (self.target - self.position).normalize();
@@ -162,7 +162,7 @@ impl Camera {
         self.projection = glam::Mat4::perspective_rh_gl(self.fovy, aspect, self.z_near, self.z_far);
 
         match self.move_state {
-            CameraState::Free | CameraState::Locked => {
+            CameraState::Free | CameraState::Locked | CameraState::Gallery => {
                 let p = self.prev_pos.lerp(self.position, alpha);
                 let f = self.prev_forward.lerp(self.forward, alpha).normalize();
                 let r = f.cross(glam::Vec3::Y).normalize();
@@ -191,7 +191,7 @@ impl Camera {
 
     pub fn process_mouse_input(&mut self, dx: f64, dy: f64) {
         match self.move_state {
-            CameraState::Locked => {}
+            CameraState::Locked | CameraState::Gallery => {}
             CameraState::Third => {
                 let mut x_offset = dx as f64;
                 let mut y_offset = dy as f64; // invert y
@@ -227,7 +227,7 @@ impl Camera {
         match self.move_state {
             CameraState::Free => {}
             CameraState::Third => {}
-            CameraState::Locked => {}
+            CameraState::Locked | CameraState::Gallery => {}
         }
     }
 
