@@ -41,9 +41,6 @@ pub fn player_state_orchestrator(
         return;
     };
 
-    dbg!(&animator.current_animation);
-    dbg!(&animator.next_animation);
-
     let weap_id = em.active_items.get(player_id).and_then(|w| w.right_hand);
 
     let Some(gs) = em.grounded_states.get(player_id) else {
