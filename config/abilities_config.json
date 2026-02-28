@@ -1,14 +1,14 @@
 {
-  "abilities": {
-    "27": {
+  "abilities": [
+     {
       "id": 27,
       "name": "Fire Ball",
       "cooldown": 0.5,
       "description": "Shoot a fire ball",
       "icon": "resources/ui/icons/fire_ball.png",
-      "animation": "StaffM1"
+      "animation": "Basic"
     },
-    "28": {
+    {
       "id": 28,
       "name": "Lava Field",
       "cooldown": 10.0,
@@ -16,7 +16,7 @@
       "icon": "resources/ui/icons/lava_field.png",
       "animation": "StaffM1"
     },
-    "14": {
+    {
       "id": 14,
       "name": "Dash",
       "cooldown": 1.0,
@@ -24,7 +24,7 @@
       "icon": "resources/ui/icons/roll_dodge.png",
       "animation": "DashF"
     },
-    "29": {
+    {
       "id": 29,
       "name": "Fire Wall",
       "cooldown": 10.0,
@@ -32,7 +32,7 @@
       "icon": "resources/ui/icons/fire_wall.png",
       "animation": "StaffM1"
     },
-    "30": {
+    {
       "id": 30,
       "name": "Fire Shield",
       "cooldown": 15.0,
@@ -40,7 +40,7 @@
       "icon": "resources/ui/icons/fire_shield.png",
       "animation": "StaffM1"
     },
-    "31": {
+    {
       "id": 31,
       "name": "Fire Wave",
       "cooldown": 10.0,
@@ -48,7 +48,7 @@
       "icon": "resources/ui/icons/fire_wave.png",
       "animation": "StaffM1"
     },
-    "32": {
+    {
       "id": 32,
       "name": "Fire Sphere",
       "cooldown": 10.0,
@@ -56,7 +56,7 @@
       "icon": "resources/ui/icons/fire_sphere.png",
       "animation": "StaffM1"
     },
-    "33": {
+    {
       "id": 33,
       "name": "Fire Ring",
       "cooldown": 10.0,
@@ -64,7 +64,7 @@
       "icon": "resources/ui/icons/fire_ring.png",
       "animation": "StaffM1"
     },
-    "34": {
+    {
       "id": 34,
       "name": "Horizontal Slash",
       "cooldown": 0.5,
@@ -72,7 +72,7 @@
       "icon": "resources/ui/icons/fire_ring.png",
       "animation": "Slash1"
     },
-    "35": {
+    {
       "id": 35,
       "name": "Block",
       "cooldown": 0.5,
@@ -80,5 +80,5 @@
       "icon": "resources/ui/icons/fire_ring.png",
       "animation": "Block"
     }
-  }
+  ]
 }

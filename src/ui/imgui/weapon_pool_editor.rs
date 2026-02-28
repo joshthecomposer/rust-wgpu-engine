@@ -135,7 +135,7 @@ impl WeaponPoolEditor {
                             .abilities_config
                             .abilities
                             .iter()
-                            .map(|(k, v)| (k.parse().unwrap(), v.name.clone()))
+                            .map(|a| (a.id, a.name.clone()))
                             .collect();
                         abilities.sort_by_key(|a| a.0);
 

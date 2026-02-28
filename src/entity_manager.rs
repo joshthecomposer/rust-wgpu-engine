@@ -6,7 +6,7 @@ use std::{
     time::UNIX_EPOCH,
 };
 
-use glam::{Quat, Vec3};
+use glam::{vec3, Quat, Vec3};
 use nalgebra::{Point3, UnitQuaternion};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -16,6 +16,7 @@ use winit::keyboard::KeyCode;
 use crate::{
     abilities::{AbilitiesConfig, WeaponAbilities, WeaponPoolsConfig},
     animation::{self, animation::Animation, animator::Animator, model::Model, skellington::Bone},
+    command_buffer::{CommandBuffer, ImpulseKind},
     config::{
         entity_config::{
             AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper,
@@ -24,7 +25,7 @@ use crate::{
         world_data::{EntityInstance, WorldData},
         Config,
     },
-    debug::gizmos::{Cuboid, Cylinder, Dimension, Pill},
+    debug::gizmos::{Cuboid, Cylinder, Dimension, Pill, Sphere},
     enums_types::{
         ActiveItem, AnimationType, AttackState, ControlState, FrameActivation, GroundedState,
         HitboxShape, JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController,
@@ -225,7 +226,6 @@ impl EntityManager {
                 self.hitsets.insert(weapon_id, HashSet::new());
                 self.owners.insert(weapon_id, parent_id);
 
-                // generate abilities for this weapon
                 let abilities = WeaponAbilities::generate(
                     &weapon.entity_type,
                     &self.weapon_pools_config,
@@ -317,7 +317,36 @@ impl EntityManager {
         self.next_entity_id += 1;
     }
 
-    pub fn create_fireball(radius: f32, source_id: Option<usize>) {}
+    pub fn create_sphere_projectile_from_weapon(
+        &mut self,
+        source_id: usize,
+        weapon_id: usize,
+        cmds: &mut CommandBuffer,
+    ) {
+        self.next_entity_id += 1;
+        let projectile_id = self.next_entity_id;
+
+        let Some(origin) = self.world_weapon_tips.get(weapon_id) else {
+            eprintln!("Failed to find the tip for the given weapon");
+            return;
+        };
+
+        let Some(owner) = self.owners.get(weapon_id) else {
+            eprintln!("Weapon has no owner, this seems wrong...");
+            return;
+        };
+
+        self.source_ids.insert(projectile_id, source_id);
+        self.lifetimes.insert(projectile_id, 10.0);
+
+        let yaw = self.yaws.get(*owner).unwrap();
+        let direction = vec3(yaw.sin(), 0.0, yaw.cos());
+        let v = direction * 10.0;
+
+        let instance = EntityInstance::new("SphereProjectile".to_string(), *origin, Quat::IDENTITY);
+
+        cmds.impulse(projectile_id, None, ImpulseKind::World, v);
+    }
 
     pub fn create_mesh_entity(
         &mut self,
@@ -620,6 +649,9 @@ impl EntityManager {
             HitboxShape::Mesh => {
                 self.create_mesh_based_hitbox(&model, position, scale, rotation, parent_id, ps);
             }
+            HitboxShape::Sphere { r } => {
+                self.create_sphere_hitbox(r, position, scale, parent_id, ps)
+            }
             _ => (),
         }
 
@@ -781,6 +813,66 @@ impl EntityManager {
                 scale,
             },
         );
+    }
+
+    pub fn create_sphere_hitbox(
+        &mut self,
+        r: f32,
+        position: Vec3,
+        scale: Vec3,
+        parent_id: usize,
+        ps: &mut PhysicsState,
+    ) {
+        let sphere = Sphere { r };
+
+        let sphere_mod = sphere.create_model(10, 5, 0.0);
+
+        self.collider_gizmos.insert(parent_id, sphere_mod);
+        self.collider_transforms.insert(
+            parent_id,
+            Transform {
+                position,
+                rotation: Quat::IDENTITY,
+                scale,
+            },
+        );
+        self.prev_collider_transforms.insert(
+            parent_id,
+            Transform {
+                position,
+                rotation: Quat::IDENTITY,
+                scale,
+            },
+        );
+
+        let iso: Isometry<f32> = (position, Quat::IDENTITY).into();
+
+        let body = RigidBodyBuilder::dynamic()
+            .position(iso)
+            .ccd_enabled(true)
+            .build();
+
+        let collider = ColliderBuilder::ball(r)
+            .density(0.0)
+            .active_events(ActiveEvents::COLLISION_EVENTS)
+            .build();
+
+        let body_handle = ps.rigid_body_set.insert(body);
+
+        let collider_handle =
+            ps.collider_set
+                .insert_with_parent(collider, body_handle, &mut ps.rigid_body_set);
+
+        self.physics_handles.insert(
+            parent_id,
+            PhysicsHandle {
+                rigid_body: body_handle,
+                collider: collider_handle,
+                og_rb_type: RigidBodyType::Dynamic,
+            },
+        );
+
+        self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
     pub fn create_bounding_hitbox(
@@ -1119,6 +1211,9 @@ impl EntityManager {
             self.pickup_ranges.remove(id);
 
             self.cleanup_timer.remove(id);
+
+            self.source_ids.remove(id);
+            self.lifetimes.remove(id);
 
             // -----------------------------
             // Misc / bookkeeping

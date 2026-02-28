@@ -2,7 +2,7 @@
   "weapon_types": {
     "FireStaff": {
       "m1": 27,
-      "m2": 28,
+      "m2": 30,
       "shift": 14,
       "skill_pool": [29, 30, 31],
       "ultimate_pool": [32, 33]
