@@ -1,9 +1,11 @@
 use std::{cell::Cell, collections::HashMap, ffi::CString};
 
+use gl::PixelStoref;
 use glam::Vec3;
 
 use crate::{
     camera::Camera,
+    command_buffer::{CommandBuffer, SoundKind},
     config::sound_config::SoundConfig,
     enums_types::SoundType,
     sound::fmod::{FMOD_Studio_EventDescription_LoadSampleData, FMOD_INIT_3D_RIGHTHANDED},
@@ -127,7 +129,21 @@ impl SoundManager {
         }
     }
 
-    pub fn update(&self, camera: &Camera) {
+    pub fn update(&mut self, camera: &Camera, cmds: &mut CommandBuffer) {
+        // Evaluate commands
+        let soundcmds = std::mem::take(&mut cmds.sound);
+
+        for c in soundcmds {
+            match c.kind {
+                SoundKind::Sound3d(t, p) => {
+                    self.play_sound_3d(t, &p);
+                }
+                SoundKind::Sound2d(t) => {
+                    self.play_sound_2d(t);
+                }
+            }
+        }
+
         unsafe {
             let result = FMOD_Studio_System_Update(self.fmod_system);
             if result != 0 {
@@ -179,7 +195,7 @@ impl SoundManager {
         }
     }
 
-    pub fn play_sound_3d(&mut self, sound_type: SoundType, position: &Vec3, _entity_id: usize) {
+    pub fn play_sound_3d(&mut self, sound_type: SoundType, position: &Vec3) {
         let sound_data = match self.sounds.get(&sound_type) {
             Some(data) => data,
             None => {

@@ -26,6 +26,8 @@ pub struct AbilityDefinition {
     pub description: String,
     #[serde(default)]
     pub icon: String,
+    // this is the same animation name that is stored in the animator
+    pub animation: String,
 }
 
 /// All ability definitions (loaded from abilities_config.json).
@@ -38,6 +40,7 @@ impl Config for AbilitiesConfig {}
 
 impl AbilitiesConfig {
     /// Get an ability definition by ID.
+    // TODO: THis shouldn't be a string ID
     pub fn get(&self, id: AbilityId) -> Option<&AbilityDefinition> {
         self.abilities.get(&id.to_string())
     }
@@ -66,34 +69,20 @@ pub struct WeaponTypeAbilities {
 /// Configuration mapping weapon types to ability pools.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WeaponPoolsConfig {
-    /// Weapon category definitions (e.g., "Sword", "Axe")
     pub weapon_types: HashMap<String, WeaponTypeAbilities>,
-    /// Maps entity types to weapon categories (e.g., "OrcSword" -> "Sword")
-    pub entity_type_mapping: HashMap<String, String>,
-    /// Fixed abilities for the player's starting weapon
-    pub starter_abilities: Option<StarterAbilities>,
 }
 
 impl Config for WeaponPoolsConfig {}
 
-/// Fixed abilities for the starter weapon.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StarterAbilities {
-    pub entity_type: String,
-    pub q: AbilityId,
-    pub e: AbilityId,
-    pub r: AbilityId,
-}
-
 /// Runtime abilities assigned to a specific weapon instance.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WeaponAbilities {
-    pub m1: Option<AbilityId>,
-    pub m2: Option<AbilityId>,
-    pub q: Option<AbilityId>,
-    pub e: Option<AbilityId>,
-    pub shift: Option<AbilityId>,
-    pub r: Option<AbilityId>,
+    pub m1: AbilityId,
+    pub m2: AbilityId,
+    pub q: AbilityId,
+    pub e: AbilityId,
+    pub shift: AbilityId,
+    pub r: AbilityId,
     /// Current cooldowns for each slot (in seconds remaining).
     #[serde(skip)]
     pub cooldowns: [f32; 6],
@@ -124,14 +113,12 @@ impl WeaponAbilities {
             3 => self.e,
             4 => self.shift,
             5 => self.r,
-            _ => None,
+            _ => panic!("this simply cannot be!"),
         };
 
-        if let Some(id) = ability_id {
-            if let Some(def) = abilities_config.get(id) {
-                if def.cooldown > 0.0 {
-                    return current / def.cooldown;
-                }
+        if let Some(def) = abilities_config.get(ability_id) {
+            if def.cooldown > 0.0 {
+                return current / def.cooldown;
             }
         }
 
@@ -161,8 +148,8 @@ impl WeaponAbilities {
             3 => self.e,
             4 => self.shift,
             5 => self.r,
-            _ => None,
-        }?;
+            _ => panic!("ahh fuck, I can't believe you've done this"),
+        };
 
         // start the cooldown
         if let Some(def) = abilities_config.get(ability_id) {
@@ -189,46 +176,27 @@ impl WeaponAbilities {
         entity_type: &str,
         pools_config: &WeaponPoolsConfig,
         rng: &mut R,
-        is_starter: bool,
-    ) -> Option<Self> {
-        // find the weapon category for this entity type
-        let category = pools_config.entity_type_mapping.get(entity_type)?;
-        let weapon_type = pools_config.weapon_types.get(category)?;
+    ) -> Self {
+        let pool_config = match pools_config.weapon_types.get(entity_type) {
+            Some(pc) => pc,
+            None => panic!("We can't find a pool config for type: {}", entity_type),
+        };
 
-        // check if this is the starter weapon with fixed abilities
-        if is_starter {
-            if let Some(starter) = &pools_config.starter_abilities {
-                if starter.entity_type == entity_type {
-                    return Some(Self {
-                        m1: Some(weapon_type.m1),
-                        m2: Some(weapon_type.m2),
-                        q: Some(starter.q),
-                        e: Some(starter.e),
-                        shift: Some(weapon_type.shift),
-                        r: Some(starter.r),
-                        cooldowns: [0.0; 6],
-                    });
-                }
-            }
-        }
-
-        // randomly pick Q and E from skill pool (must be different)
-        let mut skill_pool = weapon_type.skill_pool.clone();
+        // randomly pick skills from pools (Q and E are deduped)
+        let mut skill_pool = pool_config.skill_pool.clone();
         skill_pool.shuffle(rng);
-        let q = skill_pool.get(0).copied();
-        let e = skill_pool.get(1).copied();
+        let q = skill_pool.get(0).copied().unwrap();
+        let e = skill_pool.get(1).copied().unwrap();
+        let r = pool_config.ultimate_pool.choose(rng).copied().unwrap();
 
-        // randomly pick R from ultimate pool
-        let r = weapon_type.ultimate_pool.choose(rng).copied();
-
-        Some(Self {
-            m1: Some(weapon_type.m1),
-            m2: Some(weapon_type.m2),
+        Self {
+            m1: pool_config.m1,
+            m2: pool_config.m2,
             q,
             e,
-            shift: Some(weapon_type.shift),
+            shift: pool_config.shift,
             r,
             cooldowns: [0.0; 6],
-        })
+        }
     }
 }

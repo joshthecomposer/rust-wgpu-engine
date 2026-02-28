@@ -66,6 +66,11 @@ impl InputState {
         self.keys_current.contains(&KeyCode::Space) && !self.keys_previous.contains(&KeyCode::Space)
     }
 
+    pub fn lshift_just_pressed(&self) -> bool {
+        self.keys_current.contains(&KeyCode::ShiftLeft)
+            && !self.keys_previous.contains(&KeyCode::ShiftLeft)
+    }
+
     pub fn is_down(&self, key: KeyCode) -> bool {
         self.keys_current.contains(&key)
     }

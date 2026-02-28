@@ -147,6 +147,10 @@ pub fn import_bone_data(
                         || current_anim_str == "Jump"
                         || current_anim_str == "Flinch"
                         || current_anim_str == "Block"
+                        || current_anim_str == "Basic1"
+                        || current_anim_str == "Basic2"
+                        || current_anim_str == "Basic3"
+                        || current_anim_str == "Freefall"
                     {
                         println!("Found {}, setting looping to false", &current_anim_str);
                         animation.looping = false;
@@ -231,6 +235,10 @@ pub fn import_bone_data(
             || current_anim_str == "Flinch"
             || current_anim_str == "Jump"
             || current_anim_str == "Block"
+            || current_anim_str == "Basic1"
+            || current_anim_str == "Basic2"
+            || current_anim_str == "Basic3"
+            || current_anim_str == "Freefall"
         {
             println!("Found {}, setting looping to false", &current_anim_str);
             animation.looping = false;
@@ -419,6 +427,7 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
     model
 }
 
+// TODO: !IMPORTANT! Only diffuse etc should be SRGB8, everything else should be linear!!!!
 pub fn texture_from_file(
     model: &mut Model,
     path: String,
@@ -471,7 +480,7 @@ pub fn texture_from_file(
             gl_call!(gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
-                gl::RGBA as i32,
+                gl::SRGB8 as i32,
                 img_width as i32,
                 img_height as i32,
                 0,

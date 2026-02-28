@@ -150,6 +150,7 @@ impl PauseMenuView {
             game_root.set_sfx_volume(ctx.settings.sound_config.sfx);
             game_root.set_vsync(ctx.settings.game_config.vsync);
             game_root.set_debug_mode(ctx.settings.game_config.debug_mode);
+            game_root.set_spawn_system_enabled(ctx.settings.game_config.spawn_system_enabled);
             game_root.set_msaa(msaa_level_to_string(ctx.settings.game_config.msaa_level).into());
             // set font family - UI shows simplified name, actual-font-family uses full name for rendering
             game_root
@@ -177,6 +178,7 @@ impl PauseMenuView {
         ctx.settings.sound_config.sfx = game_root.get_sfx_volume();
         ctx.settings.game_config.vsync = game_root.get_vsync();
         ctx.settings.game_config.debug_mode = game_root.get_debug_mode();
+        ctx.settings.game_config.spawn_system_enabled = game_root.get_spawn_system_enabled();
 
         let msaa_str = game_root.get_msaa().to_string();
         let msaa_level = msaa_string_to_level(&msaa_str);

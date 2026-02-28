@@ -1,0 +1,4 @@
+
+Veloren blogs on redoing state machines:
+
+https://veloren.net/blog/devblog-48/

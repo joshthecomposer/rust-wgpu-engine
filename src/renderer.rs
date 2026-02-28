@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-struct BloomMip {
+pub struct BloomMip {
     fbo: u32,
     tex: u32,
     w: i32,
@@ -66,6 +66,8 @@ pub struct Renderer {
     pub fxaa_tex: u32,
 
     pub bloom_mips: Vec<BloomMip>,
+
+    pub hdr_depth: u32,
 }
 
 impl Renderer {
@@ -136,6 +138,7 @@ impl Renderer {
         // TODO: Dynamic resizing of the FBO
         let width = platform.fb_width;
         let height = platform.fb_height;
+        let mut hdr_depth = 0;
 
         unsafe {
             gl_call!(gl::GenFramebuffers(1, &mut hdr_fbo));
@@ -198,29 +201,64 @@ impl Renderer {
             ));
 
             // OPTIONAL but recommended: add a depth buffer if you keep depth test on
-            let mut rbo_depth = 0;
-            gl_call!(gl::GenRenderbuffers(1, &mut rbo_depth));
-            gl_call!(gl::BindRenderbuffer(gl::RENDERBUFFER, rbo_depth));
-            gl_call!(gl::RenderbufferStorage(
-                gl::RENDERBUFFER,
-                gl::DEPTH_COMPONENT24,
+            gl_call!(gl::GenTextures(1, &mut hdr_depth));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, hdr_depth));
+
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::DEPTH_COMPONENT24 as i32,
                 width as i32,
-                height as i32
+                height as i32,
+                0,
+                gl::DEPTH_COMPONENT,
+                gl::UNSIGNED_INT,
+                std::ptr::null(),
             ));
-            gl_call!(gl::FramebufferRenderbuffer(
+
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::NEAREST as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::NEAREST as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_COMPARE_MODE,
+                gl::NONE as i32
+            ));
+
+            gl_call!(gl::FramebufferTexture2D(
                 gl::FRAMEBUFFER,
                 gl::DEPTH_ATTACHMENT,
-                gl::RENDERBUFFER,
-                rbo_depth,
+                gl::TEXTURE_2D,
+                hdr_depth,
+                0
             ));
+
+            // (Optional) keep state clean
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
 
             let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
             if status != gl::FRAMEBUFFER_COMPLETE {
                 panic!("HDR FBO incomplete: 0x{:x}", status);
             }
-
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
-
             fbos.insert(FboType::HDR, hdr_fbo);
         }
         // =============================================================
@@ -447,7 +485,7 @@ impl Renderer {
                 gl_call!(gl::TexImage2D(
                     gl::TEXTURE_CUBE_MAP_POSITIVE_X + i as u32,
                     0,
-                    gl::RGB as i32,
+                    gl::SRGB8 as i32,
                     img_width as i32,
                     img_height as i32,
                     0,
@@ -748,6 +786,7 @@ impl Renderer {
             fxaa_tex,
 
             bloom_mips: vec![],
+            hdr_depth,
         };
 
         renderer.create_bloom_chain(width, height);
@@ -795,24 +834,21 @@ impl Renderer {
                 let d2 = (t.position - cam_pos).length_squared();
 
                 if let Some(animator) = em.animators.get_mut(id) {
-                    let anim = animator
-                        .animations
-                        .get_mut(&animator.current_animation)
-                        .unwrap();
-
-                    anim.lod_skip = if d2 < NEAR2 {
-                        0
-                    } else if d2 < MID2 && enough_guys {
-                        1
-                    } else if d2 < FAR2 && enough_guys {
-                        3
-                    } else if d2 < FARTHEST2 && enough_guys {
-                        5
-                    } else if enough_guys {
-                        7
-                    } else {
-                        0
-                    };
+                    if let Some(anim) = animator.animations.get_mut(&animator.current_animation) {
+                        anim.lod_skip = if d2 < NEAR2 {
+                            0
+                        } else if d2 < MID2 && enough_guys {
+                            1
+                        } else if d2 < FAR2 && enough_guys {
+                            3
+                        } else if d2 < FARTHEST2 && enough_guys {
+                            5
+                        } else if enough_guys {
+                            7
+                        } else {
+                            0
+                        };
+                    }
                 }
 
                 out.push(id);
@@ -931,6 +967,19 @@ impl Renderer {
                     gl::COLOR_BUFFER_BIT,
                     gl::NEAREST,
                 ));
+
+                gl_call!(gl::BlitFramebuffer(
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    0,
+                    0,
+                    fb_width as i32,
+                    fb_height as i32,
+                    gl::DEPTH_BUFFER_BIT,
+                    gl::NEAREST
+                ));
             }
         }
 
@@ -962,6 +1011,8 @@ impl Renderer {
         hdr_shader.set_float("exposure", self.exposure);
         hdr_shader.set_bool("hdr", self.do_hdr);
         hdr_shader.set_float("bloomStrength", self.bloom_strength);
+        hdr_shader.set_int("uDepth", 2);
+        hdr_shader.set_mat4("uInvProj", camera.projection.inverse());
 
         unsafe {
             gl_call!(gl::ActiveTexture(gl::TEXTURE0));
@@ -969,6 +1020,9 @@ impl Renderer {
 
             gl_call!(gl::ActiveTexture(gl::TEXTURE1));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, blurred_bloom_tex));
+
+            gl_call!(gl::ActiveTexture(gl::TEXTURE2));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_depth));
         }
 
         self.render_quad();
@@ -1160,11 +1214,8 @@ impl Renderer {
                         for os in animation.one_shots.iter() {
                             if animation.current_segment.get() == os.segment {
                                 if !os.triggered.get() {
-                                    sound_manager.play_sound_3d(
-                                        os.sound_type.clone(),
-                                        &trans.position,
-                                        *id,
-                                    );
+                                    sound_manager
+                                        .play_sound_3d(os.sound_type.clone(), &trans.position);
                                     particles.spawn_oneshot_emitter(
                                         "DesertStep",
                                         trans.position,
@@ -1180,11 +1231,7 @@ impl Renderer {
 
                     for cs in animation.continuous_sounds.iter() {
                         if !cs.playing.get() {
-                            sound_manager.play_sound_3d(
-                                cs.sound_type.clone(),
-                                &trans.position,
-                                *id,
-                            );
+                            sound_manager.play_sound_3d(cs.sound_type.clone(), &trans.position);
                             cs.playing.set(true);
                         }
                     }

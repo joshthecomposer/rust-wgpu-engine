@@ -79,8 +79,8 @@ impl EntityEditor {
                             "Position: x: {} y: {} z: {}",
                             transform.position.x, transform.position.y, transform.position.z
                         ));
-                        ui.text(format!("Player State: {}", controller.state));
-                        ui.text(format!("Attack State: {}", controller.attack_state));
+                        //ui.text(format!("Player State: {}", controller.state));
+                        //ui.text(format!("Attack State: {}", controller.attack_state));
                         ui.text(format!("Current Animation: {}", animator.current_animation));
                     }
                     None => (),
@@ -395,7 +395,7 @@ impl EntityEditor {
                 }
 
                 ui.separator();
-                ui.text("Remove an Entity Type");
+                ui.text("Remove an Entity Type Permanently");
                 ui.separator();
 
                 ui.combo(
@@ -408,6 +408,24 @@ impl EntityEditor {
                 if ui.button("Delete") {
                     em.remove_entity_type_definition(&entity_types[self.remove_entity_type_idx]);
                     entity_types.remove(self.remove_entity_type_idx);
+                }
+
+                ui.separator();
+                ui.text("Remove Instances of Entities");
+                ui.separator();
+
+                if ui.button("Destroy All Enemies") {
+                    let ids = em.get_ids_for_faction("Enemy");
+                    for id in ids {
+                        em.entity_trashcan.push(id);
+                    }
+                }
+
+                if ui.button("Destroy All Orphaned Weapons") {
+                    let ids = em.get_all_orphaned_weapon_ids();
+                    for id in ids {
+                        em.entity_trashcan.push(id);
+                    }
                 }
             });
     }

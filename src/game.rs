@@ -7,6 +7,7 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::Fullscreen;
 
 use crate::animation::animation_system;
+use crate::command_buffer::CommandBuffer;
 use crate::config::game_config::GameConfig;
 use crate::config::sound_config::SoundConfig;
 use crate::config::Config;
@@ -35,7 +36,6 @@ pub struct Game {
     renderer: Renderer,
     sound: SoundManager,
     pub input: InputState,
-    // imgui_manager: ImguiManager,
     pub paused: bool,
     cursor_mode: CursorMode,
     message_queue: MessageQueue,
@@ -50,6 +50,7 @@ pub struct Game {
     config_path: String,
     sound_config: SoundConfig,
     sound_config_path: String,
+    command_buffer: CommandBuffer,
 }
 
 impl Game {
@@ -113,6 +114,7 @@ impl Game {
             config_path: "config/game_config.json".to_string(),
             sound_config,
             sound_config_path: "config/sound_config.json".to_string(),
+            command_buffer: CommandBuffer::default(),
         }
     }
 
@@ -187,22 +189,24 @@ impl Game {
 
                 state_machine_system::update(
                     &mut self.world.ecs,
-                    self.time.fixed_dt,
-                    &mut self.world.particles,
                     &self.input,
-                    &mut self.physics,
-                    &mut self.sound,
-                    &self.world.camera,
+                    &mut self.command_buffer,
+                    self.time.fixed_dt,
                 );
 
                 self.world.spawn_manager.update(
                     &mut self.world.ecs,
                     &mut self.physics,
                     self.time.fixed_dt,
+                    self.config.spawn_system_enabled,
                 );
 
                 items::update(&mut self.world.ecs, &mut self.physics);
-                animation_system::update(&mut self.world.ecs, self.time.fixed_dt);
+                animation_system::update(
+                    &mut self.world.ecs,
+                    &mut self.command_buffer,
+                    self.time.fixed_dt,
+                );
                 combat_system::update(
                     &mut self.world.ecs,
                     self.time.fixed_dt,
@@ -222,14 +226,17 @@ impl Game {
                     CameraState::Third | CameraState::Locked => {
                         movement_system::update(
                             &mut self.world.ecs,
-                            self.time.fixed_dt,
                             &cam_basis,
-                            &self.input,
+                            &mut self.command_buffer,
                             &mut self.physics,
+                            self.time.fixed_dt,
                         );
                     }
                     _ => {}
                 }
+
+                self.physics
+                    .evaluate_commands(&mut self.world.ecs, &mut self.command_buffer);
 
                 self.physics.step();
 
@@ -470,9 +477,12 @@ impl Game {
             &self.input,
             self.platform.fb_width as f32 / self.platform.fb_height as f32,
         );
-        self.sound.update(&self.world.camera);
+        self.sound
+            .update(&self.world.camera, &mut self.command_buffer);
         self.world.lights.update(&self.time.dt);
-        self.world.particles.update(self.time.dt);
+        self.world
+            .particles
+            .update(self.time.dt, &mut self.command_buffer, &self.world.ecs);
 
         // update custom GPU UI
         if self.world.camera.move_state == CameraState::Gallery {

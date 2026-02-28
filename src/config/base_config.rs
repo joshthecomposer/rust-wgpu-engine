@@ -55,6 +55,7 @@ pub trait Config: Default + for<'de> Deserialize<'de> + Serialize + Sized {
     /// Panics if the file cannot be read, deserialization fails, or if writing the default config fails.
     fn load_or_create_default(file_name: &str) -> Self {
         if Path::new(file_name).exists() {
+            println!("Config file found at {}, loading data", file_name);
             Self::load_from_file(file_name)
         } else {
             println!(
