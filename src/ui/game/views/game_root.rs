@@ -97,6 +97,10 @@ impl GameRootView {
         let entity_manager = ctx.system.entity_manager;
         let elapsed_time = ctx.elapsed_time;
 
+        // DEPRECATED: Toast handling moved to GameUiManager -> game_new ToastView
+        // Toasts are now drained in game_ui_manager.rs and rendered via custom GPU UI
+        // The old Slint toast UI has been removed from game_root.slint
+        /*
         // drain pending toasts from global queue and add them
         let pending_toasts = crate::ui::toast::drain_pending_toasts();
         for toast in pending_toasts {
@@ -108,6 +112,7 @@ impl GameRootView {
                 elapsed_time,
             );
         }
+        */
 
         // throttle pickup indicator check to 10 Hz (avoid expensive entity iteration every frame)
         let should_check = elapsed_time - self.last_pickup_check_time >= PICKUP_CHECK_INTERVAL;

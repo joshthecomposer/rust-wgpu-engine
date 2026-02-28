@@ -48,6 +48,10 @@ impl Column {
 
 impl Widget for Column {
     fn layout(&mut self, font_system: &mut FontSystem, available: Rect) {
+        // println!(
+        //     "[Column::layout] id={:?}, available height={}, style.height={:?}",
+        //     self.style.id, available.height, self.style.height
+        // );
         let (mt, mr, mb, ml) = self
             .style
             .resolve_margins(available.width, available.height);
@@ -59,6 +63,10 @@ impl Widget for Column {
 
         let width = self.style.width.resolve_or(max_width, max_width);
         let is_auto_height = self.style.height.resolve(max_height).is_none();
+        // println!(
+        //     "[Column] is_auto_height={}, max_height={}, width={}, style.height={:?}",
+        //     is_auto_height, max_height, width, self.style.height
+        // );
 
         // for height: Auto, layout children first to calculate natural height
         let mut child_heights = Vec::new();
@@ -95,6 +103,7 @@ impl Widget for Column {
                     child.layout(font_system, child_rect);
                     let child_height = child.rect().height;
                     child_heights.push(child_height);
+                    // println!("[Column] child {} height = {}", i, child_height);
 
                     // ! account for negative margins - track actual child bounds
                     let child_final_y = child.rect().y;
@@ -156,11 +165,16 @@ impl Widget for Column {
             width.min(max_width),
             height.min(max_height),
         );
+        // println!(
+        //     "[Column] computed rect: {:?}, height={}, max_height={}",
+        //     self.rect, height, max_height
+        // );
 
         let (pt, pr, pb, pl) = self
             .style
             .resolve_padding(self.rect.width, self.rect.height);
         let inner_rect = self.rect.shrink_by(pt, pr, pb, pl);
+        // println!("[Column] inner_rect: {:?}", inner_rect);
 
         if self.children.is_empty() {
             return;

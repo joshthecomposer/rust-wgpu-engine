@@ -26,6 +26,7 @@ use crate::ui::game_new::render::UiRenderer;
 use crate::ui::game_new::views::ability_bar_view::AbilityBarView;
 use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
 use crate::ui::game_new::views::pause_menu_view::{PauseMenuUpdateContext, PauseMenuView};
+use crate::ui::game_new::views::toast_view::ToastView;
 use crate::ui::image_cache::UiImageCache;
 use crate::ui::message_queue::MessageQueue;
 use crate::ui::portrait_renderer::PortraitRenderer;
@@ -78,6 +79,7 @@ pub struct GameUiManager {
 
     game_hud_view: GameHudView,
     pause_menu_view: PauseMenuView,
+    toast_view: ToastView,
     ui_renderer: UiRenderer,
     font_system: FontSystem,
 
@@ -135,6 +137,9 @@ impl GameUiManager {
         let mut pause_menu_view = PauseMenuView::new(&mut font_system);
         pause_menu_view.set_screen_size(width as f32, height as f32);
 
+        let mut toast_view = ToastView::new(&mut font_system);
+        toast_view.set_screen_size(width as f32, height as f32);
+
         let manager = Self {
             window,
             buffer,
@@ -154,6 +159,7 @@ impl GameUiManager {
             is_paused: false,
             game_hud_view,
             pause_menu_view,
+            toast_view,
             ui_renderer,
             font_system,
             last_update_time: -999.0, // force first update
@@ -344,6 +350,9 @@ impl GameUiManager {
         // update pause menu screen size
         self.pause_menu_view
             .set_screen_size(width as f32, height as f32);
+
+        // update toast view screen size
+        self.toast_view.set_screen_size(width as f32, height as f32);
     }
 
     /// Update the UI each frame.
@@ -422,6 +431,28 @@ impl GameUiManager {
         };
         self.ability_bar_view.update(&mut ui_ctx2);
 
+        // drain pending toasts from global queue and add them to toast view
+        let pending_toasts = crate::ui::toast::drain_pending_toasts();
+        if !pending_toasts.is_empty() {
+            println!(
+                "[GameUiManager] Draining {} pending toasts",
+                pending_toasts.len()
+            );
+        }
+        for toast in pending_toasts {
+            self.toast_view
+                .add_toast(toast.toast_type, toast.title, toast.message, toast.duration);
+        }
+
+        // update toast view time and state
+        // Use the actual elapsed time from the game, not a delta
+        self.toast_view.set_elapsed_time(ctx.elapsed_time);
+        let mut ui_ctx3 = UiContext {
+            input: ctx.input_state,
+            messages: ctx.message_queue,
+        };
+        self.toast_view.update(&mut ui_ctx3);
+
         self.current_font_family = Some(ctx.game_config.font_family.clone());
 
         if self.is_paused {
@@ -469,6 +500,13 @@ impl GameUiManager {
         // throttle main UI render to 60 Hz to avoid re-rendering pause menu at 700 Hz during scrolling
         const RENDER_INTERVAL: f64 = 1.0 / 60.0; // 60 Hz = ~16.6ms
         let should_render = elapsed_time - self.last_render_time >= RENDER_INTERVAL;
+
+        // CRITICAL: Always trigger layout if needed, even if render is throttled
+        // This ensures toasts are laid out immediately when added, not on the next render cycle
+        if self.toast_view.needs_layout {
+            println!("[GameUiManager::render] Toast needs layout, triggering layout now");
+            self.toast_view.layout(&mut self.font_system);
+        }
 
         if !should_render {
             // still draw the cached texture, just don't re-render Slint
@@ -566,6 +604,10 @@ impl GameUiManager {
             self.ui_renderer.begin();
             self.game_hud_view.tree.render(&mut self.ui_renderer);
             self.ability_bar_view.render(&mut self.ui_renderer);
+
+            // render toast view LAST (overlay priority)
+            self.toast_view.render(&mut self.ui_renderer);
+
             self.ui_renderer.end(&mut self.font_system);
         } else {
             // When paused, draw ONLY the GPU pause menu (no Slint overlay)
@@ -580,6 +622,10 @@ impl GameUiManager {
 
             self.ui_renderer.begin();
             self.pause_menu_view.tree.render(&mut self.ui_renderer);
+
+            // render toast view LAST (overlay priority) - toasts persist when paused
+            self.toast_view.render(&mut self.ui_renderer);
+
             self.ui_renderer.end(&mut self.font_system);
         }
 
@@ -612,22 +658,30 @@ impl GameUiManager {
             self.ui_renderer.begin();
             self.game_hud_view.tree.render(&mut self.ui_renderer);
             self.ability_bar_view.render(&mut self.ui_renderer);
+
+            // render toast view LAST (overlay priority)
+            self.toast_view.render(&mut self.ui_renderer);
+
             self.ui_renderer.end(&mut self.font_system);
         } else {
-            // When paused, draw ONLY pause menu
-            // IMPORTANT: Check needs_layout even in cached render path
-            // to ensure layout is updated after tab selection
+            // When paused, draw pause menu + toasts
+            // ! IMPORTANT: Check needs_layout even in cached render path
+            // ! to ensure layout is updated after tab selection
             if self.pause_menu_view.needs_layout() {
                 self.pause_menu_view.tree.layout(&mut self.font_system);
                 self.pause_menu_view.clear_layout_flag();
             }
 
-            // set current font for GPU UI rendering
+            // ! set current font for GPU UI rendering
             self.ui_renderer
                 .set_default_font_family(self.current_font_family.clone());
 
             self.ui_renderer.begin();
             self.pause_menu_view.tree.render(&mut self.ui_renderer);
+
+            // render toast view LAST (overlay priority) - toasts persist when paused
+            self.toast_view.render(&mut self.ui_renderer);
+
             self.ui_renderer.end(&mut self.font_system);
         }
 

@@ -1,8 +1,8 @@
 //! CloseButton widget - renders "×" icon with hover color change.
 //!
 //! Features:
-//! - Renders "×" text (18px font size)
-//! - Changes color on hover: stone-light → runic-gold
+//! - Renders "×" text (20px font size)
+//! - Changes color on hover: stone-light → old-text
 //! - Handles click events with ID logging
 //! - Default size: 20x20px
 
@@ -14,7 +14,7 @@ use crate::ui::game_new::styles::{Color, Rect, Style};
 use super::Widget;
 
 /// Default font size for close button text.
-const CLOSE_FONT_SIZE: f32 = 18.0;
+const CLOSE_FONT_SIZE: f32 = 20.0;
 /// Default size for close button.
 const DEFAULT_SIZE: f32 = 20.0;
 
@@ -39,7 +39,7 @@ impl CloseButton {
         Self {
             style,
             normal_color: Color::Variable("stone-light".to_string()),
-            hover_color: Color::Variable("runic-gold".to_string()),
+            hover_color: Color::Variable("old-text".to_string()),
             rect: Rect::default(),
             is_hovered: false,
             is_pressed: false,
@@ -96,7 +96,7 @@ impl Widget for CloseButton {
         self.rect = Rect::new(content_x, content_y, width, height);
 
         let font_size = self.style.font_size.unwrap_or(CLOSE_FONT_SIZE);
-        self.text_size = font_system.measure_text("X", font_size, None);
+        self.text_size = font_system.measure_text("x", font_size, None);
     }
 
     fn update(&mut self, ctx: &mut UiContext) -> bool {
@@ -109,9 +109,6 @@ impl Widget for CloseButton {
             }
 
             if ctx.is_click_start() {
-                if let Some(id) = &self.style.id {
-                    println!("[CloseButton] Clicked. ID: {}", id);
-                }
                 return true;
             }
         } else {
@@ -137,7 +134,7 @@ impl Widget for CloseButton {
         let text_y = self.rect.y + (self.rect.height - self.text_size.1) / 2.0;
 
         renderer.draw_text(
-            "x",
+            "X",
             text_x,
             text_y,
             font_size,

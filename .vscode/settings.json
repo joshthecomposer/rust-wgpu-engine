@@ -66,6 +66,7 @@
 		"nrows",
 		"Numpad",
 		"oneshot",
+		"opendyslexic",
 		"opengl",
 		"Parameteri",
 		"Parameteriv",
@@ -113,6 +114,7 @@
 		"editor.formatOnSave": true
 	},
 	"chat.tools.terminal.autoApprove": {
-		"cargo build": true
+		"cargo build": true,
+		"cargo test": true
 	}
 }

@@ -8,8 +8,8 @@ use crate::ui::game_new::styles::{Alignment, Color, Length, ScrollbarStyle, Styl
 use crate::ui::game_new::tree::UiTree;
 use crate::ui::game_new::widgets::{
     AbilitySlot, BoxWidget, Checkbox, CloseButton, Column, ComboBox, DiamondWidget, Label,
-    MenuButton, ProgressBar, Row, ScrollView, Slider, TabView, Text, TextureRect, TooltipManager,
-    Widget,
+    MenuButton, ProgressBar, Row, ScrollView, Slider, TabView, Text, TextureRect, ToastContainer,
+    TooltipManager, Widget,
 };
 
 /// Represents a widget definition parsed from RON.
@@ -206,6 +206,10 @@ pub enum NodeDefinition {
         style: Style,
         #[serde(default, rename = "tab_contents")]
         children: Vec<NodeDefinition>,
+    },
+    ToastContainer {
+        #[serde(default)]
+        style: Style,
     },
 }
 
@@ -588,6 +592,10 @@ fn build_widget(def: NodeDefinition, theme: &Theme) -> Box<dyn Widget> {
             }
             Box::new(tab_view)
         }
+        NodeDefinition::ToastContainer { style } => {
+            let container = ToastContainer::new(style);
+            Box::new(container)
+        }
     }
 }
 
@@ -846,6 +854,9 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
             for child in children {
                 resolve_variables(child, theme);
             }
+        }
+        NodeDefinition::ToastContainer { style } => {
+            resolve_style(style, theme);
         }
     }
 }

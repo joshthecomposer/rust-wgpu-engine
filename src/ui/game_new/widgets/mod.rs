@@ -14,6 +14,7 @@ mod slider;
 mod tab_view;
 mod text;
 mod texture_rect;
+mod toast_container;
 mod tooltip_manager;
 mod traits;
 
@@ -33,5 +34,6 @@ pub use slider::Slider;
 pub use tab_view::TabView;
 pub use text::Text;
 pub use texture_rect::TextureRect;
+pub use toast_container::ToastContainer;
 pub use tooltip_manager::TooltipManager;
 pub use traits::Widget;
