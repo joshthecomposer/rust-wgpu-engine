@@ -18,9 +18,15 @@ use crate::input::InputState;
 use crate::lights::Lights;
 use crate::renderer::DefaultTextures;
 use crate::shaders::Shader;
-use crate::ui::ability_bar_renderer::AbilityBarRenderer;
-use crate::ui::game::views::ability_bar::AbilityBarView;
+use crate::ui::game::views::ability_bar::AbilityBarData;
 use crate::ui::game::views::{GameRootContext, GameRootView, SettingsContext, SystemContext};
+use crate::ui::game_new::context::UiContext;
+use crate::ui::game_new::font_system::FontSystem;
+use crate::ui::game_new::render::UiRenderer;
+use crate::ui::game_new::views::ability_bar_view::AbilityBarView;
+use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
+use crate::ui::game_new::views::pause_menu_view::{PauseMenuUpdateContext, PauseMenuView};
+use crate::ui::game_new::views::toast_view::ToastView;
 use crate::ui::image_cache::UiImageCache;
 use crate::ui::message_queue::MessageQueue;
 use crate::ui::portrait_renderer::PortraitRenderer;
@@ -35,6 +41,7 @@ pub struct GameUiUpdateContext<'a> {
     pub game_config: &'a mut crate::config::game_config::GameConfig,
     pub sound_config: &'a mut crate::config::sound_config::SoundConfig,
     pub elapsed_time: f64,
+    pub input_state: &'a crate::input::InputState,
 }
 
 /// Context for portrait rendering - passed to render().
@@ -55,7 +62,7 @@ pub struct GameUiManager {
     texture: u32,
     game_root_view: GameRootView,
     portrait_renderer: PortraitRenderer,
-    ability_bar_renderer: AbilityBarRenderer,
+    ability_bar_view: AbilityBarView,
     image_cache: UiImageCache,
 
     width: u32,
@@ -70,11 +77,11 @@ pub struct GameUiManager {
 
     is_paused: bool,
 
-    // cached ability bar compositing data (to avoid calling Slint every frame)
-    ability_bar_ndc_x: f32,
-    ability_bar_ndc_y: f32,
-    ability_bar_ndc_w: f32,
-    ability_bar_ndc_h: f32,
+    game_hud_view: GameHudView,
+    pause_menu_view: PauseMenuView,
+    toast_view: ToastView,
+    ui_renderer: UiRenderer,
+    font_system: FontSystem,
 
     // throttling for main UI update and render (pause menu + HUD)
     last_update_time: f64,
@@ -83,7 +90,9 @@ pub struct GameUiManager {
     // scroll event accumulation (to throttle scroll event dispatching)
     accumulated_scroll_x: f32,
     accumulated_scroll_y: f32,
-    ability_bar_view: AbilityBarView,
+
+    // current font family for GPU UI rendering
+    current_font_family: Option<String>,
 }
 
 impl GameUiManager {
@@ -110,16 +119,34 @@ impl GameUiManager {
         // create portrait renderer for player HUD
         let portrait_renderer = PortraitRenderer::new();
 
-        // create ability bar renderer (platform already initialized)
-        let ability_bar_renderer = AbilityBarRenderer::new(scale_factor);
+        // create font system and UI renderer first (needed for HUD and ability bar)
+        let mut font_system = FontSystem::new();
+        let mut ui_renderer = UiRenderer::new();
+        ui_renderer.set_screen_size(width as f32, height as f32);
 
-        let mut manager = Self {
+        // create ability bar view (new custom UI system)
+        let mut ability_bar_view = AbilityBarView::new(&mut font_system);
+        ability_bar_view.set_screen_size(width as f32, height as f32);
+
+        // create game HUD view
+        let mut game_hud_view = GameHudView::new(&mut font_system);
+        game_hud_view
+            .tree
+            .set_screen_size(width as f32, height as f32);
+
+        let mut pause_menu_view = PauseMenuView::new(&mut font_system);
+        pause_menu_view.set_screen_size(width as f32, height as f32);
+
+        let mut toast_view = ToastView::new(&mut font_system);
+        toast_view.set_screen_size(width as f32, height as f32);
+
+        let manager = Self {
             window,
             buffer,
             texture,
             game_root_view,
             portrait_renderer,
-            ability_bar_renderer,
+            ability_bar_view,
             image_cache: UiImageCache::new(),
             width,
             height,
@@ -130,19 +157,18 @@ impl GameUiManager {
             overlay_vbo,
             pbo,
             is_paused: false,
-            ability_bar_ndc_x: 0.0,
-            ability_bar_ndc_y: 0.0,
-            ability_bar_ndc_w: 0.0,
-            ability_bar_ndc_h: 0.0,
+            game_hud_view,
+            pause_menu_view,
+            toast_view,
+            ui_renderer,
+            font_system,
             last_update_time: -999.0, // force first update
             last_render_time: -999.0, // force first render
             accumulated_scroll_x: 0.0,
             accumulated_scroll_y: 0.0,
-            ability_bar_view: AbilityBarView::new(),
+            current_font_family: None,
         };
 
-        // compute ability bar NDC coordinates once
-        manager.update_ability_bar_ndc();
         manager
     }
 
@@ -311,24 +337,32 @@ impl GameUiManager {
         self.window.set_size(PhysicalSize::new(width, height));
         self.needs_texture_resize = true;
 
-        // recalculate ability bar NDC coordinates for new window size
-        self.update_ability_bar_ndc();
+        self.ui_renderer
+            .set_screen_size(width as f32, height as f32);
+        self.game_hud_view
+            .tree
+            .set_screen_size(width as f32, height as f32);
+
+        // update ability bar screen size for positioning
+        self.ability_bar_view
+            .set_screen_size(width as f32, height as f32);
+
+        // update pause menu screen size
+        self.pause_menu_view
+            .set_screen_size(width as f32, height as f32);
+
+        // update toast view screen size
+        self.toast_view.set_screen_size(width as f32, height as f32);
     }
 
     /// Update the UI each frame.
     pub fn update(&mut self, ctx: GameUiUpdateContext) {
-        // throttle UI updates to 60 Hz to avoid expensive work during scroll spam or high FPS
-        const UPDATE_INTERVAL: f64 = 1.0 / 60.0; // 60 Hz = ~16.6ms
-        let should_update = ctx.elapsed_time - self.last_update_time >= UPDATE_INTERVAL;
-
-        if !should_update {
-            return;
+        // throttle Slint updates to 60 Hz
+        const UPDATE_INTERVAL: f64 = 1.0 / 60.0;
+        if ctx.elapsed_time - self.last_update_time >= UPDATE_INTERVAL {
+            slint::platform::update_timers_and_animations();
+            self.last_update_time = ctx.elapsed_time;
         }
-
-        // always call update_timers_and_animations for Slint's internal state, but throttled to 60Hz
-        slint::platform::update_timers_and_animations();
-
-        self.last_update_time = ctx.elapsed_time;
 
         // dispatch accumulated scroll events (throttled to 60 Hz to prevent Slint from doing expensive work)
         if self.accumulated_scroll_x != 0.0 || self.accumulated_scroll_y != 0.0 {
@@ -345,60 +379,100 @@ impl GameUiManager {
         // Sync our local paused state with the engine state
         self.is_paused = *ctx.paused;
 
-        let game_ctx = GameRootContext {
-            paused: ctx.paused,
-            settings: SettingsContext {
+        if !self.is_paused {
+            let game_ctx = GameRootContext {
+                paused: ctx.paused,
+                settings: SettingsContext {
+                    render_gizmos: ctx.render_gizmos,
+                    game_config: ctx.game_config,
+                    sound_config: ctx.sound_config,
+                },
+                system: SystemContext {
+                    entity_manager: ctx.entity_manager,
+                    message_queue: ctx.message_queue,
+                },
+                image_cache: &mut self.image_cache,
+                elapsed_time: ctx.elapsed_time,
+            };
+            self.game_root_view.update(game_ctx);
+        }
+
+        // Update new Game HUD
+        let hud_data = PlayerHudData::from_entity_manager(ctx.entity_manager);
+        let portrait_tex = self.portrait_renderer.get_texture_id();
+
+        let mut ui_ctx = UiContext {
+            input: ctx.input_state,
+            messages: ctx.message_queue,
+        };
+
+        self.game_hud_view
+            .update(&mut ui_ctx, &hud_data, portrait_tex);
+
+        // update ability bar view (new custom UI system)
+        let ability_data = AbilityBarData::from_entity_manager(ctx.entity_manager);
+        let delta_time = (ctx.elapsed_time - self.last_update_time) as f32;
+
+        // Convert AbilityBarData individual fields to array for new view
+        let slots = [
+            ability_data.m1.clone(),
+            ability_data.m2.clone(),
+            ability_data.q.clone(),
+            ability_data.e.clone(),
+            ability_data.shift.clone(),
+            ability_data.r.clone(),
+        ];
+
+        self.ability_bar_view.update_data(&slots, delta_time.abs());
+
+        let mut ui_ctx2 = UiContext {
+            input: ctx.input_state,
+            messages: ctx.message_queue,
+        };
+        self.ability_bar_view.update(&mut ui_ctx2);
+
+        // drain pending toasts from global queue and add them to toast view
+        let pending_toasts = crate::ui::toast::drain_pending_toasts();
+        if !pending_toasts.is_empty() {
+            println!(
+                "[GameUiManager] Draining {} pending toasts",
+                pending_toasts.len()
+            );
+        }
+        for toast in pending_toasts {
+            self.toast_view
+                .add_toast(toast.toast_type, toast.title, toast.message, toast.duration);
+        }
+
+        // update toast view time and state
+        // Use the actual elapsed time from the game, not a delta
+        self.toast_view.set_elapsed_time(ctx.elapsed_time);
+        let mut ui_ctx3 = UiContext {
+            input: ctx.input_state,
+            messages: ctx.message_queue,
+        };
+        self.toast_view.update(&mut ui_ctx3);
+
+        self.current_font_family = Some(ctx.game_config.font_family.clone());
+
+        if self.is_paused {
+            let mut pause_ctx = PauseMenuUpdateContext {
+                paused: ctx.paused,
                 render_gizmos: ctx.render_gizmos,
                 game_config: ctx.game_config,
                 sound_config: ctx.sound_config,
-            },
-            system: SystemContext {
                 entity_manager: ctx.entity_manager,
                 message_queue: ctx.message_queue,
-            },
-            image_cache: &mut self.image_cache,
-            elapsed_time: ctx.elapsed_time,
-        };
-        self.game_root_view.update(game_ctx);
-
-        // update ability bar renderer (has built-in throttling to avoid querying entity manager every frame)
-        use crate::ui::game::views::ability_bar::{AbilityBarContext, AbilityBarView};
-        let ability_ctx = AbilityBarContext {
-            entity_manager: ctx.entity_manager,
-            paused: *ctx.paused,
-            image_cache: &mut self.image_cache,
-            elapsed_time: ctx.elapsed_time,
-        };
-        self.ability_bar_view
-            .update(&mut self.ability_bar_renderer, ability_ctx);
+                input_state: ctx.input_state,
+            };
+            self.pause_menu_view
+                .update(&mut pause_ctx, &mut self.font_system);
+        }
     }
 
     /// Set the current FPS for the FPS counter.
     pub fn set_fps(&self, fps: i32) {
         self.game_root_view.set_fps(fps);
-    }
-
-    /// Update cached ability bar NDC coordinates.
-    /// Call this when the window is resized or UI layout changes.
-    fn update_ability_bar_ndc(&mut self) {
-        // get ability bar rect from Slint (in logical pixels)
-        let (ax, ay, aw, ah) = self.game_root_view.get_ability_bar_rect();
-
-        // convert logical pixels to physical pixels
-        let ax_phys = ax * self.scale_factor;
-        let ay_phys = ay * self.scale_factor;
-        let aw_phys = aw * self.scale_factor;
-        let ah_phys = ah * self.scale_factor;
-
-        // convert to NDC
-        self.ability_bar_ndc_w = aw_phys / self.width as f32;
-        self.ability_bar_ndc_h = ah_phys / self.height as f32;
-
-        // compute center of the ability bar rect in NDC
-        let center_x_px = ax_phys + aw_phys / 2.0;
-        let center_y_px = ay_phys + ah_phys / 2.0;
-        self.ability_bar_ndc_x = (2.0 * center_x_px / self.width as f32) - 1.0;
-        self.ability_bar_ndc_y = 1.0 - (2.0 * center_y_px / self.height as f32);
     }
 
     /// Render the player portrait to the HUD. Call this before render().
@@ -426,6 +500,13 @@ impl GameUiManager {
         // throttle main UI render to 60 Hz to avoid re-rendering pause menu at 700 Hz during scrolling
         const RENDER_INTERVAL: f64 = 1.0 / 60.0; // 60 Hz = ~16.6ms
         let should_render = elapsed_time - self.last_render_time >= RENDER_INTERVAL;
+
+        // CRITICAL: Always trigger layout if needed, even if render is throttled
+        // This ensures toasts are laid out immediately when added, not on the next render cycle
+        if self.toast_view.needs_layout {
+            println!("[GameUiManager::render] Toast needs layout, triggering layout now");
+            self.toast_view.layout(&mut self.font_system);
+        }
 
         if !should_render {
             // still draw the cached texture, just don't re-render Slint
@@ -498,63 +579,54 @@ impl GameUiManager {
             gl_call!(gl::Disable(gl::DEPTH_TEST));
         }
 
-        // A. DRAW UI (Background Layer)
-        self.draw_overlay(shader, self.texture);
-
-        // B. DRAW ABILITY BAR (Middle Layer)
-        // Only draw if NOT paused!
+        // A. DRAW SLINT UI (only when NOT paused - pause menu is now GPU-rendered)
         if !self.is_paused {
-            self.ability_bar_renderer.render();
-            let ability_bar_tex = self.ability_bar_renderer.get_texture_id();
-
-            // use cached NDC coordinates (no Slint property access or math per frame)
-            self.draw_screen_quad(
-                shader,
-                ability_bar_tex,
-                self.ability_bar_ndc_x,
-                self.ability_bar_ndc_y,
-                self.ability_bar_ndc_w,
-                self.ability_bar_ndc_h,
-                false, // no flip for Slint UI
-            );
+            self.draw_overlay(shader, self.texture);
         }
 
-        // C. DRAW PORTRAIT (Foreground Layer - inside the transparent frame)
-        // Only draw if NOT paused!
+        // B. DRAW Custom GPU UI
         if !self.is_paused {
-            let portrait_tex = self.portrait_renderer.get_texture_id();
+            // When not paused, draw ability bar and HUD
+            if self.ability_bar_view.needs_layout() {
+                self.ability_bar_view.layout(&mut self.font_system);
+                self.ability_bar_view.clear_layout_flag();
+            }
 
-            // get portrait rect from Slint (in logical pixels)
-            let (px, py, pw, ph) = self.game_root_view.get_portrait_rect();
+            if self.game_hud_view.needs_render() {
+                self.game_hud_view.tree.layout(&mut self.font_system);
+                self.game_hud_view.clear_render_flag();
+            }
 
-            // convert logical pixels to physical pixels
-            let px_phys = px * self.scale_factor;
-            let py_phys = py * self.scale_factor;
-            let pw_phys = pw * self.scale_factor;
-            let ph_phys = ph * self.scale_factor;
+            // set current font for GPU UI rendering
+            self.ui_renderer
+                .set_default_font_family(self.current_font_family.clone());
 
-            // convert to NDC
-            // screen coords: (0,0) = top-left, (width, height) = bottom-right
-            // NDC: (-1,1) = top-left, (1,-1) = bottom-right
-            // the quad vertices go from -1 to 1, so scale represents half-size
-            let ndc_w = pw_phys / self.width as f32; // half-width in NDC
-            let ndc_h = ph_phys / self.height as f32; // half-height in NDC
+            self.ui_renderer.begin();
+            self.game_hud_view.tree.render(&mut self.ui_renderer);
+            self.ability_bar_view.render(&mut self.ui_renderer);
 
-            // compute center of the portrait rect in NDC
-            let center_x_px = px_phys + pw_phys / 2.0;
-            let center_y_px = py_phys + ph_phys / 2.0;
-            let ndc_x = (2.0 * center_x_px / self.width as f32) - 1.0;
-            let ndc_y = 1.0 - (2.0 * center_y_px / self.height as f32);
+            // render toast view LAST (overlay priority)
+            self.toast_view.render(&mut self.ui_renderer);
 
-            self.draw_screen_quad(
-                shader,
-                portrait_tex,
-                ndc_x, // x center in NDC
-                ndc_y, // y center in NDC
-                ndc_w, // half-width in NDC
-                ndc_h, // half-height in NDC
-                true,  // flip_v for FBO texture
-            );
+            self.ui_renderer.end(&mut self.font_system);
+        } else {
+            // When paused, draw ONLY the GPU pause menu (no Slint overlay)
+            if self.pause_menu_view.needs_layout() {
+                self.pause_menu_view.tree.layout(&mut self.font_system);
+                self.pause_menu_view.clear_layout_flag();
+            }
+
+            // set current font for GPU UI rendering
+            self.ui_renderer
+                .set_default_font_family(self.current_font_family.clone());
+
+            self.ui_renderer.begin();
+            self.pause_menu_view.tree.render(&mut self.ui_renderer);
+
+            // render toast view LAST (overlay priority) - toasts persist when paused
+            self.toast_view.render(&mut self.ui_renderer);
+
+            self.ui_renderer.end(&mut self.font_system);
         }
 
         unsafe {
@@ -572,75 +644,50 @@ impl GameUiManager {
             gl_call!(gl::Disable(gl::DEPTH_TEST));
         }
 
-        // A. DRAW UI (Background Layer) - use cached texture
-        self.draw_overlay(shader, self.texture);
-
-        // B. DRAW ABILITY BAR (Middle Layer)
+        // A. DRAW SLINT UI (only when NOT paused)
         if !self.is_paused {
-            let ability_bar_tex = self.ability_bar_renderer.get_texture_id();
-            self.draw_screen_quad(
-                shader,
-                ability_bar_tex,
-                self.ability_bar_ndc_x,
-                self.ability_bar_ndc_y,
-                self.ability_bar_ndc_w,
-                self.ability_bar_ndc_h,
-                false,
-            );
+            self.draw_overlay(shader, self.texture);
         }
 
-        // C. DRAW PORTRAIT (Foreground Layer)
+        // B. DRAW Custom GPU UI
         if !self.is_paused {
-            let portrait_tex = self.portrait_renderer.get_texture_id();
-            let (px, py, pw, ph) = self.game_root_view.get_portrait_rect();
+            // set current font for GPU UI rendering
+            self.ui_renderer
+                .set_default_font_family(self.current_font_family.clone());
 
-            let px_phys = px * self.scale_factor;
-            let py_phys = py * self.scale_factor;
-            let pw_phys = pw * self.scale_factor;
-            let ph_phys = ph * self.scale_factor;
+            self.ui_renderer.begin();
+            self.game_hud_view.tree.render(&mut self.ui_renderer);
+            self.ability_bar_view.render(&mut self.ui_renderer);
 
-            let ndc_w = pw_phys / self.width as f32;
-            let ndc_h = ph_phys / self.height as f32;
+            // render toast view LAST (overlay priority)
+            self.toast_view.render(&mut self.ui_renderer);
 
-            let center_x_px = px_phys + pw_phys / 2.0;
-            let center_y_px = py_phys + ph_phys / 2.0;
-            let ndc_x = (2.0 * center_x_px / self.width as f32) - 1.0;
-            let ndc_y = 1.0 - (2.0 * center_y_px / self.height as f32);
+            self.ui_renderer.end(&mut self.font_system);
+        } else {
+            // When paused, draw pause menu + toasts
+            // ! IMPORTANT: Check needs_layout even in cached render path
+            // ! to ensure layout is updated after tab selection
+            if self.pause_menu_view.needs_layout() {
+                self.pause_menu_view.tree.layout(&mut self.font_system);
+                self.pause_menu_view.clear_layout_flag();
+            }
 
-            self.draw_screen_quad(shader, portrait_tex, ndc_x, ndc_y, ndc_w, ndc_h, true);
+            // ! set current font for GPU UI rendering
+            self.ui_renderer
+                .set_default_font_family(self.current_font_family.clone());
+
+            self.ui_renderer.begin();
+            self.pause_menu_view.tree.render(&mut self.ui_renderer);
+
+            // render toast view LAST (overlay priority) - toasts persist when paused
+            self.toast_view.render(&mut self.ui_renderer);
+
+            self.ui_renderer.end(&mut self.font_system);
         }
 
         unsafe {
             gl_call!(gl::Enable(gl::DEPTH_TEST));
             gl_call!(gl::Disable(gl::BLEND));
-        }
-    }
-
-    /// Helper to draw a quad at a specific position/scale
-    fn draw_screen_quad(
-        &self,
-        shader: &mut Shader,
-        texture: u32,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-        flip_v: bool,
-    ) {
-        unsafe {
-            shader.activate();
-
-            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
-            shader.set_int("ui_texture", 0);
-
-            shader.set_vec2("u_offset", x, y);
-            shader.set_vec2("u_scale", w, h);
-            shader.set_bool("u_flip_v", flip_v);
-
-            gl_call!(gl::BindVertexArray(self.overlay_vao));
-            gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
-            gl_call!(gl::BindVertexArray(0));
         }
     }
 

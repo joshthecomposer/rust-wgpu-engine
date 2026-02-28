@@ -1,0 +1,283 @@
+Column(
+    style: (
+        id: Some("gallery_root"),
+        width: Percent(100.0),
+        height: Percent(100.0),
+        background: Rgba(0.05, 0.05, 0.1, 0.9),
+        padding: Px(20.0),
+    ),
+    justify: Start,
+    align: Center,
+    children: [
+        Label(
+            content: "Widget Gallery",
+            style: (
+                id: Some("gallery_title"),
+                font_size: Some(48.0),
+                color: Some(Rgba(1.0, 1.0, 1.0, 1.0)),
+                margin: Px(20.0),
+                font_family: Some("weiholmir"),
+            )
+        ),
+        Row(
+            style: (
+                id: Some("buttons_row"),
+                width: Percent(100.0),
+                height: Px(120.0),
+                margin: Px(20.0),
+            ),
+            justify: SpaceAround,
+            children: [
+                Column(
+                    style: (
+                        id: Some("btn_1"),
+                        width: Px(200.0),
+                        height: Px(60.0),
+                        background: Variable("stone-mild"),
+                        padding_top: Some(Px(10.0)),
+                        border_radius: 8.0,
+                    ),
+                    justify: Center,
+                    align: Center,
+                    children: [
+                        Label(
+                            content: "Button 1",
+                            style: (
+                                color: Some(Rgba(1.0, 1.0, 1.0, 1.0)),
+                                font_size: Some(20.0),
+                                text_align: Some(Center),
+                            )
+                        )
+                    ]
+                ),
+                 Column(
+                    style: (
+                        id: Some("btn_2"),
+                        width: Px(200.0),
+                        height: Px(60.0),
+                        background: Variable("mana-sky"),
+                        padding_top: Some(Px(10.0)),
+                    ),
+                    justify: Center,
+                    align: Center,
+                    children: [
+                        Label(
+                            content: "Button 2",
+                            style: (
+                                color: Some(Rgba(1.0, 1.0, 1.0, 1.0)),
+                                font_size: Some(20.0),
+                                text_align: Some(Center),
+                            )
+                        )
+                    ]
+                )
+            ]
+        ),
+        Row(
+            style: (
+                id: Some("textures_row"),
+                width: Percent(100.0),
+                height: Px(150.0),
+            ),
+            justify: Center,
+            children: [
+                TextureRect(
+                    texture_id: 0,
+                    style: (
+                        id: Some("tex_1"),
+                        width: Px(100.0),
+                        height: Px(100.0),
+                    )
+                ),
+                 TextureRect(
+                    texture_id: 0,
+                    style: (
+                        id: Some("tex_2"),
+                        width: Px(100.0),
+                        height: Px(100.0),
+                    )
+                )
+            ]
+        ),
+        Row(
+            style: (
+                id: Some("progress_row"),
+                width: Percent(100.0),
+                height: Px(100.0),
+            ),
+            justify: Center,
+            align: Center,
+            children: [
+                Column(
+                    style: (
+                        width: Px(300.0),
+                        height: Px(100.0),
+                    ),
+                    justify: Center,
+                    align: Center,
+                    children: [
+                        Label(
+                            content: "Health",
+                            style: ( color: Some(Variable("highlight")), font_size: Some(14.0) )
+                        ),
+                        ProgressBar(
+                            current_value: 75.0,
+                            max_value: 100.0,
+                            fill_color: Variable("blood-hp"),
+                            outline_color: Variable("stone-light"),
+                            style: (
+                                width: Px(250.0),
+                                height: Px(20.0),
+                                background: Variable("deep-void"),
+                                margin_bottom: Some(Px(10.0)),
+                            )
+                        ),
+                        Label(
+                            content: "Mana",
+                            style: ( color: Some(Variable("highlight")), font_size: Some(14.0) )
+                        ),
+                        ProgressBar(
+                            current_value: 40.0,
+                            max_value: 100.0,
+                            fill_color: Variable("mana-sky"),
+                            outline_color: Variable("stone-light"),
+                            style: (
+                                width: Px(250.0),
+                                height: Px(20.0),
+                                background: Variable("deep-void"),
+                            )
+                        ),
+                    ]
+                )
+            ]
+        ),
+        Row(
+            style: (
+                id: Some("scroll_row"),
+                width: Percent(100.0),
+                height: Px(280.0),
+                margin: Px(20.0),
+            ),
+            justify: SpaceBetween,
+            align: Start,
+            children: [
+                Column(
+                    style: (
+                        width: Px(500.0),
+                        height: Px(380.0),
+                    ),
+                    justify: Start,
+                    align: Start,
+                    children: [
+                        Label(
+                            content: "AbilitySlot Widget",
+                            style: ( color: Some(Variable("highlight")), font_size: Some(18.0), margin_bottom: Some(Px(10.0)) )
+                        ),
+                        Row(
+                            style: (
+                                width: Px(300.0),
+                                height: Px(60.0),
+                            ),
+                            justify: Start,
+                            align: Center,
+                            children: [
+                                AbilitySlot(
+                                    key_label: "Q",
+                                    slot_background: Variable("deep-void-alpha"),
+                                    ready_border_color: Variable("runic-gold"),
+                                    normal_border_color: Variable("stone-light"),
+                                    style: (
+                                        id: Some("demo_slot_1"),
+                                        width: Px(48.0),
+                                        height: Px(48.0),
+                                        border_radius: 4.0,
+                                    ),
+                                ),
+                                AbilitySlot(
+                                    key_label: "E",
+                                    slot_background: Variable("deep-void-alpha"),
+                                    ready_border_color: Variable("runic-gold"),
+                                    normal_border_color: Variable("stone-light"),
+                                    style: (
+                                        id: Some("demo_slot_2"),
+                                        width: Px(48.0),
+                                        height: Px(48.0),
+                                        margin_left: Some(Px(6.0)),
+                                        border_radius: 4.0,
+                                    ),
+                                ),
+                                AbilitySlot(
+                                    key_label: "R",
+                                    slot_background: Variable("deep-void-alpha"),
+                                    ready_border_color: Variable("runic-gold"),
+                                    normal_border_color: Variable("stone-light"),
+                                    style: (
+                                        id: Some("demo_slot_3"),
+                                        width: Px(48.0),
+                                        height: Px(48.0),
+                                        margin_left: Some(Px(6.0)),
+                                        border_radius: 4.0,
+                                    ),
+                                ),
+                            ]
+                        ),
+                        Label(
+                            content: "AbilitySlot widgets for ability bars",
+                            style: ( color: Some(Rgba(0.7, 0.7, 0.7, 1.0)), font_size: Some(14.0), margin_top: Some(Px(10.0)) )
+                        ),
+                    ]
+                ),
+                Column(
+                    style: (
+                        width: Px(380.0),
+                        height: Px(250.0),
+                    ),
+                    justify: Start,
+                    align: Start,
+                    children: [
+                        Label(
+                            content: "ScrollView Demo",
+                            style: ( color: Some(Variable("highlight")), font_size: Some(18.0), margin_bottom: Some(Px(10.0)) )
+                        ),
+                        ScrollView(
+                            content_height: 600.0,
+                            style: (
+                                id: Some("scroll_demo"),
+                                width: Px(350.0),
+                                height: Px(150.0),
+                                background: Variable("deep-void"),
+                                padding_left: Some(Px(8.0)),
+                                padding_right: Some(Px(8.0)),
+                                padding_top: Some(Px(4.0)),
+                            ),
+                            scrollbar_style: (
+                                width: Some(14.0),
+                                thumb_color: Some(Variable("stone-mild")),
+                                thumb_hover_color: Some(Variable("stone-light")),
+                                thumb_active_color: Some(Variable("highlight")),
+                            ),
+                            children: [
+                                Label(content: "Item 1 - First Item", style: ( color: Some(Rgba(0.9, 0.9, 0.9, 1.0)), font_size: Some(16.0), padding: Px(10.0) )),
+                                Label(content: "Item 2 - Second Item", style: ( color: Some(Rgba(0.8, 0.8, 0.8, 1.0)), font_size: Some(16.0), padding: Px(10.0) )),
+                                Label(content: "Item 3 - Third Item", style: ( color: Some(Rgba(0.9, 0.9, 0.9, 1.0)), font_size: Some(16.0), padding: Px(10.0) )),
+                                Label(content: "Item 4 - Fourth Item", style: ( color: Some(Rgba(0.8, 0.8, 0.8, 1.0)), font_size: Some(16.0), padding: Px(10.0) )),
+                                Label(content: "Item 5 - Fifth Item", style: ( color: Some(Rgba(0.9, 0.9, 0.9, 1.0)), font_size: Some(16.0), padding: Px(10.0) )),
+                                Label(content: "Item 6 - Sixth Item", style: ( color: Some(Rgba(0.8, 0.8, 0.8, 1.0)), font_size: Some(16.0), padding: Px(10.0) )),
+                                Label(content: "Item 7 - Seventh Item", style: ( color: Some(Rgba(0.9, 0.9, 0.9, 1.0)), font_size: Some(16.0), padding: Px(10.0) )),
+                                Label(content: "Item 8 - Eighth Item", style: ( color: Some(Rgba(0.8, 0.8, 0.8, 1.0)), font_size: Some(16.0), padding: Px(10.0) )),
+                            ]
+                        )
+                    ]
+                )
+            ]
+        ),
+        Label(
+            content: "Press 'F' to cycle views",
+            style: (
+                margin: Px(40.0),
+                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                font_size: Some(16.0),
+            )
+        )
+    ]
+)

@@ -1,0 +1,58 @@
+(
+    colors: {
+        // ==================== LIGHT THEME (Engine UI) ====================
+        "panel-background": Hex("#d8d4c4"),
+        "panel-background-solid": Hex("#e6e2d0"),
+        "panel-border": Hex("#5a4a3a"),
+        "section-background": Hex("#c6c2b0"),
+        "dropdown-background": Hex("#e6e2d0"),
+        "dropdown-item-hover": Hex("#b8a494"),
+        "dropdown-item-selected": Hex("#8a2a2a"),
+        "accent": Hex("#aa3333"),
+        "text-primary": Hex("#1a0a0a"),
+        "text-secondary": Hex("#5a4a4a"),
+        "border-normal": Hex("#8a7a6a"),
+
+        // ==================== DARK THEME (Game UI) ====================
+        "dark-panel-background": Hex("#030712"),
+        "dark-panel-background-solid": Hex("#0a0f1a"),
+        "dark-panel-border": Hex("#374151"),
+        "dark-section-background": Hex("#1c1917"),
+        "dark-dropdown-background": Hex("#1f2937"),
+        "dark-dropdown-item-hover": Hex("#374151"),
+        "dark-dropdown-item-selected": Hex("#dc2626"),
+        "dark-accent": Hex("#f87171"),
+        "dark-text-primary": Hex("#f9fafb"),
+        "dark-text-secondary": Hex("#9ca3af"),
+        "dark-border-normal": Hex("#4b5563"),
+
+        // ==================== DESIGN SYSTEM COLORS ====================
+        "deep-void": Hex("#0f172a"),
+        "deep-void-alpha": Hex("#0f172aD8"),
+        "stone-dark": Hex("#1e293b"),
+        "stone-mild": Hex("#334155"),
+        "stone-light": Hex("#475569"),
+        "stone-edge": Hex("#64748b"),
+        "old-text": Hex("#94a3b8"),
+        "muted-scrawl": Hex("#78716c"),
+        "highlight": Hex("#fef3c7"),
+        "runic-gold": Hex("#d97706"),
+        "runic-gold-translucent": Rgba(0.85, 0.55, 0.25, 0.5),
+        "icon-glow": Hex("#d97706"),
+        "blood-hp": Hex("#991b1b"),
+        "mana-sky": Hex("#075985"),
+        "text-light": Hex("#f3f4f6"),
+        "text-dim": Hex("#6b7280"),
+
+        // ==================== ERROR COLORS ====================
+        "error-background": Rgba(0.1, 0.0, 0.0, 0.9),
+        "error-text": Rgba(1.0, 0.2, 0.2, 1.0),
+
+        // ==================== RARITY COLORS ====================
+        "common-bone": Hex("#e2e8f0"),
+        "uncommon-moss": Hex("#a3e635"),
+        "rare-amethyst": Hex("#c084fc"),
+        "epic-jade": Hex("#2dd4bf"),
+        "legendary-gold": Hex("#fcd34d"),
+    }
+)

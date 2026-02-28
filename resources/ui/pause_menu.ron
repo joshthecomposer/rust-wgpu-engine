@@ -1,0 +1,547 @@
+// Pause Menu - GPU-rendered version with TabView
+// Root: Row with centered content
+// Structure: Shadow positioned first, main panel overlaps it using negative margin
+
+Row(
+    style: (
+        width: Percent(100.0),
+        height: Percent(100.0),
+    ),
+    justify: Center,
+    align: Center,
+    children: [
+        // Outer container - holds shadow and panel
+        Column(
+            style: (
+                id: Some("pause_menu_container"),
+                width: Px(424.0),  // 420 + 4px shadow offset
+                height: Auto, // Auto height to accommodate overlapping children
+                background: Hex("#00000000"), // transparent
+            ),
+            children: [
+                // Shadow - renders first (behind)
+                Box(
+                    style: (
+                        id: Some("pause_menu_shadow"),
+                        width: Px(420.0),
+                        height: Px(380.0),
+                        background: Hex("#00000099"),
+                        border_radius: 8.0,
+                        margin_left: Some(Px(4.0)),
+                        margin_top: Some(Px(4.0)),
+                    ),
+                ),
+                // Main panel - overlaps shadow with negative margin
+                Column(
+                    style: (
+                        id: Some("pause_menu_panel"),
+                        width: Px(420.0),
+                        height: Px(380.0),
+                        background: Variable("deep-void"),
+                        border_color: Variable("stone-light"),
+                        border_width: 2.0,
+                        border_radius: 8.0,
+                        padding: Px(16.0),
+                        margin_top: Some(Px(-4.0)), // overlap shadow by 4px
+                    ),
+                    justify: Start,
+                    align: Center,
+                    children: [
+                        // ===== CLOSE BUTTON =====
+                        // Positioned in top-right corner, just inside the border
+                        CloseButton(
+                            style: (
+                                id: Some("btn_close"),
+                                width: Px(20.0),
+                                height: Px(20.0),
+                                margin_left: Some(Px(368.0)),  // 420 - 16 - 20 - 16 = 368 (align right)
+                                margin_top: Some(Px(0.0)),  // at top of content area
+                            ),
+                            normal_color: Variable("stone-light"),
+                            hover_color: Variable("runic-gold"),
+                        ),
+                        
+                        // ===== CONTENT =====
+                        // Header: SYSTEM MENU title
+                        Label(
+                            content: "SYSTEM MENU",
+                            style: (
+                                font_size: Some(20.0),
+                                color: Some(Variable("highlight")),
+                                height: Px(32.0),
+                                margin_bottom: Some(Px(4.0)),
+                            ),
+                        ),
+                        
+                        // Decorative separator with dot below title
+                        Row(
+                            style: (
+                                width: Percent(100.0),
+                                height: Auto,
+                                margin_bottom: Some(Px(8.0)),
+                            ),
+                            justify: Center,
+                            align: Center,
+                            children: [
+                                // Left line (extended to better span panel width)
+                                Box(
+                                    style: (
+                                        width: Px(180.0),
+                                        height: Px(1.0),
+                                        background: Variable("stone-mild"),
+                                    ),
+                                ),
+                                // Center diamond
+                                Diamond(
+                                    style: (
+                                        width: Px(12.0),
+                                        height: Px(12.0),
+                                        background: Variable("runic-gold"),
+                                        margin_left: Some(Px(8.0)),
+                                        margin_right: Some(Px(8.0)),
+                                    ),
+                                ),
+                                // Right line (extended to better span panel width)
+                                Box(
+                                    style: (
+                                        width: Px(180.0),
+                                        height: Px(1.0),
+                                        background: Variable("stone-mild"),
+                                    ),
+                                ),
+                            ],
+                        ),
+
+                        // TabView with SYSTEM and SETTINGS tabs (tab labels replace the sub-heading)
+                        TabView(
+                            style: (
+                                id: Some("main_tabs"),
+                                width: Percent(100.0),
+                                height: Px(356.0),  // 300px ScrollView + 56px footer = 356px content area (+ 32px tab bar = 388px total)
+                            ),
+                            tab_labels: [
+                                "SYSTEM",
+                                "SETTINGS",
+                            ],
+                            tab_contents: [
+                                // ===== SYSTEM TAB =====
+                                Column(
+                                    style: (
+                                        width: Percent(100.0),
+                                        padding: Px(8.0),
+                                    ),
+                                    justify: Start,
+                                    align: Center,
+                                    children: [
+                                        MenuButton(
+                                            text: "RELOAD WORLD DATA",
+                                            style: (
+                                                id: Some("btn_reload_world"),
+                                                width: Percent(100.0),
+                                                height: Px(48.0),
+                                                margin_bottom: Some(Px(8.0)),
+                                            ),
+                                        ),
+                                        MenuButton(
+                                            text: "SAVE PLAYER DATA",
+                                            style: (
+                                                id: Some("btn_save_player"),
+                                                width: Percent(100.0),
+                                                height: Px(48.0),
+                                                margin_bottom: Some(Px(8.0)),
+                                            ),
+                                        ),
+                                        MenuButton(
+                                            text: "QUIT GAME",
+                                            style: (
+                                                id: Some("btn_quit"),
+                                                width: Percent(100.0),
+                                                height: Px(48.0),
+                                            ),
+                                        ),
+                                    ],
+                                ),
+                                
+                                // ===== SETTINGS TAB =====
+                                Column(
+                                    style: (
+                                        id: Some("settings_container"),
+                                        width: Percent(100.0),
+                                    ),
+                                    justify: Start,
+                                    align: Start,
+                                    children: [
+                                        // ScrollView containing all settings
+                                        ScrollView(
+                                            content_height: 450.0,  // Total scrollable content height (150px of scroll range)
+                                            style: (
+                                                id: Some("settings_scroll"),
+                                                width: Percent(100.0),
+                                                height: Px(300.0),  // Viewport height - leaves room for footer buttons
+                                                padding_left: Some(Px(8.0)),
+                                                padding_right: Some(Px(8.0)),
+                                                padding_top: Some(Px(4.0)),
+                                            ),
+                                            scrollbar_style: (
+                                                width: Some(14.0),
+                                                thumb_color: Some(Variable("stone-mild")),
+                                                thumb_hover_color: Some(Variable("stone-light")),
+                                                thumb_active_color: Some(Variable("runic-gold")),
+                                                track_color: Some(Rgba(0.1, 0.1, 0.1, 0.5)),
+                                            ),
+                                            children: [
+                                                // ===== DISPLAY SECTION =====
+                                                Label(
+                                                    content: "DISPLAY",
+                                                    style: (
+                                                        font_size: Some(14.0),
+                                                        color: Some(Rgba(0.9, 0.9, 0.9, 1.0)),
+                                                        height: Px(24.0),
+                                                    ),
+                                                ),
+                                                // Divider under DISPLAY header
+                                                Box(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(1.0),
+                                                        background: Variable("stone-mild"),
+                                                        margin_bottom: Some(Px(8.0)),
+                                                    ),
+                                                ),
+                                                // Resolution row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "Resolution",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        ComboBox(
+                                                            style: (
+                                                                id: Some("combo_resolution"),
+                                                                width: Px(140.0),
+                                                                height: Px(24.0),
+                                                            ),
+                                                            options: ["1280 x 720", "1920 x 1080", "2560 x 1440"],
+                                                            selected_index: 1,
+                                                        ),
+                                                    ],
+                                                ),
+                                                // Window Mode row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "Window Mode",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        ComboBox(
+                                                            style: (
+                                                                id: Some("combo_window_mode"),
+                                                                width: Px(140.0),
+                                                                height: Px(24.0),
+                                                            ),
+                                                            options: ["Windowed", "Fullscreen", "Borderless"],
+                                                            selected_index: 2,
+                                                        ),
+                                                    ],
+                                                        ),
+                                                // VSync row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "VSync",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        Checkbox(
+                                                            style: (
+                                                                id: Some("check_vsync"),
+                                                            ),
+                                                            checked: true,
+                                                            check_color: Variable("runic-gold"),
+                                                        ),
+                                                    ],
+                                                        ),
+                                                // MSAA row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "MSAA",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        ComboBox(
+                                                            style: (
+                                                                id: Some("combo_msaa"),
+                                                                width: Px(100.0),
+                                                                height: Px(24.0),
+                                                            ),
+                                                            options: ["None", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA"],
+                                                            selected_index: 4,
+                                                        ),
+                                                    ],
+                                                ),
+                                                
+                                                // ===== INTERFACE SECTION =====
+                                                Label(
+                                                    content: "INTERFACE",
+                                                    style: (
+                                                        font_size: Some(14.0),
+                                                        color: Some(Rgba(0.9, 0.9, 0.9, 1.0)),
+                                                        height: Px(24.0),
+                                                        margin_top: Some(Px(8.0)),
+                                                    ),
+                                                ),
+                                                // Divider under INTERFACE header
+                                                Box(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(1.0),
+                                                        background: Variable("stone-mild"),
+                                                        margin_bottom: Some(Px(8.0)),
+                                                    ),
+                                                ),
+                                                // Gizmo Rendering row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "Gizmo Rendering",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        Checkbox(
+                                                            style: (
+                                                                id: Some("check_gizmos"),
+                                                            ),
+                                                            checked: false,
+                                                            check_color: Variable("runic-gold"),
+                                                        ),
+                                                    ],
+                                                ),
+                                                // Show FPS Counter row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "Show FPS Counter",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        Checkbox(
+                                                            style: (
+                                                                id: Some("check_fps"),
+                                                            ),
+                                                            checked: false,
+                                                            check_color: Variable("runic-gold"),
+                                                        ),
+                                                    ],
+                                                ),
+                                                // Debug Mode row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "Debug Mode",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        Checkbox(
+                                                            style: (
+                                                                id: Some("check_debug"),
+                                                            ),
+                                                            checked: false,
+                                                            check_color: Variable("runic-gold"),
+                                                        ),
+                                                    ],
+                                                ),
+                                                // Font row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "Font",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        ComboBox(
+                                                            style: (
+                                                                id: Some("combo_font"),
+                                                                width: Px(140.0),
+                                                                height: Px(24.0),
+                                                            ),
+                                                            options: ["Weiholmir", "JetBrains Mono", "OpenDyslexic"],
+                                                            selected_index: 0,
+                                                        ),
+                                                    ],
+                                                ),
+                                                
+                                                // ===== SOUND SECTION =====
+                                                Label(
+                                                    content: "SOUND",
+                                                    style: (
+                                                        font_size: Some(14.0),
+                                                        color: Some(Rgba(0.9, 0.9, 0.9, 1.0)),
+                                                        height: Px(32.0),
+                                                    ),
+                                                ),
+                                                // BGM Volume row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "BGM Volume",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        Slider(
+                                                            style: (
+                                                                id: Some("slider_bgm"),
+                                                                width: Px(140.0),
+                                                                height: Px(20.0),
+                                                            ),
+                                                            min_value: 0.0,
+                                                            max_value: 100.0,
+                                                            value: 80.0,
+                                                            thumb_color: Variable("runic-gold"),
+                                                        ),
+                                                    ],
+                                                ),
+                                                // SFX Volume row
+                                                Row(
+                                                    style: (
+                                                        width: Percent(100.0),
+                                                        height: Px(32.0),
+                                                    ),
+                                                    justify: SpaceBetween,
+                                                    align: Center,
+                                                    children: [
+                                                        Label(
+                                                            content: "SFX Volume",
+                                                            style: (
+                                                                color: Some(Rgba(0.7, 0.7, 0.7, 1.0)),
+                                                                font_size: Some(12.0),
+                                                            ),
+                                                        ),
+                                                        Slider(
+                                                            style: (
+                                                                id: Some("slider_sfx"),
+                                                                width: Px(140.0),
+                                                                height: Px(20.0),
+                                                            ),
+                                                            min_value: 0.0,
+                                                            max_value: 100.0,
+                                                            value: 100.0,
+                                                            thumb_color: Variable("runic-gold"),
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        
+                                        // Footer buttons
+                                        Row(
+                                            style: (
+                                                width: Percent(100.0),
+                                                height: Px(48.0),
+                                                margin_top: Some(Px(8.0)),
+                                            ),
+                                            justify: SpaceBetween,
+                                            align: Center,
+                                            children: [
+                                                MenuButton(
+                                                    text: "CANCEL",
+                                                    style: (
+                                                        id: Some("btn_cancel"),
+                                                        width: Px(170.0),
+                                                        height: Px(40.0),
+                                                    ),
+                                                ),
+                                                MenuButton(
+                                                    text: "APPLY",
+                                                    style: (
+                                                        id: Some("btn_apply"),
+                                                        width: Px(170.0),
+                                                        height: Px(40.0),
+                                                    ),
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ],
+)

@@ -165,6 +165,10 @@ export component GameRoot inherits Window {
     }
 
     // ==================== TOAST NOTIFICATIONS ====================
+    // DEPRECATED: Toast notifications now rendered via custom GPU UI system (game_new)
+    // See ToastView in src/ui/game_new/views/toast_view.rs
+    // The toast_close_clicked callback is kept for compatibility but no longer used.
+    /*
     // positioned in bottom-right corner, stacks vertically
     // accounts for 4px shadow offset on right and bottom
     toast-container := Rectangle {
@@ -189,6 +193,7 @@ export component GameRoot inherits Window {
             }
         }
     }
+    */
 }
 
 // Export AbilityBarStandalone component for FBO rendering

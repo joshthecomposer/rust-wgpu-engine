@@ -19,7 +19,9 @@ use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
-use crate::toast; // import toast macro
+use crate::toast;
+use crate::ui::game_new::parser::load_view_or_fallback;
+use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
 use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PortraitRenderContext};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
@@ -38,6 +40,10 @@ pub struct Game {
     cursor_mode: CursorMode,
     message_queue: MessageQueue,
     game_ui: GameUiManager,
+    custom_ui: Option<UiTree>,
+    gallery_ui: Option<UiTree>,
+    custom_ui_renderer: UiRenderer,
+    font_system: FontSystem,
     pub should_quit: bool,
     imgui_manager: Option<ImguiManager>,
     config: GameConfig,
@@ -76,6 +82,16 @@ impl Game {
             false => None,
         };
 
+        let custom_ui = None;
+
+        let mut gallery_ui = load_view_or_fallback("resources/ui/gallery_view.ron");
+        gallery_ui.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+        let gallery_ui = Some(gallery_ui);
+
+        let mut custom_ui_renderer = UiRenderer::new();
+        let font_system = FontSystem::new();
+        custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+
         Self {
             platform,
             time,
@@ -88,6 +104,10 @@ impl Game {
             cursor_mode: CursorMode::Hidden,
             message_queue: MessageQueue::new(),
             game_ui,
+            custom_ui,
+            gallery_ui,
+            custom_ui_renderer,
+            font_system,
             should_quit: false,
             imgui_manager,
             config,
@@ -239,6 +259,8 @@ impl Game {
         if stepped {
             self.input.update();
         }
+
+        self.input.update_ui();
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
@@ -250,6 +272,14 @@ impl Game {
             WindowEvent::Resized(size) => {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
+                if let Some(tree) = &mut self.custom_ui {
+                    tree.set_screen_size(size.width as f32, size.height as f32);
+                }
+                if let Some(tree) = &mut self.gallery_ui {
+                    tree.set_screen_size(size.width as f32, size.height as f32);
+                }
+                self.custom_ui_renderer
+                    .set_screen_size(size.width as f32, size.height as f32);
             }
 
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
@@ -286,6 +316,16 @@ impl Game {
             }
 
             WindowEvent::CloseRequested => {}
+
+            WindowEvent::MouseWheel { delta, .. } => {
+                // Capture scroll wheel delta for UI
+                use winit::event::MouseScrollDelta;
+                let scroll = match delta {
+                    MouseScrollDelta::LineDelta(x, y) => glam::vec2(*x, *y),
+                    MouseScrollDelta::PixelDelta(pos) => glam::vec2(pos.x as f32, pos.y as f32),
+                };
+                self.input.scroll_delta = scroll;
+            }
 
             WindowEvent::CursorMoved { position, .. } => {
                 if !self.paused {
@@ -370,7 +410,8 @@ impl Game {
                                         }
                                     }
                                     CameraState::Third => CameraState::Locked,
-                                    CameraState::Locked => CameraState::Free,
+                                    CameraState::Locked => CameraState::Gallery,
+                                    CameraState::Gallery => CameraState::Free,
                                 };
                             }
 
@@ -403,7 +444,8 @@ impl Game {
                                     }
                                 }
                                 CameraState::Third => CameraState::Locked,
-                                CameraState::Locked => CameraState::Free,
+                                CameraState::Locked => CameraState::Gallery,
+                                CameraState::Gallery => CameraState::Free,
                             };
                         }
 
@@ -442,6 +484,35 @@ impl Game {
             .particles
             .update(self.time.dt, &mut self.command_buffer, &self.world.ecs);
 
+        // update custom GPU UI
+        if self.world.camera.move_state == CameraState::Gallery {
+            if let Some(tree) = &mut self.gallery_ui {
+                tree.layout(&mut self.font_system);
+                let mut ctx = UiContext {
+                    input: &self.input,
+                    messages: &mut self.message_queue,
+                };
+                if tree.update(&mut ctx) {
+                    // Widget state changed (e.g., scrolling), re-layout to apply changes
+                    tree.force_layout();
+                    tree.layout(&mut self.font_system);
+                }
+            }
+        } else {
+            if let Some(tree) = &mut self.custom_ui {
+                tree.layout(&mut self.font_system);
+                let mut ctx = UiContext {
+                    input: &self.input,
+                    messages: &mut self.message_queue,
+                };
+                if tree.update(&mut ctx) {
+                    // Widget state changed, re-layout
+                    tree.force_layout();
+                    tree.layout(&mut self.font_system);
+                }
+            }
+        }
+
         // update game UI (pause menu, HUD, etc.) BEFORE processing messages
         // this ensures UI values are synced to game state before ApplySettings saves
         self.game_ui.update(GameUiUpdateContext {
@@ -452,6 +523,7 @@ impl Game {
             game_config: &mut self.config,
             sound_config: &mut self.sound_config,
             elapsed_time: self.time.elapsed as f64,
+            input_state: &self.input,
         });
 
         self.game_ui.set_fps(self.time.fps);
@@ -653,6 +725,21 @@ impl Game {
             .get_mut(&ShaderType::UiOverlay)
             .unwrap();
         self.game_ui.render(ui_shader, self.time.elapsed as f64);
+
+        // render custom GPU UI (test view)
+        if self.world.camera.move_state == CameraState::Gallery {
+            if let Some(tree) = &self.gallery_ui {
+                self.custom_ui_renderer.begin();
+                tree.render(&mut self.custom_ui_renderer);
+                self.custom_ui_renderer.end(&mut self.font_system);
+            }
+        } else {
+            if let Some(tree) = &self.custom_ui {
+                self.custom_ui_renderer.begin();
+                tree.render(&mut self.custom_ui_renderer);
+                self.custom_ui_renderer.end(&mut self.font_system);
+            }
+        }
 
         if let Some(imgui_manager) = &mut self.imgui_manager {
             imgui_manager.draw(
