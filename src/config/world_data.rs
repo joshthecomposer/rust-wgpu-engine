@@ -52,6 +52,28 @@ pub struct EntityInstance {
     pub pickup_range: Option<f32>,
 }
 
+impl EntityInstance {
+    pub fn new(entity_type: String, position: Vec3, rotation: Quat) -> Self {
+        Self {
+            entity_type,
+            faction: None,
+            position,
+            rotation,
+            weapons: None,
+            base_speed: None,
+            health: None,
+            max_health: None,
+            mana: None,
+            max_mana: None,
+            level: None,
+            name: None,
+            jump_height: None,
+            cleanup_timer: None,
+            pickup_range: None,
+        }
+    }
+}
+
 // fn snap(v: f64, precision: u32) -> f64 {
 //     let factor = 10f64.powi(precision as i32);
 //     (v * factor).round() / factor

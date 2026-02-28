@@ -71,11 +71,11 @@ impl Game {
 
         let renderer = Renderer::new(&platform, &config);
         let sound = SoundManager::new(&sound_config);
-        let game_ui = GameUiManager::new(
-            platform.fb_width,
-            platform.fb_height,
-            platform.scale_factor as f32,
-        );
+        //let game_ui = GameUiManager::new(
+        //    platform.fb_width,
+        //    platform.fb_height,
+        //    platform.scale_factor as f32,
+        //);
 
         let imgui_manager = match config.debug_mode {
             true => Some(ImguiManager::new(&platform)),
@@ -264,7 +264,7 @@ impl Game {
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
-        self.game_ui.handle_window_event(event, &mut self.input);
+        //self.game_ui.handle_window_event(event, &mut self.input);
         if let Some(imgui_manager) = &mut self.imgui_manager {
             imgui_manager.handle_imgui_event(event);
         }
@@ -289,7 +289,7 @@ impl Game {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
                 // resize Slint game UI to match new framebuffer size
-                self.game_ui.resize(size.width, size.height);
+                //self.game_ui.resize(size.width, size.height);
             }
 
             WindowEvent::DroppedFile(path) => {
@@ -715,16 +715,16 @@ impl Game {
                 cubemap: self.renderer.cubemap_texture,
                 elapsed_time: self.time.elapsed as f64,
             };
-            self.game_ui.render_portrait(portrait_ctx);
+            //self.game_ui.render_portrait(portrait_ctx);
         }
 
         // render game UI overlay (pause menu when paused, HUD when playing)
-        let ui_shader = self
-            .renderer
-            .shaders
-            .get_mut(&ShaderType::UiOverlay)
-            .unwrap();
-        self.game_ui.render(ui_shader, self.time.elapsed as f64);
+        // let ui_shader = self
+        //     .renderer
+        //     .shaders
+        //     .get_mut(&ShaderType::UiOverlay)
+        //     .unwrap();
+        //self.game_ui.render(ui_shader, self.time.elapsed as f64);
 
         // render custom GPU UI (test view)
         if self.world.camera.move_state == CameraState::Gallery {

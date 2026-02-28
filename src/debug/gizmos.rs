@@ -186,6 +186,66 @@ impl Cylinder {
     }
 }
 
+pub struct Sphere {
+    pub r: f32,
+}
+
+impl Sphere {
+    pub fn create_model(&self, segments: u32, rings: u32, offset: f32) -> Model {
+        let mut model = Model::new();
+        let mut vertices: Vec<Vertex> = Vec::new();
+        let mut indices: Vec<u32> = Vec::new();
+
+        let segs = segments.max(3); // avoid degenerate
+        let rings = rings.max(2);
+
+        let d_theta = std::f32::consts::TAU / segs as f32;
+        let d_phi = std::f32::consts::PI / rings as f32;
+
+        // === Vertices ===
+        for ring in 0..=rings {
+            let phi = ring as f32 * d_phi; // 0..PI
+            let sp = phi.sin();
+            let cp = phi.cos();
+
+            for seg in 0..=segs {
+                let theta = seg as f32 * d_theta; // 0..TAU
+                let ct = theta.cos();
+                let st = theta.sin();
+
+                let x = self.r * sp * ct;
+                let y = self.r * cp;
+                let z = self.r * sp * st;
+
+                let pos = Vec3::new(x, y + offset, z);
+
+                // Normal based on the unoffset sphere center.
+                // Equivalent to (x,y,z).normalize() because it's on radius r.
+                let normal = Vec3::new(x, y, z).normalize();
+
+                vertices.push(Vertex::new(pos, normal));
+            }
+        }
+
+        let row_stride = segs + 1;
+        for ring in 0..rings {
+            for seg in 0..segs {
+                let i0 = ring * row_stride + seg;
+                let i1 = i0 + 1;
+                let i2 = (ring + 1) * row_stride + seg;
+                let i3 = i2 + 1;
+
+                indices.extend_from_slice(&[i0, i1, i2, i1, i3, i2]);
+            }
+        }
+
+        model.vertices = vertices;
+        model.indices = indices;
+        model.setup_opengl();
+        model
+    }
+}
+
 pub struct Pill {
     pub r: f32,
     // Total height including hemispheres

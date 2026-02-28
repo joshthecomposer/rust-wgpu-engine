@@ -53,9 +53,7 @@ impl AbilityEditor {
                             animation: "".to_string(),
                         };
 
-                        em.abilities_config
-                            .abilities
-                            .insert(next_id.to_string(), new_ability);
+                        em.abilities_config.abilities.push(new_ability);
                         em.abilities_config
                             .save_to_file("config/abilities_config.json");
 
@@ -69,27 +67,23 @@ impl AbilityEditor {
 
                 ui.separator();
                 ui.text("Existing Abilities:");
-                let mut ability_ids: Vec<AbilityId> = em
-                    .abilities_config
-                    .abilities
-                    .keys()
-                    .filter_map(|k| k.parse::<u32>().ok())
-                    .collect();
+                let mut ability_ids: Vec<AbilityId> =
+                    em.abilities_config.abilities.iter().map(|k| k.id).collect();
                 ability_ids.sort_unstable();
 
-                let mut ability_to_remove = None;
+                let mut id_to_remove = None;
                 for id in ability_ids {
                     if let Some(def) = em.abilities_config.get(id) {
                         ui.text(format!("{}: {} ({:.1}s)", id, def.name, def.cooldown));
                         ui.same_line();
                         if ui.button(format!("Remove##{}", id)) {
-                            ability_to_remove = Some(id);
+                            id_to_remove = Some(id);
                         }
                     }
                 }
 
-                if let Some(id) = ability_to_remove {
-                    em.abilities_config.abilities.remove(&id.to_string());
+                if let Some(id) = id_to_remove {
+                    em.abilities_config.remove_by_id_unordered(id);
                     em.abilities_config
                         .save_to_file("config/abilities_config.json");
                 }

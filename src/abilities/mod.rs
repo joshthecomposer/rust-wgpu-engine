@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use crate::config::Config;
 
 /// Unique identifier for an ability.
-pub type AbilityId = u32;
+pub type AbilityId = usize;
 
 /// Definition of a single ability (loaded from config).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,7 +33,7 @@ pub struct AbilityDefinition {
 /// All ability definitions (loaded from abilities_config.json).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AbilitiesConfig {
-    pub abilities: HashMap<String, AbilityDefinition>,
+    pub abilities: Vec<AbilityDefinition>,
 }
 
 impl Config for AbilitiesConfig {}
@@ -42,17 +42,20 @@ impl AbilitiesConfig {
     /// Get an ability definition by ID.
     // TODO: THis shouldn't be a string ID
     pub fn get(&self, id: AbilityId) -> Option<&AbilityDefinition> {
-        self.abilities.get(&id.to_string())
+        self.abilities.iter().find(|a| a.id == id)
     }
 
-    /// Get the next available ability ID based on existing keys.
-    pub fn get_next_id(&self) -> AbilityId {
+    pub fn get_next_id(&self) -> usize {
         self.abilities
-            .keys()
-            .filter_map(|k| k.parse::<u32>().ok())
+            .iter()
+            .filter_map(|a| Some(a.id))
             .max()
             .unwrap_or(0)
-            + 1
+    }
+
+    pub fn remove_by_id_unordered(&mut self, id: usize) -> Option<AbilityDefinition> {
+        let i = self.abilities.iter().position(|a| a.id == id)?;
+        Some(self.abilities.swap_remove(i))
     }
 }
 
