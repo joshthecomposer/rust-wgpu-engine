@@ -31,7 +31,7 @@
       "faction": "World",
       "position": [
         18.684,
-        1.071,
+        1.171,
         -9.081
       ],
       "rotation": [
@@ -446,15 +446,15 @@
       "entity_type": "Peasant1",
       "faction": "Player",
       "position": [
-        14.097553,
-        0.39548385,
-        28.986874
+        -10.508932,
+        0.3296615,
+        -0.8633038
       ],
       "rotation": [
         0.0,
-        -0.9643268,
+        -0.83869934,
         0.0,
-        0.2647147
+        0.54459465
       ],
       "weapons": [
         {
@@ -494,6 +494,58 @@
       "jump_height": 1.0,
       "cleanup_timer": null,
       "pickup_range": 3.0
+    },
+    {
+      "entity_type": "FireStaff",
+      "faction": "Item",
+      "position": [
+        -6.1153574,
+        0.06076413,
+        -3.0450513
+      ],
+      "rotation": [
+        0.43794218,
+        -0.15728487,
+        -0.045703247,
+        0.8839566
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": null,
+      "max_health": null,
+      "mana": null,
+      "max_mana": null,
+      "level": null,
+      "name": null,
+      "jump_height": null,
+      "cleanup_timer": null,
+      "pickup_range": null
+    },
+    {
+      "entity_type": "OrcSword",
+      "faction": "Item",
+      "position": [
+        -6.379616,
+        0.11575281,
+        -2.6759233
+      ],
+      "rotation": [
+        0.117949404,
+        -0.09956447,
+        0.6133527,
+        0.77457947
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": null,
+      "max_health": null,
+      "mana": null,
+      "max_mana": null,
+      "level": null,
+      "name": null,
+      "jump_height": null,
+      "cleanup_timer": null,
+      "pickup_range": null
     }
   ]
 }
