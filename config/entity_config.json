@@ -671,6 +671,33 @@
           "hold_frame": null,
           "interrupt_frame": null,
           "reset_on_change": true
+        },
+        {
+          "name": "OSBasic1",
+          "one_shots": {},
+          "continuous_sounds": [],
+          "hurtbox_activation": [8, 15],
+          "hold_frame": null,
+          "interrupt_frame": 16,
+          "reset_on_change": true
+        },
+        {
+          "name": "OSBasic2",
+          "one_shots": {},
+          "continuous_sounds": [],
+          "hurtbox_activation": [8, 15],
+          "hold_frame": null,
+          "interrupt_frame": 17,
+          "reset_on_change": true
+        },
+        {
+          "name": "OSBasic3",
+          "one_shots": {},
+          "continuous_sounds": [],
+          "hurtbox_activation": [12, 16],
+          "hold_frame": null,
+          "interrupt_frame": 17,
+          "reset_on_change": true
         }
       ],
       "item_bones": {

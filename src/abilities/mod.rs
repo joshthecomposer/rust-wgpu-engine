@@ -10,6 +10,7 @@ use rand::prelude::{IndexedRandom, SliceRandom};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::Path;
 
 use crate::config::Config;
 
@@ -62,9 +63,6 @@ impl AbilitiesConfig {
 /// Weapon type definition with fixed abilities and pools.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WeaponTypeAbilities {
-    pub m1: AbilityId,
-    pub m2: AbilityId,
-    pub shift: AbilityId,
     pub skill_pool: Vec<AbilityId>,    // Q and E picked from here
     pub ultimate_pool: Vec<AbilityId>, // R picked from here
 }
@@ -80,11 +78,8 @@ impl Config for WeaponPoolsConfig {}
 /// Runtime abilities assigned to a specific weapon instance.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WeaponAbilities {
-    pub m1: AbilityId,
-    pub m2: AbilityId,
     pub q: AbilityId,
     pub e: AbilityId,
-    pub shift: AbilityId,
     pub r: AbilityId,
     /// Current cooldowns for each slot (in seconds remaining).
     #[serde(skip)]
@@ -110,11 +105,8 @@ impl WeaponAbilities {
 
         // get the ability ID for this slot to find max cooldown
         let ability_id = match slot_index {
-            0 => self.m1,
-            1 => self.m2,
             2 => self.q,
             3 => self.e,
-            4 => self.shift,
             5 => self.r,
             _ => panic!("this simply cannot be!"),
         };
@@ -145,11 +137,8 @@ impl WeaponAbilities {
         }
 
         let ability_id = match slot_index {
-            0 => self.m1,
-            1 => self.m2,
             2 => self.q,
             3 => self.e,
-            4 => self.shift,
             5 => self.r,
             _ => panic!("ahh fuck, I can't believe you've done this"),
         };
@@ -193,11 +182,8 @@ impl WeaponAbilities {
         let r = pool_config.ultimate_pool.choose(rng).copied().unwrap();
 
         Self {
-            m1: pool_config.m1,
-            m2: pool_config.m2,
             q,
             e,
-            shift: pool_config.shift,
             r,
             cooldowns: [0.0; 6],
         }

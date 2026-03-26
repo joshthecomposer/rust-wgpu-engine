@@ -57,7 +57,7 @@ pub fn player_state_orchestrator(
         }
         ControlState::Combat => {
             if let Some(weap_id) = weap_id {
-                combat_state_machine(ctrl, cmds, player_id, weap_id, input, animator, dt);
+                combat_state_machine(ctrl, cmds, player_id, weap_id, input, dt);
             }
         }
         _ => (),

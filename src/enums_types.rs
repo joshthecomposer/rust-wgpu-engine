@@ -372,6 +372,9 @@ pub enum AnimationType {
     Basic1,
     Basic2,
     Basic3,
+    OSBasic1,
+    OSBasic2,
+    OSBasic3,
 }
 
 impl Display for AnimationType {
@@ -391,6 +394,9 @@ impl Display for AnimationType {
             AnimationType::Basic1 => write!(f, "Basic1"),
             AnimationType::Basic2 => write!(f, "Basic2"),
             AnimationType::Basic3 => write!(f, "Basic3"),
+            AnimationType::OSBasic1 => write!(f, "OSBasic1"),
+            AnimationType::OSBasic2 => write!(f, "OSBasic2"),
+            AnimationType::OSBasic3 => write!(f, "OSBasic3"),
         }
     }
 }
@@ -412,6 +418,9 @@ impl AnimationType {
             "Basic1" => Some(AnimationType::Basic1),
             "Basic2" => Some(AnimationType::Basic2),
             "Basic3" => Some(AnimationType::Basic3),
+            "OSBasic1" => Some(AnimationType::OSBasic1),
+            "OSBasic2" => Some(AnimationType::OSBasic2),
+            "OSBasic3" => Some(AnimationType::OSBasic3),
             _ => panic!("Invalid AnimationType passed in. {}", input),
         }
     }

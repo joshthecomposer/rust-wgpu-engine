@@ -22,6 +22,7 @@ use crate::{
             AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper,
         },
         factions_config::FactionsConfig,
+        weapon_anim_map::WeaponAnimMapHelper,
         world_data::{EntityInstance, WorldData},
         Config,
     },
@@ -117,6 +118,7 @@ pub struct EntityManager {
     pub weapon_pools_config: WeaponPoolsConfig,
 
     pub serializable_world_data: WorldData,
+    pub weapon_anim_map: WeaponAnimMapHelper,
 }
 
 impl EntityManager {
@@ -187,6 +189,9 @@ impl EntityManager {
                 "config/weapon_pools_config.json",
             ),
             serializable_world_data: wd,
+            weapon_anim_map: WeaponAnimMapHelper::load_or_create_default(
+                "config/weapon_anim_map.json",
+            ),
         }
     }
 

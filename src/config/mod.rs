@@ -7,3 +7,4 @@ pub mod world_data;
 
 pub use base_config::Config;
 pub mod base_config;
+pub mod weapon_anim_map;

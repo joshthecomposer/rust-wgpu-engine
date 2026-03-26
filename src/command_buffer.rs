@@ -2,7 +2,7 @@ use glam::{Quat, Vec3};
 use winit::keyboard::KeyCode;
 
 use crate::{
-    enums_types::{AnimationType, SoundType},
+    enums_types::{AnimationType, CombatState, SoundType},
     input::InputState,
 };
 
@@ -13,6 +13,7 @@ pub struct CommandBuffer {
     pub anim: Vec<AnimCmd>,
     pub loco: Vec<LocoCmd>,
     pub particles: Vec<PartCmd>,
+    pub combat: Vec<CombCmd>,
 }
 
 impl CommandBuffer {
@@ -30,6 +31,19 @@ impl CommandBuffer {
             target,
             weapon,
             op: AnimOp::SetNextAnimation(anim),
+        });
+    }
+
+    pub fn next_anim_from_lookup(
+        &mut self,
+        target: usize,
+        anim_lookup: String,
+        weapon: Option<usize>,
+    ) {
+        self.anim.push(AnimCmd {
+            target,
+            weapon,
+            op: AnimOp::SetAnimFromString(anim_lookup),
         });
     }
 
@@ -152,6 +166,7 @@ pub enum AnimOp {
     SetCurrentAnimation(AnimationType),
     DoHold(AnimationType),
     StopHold(AnimationType),
+    SetAnimFromString(String),
 }
 
 // ==================================================================================
@@ -245,4 +260,13 @@ pub struct SoundCmd {
 pub enum SoundKind {
     Sound2d(SoundType),
     Sound3d(SoundType, Vec3),
+}
+
+// ==================================================================================
+// COMBAT
+// ==================================================================================
+#[derive(Clone, Debug)]
+pub struct CombCmd {
+    pub entity_id: usize,
+    pub requested_state: CombatState,
 }

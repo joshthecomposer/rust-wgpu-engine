@@ -36,6 +36,9 @@ pub fn locomotion_state_machine(
 
     let intent = LocoIntent::build_loco_intent(input);
 
+    ctrl.combat_state = None;
+    ctrl.control_state = ControlState::Player;
+
     'a: {
         match ctrl.loco_state {
             LocoState::Init => {
@@ -158,11 +161,11 @@ pub fn loco_transition(
     });
 }
 
-pub fn ability_to_anim(ability: u32) -> AnimationType {
+pub fn ability_to_anim_lookup(ability: u32) -> String {
     match ability {
-        BASIC => AnimationType::Basic1,
-        EVADE => AnimationType::DashF,
-        DEFENSIVE => AnimationType::Block,
+        BASIC => "basic".to_string(),
+        EVADE => "dash".to_string(),
+        DEFENSIVE => "block".to_string(),
         _ => panic!("Not yet"),
     }
 }
@@ -196,6 +199,6 @@ fn transition_to_combat(
         _ => (),
     }
     ctrl.control_state = ControlState::Combat;
-    cmds.next_anim(player_id, ability_to_anim(ability), Some(weap_id));
+    cmds.next_anim_from_lookup(player_id, ability_to_anim_lookup(ability), Some(weap_id));
     ctrl.combat_state = Some(ability_to_state(ability));
 }

@@ -1,0 +1,14 @@
+{
+  "weapon_types": {
+    "FireStaff": {
+      "basic_chain": ["Basic1", "Basic2", "Basic3" ],
+      "dash": "DashF",
+      "block": "Block"
+    },
+    "OrcSword": {
+      "basic_chain": ["OSBasic1", "OSBasic2", "OSBasic3" ],
+      "dash": "DashF",
+      "block": "Block"
+    }
+  }
+}

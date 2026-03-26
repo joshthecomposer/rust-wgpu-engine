@@ -58,6 +58,14 @@ impl Animation {
         }
     }
 
+    pub fn can_interrupt(&self) -> bool {
+        if let Some(f) = self.interrupt_frame {
+            self.current_segment.get() >= f
+        } else {
+            true
+        }
+    }
+
     pub fn calculate_pose(
         &mut self,
         skeleton: &mut Bone,
