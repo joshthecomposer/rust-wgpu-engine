@@ -279,6 +279,30 @@ impl EntityEditor {
                         } else {
                             None
                         };
+
+                        if selected_faction == "Item" {
+                            let instance = EntityInstance {
+                                entity_type: selected_type.to_string(),
+                                faction: Some("Item".to_string()),
+                                position: input.ray_pos,
+                                rotation: Quat::IDENTITY,
+                                weapons: None,
+                                base_speed: None,
+                                jump_height: None,
+                                health: None,
+                                max_health: None,
+                                mana: None,
+                                max_mana: None,
+                                level: None,
+                                name: None,
+                                cleanup_timer: None,
+                                pickup_range: None,
+                            };
+                            em.create_weapon(&instance, ps);
+                            self.create_mode = false;
+
+                            continue;
+                        }
                         let instance = EntityInstance {
                             entity_type: selected_type.to_string(),
                             faction: Some(selected_faction.to_string()),

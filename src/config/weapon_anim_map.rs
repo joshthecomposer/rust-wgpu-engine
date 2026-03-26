@@ -15,6 +15,8 @@ impl Config for WeaponAnimMapHelper {}
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WeaponActionsHelper {
     pub basic_chain: Vec<String>,
+    #[serde(skip)]
+    pub basic_chain_default: Vec<String>,
     pub dash: String,
     pub block: String,
 }

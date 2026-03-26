@@ -24,6 +24,19 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
         };
 
         match c.op {
+            AnimOp::ResetAttacks => {
+                let Some(id) = c.weapon else {
+                    eprintln!("Tried to find weapon ID but failed");
+                    continue;
+                };
+
+                let Some(helper) = em.weapon_helper.get_mut(id) else {
+                    eprintln!("Tried to find weapon from id {} but failed", id);
+                    continue;
+                };
+
+                helper.basic_chain = helper.basic_chain_default.clone();
+            }
             AnimOp::SetNextAnimation(anim) => animator.set_next_animation(anim),
             AnimOp::SetCurrentAnimation(anim) => animator.set_current_animation(anim),
             AnimOp::DoHold(anim) => {
@@ -43,19 +56,13 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                 a.do_hold = false;
             }
             AnimOp::SetAnimFromString(action) => {
-                if !curr_anim.can_interrupt() {
-                    continue;
-                }
-
                 let Some(id) = c.weapon else {
                     eprintln!("Tried to find weapon ID but failed");
                     continue;
                 };
 
-                let t = em.entity_types.get(id).unwrap();
-
-                let Some(helper) = em.weapon_anim_map.weapon_types.get_mut(t) else {
-                    eprintln!("Tried to find weapon from type {} but failed", t);
+                let Some(helper) = em.weapon_helper.get_mut(id) else {
+                    eprintln!("Tried to find weapon from id {} but failed", id);
                     continue;
                 };
 

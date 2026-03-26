@@ -172,7 +172,7 @@ pub fn ability_to_anim_lookup(ability: u32) -> String {
 
 pub fn ability_to_state(ability: u32) -> CombatState {
     match ability {
-        BASIC => CombatState::Basic1,
+        BASIC => CombatState::Basic,
         EVADE => CombatState::Evade,
         DEFENSIVE => CombatState::Defensive,
         _ => panic!("Not yet"),

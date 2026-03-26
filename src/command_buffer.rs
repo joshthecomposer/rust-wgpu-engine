@@ -111,6 +111,14 @@ impl CommandBuffer {
             kind: SoundKind::Sound3d(SoundType::Land, position),
         });
     }
+
+    pub fn reset_attacks(&mut self, target: usize, weapon: Option<usize>) {
+        self.anim.push(AnimCmd {
+            target,
+            weapon,
+            op: AnimOp::ResetAttacks,
+        });
+    }
 }
 
 // ==================================================================================
@@ -167,6 +175,7 @@ pub enum AnimOp {
     DoHold(AnimationType),
     StopHold(AnimationType),
     SetAnimFromString(String),
+    ResetAttacks,
 }
 
 // ==================================================================================

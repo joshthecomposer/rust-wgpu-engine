@@ -57,24 +57,10 @@ pub fn player_state_orchestrator(
         }
         ControlState::Combat => {
             if let Some(weap_id) = weap_id {
-                combat_state_machine(ctrl, cmds, player_id, weap_id, input, dt);
+                combat_state_machine(ctrl, cmds, player_id, weap_id, input, animator, dt);
             }
         }
         _ => (),
-    }
-}
-
-pub fn anim_for_combat_state(cs: &Option<CombatState>) -> Option<AnimationType> {
-    match cs {
-        Some(CombatState::Basic1) => Some(AnimationType::Basic1),
-        Some(CombatState::Basic2) => Some(AnimationType::Basic2),
-        Some(CombatState::Basic3) => Some(AnimationType::Basic3),
-        Some(CombatState::Defensive) => Some(AnimationType::Block),
-        Some(CombatState::Skill1) => Some(AnimationType::Basic1),
-        Some(CombatState::Skill2) => Some(AnimationType::Basic2),
-        Some(CombatState::Evade) => Some(AnimationType::DashF),
-        Some(CombatState::Ultimate) => Some(AnimationType::Basic3),
-        None => None,
     }
 }
 

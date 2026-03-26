@@ -22,7 +22,7 @@ use crate::{
             AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper,
         },
         factions_config::FactionsConfig,
-        weapon_anim_map::WeaponAnimMapHelper,
+        weapon_anim_map::{WeaponActionsHelper, WeaponAnimMapHelper},
         world_data::{EntityInstance, WorldData},
         Config,
     },
@@ -98,6 +98,7 @@ pub struct EntityManager {
     pub grounded_states: SparseSet<GroundedState>,
     pub cleanup_timer: SparseSet<f32>,
     pub pickup_ranges: SparseSet<f32>,
+    pub weapon_helper: SparseSet<WeaponActionsHelper>,
 
     // Projectile stuff
     // Source id is the ID of the character who originally spawned this projectile (such as a
@@ -124,6 +125,15 @@ pub struct EntityManager {
 impl EntityManager {
     pub fn new(max_entities: usize) -> Self {
         let wd = WorldData::load_from_file("config/world_data.json");
+
+        let mut weapon_anim_map =
+            WeaponAnimMapHelper::load_or_create_default("config/weapon_anim_map.json");
+
+        for helper in weapon_anim_map.weapon_types.values_mut() {
+            if helper.basic_chain_default.is_empty() {
+                helper.basic_chain_default = helper.basic_chain.clone();
+            }
+        }
 
         Self {
             next_entity_id: 0,
@@ -176,6 +186,7 @@ impl EntityManager {
             source_ids: SparseSet::with_capacity(max_entities),
             lifetimes: SparseSet::with_capacity(max_entities),
             weapon_abilities: SparseSet::with_capacity(max_entities),
+            weapon_helper: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json")
@@ -189,9 +200,7 @@ impl EntityManager {
                 "config/weapon_pools_config.json",
             ),
             serializable_world_data: wd,
-            weapon_anim_map: WeaponAnimMapHelper::load_or_create_default(
-                "config/weapon_anim_map.json",
-            ),
+            weapon_anim_map,
         }
     }
 
@@ -218,6 +227,29 @@ impl EntityManager {
         load_terrain(self, ps);
     }
 
+    pub fn create_weapon(&mut self, instance: &EntityInstance, ps: &mut PhysicsState) -> usize {
+        let weapon_id = self.create_mesh_entity(instance, ps);
+        self.hitsets.insert(weapon_id, HashSet::new());
+
+        let abilities = WeaponAbilities::generate(
+            &instance.entity_type,
+            &self.weapon_pools_config,
+            &mut self.rng,
+        );
+        self.weapon_abilities.insert(weapon_id, abilities);
+
+        self.weapon_helper.insert(
+            weapon_id,
+            self.weapon_anim_map
+                .weapon_types
+                .get(&instance.entity_type)
+                .unwrap()
+                .clone(),
+        );
+
+        weapon_id
+    }
+
     pub fn populate_inventory(
         &mut self,
         parent_id: usize,
@@ -226,18 +258,9 @@ impl EntityManager {
     ) {
         if let Some(weapons_list) = &instance.weapons {
             for weapon in weapons_list.iter() {
-                let weapon_id = self.create_mesh_entity(weapon, ps);
+                let weapon_id = self.create_weapon(weapon, ps);
 
-                self.hitsets.insert(weapon_id, HashSet::new());
                 self.owners.insert(weapon_id, parent_id);
-
-                let abilities = WeaponAbilities::generate(
-                    &weapon.entity_type,
-                    &self.weapon_pools_config,
-                    &mut self.rng,
-                );
-
-                self.weapon_abilities.insert(weapon_id, abilities);
 
                 match self.inventories.get_mut(parent_id) {
                     Some(inv) => {

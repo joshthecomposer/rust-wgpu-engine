@@ -305,9 +305,7 @@ pub enum ControlState {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CombatState {
-    Basic1,
-    Basic2,
-    Basic3,
+    Basic,
     Defensive,
     Skill1,
     Skill2,
