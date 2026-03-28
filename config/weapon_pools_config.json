@@ -4,7 +4,19 @@
       "skill_pool": [29, 30, 31],
       "ultimate_pool": [32, 33]
     },
+    "Staff": {
+      "skill_pool": [29, 30, 31],
+      "ultimate_pool": [32, 33]
+    },
+    "IceStaff": {
+      "skill_pool": [29, 30, 31],
+      "ultimate_pool": [32, 33]
+    },
     "OrcSword": {
+      "skill_pool": [29, 30, 31],
+      "ultimate_pool": [32, 33]
+    },
+    "DoubleAxe": {
       "skill_pool": [29, 30, 31],
       "ultimate_pool": [32, 33]
     }

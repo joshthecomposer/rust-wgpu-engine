@@ -4,7 +4,7 @@ use crate::{
     animation::{animation::Animation, animator::Animator},
     command_buffer::{CommandBuffer, LocoIntent},
     entity_manager::EntityManager,
-    enums_types::{AnimationType, CombatState, ControlState, LocoState},
+    enums_types::{AnimationType, BufferedAction, CombatState, ControlState, LocoState},
     input::InputState,
     state_machines::player::{
         combat::combat_state_machine,
@@ -25,21 +25,28 @@ pub fn player_state_orchestrator(
         return;
     };
 
-    let Some(health) = em.healths.get(player_id) else {
+    let Some(animator) = em.animators.get_mut(player_id) else {
+        eprintln!("Missing animator");
         return;
     };
-
-    if *health <= 0.0 {
-        // killl!
-    }
 
     let Some(ctrl) = em.player_controllers.get_mut(player_id) else {
         return;
     };
 
-    let Some(animator) = em.animators.get_mut(player_id) else {
-        return;
+    if let Some(buffered_action) = input.collect_combat_input() {
+        ctrl.queued_action = Some(BufferedAction {
+            action: buffered_action,
+            ttl: 0.21,
+        });
     };
+
+    if let Some(buf) = &mut ctrl.queued_action {
+        buf.ttl -= dt;
+        if buf.ttl <= 0.0 {
+            ctrl.queued_action = None;
+        }
+    }
 
     let weap_id = em.active_items.get(player_id).and_then(|w| w.right_hand);
 
@@ -61,16 +68,6 @@ pub fn player_state_orchestrator(
             }
         }
         _ => (),
-    }
-}
-
-pub fn anim_for_loco_state(ls: &LocoState) -> AnimationType {
-    match ls {
-        LocoState::Init => AnimationType::Idle,
-        LocoState::Idle => AnimationType::Idle,
-        LocoState::Running => AnimationType::Run,
-        LocoState::Jumping => AnimationType::Jump,
-        LocoState::Airborne => AnimationType::Freefall,
     }
 }
 

@@ -10,8 +10,11 @@ use winit::{
 };
 
 use crate::{
-    camera::Camera, entity_manager::EntityManager, enums_types::CameraState, physics::PhysicsState,
-    util::constants::GROUP_TERRAIN,
+    camera::Camera,
+    entity_manager::EntityManager,
+    enums_types::CameraState,
+    physics::PhysicsState,
+    util::constants::{BASIC, DEFENSIVE, EVADE, GROUP_TERRAIN},
 };
 
 pub struct InputState {
@@ -136,6 +139,22 @@ impl InputState {
     pub fn update_ui(&mut self) {
         // Update UI-specific previous state every frame
         self.mouse_previous_ui = self.mouse_current.clone();
+    }
+
+    pub fn collect_combat_input(&self) -> Option<u32> {
+        if self.left_mouse_just_pressed() {
+            return Some(BASIC);
+        }
+
+        if self.lshift_just_pressed() {
+            return Some(EVADE);
+        }
+
+        if self.right_mouse_just_pressed() {
+            return Some(DEFENSIVE);
+        }
+
+        None
     }
 }
 

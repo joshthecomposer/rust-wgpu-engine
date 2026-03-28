@@ -2,7 +2,7 @@ use glam::vec3;
 
 use crate::{
     entity_manager::EntityManager,
-    enums_types::{AnimationType, AttackState, Knockback, PlayerState, SimState},
+    enums_types::{Knockback, PlayerState, SimState},
     particles::ParticleSystem,
     physics::{self, PhysicsState},
 };

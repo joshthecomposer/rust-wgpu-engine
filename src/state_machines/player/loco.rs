@@ -11,10 +11,7 @@ use crate::{
         SoundType, ANIMATION_EPSILON,
     },
     input::InputState,
-    state_machines::player::{
-        combat::combat_state_machine,
-        orchestrator::{ability_just_pressed, anim_for_loco_state},
-    },
+    state_machines::player::{combat::combat_state_machine, orchestrator::ability_just_pressed},
     util::constants::{BASIC, DEFENSIVE, EVADE, SKILL1, SKILL2, ULTIMATE},
 };
 
@@ -193,7 +190,7 @@ fn transition_to_combat(
                 player_id,
                 None,
                 ImpulseKind::Action,
-                glam::vec3(-10.0, 0.0, -10.0),
+                glam::vec3(10.0, 1.0, 10.0),
             );
         }
         _ => (),
@@ -201,4 +198,14 @@ fn transition_to_combat(
     ctrl.control_state = ControlState::Combat;
     cmds.next_anim_from_lookup(player_id, ability_to_anim_lookup(ability), Some(weap_id));
     ctrl.combat_state = Some(ability_to_state(ability));
+}
+
+pub fn anim_for_loco_state(ls: &LocoState) -> AnimationType {
+    match ls {
+        LocoState::Init => AnimationType::Idle,
+        LocoState::Idle => AnimationType::Idle,
+        LocoState::Running => AnimationType::Run,
+        LocoState::Jumping => AnimationType::Jump,
+        LocoState::Airborne => AnimationType::Freefall,
+    }
 }

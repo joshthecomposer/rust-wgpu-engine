@@ -28,9 +28,9 @@ use crate::{
     },
     debug::gizmos::{Cuboid, Cylinder, Dimension, Pill, Sphere},
     enums_types::{
-        ActiveItem, AnimationType, AttackState, ControlState, FrameActivation, GroundedState,
-        HitboxShape, JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController,
-        PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect,
+        ActiveItem, AnimationType, ControlState, FrameActivation, GroundedState, HitboxShape,
+        JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController, PlayerState,
+        Rotator, SimState, SimStateController, Transform, VisualEffect,
     },
     input::InputState,
     physics::PhysicsState,
@@ -402,35 +402,15 @@ impl EntityManager {
 
                 match faction.as_str() {
                     "Player" => {
-                        self.player_controllers.insert(
-                            parent_id,
-                            PlayerController {
-                                loco_state: LocoState::Init,
-                                loco_time: 0.0,
-                                combat_state: None,
-                                combat_time: 0.0,
-                                life_state: LifeState::Alive,
-                                control_state: ControlState::Player,
-                                buffered_action: None,
-                                buffer_timer: 0.0,
-                                jump_command_issued: false,
-                                particle_cmd_issued: false,
-                            },
-                        );
+                        self.player_controllers
+                            .insert(parent_id, PlayerController::default());
 
                         // default player pickup range
                         self.pickup_ranges.insert(parent_id, 3.0);
                     }
                     "Enemy" => {
-                        self.simstate_controllers.insert(
-                            parent_id,
-                            SimStateController {
-                                state: SimState::Init,
-                                attack_state: AttackState::Attack1,
-                                time_in_state: 0.0,
-                                target_time: 0.0,
-                            },
-                        );
+                        self.simstate_controllers
+                            .insert(parent_id, SimStateController::default());
 
                         self.destinations.insert(parent_id, position);
 

@@ -189,7 +189,7 @@ impl Game {
 
                 state_machine_system::update(
                     &mut self.world.ecs,
-                    &self.input,
+                    &mut self.input,
                     &mut self.command_buffer,
                     self.time.fixed_dt,
                 );

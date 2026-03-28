@@ -229,7 +229,6 @@ pub enum SimState {
 
 pub struct SimStateController {
     pub state: SimState,
-    pub attack_state: AttackState,
     pub time_in_state: f32,
     pub target_time: f32,
 }
@@ -238,7 +237,6 @@ impl Default for SimStateController {
     fn default() -> Self {
         Self {
             state: SimState::Init,
-            attack_state: AttackState::Attack1,
             time_in_state: 0.0,
             target_time: 0.0,
         }
@@ -313,6 +311,12 @@ pub enum CombatState {
     Ultimate,
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct BufferedAction {
+    pub action: u32,
+    pub ttl: f32,
+}
+
 #[derive(Debug)]
 pub struct PlayerController {
     pub loco_state: LocoState,
@@ -321,13 +325,14 @@ pub struct PlayerController {
     pub combat_state: Option<CombatState>,
     pub combat_time: f32,
 
-    pub buffered_action: Option<u32>,
-    pub buffer_timer: f32,
     pub life_state: LifeState,
     pub control_state: ControlState,
 
     pub jump_command_issued: bool,
     pub particle_cmd_issued: bool,
+    pub impulse_cmd_issued: bool,
+
+    pub queued_action: Option<BufferedAction>,
 }
 
 impl PlayerController {
@@ -336,20 +341,19 @@ impl PlayerController {
     }
 }
 
-// TODO: deprecate this
-#[derive(Clone, Debug, PartialEq)]
-pub enum AttackState {
-    Attack1,
-    Attack2,
-    Attack3,
-}
-
-impl Display for AttackState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            AttackState::Attack1 => write!(f, "Attack1"),
-            AttackState::Attack2 => write!(f, "Attack2"),
-            AttackState::Attack3 => write!(f, "Attack3"),
+impl Default for PlayerController {
+    fn default() -> Self {
+        Self {
+            loco_state: LocoState::Init,
+            loco_time: 0.0,
+            combat_state: None,
+            combat_time: 0.0,
+            life_state: LifeState::Alive,
+            control_state: ControlState::Player,
+            jump_command_issued: false,
+            particle_cmd_issued: false,
+            impulse_cmd_issued: false,
+            queued_action: None,
         }
     }
 }
