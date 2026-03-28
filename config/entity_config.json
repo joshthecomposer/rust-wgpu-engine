@@ -694,7 +694,7 @@
           "name": "OSBasic3",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [12, 16],
+          "hurtbox_activation": [12, 19],
           "hold_frame": null,
           "interrupt_frame": 17,
           "reset_on_change": true
