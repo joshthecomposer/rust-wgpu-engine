@@ -46,6 +46,8 @@ pub struct AnimationPropHelper {
     pub interrupt_frame: Option<u32>,
     #[serde(default = "default_true")]
     pub reset_on_change: bool,
+    #[serde(default)]
+    pub do_root_motion: bool,
 }
 
 fn default_true() -> bool {
@@ -70,6 +72,8 @@ pub struct EntityTypeHelper {
     pub hitbox: HitboxShape,
     #[serde(default)]
     pub total_mass: Option<f32>,
+    #[serde(default)]
+    pub root_bone: Option<String>,
 }
 
 impl Default for EntityTypeHelper {
@@ -86,6 +90,7 @@ impl Default for EntityTypeHelper {
             pickup_range: None,
             hitbox: HitboxShape::BoundingBox,
             total_mass: None,
+            root_bone: None,
         }
     }
 }

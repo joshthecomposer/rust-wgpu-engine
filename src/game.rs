@@ -202,17 +202,15 @@ impl Game {
                 );
 
                 items::update(&mut self.world.ecs, &mut self.physics);
+
                 animation_system::update(
                     &mut self.world.ecs,
                     &mut self.command_buffer,
                     self.time.fixed_dt,
                 );
-                combat_system::update(
-                    &mut self.world.ecs,
-                    self.time.fixed_dt,
-                    &mut self.physics,
-                    &mut self.world.particles,
-                );
+
+                combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics);
+
                 self.world.ecs.update(
                     &mut self.sound,
                     &mut self.physics,

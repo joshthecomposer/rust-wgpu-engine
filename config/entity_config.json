@@ -236,6 +236,7 @@
         "rh": "mixamorg:RightHand",
         "lh": "mixamorg:LeftHand"
       },
+      "root_bone": "mixamorig:Hips",
       "aggro_range": 20.0,
       "pickup_range": null,
       "hitbox": {
@@ -413,6 +414,7 @@
         "rh": "Bone.029.L",
         "lh": "Bone.029.R"
       },
+      "root_bone": "Bone",
       "aggro_range": 20.0,
       "pickup_range": null,
       "hitbox": {
@@ -561,6 +563,7 @@
         "rh": "mixamorig:RightHand",
         "lh": "mixamorig:LeftHand"
       },
+      "root_bone": "mixamorig:Hips",
       "aggro_range": 20.0,
       "pickup_range": null,
       "hitbox": {
@@ -679,7 +682,8 @@
           "hurtbox_activation": [8, 15],
           "hold_frame": null,
           "interrupt_frame": 16,
-          "reset_on_change": true
+          "reset_on_change": true,
+          "do_root_motion": true
         },
         {
           "name": "OSBasic2",
@@ -688,7 +692,8 @@
           "hurtbox_activation": [8, 15],
           "hold_frame": null,
           "interrupt_frame": 17,
-          "reset_on_change": true
+          "reset_on_change": true,
+          "do_root_motion": true
         },
         {
           "name": "OSBasic3",
@@ -697,13 +702,15 @@
           "hurtbox_activation": [12, 19],
           "hold_frame": null,
           "interrupt_frame": 17,
-          "reset_on_change": true
+          "reset_on_change": true,
+          "do_root_motion": true
         }
       ],
       "item_bones": {
         "rh": "RH_WeapAnchor",
         "lh": ""
       },
+      "root_bone": "Root",
       "aggro_range": 10.0,
       "pickup_range": null,
       "hitbox": {

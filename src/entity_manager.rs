@@ -15,7 +15,13 @@ use winit::keyboard::KeyCode;
 
 use crate::{
     abilities::{AbilitiesConfig, WeaponAbilities, WeaponPoolsConfig},
-    animation::{self, animation::Animation, animator::Animator, model::Model, skellington::Bone},
+    animation::{
+        self,
+        animation::Animation,
+        animator::{Animator, RootMotionState},
+        model::Model,
+        skellington::Bone,
+    },
     command_buffer::{CommandBuffer, ImpulseKind},
     config::{
         entity_config::{
@@ -518,7 +524,7 @@ impl EntityManager {
                     None
                 };
 
-                let (skell, animator, animation, rh_bone_id) =
+                let (skell, mut animator, animation, rh_bone_id) =
                     animation::data_loader::import_bone_data(bone_path, false, b);
 
                 if let Some(_) = &archetype.item_bones {
@@ -531,6 +537,14 @@ impl EntityManager {
                             },
                         );
                     }
+                }
+
+                if let Some(bone) = &archetype.root_bone {
+                    animator.root_motion_state = RootMotionState {
+                        root_bone: bone.clone(),
+                        last_root_pos: None,
+                        frame_root_delta: Vec3::ZERO,
+                    };
                 }
 
                 (skell, animator, animation)
@@ -564,6 +578,7 @@ impl EntityManager {
                     anim.hold_frame = prop.hold_frame;
                     anim.interrupt_frame = prop.interrupt_frame;
                     anim.reset_on_change = prop.reset_on_change;
+                    anim.do_root_motion = prop.do_root_motion;
                 }
             }
 
@@ -1683,6 +1698,7 @@ impl EntityManager {
                                 hold_frame: None,
                                 interrupt_frame: None,
                                 reset_on_change: true,
+                                do_root_motion: false,
                             }),
                             _ => {}
                         },

@@ -198,7 +198,7 @@ impl LocoIntent {
         self.x == 0.0 && self.z == 0.0
     }
 
-    fn clamp_unit(self) -> Self {
+    pub fn clamp_unit(self) -> Self {
         let len2 = self.x * self.x + self.z * self.z;
 
         if len2 > 1.0 {
