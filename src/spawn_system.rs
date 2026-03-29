@@ -9,9 +9,6 @@ use crate::{
     physics::PhysicsState, util::constants::GROUP_TERRAIN,
 };
 
-/// Available weapon entity types for enemy spawns.
-const ENEMY_WEAPON_TYPES: &[&str] = &["OrcSword", "DoubleAxe", "IceStaff", "Staff", "FireStaff"];
-
 pub struct SpawnManager {
     pub spawn_every: f32, // seconds
     pub amount_per: u32,  // how many guysf
@@ -19,10 +16,20 @@ pub struct SpawnManager {
 }
 
 impl SpawnManager {
-    pub fn update(&mut self, em: &mut EntityManager, ps: &mut PhysicsState, dt: f32, enabled: bool) {
+    pub fn update(
+        &mut self,
+        em: &mut EntityManager,
+        ps: &mut PhysicsState,
+        dt: f32,
+        enabled: bool,
+    ) {
         if !enabled {
             return;
         }
+
+        let enemy_weapon_types: Vec<String> =
+            em.weapon_anim_map.weapon_types.keys().cloned().collect();
+
         self.accumulator += dt;
 
         if self.accumulator >= self.spawn_every {
@@ -31,7 +38,7 @@ impl SpawnManager {
                 Some(point) => {
                     for _ in 0..self.amount_per {
                         let weapon_type =
-                            ENEMY_WEAPON_TYPES[em.rng.random_range(0..ENEMY_WEAPON_TYPES.len())];
+                            &enemy_weapon_types[em.rng.random_range(0..enemy_weapon_types.len())];
 
                         let instance = EntityInstance {
                             entity_type: "TrashGuy".to_string(),

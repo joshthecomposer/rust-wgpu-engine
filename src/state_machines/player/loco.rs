@@ -11,10 +11,7 @@ use crate::{
         SoundType, ANIMATION_EPSILON,
     },
     input::InputState,
-    state_machines::player::{
-        combat::combat_state_machine,
-        orchestrator::{ability_just_pressed, anim_for_loco_state},
-    },
+    state_machines::player::{combat::combat_state_machine, orchestrator::ability_just_pressed},
     util::constants::{BASIC, DEFENSIVE, EVADE, SKILL1, SKILL2, ULTIMATE},
 };
 
@@ -35,6 +32,9 @@ pub fn locomotion_state_machine(
     }
 
     let intent = LocoIntent::build_loco_intent(input);
+
+    ctrl.combat_state = None;
+    ctrl.control_state = ControlState::Player;
 
     'a: {
         match ctrl.loco_state {
@@ -158,18 +158,18 @@ pub fn loco_transition(
     });
 }
 
-pub fn ability_to_anim(ability: u32) -> AnimationType {
+pub fn ability_to_anim_lookup(ability: u32) -> String {
     match ability {
-        BASIC => AnimationType::Basic1,
-        EVADE => AnimationType::DashF,
-        DEFENSIVE => AnimationType::Block,
+        BASIC => "basic".to_string(),
+        EVADE => "dash".to_string(),
+        DEFENSIVE => "block".to_string(),
         _ => panic!("Not yet"),
     }
 }
 
 pub fn ability_to_state(ability: u32) -> CombatState {
     match ability {
-        BASIC => CombatState::Basic1,
+        BASIC => CombatState::Basic,
         EVADE => CombatState::Evade,
         DEFENSIVE => CombatState::Defensive,
         _ => panic!("Not yet"),
@@ -190,12 +190,22 @@ fn transition_to_combat(
                 player_id,
                 None,
                 ImpulseKind::Action,
-                glam::vec3(-10.0, 0.0, -10.0),
+                glam::vec3(10.0, 1.0, 10.0),
             );
         }
         _ => (),
     }
     ctrl.control_state = ControlState::Combat;
-    cmds.next_anim(player_id, ability_to_anim(ability), Some(weap_id));
+    cmds.next_anim_from_lookup(player_id, ability_to_anim_lookup(ability), Some(weap_id));
     ctrl.combat_state = Some(ability_to_state(ability));
+}
+
+pub fn anim_for_loco_state(ls: &LocoState) -> AnimationType {
+    match ls {
+        LocoState::Init => AnimationType::Idle,
+        LocoState::Idle => AnimationType::Idle,
+        LocoState::Running => AnimationType::Run,
+        LocoState::Jumping => AnimationType::Jump,
+        LocoState::Airborne => AnimationType::Freefall,
+    }
 }

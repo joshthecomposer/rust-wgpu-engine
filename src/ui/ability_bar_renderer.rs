@@ -35,7 +35,7 @@ pub struct AbilityBarRenderer {
     height: u32,
 
     // throttling and change detection
-    cached_slots: [SlotDisplayData; 6],
+    cached_slots: [SlotDisplayData; 3],
     cached_show: bool,
     last_update_time: f64,
     needs_render: bool,
@@ -128,7 +128,7 @@ impl AbilityBarRenderer {
     pub fn update(
         &mut self,
         show: bool,
-        slots: [SlotDisplayData; 6],
+        slots: [SlotDisplayData; 3],
         image_cache: &mut UiImageCache,
         elapsed_time: f64,
     ) {
@@ -169,12 +169,8 @@ impl AbilityBarRenderer {
 
         // update Slint properties
         self.ability_bar.set_show(show);
-        self.ability_bar.set_slot_m1(slots[0].to_slint(image_cache));
-        self.ability_bar.set_slot_m2(slots[1].to_slint(image_cache));
         self.ability_bar.set_slot_q(slots[2].to_slint(image_cache));
         self.ability_bar.set_slot_e(slots[3].to_slint(image_cache));
-        self.ability_bar
-            .set_slot_shift(slots[4].to_slint(image_cache));
         self.ability_bar.set_slot_r(slots[5].to_slint(image_cache));
     }
 

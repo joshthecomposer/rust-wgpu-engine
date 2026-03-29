@@ -1,6 +1,9 @@
+use glam::{Quat, Vec3};
+
 use crate::{
-    command_buffer::{AnimOp, CommandBuffer},
+    command_buffer::{AnimOp, CombCmd, CommandBuffer, ImpulseKind},
     entity_manager::EntityManager,
+    enums_types::AnimationType,
 };
 
 pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
@@ -12,7 +15,30 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             continue;
         };
 
+        let Some(next_anim) = animator.get_next_animation() else {
+            eprintln!("Tried to find a next animation and failed...");
+            continue;
+        };
+
+        let Some(curr_anim) = animator.get_current_animation() else {
+            eprintln!("Tried to find a next animation and failed...");
+            continue;
+        };
+
         match c.op {
+            AnimOp::ResetAttacks => {
+                let Some(id) = c.weapon else {
+                    eprintln!("Tried to find weapon ID but failed");
+                    continue;
+                };
+
+                let Some(helper) = em.weapon_helper.get_mut(id) else {
+                    eprintln!("Tried to find weapon from id {} but failed", id);
+                    continue;
+                };
+
+                helper.basic_chain = helper.basic_chain_default.clone();
+            }
             AnimOp::SetNextAnimation(anim) => animator.set_next_animation(anim),
             AnimOp::SetCurrentAnimation(anim) => animator.set_current_animation(anim),
             AnimOp::DoHold(anim) => {
@@ -31,13 +57,50 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
 
                 a.do_hold = false;
             }
+            AnimOp::SetAnimFromString(action) => {
+                let Some(id) = c.weapon else {
+                    eprintln!("Tried to find weapon ID but failed");
+                    continue;
+                };
+
+                let Some(helper) = em.weapon_helper.get_mut(id) else {
+                    eprintln!("Tried to find weapon from id {} but failed", id);
+                    continue;
+                };
+
+                let cano_anim_name = match action.as_str() {
+                    "basic" => {
+                        let cano_anim_name = helper.basic_chain.first().unwrap().clone();
+                        helper.basic_chain.rotate_left(1);
+                        cano_anim_name
+                    }
+                    "dash" => helper.dash.clone(),
+                    "block" => helper.block.clone(),
+                    _ => panic!("{}", action),
+                };
+
+                animator.set_next_animation(AnimationType::from_str(&cano_anim_name).unwrap());
+            }
         }
     }
 
     for entry in em.skellingtons.iter_mut() {
+        let id = entry.key();
         let animator = em.animators.get_mut(entry.key()).unwrap();
         let skellington = entry.value_mut();
 
         animator.update(skellington, dt);
+
+        let local_delta = animator.root_motion_state.frame_root_delta;
+
+        if local_delta != Vec3::ZERO {
+            let trans = em.transforms.get_mut(id).unwrap();
+            let world_delta = trans.rotation * local_delta;
+
+            let vx = world_delta.x / dt;
+            let vz = world_delta.z / dt;
+
+            cmds.set_linvel(id, ImpulseKind::Action, Vec3::new(vx, 0.0, vz));
+        }
     }
 }

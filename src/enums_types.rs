@@ -229,7 +229,6 @@ pub enum SimState {
 
 pub struct SimStateController {
     pub state: SimState,
-    pub attack_state: AttackState,
     pub time_in_state: f32,
     pub target_time: f32,
 }
@@ -238,7 +237,6 @@ impl Default for SimStateController {
     fn default() -> Self {
         Self {
             state: SimState::Init,
-            attack_state: AttackState::Attack1,
             time_in_state: 0.0,
             target_time: 0.0,
         }
@@ -305,14 +303,18 @@ pub enum ControlState {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CombatState {
-    Basic1,
-    Basic2,
-    Basic3,
+    Basic,
     Defensive,
     Skill1,
     Skill2,
     Evade,
     Ultimate,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct BufferedAction {
+    pub action: u32,
+    pub ttl: f32,
 }
 
 #[derive(Debug)]
@@ -323,13 +325,14 @@ pub struct PlayerController {
     pub combat_state: Option<CombatState>,
     pub combat_time: f32,
 
-    pub buffered_action: Option<u32>,
-    pub buffer_timer: f32,
     pub life_state: LifeState,
     pub control_state: ControlState,
 
     pub jump_command_issued: bool,
     pub particle_cmd_issued: bool,
+    pub impulse_cmd_issued: bool,
+
+    pub queued_action: Option<BufferedAction>,
 }
 
 impl PlayerController {
@@ -338,20 +341,19 @@ impl PlayerController {
     }
 }
 
-// TODO: deprecate this
-#[derive(Clone, Debug, PartialEq)]
-pub enum AttackState {
-    Attack1,
-    Attack2,
-    Attack3,
-}
-
-impl Display for AttackState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            AttackState::Attack1 => write!(f, "Attack1"),
-            AttackState::Attack2 => write!(f, "Attack2"),
-            AttackState::Attack3 => write!(f, "Attack3"),
+impl Default for PlayerController {
+    fn default() -> Self {
+        Self {
+            loco_state: LocoState::Init,
+            loco_time: 0.0,
+            combat_state: None,
+            combat_time: 0.0,
+            life_state: LifeState::Alive,
+            control_state: ControlState::Player,
+            jump_command_issued: false,
+            particle_cmd_issued: false,
+            impulse_cmd_issued: false,
+            queued_action: None,
         }
     }
 }
@@ -372,6 +374,9 @@ pub enum AnimationType {
     Basic1,
     Basic2,
     Basic3,
+    OSBasic1,
+    OSBasic2,
+    OSBasic3,
 }
 
 impl Display for AnimationType {
@@ -391,6 +396,9 @@ impl Display for AnimationType {
             AnimationType::Basic1 => write!(f, "Basic1"),
             AnimationType::Basic2 => write!(f, "Basic2"),
             AnimationType::Basic3 => write!(f, "Basic3"),
+            AnimationType::OSBasic1 => write!(f, "OSBasic1"),
+            AnimationType::OSBasic2 => write!(f, "OSBasic2"),
+            AnimationType::OSBasic3 => write!(f, "OSBasic3"),
         }
     }
 }
@@ -412,6 +420,9 @@ impl AnimationType {
             "Basic1" => Some(AnimationType::Basic1),
             "Basic2" => Some(AnimationType::Basic2),
             "Basic3" => Some(AnimationType::Basic3),
+            "OSBasic1" => Some(AnimationType::OSBasic1),
+            "OSBasic2" => Some(AnimationType::OSBasic2),
+            "OSBasic3" => Some(AnimationType::OSBasic3),
             _ => panic!("Invalid AnimationType passed in. {}", input),
         }
     }

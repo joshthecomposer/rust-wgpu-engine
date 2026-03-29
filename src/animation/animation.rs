@@ -3,7 +3,10 @@ use core::f32;
 use glam::{Mat4, Quat, Vec3};
 
 use crate::{
-    animation::skellington::{Bone, BoneJoinInfo, BoneTransformTrack},
+    animation::{
+        animator::RootMotionState,
+        skellington::{Bone, BoneJoinInfo, BoneTransformTrack},
+    },
     enums_types::{FrameActivation, ANIMATION_EPSILON},
     sound::sound_manager::{ContinuousSound, OneShot},
 };
@@ -30,6 +33,7 @@ pub struct Animation {
     pub lod_counter: u32,
     pub interrupt_frame: Option<u32>,
     pub reset_on_change: bool,
+    pub do_root_motion: bool,
 }
 
 impl Animation {
@@ -55,6 +59,15 @@ impl Animation {
             lod_counter: 0,
             interrupt_frame: None,
             reset_on_change: true,
+            do_root_motion: false,
+        }
+    }
+
+    pub fn can_interrupt(&self) -> bool {
+        if let Some(f) = self.interrupt_frame {
+            self.current_segment.get() >= f
+        } else {
+            true
         }
     }
 
@@ -63,12 +76,32 @@ impl Animation {
         skeleton: &mut Bone,
         parent_transform: Mat4,
         global_inverse_transform: Mat4,
+        extract_root_motion: bool,
+        root_motion_state: &mut RootMotionState,
     ) {
         let delta = self.current_time % self.duration;
-        let (local_position, local_rot, local_scale) =
+        let (mut local_position, local_rot, local_scale) =
             self.get_bone_local_transform(skeleton, delta);
 
-        // TODO: Can we keep this as TRS until the VERY end?
+        // Extract planar root motion, then remove that planar translation
+        // from the rendered pose so the mesh doesn't also slide forward.
+        if extract_root_motion && skeleton.name == root_motion_state.root_bone {
+            let authored_root_pos = local_position;
+
+            if let Some(last) = root_motion_state.last_root_pos {
+                let mut delta = authored_root_pos - last;
+                delta.y = 0.0;
+                root_motion_state.frame_root_delta = delta;
+            }
+
+            root_motion_state.last_root_pos = Some(authored_root_pos);
+
+            // Keep vertical motion if you want hops/bobs visually,
+            // but consume planar motion into gameplay instead of rendering it.
+            local_position.x = 0.0;
+            local_position.z = 0.0;
+        }
+
         let local_transform =
             Mat4::from_scale_rotation_translation(local_scale, local_rot, local_position);
         let global_transform = parent_transform * local_transform;
@@ -79,7 +112,13 @@ impl Animation {
             global_inverse_transform * global_transform * skeleton.offset;
 
         for child in skeleton.children.iter_mut() {
-            self.calculate_pose(child, global_transform, global_inverse_transform);
+            self.calculate_pose(
+                child,
+                global_transform,
+                global_inverse_transform,
+                extract_root_motion,
+                root_motion_state,
+            );
         }
     }
 
@@ -93,6 +132,8 @@ impl Animation {
         global_inverse_transform: Mat4,
         other_animation: &mut Animation,
         blend_factor: f32,
+        extract_root_motion: bool,
+        root_motion_state: &mut RootMotionState,
     ) {
         let delta1 = self.current_time % self.duration;
         let delta2 = other_animation.current_time % other_animation.duration;
@@ -100,12 +141,30 @@ impl Animation {
         let (pos1, rot1, scale1) = self.get_bone_local_transform(skeleton, delta1);
         let (pos2, rot2, scale2) = other_animation.get_bone_local_transform(skeleton, delta2);
 
-        let final_pos = pos1.lerp(pos2, blend_factor);
+        let mut final_pos = pos1.lerp(pos2, blend_factor);
         let final_rot = rot1.slerp(rot2, blend_factor);
         let final_scale = scale1.lerp(scale2, blend_factor);
 
+        // Same idea for blends: extract planar motion from the blended root pose,
+        // then zero out planar render translation so the mesh doesn't double-move.
+        if extract_root_motion && skeleton.name == root_motion_state.root_bone {
+            let authored_root_pos = final_pos;
+
+            if let Some(last) = root_motion_state.last_root_pos {
+                let mut delta = authored_root_pos - last;
+                delta.y = 0.0;
+                root_motion_state.frame_root_delta = delta;
+            }
+
+            root_motion_state.last_root_pos = Some(authored_root_pos);
+
+            final_pos.x = 0.0;
+            final_pos.z = 0.0;
+        }
+
         let local_transform =
             Mat4::from_scale_rotation_translation(final_scale, final_rot, final_pos);
+
         let global_transform = parent_transform * local_transform;
 
         skeleton.global_transform = global_transform;
@@ -128,6 +187,8 @@ impl Animation {
                 global_inverse_transform,
                 other_animation,
                 blend_factor,
+                extract_root_motion,
+                root_motion_state,
             );
         }
     }
@@ -265,6 +326,7 @@ impl Animation {
         other_animation: Option<&mut Animation>,
         blend_factor: f32,
         dt: f32,
+        root_motion_state: &mut RootMotionState,
     ) {
         if let Some(hold_frame) = self.hold_frame {
             if self.current_segment.get() == hold_frame && self.do_hold {
@@ -293,12 +355,17 @@ impl Animation {
         }
 
         if let Some(other_animation) = other_animation {
+            let use_rm = other_animation.do_root_motion;
+
+            if use_rm {}
             self.calculate_pose_blended(
                 skellington,
                 Mat4::IDENTITY,
                 Mat4::IDENTITY,
                 other_animation,
                 blend_factor,
+                self.do_root_motion,
+                root_motion_state,
             );
 
             other_animation.current_time += dt;
@@ -306,7 +373,13 @@ impl Animation {
                 other_animation.current_time = 0.0;
             }
         } else {
-            self.calculate_pose(skellington, Mat4::IDENTITY, Mat4::IDENTITY);
+            self.calculate_pose(
+                skellington,
+                Mat4::IDENTITY,
+                Mat4::IDENTITY,
+                self.do_root_motion,
+                root_motion_state,
+            );
         }
     }
 }

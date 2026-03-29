@@ -15,21 +15,28 @@ use winit::keyboard::KeyCode;
 
 use crate::{
     abilities::{AbilitiesConfig, WeaponAbilities, WeaponPoolsConfig},
-    animation::{self, animation::Animation, animator::Animator, model::Model, skellington::Bone},
+    animation::{
+        self,
+        animation::Animation,
+        animator::{Animator, RootMotionState},
+        model::Model,
+        skellington::Bone,
+    },
     command_buffer::{CommandBuffer, ImpulseKind},
     config::{
         entity_config::{
             AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper,
         },
         factions_config::FactionsConfig,
+        weapon_anim_map::{WeaponActionsHelper, WeaponAnimMapHelper},
         world_data::{EntityInstance, WorldData},
         Config,
     },
     debug::gizmos::{Cuboid, Cylinder, Dimension, Pill, Sphere},
     enums_types::{
-        ActiveItem, AnimationType, AttackState, ControlState, FrameActivation, GroundedState,
-        HitboxShape, JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController,
-        PlayerState, Rotator, SimState, SimStateController, Transform, VisualEffect,
+        ActiveItem, AnimationType, ControlState, FrameActivation, GroundedState, HitboxShape,
+        JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController, PlayerState,
+        Rotator, SimState, SimStateController, Transform, VisualEffect,
     },
     input::InputState,
     physics::PhysicsState,
@@ -97,6 +104,7 @@ pub struct EntityManager {
     pub grounded_states: SparseSet<GroundedState>,
     pub cleanup_timer: SparseSet<f32>,
     pub pickup_ranges: SparseSet<f32>,
+    pub weapon_helper: SparseSet<WeaponActionsHelper>,
 
     // Projectile stuff
     // Source id is the ID of the character who originally spawned this projectile (such as a
@@ -117,11 +125,21 @@ pub struct EntityManager {
     pub weapon_pools_config: WeaponPoolsConfig,
 
     pub serializable_world_data: WorldData,
+    pub weapon_anim_map: WeaponAnimMapHelper,
 }
 
 impl EntityManager {
     pub fn new(max_entities: usize) -> Self {
         let wd = WorldData::load_from_file("config/world_data.json");
+
+        let mut weapon_anim_map =
+            WeaponAnimMapHelper::load_or_create_default("config/weapon_anim_map.json");
+
+        for helper in weapon_anim_map.weapon_types.values_mut() {
+            if helper.basic_chain_default.is_empty() {
+                helper.basic_chain_default = helper.basic_chain.clone();
+            }
+        }
 
         Self {
             next_entity_id: 0,
@@ -174,6 +192,7 @@ impl EntityManager {
             source_ids: SparseSet::with_capacity(max_entities),
             lifetimes: SparseSet::with_capacity(max_entities),
             weapon_abilities: SparseSet::with_capacity(max_entities),
+            weapon_helper: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json")
@@ -187,6 +206,7 @@ impl EntityManager {
                 "config/weapon_pools_config.json",
             ),
             serializable_world_data: wd,
+            weapon_anim_map,
         }
     }
 
@@ -213,6 +233,29 @@ impl EntityManager {
         load_terrain(self, ps);
     }
 
+    pub fn create_weapon(&mut self, instance: &EntityInstance, ps: &mut PhysicsState) -> usize {
+        let weapon_id = self.create_mesh_entity(instance, ps);
+        self.hitsets.insert(weapon_id, HashSet::new());
+
+        let abilities = WeaponAbilities::generate(
+            &instance.entity_type,
+            &self.weapon_pools_config,
+            &mut self.rng,
+        );
+        self.weapon_abilities.insert(weapon_id, abilities);
+
+        self.weapon_helper.insert(
+            weapon_id,
+            self.weapon_anim_map
+                .weapon_types
+                .get(&instance.entity_type)
+                .unwrap()
+                .clone(),
+        );
+
+        weapon_id
+    }
+
     pub fn populate_inventory(
         &mut self,
         parent_id: usize,
@@ -221,18 +264,9 @@ impl EntityManager {
     ) {
         if let Some(weapons_list) = &instance.weapons {
             for weapon in weapons_list.iter() {
-                let weapon_id = self.create_mesh_entity(weapon, ps);
+                let weapon_id = self.create_weapon(weapon, ps);
 
-                self.hitsets.insert(weapon_id, HashSet::new());
                 self.owners.insert(weapon_id, parent_id);
-
-                let abilities = WeaponAbilities::generate(
-                    &weapon.entity_type,
-                    &self.weapon_pools_config,
-                    &mut self.rng,
-                );
-
-                self.weapon_abilities.insert(weapon_id, abilities);
 
                 match self.inventories.get_mut(parent_id) {
                     Some(inv) => {
@@ -374,35 +408,15 @@ impl EntityManager {
 
                 match faction.as_str() {
                     "Player" => {
-                        self.player_controllers.insert(
-                            parent_id,
-                            PlayerController {
-                                loco_state: LocoState::Init,
-                                loco_time: 0.0,
-                                combat_state: None,
-                                combat_time: 0.0,
-                                life_state: LifeState::Alive,
-                                control_state: ControlState::Player,
-                                buffered_action: None,
-                                buffer_timer: 0.0,
-                                jump_command_issued: false,
-                                particle_cmd_issued: false,
-                            },
-                        );
+                        self.player_controllers
+                            .insert(parent_id, PlayerController::default());
 
                         // default player pickup range
                         self.pickup_ranges.insert(parent_id, 3.0);
                     }
                     "Enemy" => {
-                        self.simstate_controllers.insert(
-                            parent_id,
-                            SimStateController {
-                                state: SimState::Init,
-                                attack_state: AttackState::Attack1,
-                                time_in_state: 0.0,
-                                target_time: 0.0,
-                            },
-                        );
+                        self.simstate_controllers
+                            .insert(parent_id, SimStateController::default());
 
                         self.destinations.insert(parent_id, position);
 
@@ -510,7 +524,7 @@ impl EntityManager {
                     None
                 };
 
-                let (skell, animator, animation, rh_bone_id) =
+                let (skell, mut animator, animation, rh_bone_id) =
                     animation::data_loader::import_bone_data(bone_path, false, b);
 
                 if let Some(_) = &archetype.item_bones {
@@ -523,6 +537,14 @@ impl EntityManager {
                             },
                         );
                     }
+                }
+
+                if let Some(bone) = &archetype.root_bone {
+                    animator.root_motion_state = RootMotionState {
+                        root_bone: bone.clone(),
+                        last_root_pos: None,
+                        frame_root_delta: Vec3::ZERO,
+                    };
                 }
 
                 (skell, animator, animation)
@@ -556,6 +578,7 @@ impl EntityManager {
                     anim.hold_frame = prop.hold_frame;
                     anim.interrupt_frame = prop.interrupt_frame;
                     anim.reset_on_change = prop.reset_on_change;
+                    anim.do_root_motion = prop.do_root_motion;
                 }
             }
 
@@ -1675,6 +1698,7 @@ impl EntityManager {
                                 hold_frame: None,
                                 interrupt_frame: None,
                                 reset_on_change: true,
+                                do_root_motion: false,
                             }),
                             _ => {}
                         },

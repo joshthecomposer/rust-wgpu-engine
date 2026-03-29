@@ -103,9 +103,6 @@ impl WeaponPoolEditor {
                         em.weapon_pools_config.weapon_types.insert(
                             self.new_category_name.clone(),
                             WeaponTypeAbilities {
-                                m1: 0,
-                                m2: 0,
-                                shift: 0,
                                 skill_pool: vec![],
                                 ultimate_pool: vec![],
                             },
@@ -143,39 +140,6 @@ impl WeaponPoolEditor {
                             .iter()
                             .map(|a| format!("{}: {}", a.0, a.1))
                             .collect();
-
-                        // M1
-                        self.m1_idx = abilities
-                            .iter()
-                            .position(|a| a.0 == weapon_type.m1)
-                            .unwrap_or(0);
-                        if ui.combo("M1 Attack", &mut self.m1_idx, &ability_names, |s| {
-                            Cow::Borrowed(s)
-                        }) {
-                            weapon_type.m1 = abilities[self.m1_idx].0;
-                        }
-
-                        // M2
-                        self.m2_idx = abilities
-                            .iter()
-                            .position(|a| a.0 == weapon_type.m2)
-                            .unwrap_or(0);
-                        if ui.combo("M2 Attack", &mut self.m2_idx, &ability_names, |s| {
-                            Cow::Borrowed(s)
-                        }) {
-                            weapon_type.m2 = abilities[self.m2_idx].0;
-                        }
-
-                        // Shift
-                        self.shift_idx = abilities
-                            .iter()
-                            .position(|a| a.0 == weapon_type.shift)
-                            .unwrap_or(0);
-                        if ui.combo("Shift Ability", &mut self.shift_idx, &ability_names, |s| {
-                            Cow::Borrowed(s)
-                        }) {
-                            weapon_type.shift = abilities[self.shift_idx].0;
-                        }
 
                         ui.spacing();
                         ui.text("Skill Pool (Q/E)");

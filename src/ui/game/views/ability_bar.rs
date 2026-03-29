@@ -51,11 +51,8 @@ impl SlotDisplayData {
 #[derive(Debug, Clone, Default)]
 pub struct AbilityBarData {
     pub visible: bool,
-    pub m1: SlotDisplayData,
-    pub m2: SlotDisplayData,
     pub q: SlotDisplayData,
     pub e: SlotDisplayData,
-    pub shift: SlotDisplayData,
     pub r: SlotDisplayData,
 }
 
@@ -90,11 +87,8 @@ impl AbilityBarData {
     fn from_weapon_abilities(abilities: &WeaponAbilities, config: &AbilitiesConfig) -> Self {
         Self {
             visible: true,
-            m1: Self::make_slot(abilities, 0, "M1", config),
-            m2: Self::make_slot(abilities, 1, "M2", config),
             q: Self::make_slot(abilities, 2, "Q", config),
             e: Self::make_slot(abilities, 3, "E", config),
-            shift: Self::make_slot(abilities, 4, "Shift", config),
             r: Self::make_slot(abilities, 5, "R", config),
         }
     }
@@ -119,11 +113,8 @@ impl AbilityBarData {
         config: &AbilitiesConfig,
     ) -> SlotDisplayData {
         let ability_id = match slot_index {
-            0 => abilities.m1,
-            1 => abilities.m2,
             2 => abilities.q,
             3 => abilities.e,
-            4 => abilities.shift,
             5 => abilities.r,
             _ => panic!("cannot be!"),
         };
@@ -175,7 +166,7 @@ impl AbilityBarView {
         let show = data.visible && !ctx.paused;
 
         // build the slots array for the renderer
-        let slots = [data.m1, data.m2, data.q, data.e, data.shift, data.r];
+        let slots = [data.q, data.e, data.r];
 
         // update the renderer with throttling and change detection
         renderer.update(show, slots, ctx.image_cache, ctx.elapsed_time);

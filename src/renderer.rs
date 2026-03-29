@@ -72,6 +72,7 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(platform: &Platform, config: &GameConfig) -> Self {
+        let render_gizmos = config.render_gizmos;
         // =============================================================
         // Setup Shaders
         // =============================================================
@@ -768,7 +769,7 @@ impl Renderer {
 
             cubemap_texture,
             shadow_debug: false,
-            render_gizmos: false,
+            render_gizmos,
 
             hdr_color,
             hdr_bright,

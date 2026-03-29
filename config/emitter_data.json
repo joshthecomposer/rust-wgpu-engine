@@ -350,7 +350,7 @@
           1.0
         ]
       ],
-      "texture_path": "E:\\Software_Dev\\rust\\rust-opengl-engine\\resources\\textures\\particles\\smoke.png",
+      "texture_path": "resources/textures/particles/smoke.png",
       "texture_idx": null,
       "texture_has_alpha": true,
       "radial_speed": [
@@ -424,7 +424,7 @@
           [0.028, 0.028, 0.028, 1.0],
           [0.00137, 0.00137, 0.00137, 1.0]
         ],
-      "texture_path": "E:\\Software_Dev\\rust\\rust-opengl-engine\\resources\\textures\\particles\\smoke.png",
+      "texture_path": "resources/textures/particles/smoke.png",
       "texture_idx": 3,
       "texture_has_alpha": true,
       "radial_speed": [
@@ -501,7 +501,7 @@
           1.0
         ]
       ],
-      "texture_path": "E:\\Software_Dev\\rust\\rust-opengl-engine\\resources\\textures\\particles\\smoke.png",
+      "texture_path": "resources/textures/particles/smoke.png",
       "texture_idx": null,
       "texture_has_alpha": true,
       "radial_speed": [

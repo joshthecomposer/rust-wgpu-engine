@@ -2,6 +2,8 @@
 use core::f32;
 use std::collections::HashMap;
 
+use glam::Vec3;
+
 use crate::{
     animation::{animation::Animation, skellington::Bone},
     enums_types::AnimationType,
@@ -15,6 +17,7 @@ pub struct Animator {
     pub animations: HashMap<AnimationType, Animation>,
     pub blend_factor: f32,
     pub blend_time: f32,
+    pub root_motion_state: RootMotionState,
 }
 
 impl Animator {
@@ -25,6 +28,11 @@ impl Animator {
             animations: HashMap::new(),
             blend_factor: 0.0,
             blend_time: 0.14,
+            root_motion_state: RootMotionState {
+                root_bone: "".to_string(),
+                last_root_pos: None,
+                frame_root_delta: Vec3::ZERO,
+            },
         }
     }
 
@@ -53,12 +61,20 @@ impl Animator {
                     &input
                 );
                 self.next_animation = self.current_animation.clone();
+                return;
             }
         }
+        if self.next_animation != input {
+            self.root_motion_state.last_root_pos = None;
+            self.root_motion_state.frame_root_delta = Vec3::ZERO;
+        }
+
         self.next_animation = input;
     }
 
     pub fn update(&mut self, skellington: &mut Bone, dt: f32) {
+        self.root_motion_state.frame_root_delta = Vec3::ZERO;
+
         if self.current_animation == AnimationType::Death {
             if let Some(anim) = self.animations.get(&AnimationType::Death) {
                 if anim.current_time >= anim.duration {
@@ -80,10 +96,29 @@ impl Animator {
 
         if curr_key != next_key {
             if let Some((current, next)) = self.animations.get_pair_mut(&curr_key, &next_key) {
-                current.update(skellington, Some(next), self.blend_factor, dt);
+                current.update(
+                    skellington,
+                    Some(next),
+                    self.blend_factor,
+                    dt,
+                    &mut self.root_motion_state,
+                );
             }
         } else if let Some(current) = self.animations.get_mut(&curr_key) {
-            current.update(skellington, None, self.blend_factor, dt);
+            current.update(
+                skellington,
+                None,
+                self.blend_factor,
+                dt,
+                &mut self.root_motion_state,
+            );
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct RootMotionState {
+    pub root_bone: String,
+    pub last_root_pos: Option<Vec3>,
+    pub frame_root_delta: Vec3,
 }
