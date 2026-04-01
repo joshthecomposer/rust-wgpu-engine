@@ -1,9 +1,6 @@
 use glam::Vec3;
 
-use crate::{
-    entity_manager::EntityManager, enums_types::Faction,
-    state_machines::enemy::enemy_behavior_tree::BtContext,
-};
+use crate::{entity_manager::EntityManager, state_machines::enemy::enemy_behavior_tree::BtContext};
 
 pub fn update(em: &mut EntityManager) {
     let enemy_ids = em.get_ids_for_faction("Enemy");
