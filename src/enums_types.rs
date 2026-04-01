@@ -92,74 +92,6 @@ pub struct Transform {
     pub scale: Vec3,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Hash, Eq, Serialize)]
-pub enum EntityType {
-    Donut,
-    TreeFoliage,
-    TreeTrunk,
-    MooseMan,
-    YRobot,
-    Terrain,
-    Cylinder,
-    Stump,
-    OrcSword,
-    DoubleAxe,
-    TrashGuy,
-    Cuboid,
-    Cactus1,
-    Cactus2,
-    Rock1,
-    Pill,
-    BareBush1,
-}
-
-impl Display for EntityType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            EntityType::Donut => write!(f, "Donut"),
-            EntityType::TreeFoliage => write!(f, "TreeFoliage"),
-            EntityType::TreeTrunk => write!(f, "TreeTrunk"),
-            EntityType::MooseMan => write!(f, "MooseMan"),
-            EntityType::YRobot => write!(f, "YRobot"),
-            EntityType::Terrain => write!(f, "Terrain"),
-            EntityType::Cylinder => write!(f, "Cylinder"),
-            EntityType::Stump => write!(f, "Stump"),
-            EntityType::OrcSword => write!(f, "OrcSword"),
-            EntityType::DoubleAxe => write!(f, "DoubleAxe"),
-            EntityType::TrashGuy => write!(f, "TrashGuy"),
-            EntityType::Cuboid => write!(f, "Cuboid"),
-            EntityType::Cactus1 => write!(f, "Cactus1"),
-            EntityType::Cactus2 => write!(f, "Cactus2"),
-            EntityType::Rock1 => write!(f, "Rock1"),
-            EntityType::Pill => write!(f, "Pill"),
-            EntityType::BareBush1 => write!(f, "BareBush1"),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-pub enum Faction {
-    Enemy,
-    Static,
-    World,
-    Player,
-    Gizmo,
-    Item,
-}
-
-impl Display for Faction {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            Faction::Enemy => write!(f, "Enemy"),
-            Faction::Static => write!(f, "Static"),
-            Faction::World => write!(f, "World"),
-            Faction::Player => write!(f, "Player"),
-            Faction::Gizmo => write!(f, "Gizmo"),
-            Faction::Item => write!(f, "Item"),
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum CellType {
     Grass,
@@ -213,7 +145,7 @@ pub struct Parent {
     pub parent_id: usize,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum LocoState {
     Init,
     Idle,
@@ -229,14 +161,14 @@ pub enum LifeState {
     Dead,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ControlState {
     Player,
     Combat,
     Locked,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Eq)]
 pub enum CombatState {
     Basic,
     Defensive,
