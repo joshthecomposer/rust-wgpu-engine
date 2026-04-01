@@ -2,7 +2,7 @@ use glam::vec3;
 
 use crate::{
     entity_manager::EntityManager,
-    enums_types::{Knockback, PlayerState, SimState},
+    enums_types::Knockback,
     particles::ParticleSystem,
     physics::{self, PhysicsState},
 };
@@ -67,27 +67,17 @@ fn handle_melee_hits(em: &mut EntityManager, ps: &mut PhysicsState) {
                 None => continue,
             };
 
-            let sim_state = em.simstate_controllers.get(target_id).unwrap();
-
             if !hitset.insert(other) {
                 continue;
             };
 
             if let Some(ph) = em.physics_handles.get(target_id) {
                 if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
-                    let mut kb = Knockback {
+                    let kb = Knockback {
                         ttl: 0.35,
                         flinch: false,
                         did_particles: false,
                     };
-
-                    if sim_state.state != SimState::Blocking {
-                        //if let Some(h) = em.healths.get_mut(target_id) {
-                        //    *h -= 50.0
-                        //};
-
-                        //kb.flinch = true;
-                    }
 
                     let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
 

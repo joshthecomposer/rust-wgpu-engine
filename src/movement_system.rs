@@ -5,7 +5,7 @@ use crate::{
     camera::CamMoveBasis,
     command_buffer::{CommandBuffer, ImpulseKind},
     entity_manager::{glam_to_nalgebra_quat, EntityManager},
-    enums_types::{AnimationType, PlayerState, SimState},
+    enums_types::AnimationType,
     input::InputState,
     physics::PhysicsState,
 };
