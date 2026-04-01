@@ -43,7 +43,5 @@ pub fn update(em: &mut EntityManager) {
         }
 
         bt.update(&mut ctx);
-
-        dbg!(ctx);
     }
 }
