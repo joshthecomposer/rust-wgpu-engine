@@ -34,14 +34,15 @@ use crate::{
     },
     debug::gizmos::{Cuboid, Cylinder, Dimension, Pill, Sphere},
     enums_types::{
-        ActiveItem, AnimationType, ControlState, FrameActivation, GroundedState, HitboxShape,
-        JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController, PlayerState,
-        Rotator, SimState, SimStateController, Transform, VisualEffect,
+        ActiveItem, AnimationType, ControlState, EnemyController, FrameActivation, GroundedState,
+        HitboxShape, JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController,
+        Rotator, Transform, VisualEffect,
     },
     input::InputState,
     physics::PhysicsState,
     sound::sound_manager::{ContinuousSound, OneShot, SoundManager},
     sparse_set::SparseSet,
+    state_machines::enemy::enemy_behavior_tree::BehaviorTree,
     terrain::{self, Terrain},
     util::constants::{GRAVITY, GROUP_PLAYER},
 };
@@ -80,7 +81,7 @@ pub struct EntityManager {
     pub rotators: SparseSet<Rotator>,
     pub impulse_applied: SparseSet<bool>,
     pub player_controllers: SparseSet<PlayerController>,
-    pub simstate_controllers: SparseSet<SimStateController>,
+    pub enemy_controllers: SparseSet<EnemyController>,
     pub destinations: SparseSet<Vec3>,
     pub rng: ChaCha8Rng,
     pub selected: Vec<usize>,
@@ -105,6 +106,7 @@ pub struct EntityManager {
     pub cleanup_timer: SparseSet<f32>,
     pub pickup_ranges: SparseSet<f32>,
     pub weapon_helper: SparseSet<WeaponActionsHelper>,
+    pub behavior_trees: SparseSet<BehaviorTree>,
 
     // Projectile stuff
     // Source id is the ID of the character who originally spawned this projectile (such as a
@@ -165,7 +167,7 @@ impl EntityManager {
             rotators: SparseSet::with_capacity(max_entities),
             impulse_applied: SparseSet::with_capacity(max_entities),
             player_controllers: SparseSet::with_capacity(max_entities),
-            simstate_controllers: SparseSet::with_capacity(max_entities),
+            enemy_controllers: SparseSet::with_capacity(max_entities),
             destinations: SparseSet::with_capacity(max_entities),
             rng: ChaCha8Rng::seed_from_u64(100),
             selected: Vec::new(),
@@ -193,6 +195,7 @@ impl EntityManager {
             lifetimes: SparseSet::with_capacity(max_entities),
             weapon_abilities: SparseSet::with_capacity(max_entities),
             weapon_helper: SparseSet::with_capacity(max_entities),
+            behavior_trees: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json")
@@ -415,10 +418,14 @@ impl EntityManager {
                         self.pickup_ranges.insert(parent_id, 3.0);
                     }
                     "Enemy" => {
-                        self.simstate_controllers
-                            .insert(parent_id, SimStateController::default());
-
                         self.destinations.insert(parent_id, position);
+
+                        let bt = BehaviorTree::new();
+
+                        self.behavior_trees.insert(parent_id, bt);
+
+                        self.enemy_controllers
+                            .insert(parent_id, EnemyController::default());
 
                         if let Some(ar) = archetype.aggro_range {
                             self.aggro_ranges.insert(parent_id, ar);
@@ -1208,7 +1215,6 @@ impl EntityManager {
             self.rotators.remove(id);
             self.impulse_applied.remove(id);
             self.player_controllers.remove(id);
-            self.simstate_controllers.remove(id);
             self.destinations.remove(id);
             self.v_effects.remove(id);
 
@@ -1306,22 +1312,6 @@ impl EntityManager {
         }
 
         map
-    }
-
-    pub fn enemy_get_ids_for_state(&self, state: SimState) -> Vec<usize> {
-        let result: Vec<usize> = self
-            .simstate_controllers
-            .iter()
-            .filter_map(|f| {
-                if f.value().state == state {
-                    Some(f.key())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        result
     }
 
     pub fn get_all_orphaned_weapon_ids(&self) -> Vec<usize> {

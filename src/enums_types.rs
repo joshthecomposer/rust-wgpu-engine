@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::{
     cell::Cell,
     fmt::{self, Display, Formatter},
@@ -214,70 +213,6 @@ pub struct Parent {
     pub parent_id: usize,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum SimState {
-    Init,
-    Waiting,
-    Aggro,
-    Dancing,
-    Dying,
-    Dead,
-    Combat,
-    Flinching,
-    Blocking,
-}
-
-pub struct SimStateController {
-    pub state: SimState,
-    pub time_in_state: f32,
-    pub target_time: f32,
-}
-
-impl Default for SimStateController {
-    fn default() -> Self {
-        Self {
-            state: SimState::Init,
-            time_in_state: 0.0,
-            target_time: 0.0,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum PlayerState {
-    Init,
-    Idle,
-    Running,
-    Dying,
-    Dead,
-    Utility,
-    Basic,
-    Defensive,
-    Skill1,
-    Skill2,
-    Ultimate,
-    Airborne,
-}
-
-impl Display for PlayerState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            PlayerState::Init => write!(f, "Init"),
-            PlayerState::Idle => write!(f, "Idle"),
-            PlayerState::Running => write!(f, "Running"),
-            PlayerState::Dying => write!(f, "Dying"),
-            PlayerState::Dead => write!(f, "Dead"),
-            PlayerState::Utility => write!(f, "Utility"),
-            PlayerState::Basic => write!(f, "Basic"),
-            PlayerState::Defensive => write!(f, "Defensive"),
-            PlayerState::Skill1 => write!(f, "Skill1"),
-            PlayerState::Skill2 => write!(f, "Skill2"),
-            PlayerState::Ultimate => write!(f, "Ultimate"),
-            PlayerState::Airborne => write!(f, "Airborne"),
-        }
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum LocoState {
     Init,
@@ -354,6 +289,23 @@ impl Default for PlayerController {
             particle_cmd_issued: false,
             impulse_cmd_issued: false,
             queued_action: None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct EnemyController {
+    pub took_damage: bool,
+    pub taken_damage_ago: f32,
+    pub taken_damage_ttl: f32,
+}
+
+impl Default for EnemyController {
+    fn default() -> Self {
+        Self {
+            took_damage: false,
+            taken_damage_ago: 0.0,
+            taken_damage_ttl: 5.0,
         }
     }
 }
