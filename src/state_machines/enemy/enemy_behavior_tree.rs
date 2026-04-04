@@ -1,5 +1,8 @@
-use crate::entity_manager::EntityManager;
+use serde::{Deserialize, Serialize};
 
+use crate::{config::Config, entity_manager::EntityManager};
+
+#[derive(Clone, Deserialize, Serialize)]
 pub struct BehaviorTree {
     pub root: NodeId,
     pub nodes: Vec<BtNode>,
@@ -7,45 +10,7 @@ pub struct BehaviorTree {
 
 impl BehaviorTree {
     pub fn new() -> Self {
-        let mut tree = BehaviorTree::default();
-
-        let in_range = tree.add_node(BtNode::Condition(ConditionNode {
-            condition: ConditionKind::InAttackRange,
-        }));
-
-        let attack = tree.add_node(BtNode::Action(ActionNode {
-            action: ActionKind::AttackPlayer,
-        }));
-
-        let can_see = tree.add_node(BtNode::Condition(ConditionNode {
-            condition: ConditionKind::CanSeePlayer,
-        }));
-
-        let attack_seq = tree.add_node(BtNode::Sequence(SequenceNode {
-            children: vec![in_range, can_see, attack],
-        }));
-
-        let in_aggro = tree.add_node(BtNode::Condition(ConditionNode {
-            condition: ConditionKind::InAggroRange,
-        }));
-        let chase = tree.add_node(BtNode::Action(ActionNode {
-            action: ActionKind::ChasePlayer,
-        }));
-        let chase_seq = tree.add_node(BtNode::Sequence(SequenceNode {
-            children: vec![can_see, in_aggro, chase],
-        }));
-
-        let idle = tree.add_node(BtNode::Action(ActionNode {
-            action: ActionKind::Idle,
-        }));
-
-        let root = tree.add_node(BtNode::Selector(SelectorNode {
-            children: vec![attack_seq, chase_seq, idle],
-        }));
-
-        tree.root = root;
-
-        tree
+        BehaviorTree::load_from_file("config/enemy_behavior_tree.json")
     }
 
     pub fn update(&self, ctx: &mut BtContext) -> BtStatus {
@@ -128,6 +93,7 @@ impl BehaviorTree {
         BtStatus::Success
     }
 
+    #[allow(dead_code)]
     pub fn add_node(&mut self, node: BtNode) -> NodeId {
         let id = NodeId(self.nodes.len());
         self.nodes.push(node);
@@ -144,9 +110,13 @@ impl Default for BehaviorTree {
     }
 }
 
-#[derive(Copy, Clone)]
+impl Config for BehaviorTree {}
+
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub struct NodeId(pub usize);
 
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(tag = "node_type")]
 pub enum BtNode {
     Action(ActionNode),
     Selector(SelectorNode),
@@ -156,29 +126,34 @@ pub enum BtNode {
     // RepeatUntilFail(RepeatUntilFailNode),
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct SequenceNode {
     pub children: Vec<NodeId>,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct SelectorNode {
     pub children: Vec<NodeId>,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct ActionNode {
     pub action: ActionKind,
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct ConditionNode {
     pub condition: ConditionKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub enum ActionKind {
     Idle,
     ChasePlayer,
     AttackPlayer,
 }
 
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub enum ConditionKind {
     CanSeePlayer,
     InAggroRange,

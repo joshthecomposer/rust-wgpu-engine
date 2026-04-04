@@ -17,7 +17,7 @@ use crate::physics::PhysicsState;
 use crate::platform::{CursorMode, Platform};
 use crate::renderer::Renderer;
 use crate::sound::sound_manager::SoundManager;
-use crate::state_machines::enemy::bt_system;
+use crate::state_machines::enemy::{self, bt_system};
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
 use crate::toast;
@@ -196,6 +196,7 @@ impl Game {
                 );
 
                 bt_system::update(&mut self.world.ecs);
+                enemy::state_machine::update(&mut self.world.ecs, &mut self.command_buffer);
 
                 self.world.spawn_manager.update(
                     &mut self.world.ecs,

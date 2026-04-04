@@ -49,7 +49,7 @@ pub fn locomotion_state_machine(
                     break 'a;
                 }
 
-                check_new_loco(intent, input, ctrl, cmds, player_id);
+                check_new_loco(intent, input, ctrl, cmds, player_id, animator);
             }
             LocoState::Running => {
                 if let (Some(ability), Some(weap_id)) = (ability_just_pressed(input), weap_id) {
@@ -57,7 +57,7 @@ pub fn locomotion_state_machine(
                     break 'a;
                 }
 
-                check_new_loco(intent, input, ctrl, cmds, player_id);
+                check_new_loco(intent, input, ctrl, cmds, player_id, animator);
             }
             LocoState::Jumping => {
                 let jump_anim = animator.animations.get(&AnimationType::Jump).unwrap();
@@ -67,12 +67,14 @@ pub fn locomotion_state_machine(
                     cmds.loco.push(LocoCmd {
                         target: player_id,
                         intent,
+                        is_root_motion: false,
+                        root_delta: Vec3::ZERO,
                     });
                     ctrl.jump_command_issued = true;
                 }
 
                 if gs.just_left {
-                    loco_transition(player_id, ctrl, cmds, LocoState::Airborne, intent);
+                    loco_transition(player_id, ctrl, cmds, LocoState::Airborne, intent, animator);
                     ctrl.jump_command_issued = false;
                 }
             }
@@ -82,7 +84,7 @@ pub fn locomotion_state_machine(
                 let jump_anim = animator.animations.get(&AnimationType::Jump).unwrap();
 
                 if gs.just_landed {
-                    loco_transition(player_id, ctrl, cmds, LocoState::Running, intent);
+                    loco_transition(player_id, ctrl, cmds, LocoState::Running, intent, animator);
                     cmds.particles.push(PartCmd {
                         name: "DesertLand".to_string(),
                         direction: vec3(0.0, 1.0, 0.0),
@@ -111,19 +113,20 @@ pub fn check_new_loco(
     ctrl: &mut PlayerController,
     cmds: &mut CommandBuffer,
     player_id: usize,
+    animator: &Animator,
 ) {
     if input.space_just_pressed() {
-        loco_transition(player_id, ctrl, cmds, LocoState::Jumping, intent);
+        loco_transition(player_id, ctrl, cmds, LocoState::Jumping, intent, animator);
         return;
     }
 
     if !intent.is_zero() {
-        loco_transition(player_id, ctrl, cmds, LocoState::Running, intent);
+        loco_transition(player_id, ctrl, cmds, LocoState::Running, intent, animator);
         return;
     }
 
     if intent.is_zero() {
-        loco_transition(player_id, ctrl, cmds, LocoState::Idle, intent);
+        loco_transition(player_id, ctrl, cmds, LocoState::Idle, intent, animator);
         return;
     }
 }
@@ -134,6 +137,7 @@ pub fn loco_transition(
     cmds: &mut CommandBuffer,
     state: LocoState,
     intent: LocoIntent,
+    animator: &Animator,
 ) {
     if state == LocoState::Jumping {
         ctrl.loco_time = 0.0;
@@ -155,6 +159,8 @@ pub fn loco_transition(
     cmds.loco.push(LocoCmd {
         target: player_id,
         intent,
+        is_root_motion: animator.get_next_animation().unwrap().do_root_motion,
+        root_delta: animator.root_motion_state.frame_root_delta,
     });
 }
 

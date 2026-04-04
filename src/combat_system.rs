@@ -49,7 +49,6 @@ fn handle_melee_hits(em: &mut EntityManager, ps: &mut PhysicsState) {
 
             let other = if c1 == rh_w_col_handle { c2 } else { c1 };
 
-            // Target id is the pill entity.
             let Some(&target_id) = em.collider_to_entity.get(&other) else {
                 eprintln!(
                     "collider {:?} has no entity; likely stale pair or missing insert",
@@ -78,6 +77,10 @@ fn handle_melee_hits(em: &mut EntityManager, ps: &mut PhysicsState) {
                         flinch: false,
                         did_particles: false,
                     };
+
+                    let enemy_ctrl = em.enemy_controllers.get_mut(target_id).unwrap();
+
+                    enemy_ctrl.took_damage = true;
 
                     let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
 

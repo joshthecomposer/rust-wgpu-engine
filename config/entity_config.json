@@ -346,14 +346,16 @@
           },
           "continuous_sounds": [],
           "hurtbox_activation": [],
-          "hold_frame": null
+          "hold_frame": null,
+          "reset_on_change": false
         },
         {
           "name": "Idle",
           "one_shots": {},
           "continuous_sounds": [],
           "hurtbox_activation": [],
-          "hold_frame": null
+          "hold_frame": null,
+          "reset_on_change": false
         },
         {
           "name": "Death",
@@ -532,14 +534,17 @@
           },
           "continuous_sounds": [],
           "hurtbox_activation": [],
-          "hold_frame": null
+          "hold_frame": null,
+          "reset_on_change": false,
+          "do_root_motion": true
         },
         {
           "name": "Idle",
           "one_shots": {},
           "continuous_sounds": [],
           "hurtbox_activation": [],
-          "hold_frame": null
+          "hold_frame": null,
+          "reset_on_change": false
         },
         {
           "name": "Death",

@@ -1,0 +1,45 @@
+{
+  "root": 0,
+  "nodes": [
+    {
+      "node_type": "Selector",
+      "children": [1, 5, 8]
+    },
+    {
+      "node_type": "Sequence",
+      "children": [2, 3, 4]
+    },
+    {
+      "node_type": "Condition",
+      "condition": "InAttackRange"
+    },
+    {
+      "node_type": "Condition",
+      "condition": "CanSeePlayer"
+    },
+    {
+      "node_type": "Action",
+      "action": "AttackPlayer"
+    },
+    {
+      "node_type": "Sequence",
+      "children": [6, 7, 9]
+    },
+    {
+      "node_type": "Condition",
+      "condition": "CanSeePlayer"
+    },
+    {
+      "node_type": "Condition",
+      "condition": "InAggroRange"
+    },
+    {
+      "node_type": "Action",
+      "action": "Idle"
+    },
+    {
+      "node_type": "Action",
+      "action": "ChasePlayer"
+    }
+  ]
+}

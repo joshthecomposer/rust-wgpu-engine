@@ -14,6 +14,7 @@ pub fn update(em: &mut EntityManager) {
         };
 
         let mut ctx = BtContext::default();
+        let ctrl = em.enemy_controllers.get_mut(id).unwrap();
 
         if let Some(pid) = player_id {
             let player_pos = em.transforms.get(pid).unwrap().position;
@@ -28,8 +29,6 @@ pub fn update(em: &mut EntityManager) {
                 alignment >= fov_threshold
             };
 
-            let ctrl = em.enemy_controllers.get(id).unwrap();
-
             ctx.was_recently_damaged = ctrl.took_damage;
             ctx.is_in_melee_range = entity_trans.position.distance(player_pos) <= 1.0;
             ctx.is_in_aggro_range = if let Some(ar) = em.aggro_ranges.get(id) {
@@ -40,5 +39,7 @@ pub fn update(em: &mut EntityManager) {
         }
 
         bt.update(&mut ctx);
+
+        ctrl.desired_action = ctx.desired_action;
     }
 }

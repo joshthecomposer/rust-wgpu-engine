@@ -12,6 +12,8 @@ use rapier3d::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::state_machines::enemy::enemy_behavior_tree::ActionKind;
+
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum VaoType {
     Cube,
@@ -230,6 +232,7 @@ pub struct EnemyController {
     pub took_damage: bool,
     pub taken_damage_ago: f32,
     pub taken_damage_ttl: f32,
+    pub desired_action: Option<ActionKind>,
 }
 
 impl Default for EnemyController {
@@ -238,6 +241,7 @@ impl Default for EnemyController {
             took_damage: false,
             taken_damage_ago: 0.0,
             taken_damage_ttl: 5.0,
+            desired_action: None,
         }
     }
 }

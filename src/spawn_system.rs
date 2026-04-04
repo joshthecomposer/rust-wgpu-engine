@@ -41,7 +41,7 @@ impl SpawnManager {
                             &enemy_weapon_types[em.rng.random_range(0..enemy_weapon_types.len())];
 
                         let instance = EntityInstance {
-                            entity_type: "TrashGuy".to_string(),
+                            entity_type: "Peasant1".to_string(),
                             position: point,
                             faction: Some("Enemy".to_string()),
                             rotation: Quat::IDENTITY,
