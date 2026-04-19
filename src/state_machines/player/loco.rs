@@ -67,8 +67,6 @@ pub fn locomotion_state_machine(
                     cmds.loco.push(LocoCmd {
                         target: player_id,
                         intent,
-                        is_root_motion: false,
-                        root_delta: Vec3::ZERO,
                     });
                     ctrl.jump_command_issued = true;
                 }
@@ -159,8 +157,6 @@ pub fn loco_transition(
     cmds.loco.push(LocoCmd {
         target: player_id,
         intent,
-        is_root_motion: animator.get_next_animation().unwrap().do_root_motion,
-        root_delta: animator.root_motion_state.frame_root_delta,
     });
 }
 
