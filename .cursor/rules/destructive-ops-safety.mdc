@@ -1,0 +1,20 @@
+---
+description: Avoid destructive git/filesystem commands without explicit request
+alwaysApply: true
+---
+
+# Destructive operations safety
+
+- Never suggest destructive/irreversible commands by default.
+- Do not propose history-rewriting workflows unless explicitly requested.
+
+## Treat as destructive (require explicit request + clear warning)
+
+- `git reset --hard`, `git clean -fdx`, force pushes, rewriting history
+- Deleting directories/files as a “fix”
+- Bulk search/replace across the repo
+
+## If the user explicitly asks
+
+- Provide a safer alternative first.
+- Include a backup/escape hatch step (e.g., branch/tag, copy folder, or stashing).

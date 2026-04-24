@@ -239,6 +239,12 @@ impl LocoIntent {
 
         LocoIntent { x, z }.clamp_unit()
     }
+
+    pub fn build_ai_loco_intent(pos: Vec3, dest: Vec3) -> Self {
+        let dir = (pos - dest).normalize();
+
+        LocoIntent { x: dir.x, z: dir.z }.clamp_unit()
+    }
 }
 
 // ==================================================================================

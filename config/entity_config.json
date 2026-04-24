@@ -624,7 +624,8 @@
           "hurtbox_activation": [],
           "hold_frame": null,
           "interrupt_frame": 18,
-          "reset_on_change": true
+          "reset_on_change": true,
+          "do_root_motion": true
         },
         {
           "name": "Basic2",
@@ -635,7 +636,8 @@
           "hurtbox_activation": [],
           "hold_frame": null,
           "interrupt_frame": 18,
-          "reset_on_change": true
+          "reset_on_change": true,
+          "do_root_motion": true
         },
         {
           "name": "Basic3",
@@ -646,7 +648,8 @@
           "hurtbox_activation": [],
           "hold_frame": null,
           "interrupt_frame": 38,
-          "reset_on_change": true
+          "reset_on_change": true,
+          "do_root_motion": true
         },
         {
           "name": "DashF",

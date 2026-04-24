@@ -233,6 +233,7 @@ pub struct EnemyController {
     pub taken_damage_ago: f32,
     pub taken_damage_ttl: f32,
     pub desired_action: Option<ActionKind>,
+    pub current_action: ActionKind,
 }
 
 impl Default for EnemyController {
@@ -242,6 +243,7 @@ impl Default for EnemyController {
             taken_damage_ago: 0.0,
             taken_damage_ttl: 5.0,
             desired_action: None,
+            current_action: ActionKind::Idle,
         }
     }
 }

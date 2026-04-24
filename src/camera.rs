@@ -102,8 +102,6 @@ impl Camera {
     }
 
     pub fn basis_for_sim(&self) -> CamMoveBasis {
-        self.debug_basis_compare();
-
         let yaw = self.yaw.to_radians() as f32;
 
         let f = glam::Vec3::new(-yaw.cos(), 0.0, -yaw.sin()).normalize();
@@ -113,25 +111,6 @@ impl Camera {
             fwd_flat: f,
             right_flat: r,
         }
-    }
-
-    pub fn debug_basis_compare(&self) {
-        let yaw = self.yaw.to_radians() as f32;
-
-        let yaw_f = glam::Vec3::new(-yaw.cos(), 0.0, -yaw.sin()).normalize();
-
-        let mut forward_f = glam::Vec3::new(self.forward.x, 0.0, self.forward.z);
-        if forward_f.length_squared() > 0.000001 {
-            forward_f = forward_f.normalize();
-        }
-
-        println!(
-            "mode={:?}, yaw_f={:?}, forward_f={:?}, dot={}",
-            self.move_state,
-            yaw_f,
-            forward_f,
-            yaw_f.dot(forward_f)
-        );
     }
 
     pub fn update(

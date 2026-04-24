@@ -146,7 +146,7 @@ pub struct ConditionNode {
     pub condition: ConditionKind,
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, Copy)]
 pub enum ActionKind {
     Idle,
     ChasePlayer,

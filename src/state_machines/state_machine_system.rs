@@ -1,6 +1,11 @@
 use crate::{
-    command_buffer::CommandBuffer, entity_manager::EntityManager, input::InputState,
-    state_machines::player::orchestrator::player_state_orchestrator,
+    command_buffer::CommandBuffer,
+    entity_manager::EntityManager,
+    input::InputState,
+    state_machines::{
+        enemy::{self, bt_system},
+        player::orchestrator::player_state_orchestrator,
+    },
 };
 
 pub fn update(em: &mut EntityManager, input: &InputState, cmds: &mut CommandBuffer, dt: f32) {
@@ -18,4 +23,7 @@ pub fn update(em: &mut EntityManager, input: &InputState, cmds: &mut CommandBuff
     }
 
     player_state_orchestrator(em, input, cmds, dt);
+
+    bt_system::update(em);
+    enemy::orchestrator::update(em, cmds, dt);
 }

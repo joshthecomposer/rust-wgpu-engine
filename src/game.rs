@@ -195,9 +195,6 @@ impl Game {
                     self.time.fixed_dt,
                 );
 
-                bt_system::update(&mut self.world.ecs);
-                enemy::state_machine::update(&mut self.world.ecs, &mut self.command_buffer);
-
                 self.world.spawn_manager.update(
                     &mut self.world.ecs,
                     &mut self.physics,
