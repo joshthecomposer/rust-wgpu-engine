@@ -67,6 +67,8 @@ pub fn locomotion_state_machine(
                     cmds.loco.push(LocoCmd {
                         target: player_id,
                         intent,
+                        allow_trans: true,
+                        allow_rot: true,
                     });
                     ctrl.jump_command_issued = true;
                 }
@@ -78,6 +80,13 @@ pub fn locomotion_state_machine(
             }
             LocoState::Airborne => {
                 ctrl.loco_time += dt;
+
+                cmds.loco.push(LocoCmd {
+                    target: player_id,
+                    intent,
+                    allow_trans: false,
+                    allow_rot: true,
+                });
 
                 let jump_anim = animator.animations.get(&AnimationType::Jump).unwrap();
 
@@ -157,6 +166,8 @@ pub fn loco_transition(
     cmds.loco.push(LocoCmd {
         target: player_id,
         intent,
+        allow_trans: true,
+        allow_rot: true,
     });
 }
 

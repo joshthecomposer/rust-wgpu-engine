@@ -27,8 +27,6 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer) {
             continue;
         }
 
-        dbg!(&action);
-
         match action {
             ActionKind::Idle => cmds.next_anim(eid, AnimationType::Idle, maybe_weap_id),
             ActionKind::ChasePlayer => {

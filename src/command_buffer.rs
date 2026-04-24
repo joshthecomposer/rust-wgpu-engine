@@ -185,6 +185,8 @@ pub enum AnimOp {
 pub struct LocoCmd {
     pub target: usize,
     pub intent: LocoIntent,
+    pub allow_trans: bool,
+    pub allow_rot: bool,
 }
 
 #[derive(Clone, Debug, Copy)]
