@@ -1,6 +1,12 @@
+use std::time::Instant;
+
 use glam::Vec3;
 
-use crate::{entity_manager::EntityManager, state_machines::enemy::enemy_behavior_tree::BtContext};
+use crate::{
+    entity_manager::EntityManager,
+    enums_types::{CombatState, ControlState},
+    state_machines::enemy::enemy_behavior_tree::BtContext,
+};
 
 pub fn update(em: &mut EntityManager) {
     let enemy_ids = em.get_ids_for_faction("Enemy");
@@ -19,11 +25,17 @@ pub fn update(em: &mut EntityManager) {
         if let Some(pid) = player_id {
             let player_pos = em.transforms.get(pid).unwrap().position;
             let entity_trans = em.transforms.get(id).unwrap();
+            let pctrl = em.player_controllers.get(pid).unwrap();
+
             let fov_threshold = 0.5;
-            let to_player = (player_pos - entity_trans.position).with_y(0.0).normalize();
+            let to_player = (player_pos - entity_trans.position)
+                .with_y(0.0)
+                .normalize_or_zero();
 
             ctx.can_see_player = {
-                let forward = (entity_trans.rotation * Vec3::Z).with_y(0.0).normalize();
+                let forward = (entity_trans.rotation * Vec3::Z)
+                    .with_y(0.0)
+                    .normalize_or_zero();
                 let alignment = forward.dot(to_player);
 
                 alignment >= fov_threshold
@@ -36,10 +48,22 @@ pub fn update(em: &mut EntityManager) {
             } else {
                 false
             };
+
+            ctx.player_is_attacking = matches!(
+                pctrl.combat_state,
+                Some(
+                    CombatState::Basic
+                        | CombatState::Skill1
+                        | CombatState::Skill2
+                        | CombatState::Ultimate
+                )
+            );
         }
 
         bt.update(&mut ctx);
 
         ctrl.desired_action = ctx.desired_action;
+
+        dbg!(ctrl.desired_action);
     }
 }

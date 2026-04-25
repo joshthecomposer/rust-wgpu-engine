@@ -33,6 +33,23 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             true => ctrl.desired_action,
         };
 
+        let desired_action = ctrl.desired_action;
+
+        let leaving_block =
+            ctrl.current_action == ActionKind::Block && desired_action != Some(ActionKind::Block);
+
+        if leaving_block {
+            cmds.set_anim_hold(eid, AnimationType::Block, false, weap_id);
+        }
+
+        let can_switch_action = anim.can_interrupt() || leaving_block;
+
+        let next_action = if can_switch_action {
+            desired_action
+        } else {
+            Some(ctrl.current_action)
+        };
+
         match next_action {
             Some(ActionKind::Idle) => {
                 cmds.next_anim(eid, AnimationType::Idle, weap_id);
@@ -62,6 +79,26 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                 if anim.can_interrupt() {
                     cmds.next_anim_from_lookup(eid, "basic".to_string(), weap_id);
                     ctrl.current_action = ActionKind::AttackPlayer;
+                }
+            }
+            Some(ActionKind::Block) => {
+                ctrl.current_action = ActionKind::Block;
+
+                if animator.next_animation != AnimationType::Block && anim.can_interrupt() {
+                    cmds.next_anim(eid, AnimationType::Block, weap_id);
+                }
+
+                if let Some(block_anim) = animator.animations.get(&AnimationType::Block) {
+                    match block_anim.hold_frame {
+                        Some(hold_frame) => {
+                            if block_anim.current_segment.get() >= hold_frame {
+                                cmds.set_anim_hold(eid, AnimationType::Block, true, weap_id);
+                            }
+                        }
+                        None => {
+                            cmds.set_anim_hold(eid, AnimationType::Block, true, weap_id);
+                        }
+                    }
                 }
             }
             None => {}

@@ -40,6 +40,10 @@ impl BehaviorTree {
                 ctx.desired_action = Some(ActionKind::AttackPlayer);
                 BtStatus::Running
             }
+            ActionKind::Block => {
+                ctx.desired_action = Some(ActionKind::Block);
+                BtStatus::Running
+            }
         }
     }
 
@@ -61,6 +65,13 @@ impl BehaviorTree {
             }
             ConditionKind::InAttackRange => {
                 if ctx.is_in_melee_range {
+                    BtStatus::Success
+                } else {
+                    BtStatus::Failure
+                }
+            }
+            ConditionKind::PlayerIsAttacking => {
+                if ctx.player_is_attacking {
                     BtStatus::Success
                 } else {
                     BtStatus::Failure
@@ -146,11 +157,12 @@ pub struct ConditionNode {
     pub condition: ConditionKind,
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, Copy)]
+#[derive(Debug, Deserialize, Clone, Serialize, Copy, PartialEq)]
 pub enum ActionKind {
     Idle,
     ChasePlayer,
     AttackPlayer,
+    Block,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
@@ -158,6 +170,7 @@ pub enum ConditionKind {
     CanSeePlayer,
     InAggroRange,
     InAttackRange,
+    PlayerIsAttacking,
 }
 
 pub enum BtStatus {
@@ -172,6 +185,7 @@ pub struct BtContext {
     pub was_recently_damaged: bool,
     pub is_in_melee_range: bool,
     pub is_in_aggro_range: bool,
+    pub player_is_attacking: bool,
 
     pub desired_action: Option<ActionKind>,
 }

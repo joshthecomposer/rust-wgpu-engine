@@ -2,44 +2,74 @@
   "root": 0,
   "nodes": [
     {
+      "_idx_": "0",
       "node_type": "Selector",
       "children": [1, 5, 8]
     },
     {
+      "_idx_": "1",
       "node_type": "Sequence",
-      "children": [2, 3, 4]
+      "children": [2, 3, 10]
     },
     {
+      "_idx_": "2",
       "node_type": "Condition",
       "condition": "InAttackRange"
     },
     {
+      "_idx_": "3",
       "node_type": "Condition",
       "condition": "CanSeePlayer"
     },
     {
+      "_idx_": "4",
       "node_type": "Action",
       "action": "AttackPlayer"
     },
     {
+      "_idx_": "5",
       "node_type": "Sequence",
       "children": [6, 7, 9]
     },
     {
+      "_idx_": "6",
       "node_type": "Condition",
       "condition": "CanSeePlayer"
     },
     {
+      "_idx_": "7",
       "node_type": "Condition",
       "condition": "InAggroRange"
     },
     {
+      "_idx_": "8",
       "node_type": "Action",
       "action": "Idle"
     },
     {
+      "_idx_": "9",
       "node_type": "Action",
       "action": "ChasePlayer"
+    },
+    {
+      "_idx_": "10",
+      "node_type": "Selector",
+      "children": [11, 4]
+    },
+    {
+      "_idx_": "11",
+      "node_type": "Sequence",
+      "children": [12, 13]
+    },
+    {
+      "_idx_": "12",
+      "node_type": "Condition",
+      "condition": "PlayerIsAttacking"
+    },
+    {
+      "_idx_": "13",
+      "node_type": "Action",
+      "action": "Block"
     }
   ]
 }
