@@ -141,7 +141,7 @@ impl AbilityBarRenderer {
 
         // compare slots while ignoring cooldown progress
         let mut slots_changed = false;
-        for i in 0..6 {
+        for i in 0..3 {
             let s1 = &slots[i];
             let s2 = &self.cached_slots[i];
             if s1.visible != s2.visible
@@ -169,9 +169,9 @@ impl AbilityBarRenderer {
 
         // update Slint properties
         self.ability_bar.set_show(show);
-        self.ability_bar.set_slot_q(slots[2].to_slint(image_cache));
-        self.ability_bar.set_slot_e(slots[3].to_slint(image_cache));
-        self.ability_bar.set_slot_r(slots[5].to_slint(image_cache));
+        self.ability_bar.set_slot_q(slots[0].to_slint(image_cache));
+        self.ability_bar.set_slot_e(slots[1].to_slint(image_cache));
+        self.ability_bar.set_slot_r(slots[2].to_slint(image_cache));
     }
 
     /// Render the ability bar to the FBO texture using PBO for zero-copy upload.

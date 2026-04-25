@@ -17,16 +17,10 @@ use crate::ui::game_new::styles::Rect;
 use crate::ui::game_new::tree::UiTree;
 use crate::ui::game_new::widgets::{AbilitySlot, TooltipManager, Widget};
 use crate::ui::image_cache::UiImageCache;
+use winit::keyboard::KeyCode;
 
 /// Slot IDs corresponding to the RON layout.
-const SLOT_IDS: [&str; 6] = [
-    "slot_m1",
-    "slot_m2",
-    "slot_q",
-    "slot_e",
-    "slot_shift",
-    "slot_r",
-];
+const SLOT_IDS: [&str; 3] = ["slot_q", "slot_e", "slot_r"];
 
 /// AbilityBarView manages the ability bar portion of the game HUD.
 ///
@@ -73,7 +67,7 @@ impl AbilityBarView {
     /// # Arguments
     /// * `slots` - Array of 6 slot display data (M1, M2, Q, E, Shift, R)
     /// * `delta_time` - Time since last frame for animations
-    pub fn update_data(&mut self, slots: &[SlotDisplayData; 6], delta_time: f32) {
+    pub fn update_data(&mut self, slots: &[SlotDisplayData; 3], delta_time: f32) {
         self.glow_time += delta_time;
         if self.glow_time > 1000.0 {
             self.glow_time = 0.0;
@@ -183,6 +177,29 @@ impl AbilityBarView {
         self.tooltip.begin_frame();
         self.tree.update(ctx);
 
+        // Key press feedback (matches the "flash on Q/E/R press" feel)
+        if ctx.input.just_pressed(KeyCode::KeyQ) {
+            if let Some(w) = self.tree.find_widget_mut("slot_q") {
+                if let Some(slot) = w.as_any_mut().downcast_mut::<AbilitySlot>() {
+                    slot.trigger_use_flash();
+                }
+            }
+        }
+        if ctx.input.just_pressed(KeyCode::KeyE) {
+            if let Some(w) = self.tree.find_widget_mut("slot_e") {
+                if let Some(slot) = w.as_any_mut().downcast_mut::<AbilitySlot>() {
+                    slot.trigger_use_flash();
+                }
+            }
+        }
+        if ctx.input.just_pressed(KeyCode::KeyR) {
+            if let Some(w) = self.tree.find_widget_mut("slot_r") {
+                if let Some(slot) = w.as_any_mut().downcast_mut::<AbilitySlot>() {
+                    slot.trigger_use_flash();
+                }
+            }
+        }
+
         // Check each slot for hover and show tooltip
         for slot_id in &SLOT_IDS {
             if let Some(w) = self.tree.find_widget_mut(slot_id) {
@@ -199,7 +216,7 @@ impl AbilityBarView {
     /// Layout the ability bar at the bottom-left of the screen.
     pub fn layout(&mut self, font_system: &mut FontSystem) {
         const MARGIN: f32 = 10.0;
-        const BAR_WIDTH: f32 = 346.0;
+        const BAR_WIDTH: f32 = 172.0;
         const BAR_HEIGHT: f32 = 68.0;
 
         // Size the tree to the bar dimensions

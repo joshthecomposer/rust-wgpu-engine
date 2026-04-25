@@ -71,6 +71,8 @@ pub struct AbilitySlot {
     pub glow_time: f32,
     /// Time remaining for the ready glow effect (decays to 0).
     glow_remaining: f32,
+    /// Time remaining for a short "used/pressed" flash (decays to 0).
+    use_flash_remaining: f32,
     /// Previous cooldown progress to detect when ability becomes ready.
     prev_cooldown_progress: f32,
 
@@ -96,6 +98,7 @@ impl AbilitySlot {
             normal_border_color: Color::Rgba(0.28, 0.33, 0.42, 1.0), // stone-light
             glow_time: 0.0,
             glow_remaining: 0.0,
+            use_flash_remaining: 0.0,
             prev_cooldown_progress: 0.0,
             is_hovered: false,
         }
@@ -156,6 +159,17 @@ impl AbilitySlot {
             self.glow_remaining = (self.glow_remaining - delta).max(0.0);
         }
 
+        // Decay the use-flash time
+        if self.use_flash_remaining > 0.0 {
+            self.use_flash_remaining = (self.use_flash_remaining - delta).max(0.0);
+        }
+
+        // Detect when ability was just used (transition from ready to cooldown)
+        if self.prev_cooldown_progress == 0.0 && self.cooldown_progress > 0.0 {
+            // quick flash (tweak to taste)
+            self.use_flash_remaining = 0.12;
+        }
+
         // Detect when ability just came off cooldown (transition from cooldown to ready)
         if self.prev_cooldown_progress > 0.0 && self.cooldown_progress == 0.0 && self.is_ready {
             // Trigger glow for 1.5 seconds
@@ -163,6 +177,11 @@ impl AbilitySlot {
             self.glow_time = 0.0; // Reset animation phase
         }
         self.prev_cooldown_progress = self.cooldown_progress;
+    }
+
+    /// Trigger a short visual flash (e.g. on key press/use).
+    pub fn trigger_use_flash(&mut self) {
+        self.use_flash_remaining = 0.25;
     }
 
     /// Returns true if this slot is being hovered.
@@ -278,6 +297,12 @@ impl Widget for AbilitySlot {
             let overlay_rect = Rect::new(bg_rect.x, bg_rect.y, bg_rect.width, overlay_height);
             let overlay_color = [0.0, 0.0, 0.0, 0.6];
             renderer.draw_rect(overlay_rect, overlay_color, inner_radius);
+        }
+
+        // short "used" flash overlay (match MenuButton hover accent color)
+        if self.use_flash_remaining > 0.0 {
+            let flash_color = [0.4, 0.38, 0.33, 1.0];
+            renderer.draw_rect(bg_rect, flash_color, inner_radius);
         }
 
         // key label in top-right corner

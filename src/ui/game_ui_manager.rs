@@ -415,11 +415,8 @@ impl GameUiManager {
 
         // Convert AbilityBarData individual fields to array for new view
         let slots = [
-            ability_data.m1.clone(),
-            ability_data.m2.clone(),
             ability_data.q.clone(),
             ability_data.e.clone(),
-            ability_data.shift.clone(),
             ability_data.r.clone(),
         ];
 

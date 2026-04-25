@@ -180,7 +180,7 @@ pub fn ability_to_anim_lookup(ability: u32) -> String {
         BASIC => "basic".to_string(),
         EVADE => "dash".to_string(),
         DEFENSIVE => "block".to_string(),
-        _ => panic!("Not yet"),
+        _ => "basic".to_string(),
     }
 }
 
@@ -189,7 +189,7 @@ pub fn ability_to_state(ability: u32) -> CombatState {
         BASIC => CombatState::Basic,
         EVADE => CombatState::Evade,
         DEFENSIVE => CombatState::Defensive,
-        _ => panic!("Not yet"),
+        _ => CombatState::Basic,
     }
 }
 

@@ -272,54 +272,6 @@ impl Animation {
         None
     }
 
-    // pub fn get_raw_global_bone_transform_by_name_blended(
-    //     &self,
-    //     bone_name: &str,
-    //     skeleton: &Bone,
-    //     parent_transform: Mat4,
-    //     other_animation: &Animation,
-    //     blend_factor: f32,
-    // ) -> Option<Mat4> {
-    //     let delta1 = self.current_time % self.duration;
-    //     let delta2 = other_animation.current_time % other_animation.duration;
-
-    //     if skeleton.name == bone_name {
-    //         let (pos1, rot1, scale1) = self.get_bone_local_transform(skeleton, delta1);
-    //         let (pos2, rot2, scale2) = other_animation.get_bone_local_transform(skeleton, delta2);
-
-    //         let final_pos = pos1.lerp(pos2, blend_factor);
-    //         let final_rot = rot1.slerp(rot2, blend_factor);
-    //         let final_scale = scale1.lerp(scale2, blend_factor);
-
-    //         let local = Mat4::from_scale_rotation_translation(final_scale, final_rot, final_pos);
-    //         return Some(parent_transform * local);
-    //     }
-
-    //     for child in &skeleton.children {
-    //         let (pos1, rot1, scale1) = self.get_bone_local_transform(skeleton, delta1);
-    //         let (pos2, rot2, scale2) = other_animation.get_bone_local_transform(skeleton, delta2);
-
-    //         let final_pos = pos1.lerp(pos2, blend_factor);
-    //         let final_rot = rot1.slerp(rot2, blend_factor);
-    //         let final_scale = scale1.lerp(scale2, blend_factor);
-
-    //         let local = Mat4::from_scale_rotation_translation(final_scale, final_rot, final_pos);
-    //         let next_parent = parent_transform * local;
-
-    //         if let Some(found) = self.get_raw_global_bone_transform_by_name_blended(
-    //             bone_name,
-    //             child,
-    //             next_parent,
-    //             other_animation,
-    //             blend_factor,
-    //         ) {
-    //             return Some(found);
-    //         }
-    //     }
-
-    //     None
-    // }
-
     pub fn update(
         &mut self,
         skellington: &mut Bone,

@@ -146,17 +146,11 @@ impl GameRootView {
         let needs_ability_sync = match &self.cached_ability_data {
             Some(cached) => {
                 cached.visible != ability_data.visible
-                    || cached.m1.ability_id != ability_data.m1.ability_id
-                    || cached.m2.ability_id != ability_data.m2.ability_id
                     || cached.q.ability_id != ability_data.q.ability_id
                     || cached.e.ability_id != ability_data.e.ability_id
-                    || cached.shift.ability_id != ability_data.shift.ability_id
                     || cached.r.ability_id != ability_data.r.ability_id
-                    || cached.m1.ability_name != ability_data.m1.ability_name
-                    || cached.m2.ability_name != ability_data.m2.ability_name
                     || cached.q.ability_name != ability_data.q.ability_name
                     || cached.e.ability_name != ability_data.e.ability_name
-                    || cached.shift.ability_name != ability_data.shift.ability_name
                     || cached.r.ability_name != ability_data.r.ability_name
             }
             None => true,
