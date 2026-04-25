@@ -1,9 +1,10 @@
+use gl::PixelStoref;
 use glam::{vec3, Quat, Vec3};
 use winit::keyboard::KeyCode;
 
 use crate::{
     camera::CamMoveBasis,
-    command_buffer::{CommandBuffer, ImpulseKind},
+    command_buffer::{CommandBuffer, ImpulseKind, LocoSpace},
     entity_manager::{glam_to_nalgebra_quat, EntityManager},
     enums_types::{AnimationType, Rotator},
     input::InputState,
@@ -28,7 +29,10 @@ pub fn update(
 
         let current_vel = current_physics_velocity(em, phys, e).unwrap_or(Vec3::ZERO);
         let intent = Vec3::new(lc.intent.x, 0.0, lc.intent.z);
-        let intent_dir = resolve_world_intent_dir(cam_basis, intent);
+        let intent_dir = match lc.space {
+            LocoSpace::World => normalize_flat_dir(intent),
+            LocoSpace::Camera => resolve_world_intent_dir_camera(cam_basis, intent),
+        };
 
         if lc.allow_trans {
             let linvel = resolve_translation(intent_dir, speed, current_vel);
@@ -59,7 +63,7 @@ fn current_physics_velocity(em: &EntityManager, phys: &PhysicsState, e: usize) -
     Some(Vec3::new(v.x, v.y, v.z))
 }
 
-fn resolve_world_intent_dir(cam_basis: &CamMoveBasis, intent: Vec3) -> Option<Vec3> {
+fn resolve_world_intent_dir_camera(cam_basis: &CamMoveBasis, intent: Vec3) -> Option<Vec3> {
     normalize_flat_dir(cam_basis.right_flat * intent.x + cam_basis.fwd_flat * intent.z)
 }
 

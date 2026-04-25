@@ -1,6 +1,6 @@
 use crate::{
     animation::animator::{self, Animator},
-    command_buffer::{CommandBuffer, LocoIntent},
+    command_buffer::{CommandBuffer, LocoCmd, LocoIntent, LocoSpace},
     entity_manager::EntityManager,
     enums_types::{AnimationType, EnemyController},
     state_machines::enemy::enemy_behavior_tree::ActionKind,
@@ -47,7 +47,15 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                     ctrl.current_action = ActionKind::ChasePlayer;
                     let intent = LocoIntent::build_ai_loco_intent(etrans.position, ptrans.position);
 
-                    if !intent.is_zero() {}
+                    if !intent.is_zero() {
+                        cmds.loco.push(LocoCmd {
+                            target: eid,
+                            intent,
+                            allow_trans: true,
+                            allow_rot: true,
+                            space: LocoSpace::World,
+                        });
+                    }
                 }
             }
             Some(ActionKind::AttackPlayer) => {

@@ -182,11 +182,19 @@ pub enum AnimOp {
 // LOCO
 // ==================================================================================
 #[derive(Clone, Debug)]
+pub enum LocoSpace {
+    World,
+    Camera,
+}
+
+#[derive(Clone, Debug)]
 pub struct LocoCmd {
     pub target: usize,
     pub intent: LocoIntent,
     pub allow_trans: bool,
     pub allow_rot: bool,
+    // this is because sometimes we base the locomotion on the camera basis
+    pub space: LocoSpace,
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -241,7 +249,7 @@ impl LocoIntent {
     }
 
     pub fn build_ai_loco_intent(pos: Vec3, dest: Vec3) -> Self {
-        let dir = (pos - dest).normalize();
+        let dir = (dest - pos).normalize();
 
         LocoIntent { x: dir.x, z: dir.z }.clamp_unit()
     }

@@ -3,7 +3,8 @@ use glam::{vec3, Vec3};
 use crate::{
     animation::animator::Animator,
     command_buffer::{
-        CommandBuffer, ImpulseKind, LocoCmd, LocoIntent, PartCmd, PartKind, SoundCmd, SoundKind,
+        CommandBuffer, ImpulseKind, LocoCmd, LocoIntent, LocoSpace, PartCmd, PartKind, SoundCmd,
+        SoundKind,
     },
     entity_manager::EntityManager,
     enums_types::{
@@ -69,6 +70,7 @@ pub fn locomotion_state_machine(
                         intent,
                         allow_trans: true,
                         allow_rot: true,
+                        space: LocoSpace::Camera,
                     });
                     ctrl.jump_command_issued = true;
                 }
@@ -86,6 +88,7 @@ pub fn locomotion_state_machine(
                     intent,
                     allow_trans: false,
                     allow_rot: true,
+                    space: LocoSpace::Camera,
                 });
 
                 let jump_anim = animator.animations.get(&AnimationType::Jump).unwrap();
@@ -168,6 +171,7 @@ pub fn loco_transition(
         intent,
         allow_trans: true,
         allow_rot: true,
+        space: LocoSpace::Camera,
     });
 }
 
