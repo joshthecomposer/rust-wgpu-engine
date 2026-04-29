@@ -82,31 +82,25 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                 }
             }
             Some(ActionKind::Block) => {
-                if anim.can_interrupt() {
-                    cmds.next_anim_from_lookup(eid, "block".to_string(), weap_id);
-                    ctrl.current_action = ActionKind::Block;
+                ctrl.current_action = ActionKind::Block;
+
+                if animator.next_animation != AnimationType::Block && anim.can_interrupt() {
+                    cmds.next_anim(eid, AnimationType::Block, weap_id);
+                }
+
+                if let Some(block_anim) = animator.animations.get(&AnimationType::Block) {
+                    match block_anim.hold_frame {
+                        Some(hold_frame) => {
+                            if block_anim.current_segment.get() >= hold_frame {
+                                cmds.set_anim_hold(eid, AnimationType::Block, true, weap_id);
+                            }
+                        }
+                        None => {
+                            cmds.set_anim_hold(eid, AnimationType::Block, true, weap_id);
+                        }
+                    }
                 }
             }
-            //Some(ActionKind::Block) => {
-            //    ctrl.current_action = ActionKind::Block;
-
-            //    if animator.next_animation != AnimationType::Block && anim.can_interrupt() {
-            //        cmds.next_anim(eid, AnimationType::Block, weap_id);
-            //    }
-
-            //    if let Some(block_anim) = animator.animations.get(&AnimationType::Block) {
-            //        match block_anim.hold_frame {
-            //            Some(hold_frame) => {
-            //                if block_anim.current_segment.get() >= hold_frame {
-            //                    cmds.set_anim_hold(eid, AnimationType::Block, true, weap_id);
-            //                }
-            //            }
-            //            None => {
-            //                cmds.set_anim_hold(eid, AnimationType::Block, true, weap_id);
-            //            }
-            //        }
-            //    }
-            //}
             None => {}
         }
     }

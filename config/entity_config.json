@@ -298,10 +298,10 @@
     },
     "DoubleAxe": {
       "rot_correction": [
-        -0.5,
-        0.5,
-        0.5,
-        0.5
+        0.0,
+        0.0,
+        0.0,
+        1.0
       ],
       "rigid_body_type": null,
       "scale_correction": [
@@ -486,10 +486,10 @@
     },
     "IceStaff": {
       "rot_correction": [
-        0.5,
-        -0.5,
-        0.5,
-        0.5
+        0.0,
+        0.0,
+        0.0,
+        1.0
       ],
       "rigid_body_type": null,
       "scale_correction": [
@@ -819,9 +819,9 @@
       ],
       "rigid_body_type": null,
       "scale_correction": [
-        0.8,
-        0.8,
-        0.8
+        1.0,
+        1.0,
+        1.0
       ],
       "mesh_path": "resources/models/static/FireStaff/mesh.txt",
       "bone_path": null,
@@ -864,14 +864,14 @@
       "rot_correction": [
         0.0,
         0.0,
-        0.5,
-        -0.5
+        0.0,
+        1.0
       ],
       "rigid_body_type": null,
       "scale_correction": [
-        0.7,
-        0.7,
-        0.7
+        1.0,
+        1.0,
+        1.0
       ],
       "mesh_path": "resources/models/static/Staff/mesh.txt",
       "bone_path": null,
