@@ -154,6 +154,7 @@ pub fn import_bone_data(
                         || current_anim_str == "OSBasic1"
                         || current_anim_str == "OSBasic2"
                         || current_anim_str == "OSBasic3"
+                        || current_anim_str == "Roll"
                     {
                         println!("Found {}, setting looping to false", &current_anim_str);
                         animation.looping = false;
@@ -245,6 +246,7 @@ pub fn import_bone_data(
             || current_anim_str == "OSBasic1"
             || current_anim_str == "OSBasic2"
             || current_anim_str == "OSBasic3"
+            || current_anim_str == "Roll"
         {
             println!("Found {}, setting looping to false", &current_anim_str);
             animation.looping = false;

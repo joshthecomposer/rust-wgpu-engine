@@ -74,7 +74,7 @@ fn try_consume_buffered_combat_action(
             true
         }
         EVADE => {
-            cmds.next_anim(player_id, AnimationType::DashF, Some(weap_id));
+            cmds.next_anim(player_id, AnimationType::Roll, Some(weap_id));
             ctrl.combat_state = Some(CombatState::Evade);
             true
         }

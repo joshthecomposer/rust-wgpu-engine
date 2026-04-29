@@ -49,31 +49,34 @@ impl Animator {
     }
 
     pub fn set_next_animation(&mut self, input: AnimationType) {
-        match self.animations.get_mut(&input) {
-            Some(anim) => {
-                if anim.reset_on_change {
-                    anim.current_time = 0.0;
-                }
-            }
-            None => {
-                println!(
-                    "WARNING: passed in an animation that wasn't found: {}",
-                    &input
-                );
-                self.next_animation = self.current_animation.clone();
-                return;
-            }
-        }
-        if self.next_animation != input {
-            self.root_motion_state.last_root_pos = None;
-            self.root_motion_state.frame_root_delta = Vec3::ZERO;
+        if !self.animations.contains_key(&input) {
+            println!(
+                "WARNING: passed in an animation that wasn't found: {}",
+                &input
+            );
+            self.next_animation = self.current_animation.clone();
+            self.blend_factor = 0.0;
+            self.root_motion_state.reset_tracking();
+            return;
         }
 
-        self.next_animation = input;
+        if self.next_animation == input {
+            return;
+        }
+
+        self.next_animation = input.clone();
+        self.blend_factor = 0.0;
+        self.root_motion_state.reset_tracking();
+
+        if let Some(anim) = self.animations.get_mut(&input) {
+            if anim.reset_on_change {
+                anim.current_time = 0.0;
+            }
+        }
     }
 
     pub fn update(&mut self, skellington: &mut Bone, dt: f32) {
-        self.root_motion_state.frame_root_delta = Vec3::ZERO;
+        self.root_motion_state.begin_frame();
 
         if self.current_animation == AnimationType::Death {
             if let Some(anim) = self.animations.get(&AnimationType::Death) {
@@ -121,4 +124,15 @@ pub struct RootMotionState {
     pub root_bone: String,
     pub last_root_pos: Option<Vec3>,
     pub frame_root_delta: Vec3,
+}
+
+impl RootMotionState {
+    pub fn begin_frame(&mut self) {
+        self.frame_root_delta = Vec3::ZERO;
+    }
+
+    pub fn reset_tracking(&mut self) {
+        self.last_root_pos = None;
+        self.frame_root_delta = Vec3::ZERO;
+    }
 }
