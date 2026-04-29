@@ -42,6 +42,7 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                 ctrl.dying_counter += dt;
                 cmds.next_anim(eid, AnimationType::Idle, None);
                 cmds.set_rb_type(eid, RigidBodyType::Dynamic);
+                em.drop_active_items(eid);
                 continue;
             }
             LifeState::Dead => {

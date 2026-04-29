@@ -1262,6 +1262,22 @@ impl EntityManager {
         self.entity_trashcan.clear();
     }
 
+    pub fn drop_active_items(&mut self, id: usize) {
+        if let Some(ai) = self.active_items.get(id) {
+            if let Some(rhid) = ai.right_hand {
+                self.owners.remove(rhid);
+                self.is_equipped.remove(rhid);
+                self.cleanup_timer.insert(rhid, 0.0);
+            }
+            if let Some(lhid) = ai.left_hand {
+                self.owners.remove(lhid);
+                self.is_equipped.remove(lhid);
+                self.cleanup_timer.insert(lhid, 0.0);
+            }
+        }
+        self.active_items.remove(id);
+    }
+
     pub fn get_ids_for_faction(&self, faction: &str) -> Vec<usize> {
         let result: Vec<usize> = self
             .factions
