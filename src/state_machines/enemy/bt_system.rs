@@ -63,7 +63,5 @@ pub fn update(em: &mut EntityManager) {
         bt.update(&mut ctx);
 
         ctrl.desired_action = ctx.desired_action;
-
-        dbg!(ctrl.desired_action);
     }
 }
