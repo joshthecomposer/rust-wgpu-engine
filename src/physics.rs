@@ -99,6 +99,10 @@ impl PhysicsState {
 
                         rb.apply_impulse(jh.precalculated.unwrap(), true);
                     }
+                    PhysOp::SetRbType(rbt) => {
+                        rb.set_body_type(rbt, true);
+                        rb.set_enabled_rotations(true, true, true, true);
+                    }
                 }
             }
         }

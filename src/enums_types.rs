@@ -156,7 +156,7 @@ pub enum LocoState {
     Jumping,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LifeState {
     Alive,
     Dying,
@@ -234,6 +234,8 @@ pub struct EnemyController {
     pub taken_damage_ttl: f32,
     pub desired_action: Option<ActionKind>,
     pub current_action: ActionKind,
+    pub life_state: LifeState,
+    pub dying_counter: f32,
 }
 
 impl Default for EnemyController {
@@ -244,6 +246,8 @@ impl Default for EnemyController {
             taken_damage_ttl: 5.0,
             desired_action: None,
             current_action: ActionKind::Idle,
+            life_state: LifeState::Alive,
+            dying_counter: 0.0,
         }
     }
 }

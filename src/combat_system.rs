@@ -2,7 +2,7 @@ use glam::vec3;
 
 use crate::{
     entity_manager::EntityManager,
-    enums_types::Knockback,
+    enums_types::{Knockback, LifeState},
     particles::ParticleSystem,
     physics::{self, PhysicsState},
 };
@@ -72,6 +72,10 @@ fn handle_melee_hits(em: &mut EntityManager, ps: &mut PhysicsState) {
 
             if let Some(ph) = em.physics_handles.get(target_id) {
                 if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
+                    let health = em.healths.get_mut(target_id).unwrap();
+
+                    *health -= 1.0;
+
                     let kb = Knockback {
                         ttl: 0.35,
                         flinch: false,
@@ -82,9 +86,15 @@ fn handle_melee_hits(em: &mut EntityManager, ps: &mut PhysicsState) {
 
                     enemy_ctrl.took_damage = true;
 
+                    if *health <= 0.0 {
+                        if !matches!(enemy_ctrl.life_state, LifeState::Dying | LifeState::Dead) {
+                            enemy_ctrl.life_state = LifeState::Dying
+                        }
+                    }
+
                     let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
 
-                    physics::apply_delta_v(rb, dir, 1.5);
+                    physics::apply_delta_v(rb, dir, 2.0);
                     em.knockbacks.insert(target_id, kb);
                 }
             }

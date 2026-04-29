@@ -63,7 +63,7 @@ impl SpawnManager {
                                 pickup_range: None,
                             }]),
                             base_speed: Some(3.5),
-                            health: Some(100.0),
+                            health: Some(5.0),
                             max_health: None,
                             mana: None,
                             max_mana: None,

@@ -1,4 +1,5 @@
 use glam::{Quat, Vec3};
+use rapier3d::prelude::RigidBodyType;
 use winit::keyboard::KeyCode;
 
 use crate::{
@@ -119,6 +120,14 @@ impl CommandBuffer {
             op: AnimOp::ResetAttacks,
         });
     }
+    pub fn set_rb_type(&mut self, target: usize, rbt: RigidBodyType) {
+        self.phys.push(PhysCmd {
+            target,
+            source: None,
+            kind: ImpulseKind::World,
+            op: PhysOp::SetRbType(rbt),
+        });
+    }
 }
 
 // ==================================================================================
@@ -130,6 +139,7 @@ pub enum PhysOp {
     SetLinvel(Vec3),
     SetRotation(Quat),
     Jump,
+    SetRbType(RigidBodyType),
 }
 
 #[derive(Clone, Debug)]

@@ -1,8 +1,10 @@
+use rapier3d::prelude::RigidBodyType;
+
 use crate::{
     animation::animator::{self, Animator},
     command_buffer::{CommandBuffer, LocoCmd, LocoIntent, LocoSpace},
     entity_manager::EntityManager,
-    enums_types::{AnimationType, EnemyController},
+    enums_types::{AnimationType, EnemyController, LifeState},
     state_machines::enemy::enemy_behavior_tree::ActionKind,
 };
 
@@ -26,6 +28,28 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             continue;
         };
 
+        // ==========================================
+        // Evaluate death stuff
+        // ==========================================
+
+        if ctrl.dying_counter >= 5.0 {
+            ctrl.life_state = LifeState::Dead;
+        }
+
+        match ctrl.life_state {
+            LifeState::Alive => {}
+            LifeState::Dying => {
+                ctrl.dying_counter += dt;
+                cmds.next_anim(eid, AnimationType::Idle, None);
+                cmds.set_rb_type(eid, RigidBodyType::Dynamic);
+                continue;
+            }
+            LifeState::Dead => {
+                em.entity_trashcan.push(eid);
+                continue;
+            }
+        }
+
         let weap_id = em.active_items.get(eid).and_then(|w| w.right_hand);
 
         let desired_action = ctrl.desired_action;
@@ -37,7 +61,11 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             cmds.set_anim_hold(eid, AnimationType::Block, false, weap_id);
         }
 
-        let can_switch_action = anim.can_interrupt() || leaving_block;
+        let health = em.healths.get(eid).unwrap();
+
+        let dying = *health <= 0.0;
+
+        let can_switch_action = anim.can_interrupt() || leaving_block || dying;
 
         let next_action = if can_switch_action {
             desired_action

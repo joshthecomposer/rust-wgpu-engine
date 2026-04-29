@@ -4,7 +4,7 @@ use glam::Vec3;
 
 use crate::{
     entity_manager::EntityManager,
-    enums_types::{CombatState, ControlState},
+    enums_types::{CombatState, ControlState, LifeState},
     state_machines::enemy::enemy_behavior_tree::BtContext,
 };
 
@@ -21,6 +21,10 @@ pub fn update(em: &mut EntityManager) {
 
         let mut ctx = BtContext::default();
         let ctrl = em.enemy_controllers.get_mut(id).unwrap();
+
+        if ctrl.life_state != LifeState::Alive {
+            continue;
+        }
 
         if let Some(pid) = player_id {
             let player_pos = em.transforms.get(pid).unwrap().position;
