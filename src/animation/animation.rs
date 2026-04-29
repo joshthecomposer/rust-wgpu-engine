@@ -7,7 +7,7 @@ use crate::{
         animator::RootMotionState,
         skellington::{Bone, BoneJoinInfo, BoneTransformTrack},
     },
-    enums_types::{FrameActivation, ANIMATION_EPSILON},
+    enums_types::{AnimationType, FrameActivation, ANIMATION_EPSILON},
     sound::sound_manager::{ContinuousSound, OneShot},
 };
 
@@ -76,30 +76,21 @@ impl Animation {
         skeleton: &mut Bone,
         parent_transform: Mat4,
         global_inverse_transform: Mat4,
-        extract_root_motion: bool,
+        root_motion_source: Option<AnimationType>,
         root_motion_state: &mut RootMotionState,
     ) {
         let delta = self.current_time % self.duration;
         let (mut local_position, local_rot, local_scale) =
             self.get_bone_local_transform(skeleton, delta);
 
-        // Extract planar root motion, then remove that planar translation
-        // from the rendered pose so the mesh doesn't also slide forward.
-        if extract_root_motion && skeleton.name == root_motion_state.root_bone {
-            let authored_root_pos = local_position;
+        if skeleton.name == root_motion_state.root_bone {
+            root_motion_state.use_source(root_motion_source.clone());
 
-            if let Some(last) = root_motion_state.last_root_pos {
-                let mut delta = authored_root_pos - last;
-                delta.y = 0.0;
-                root_motion_state.frame_root_delta = delta;
+            if root_motion_source.is_some() {
+                root_motion_state.sample_root(local_position);
+                local_position.x = 0.0;
+                local_position.z = 0.0;
             }
-
-            root_motion_state.last_root_pos = Some(authored_root_pos);
-
-            // Keep vertical motion if you want hops/bobs visually,
-            // but consume planar motion into gameplay instead of rendering it.
-            local_position.x = 0.0;
-            local_position.z = 0.0;
         }
 
         let local_transform =
@@ -116,7 +107,7 @@ impl Animation {
                 child,
                 global_transform,
                 global_inverse_transform,
-                extract_root_motion,
+                root_motion_source.clone(),
                 root_motion_state,
             );
         }
@@ -132,7 +123,8 @@ impl Animation {
         global_inverse_transform: Mat4,
         other_animation: &mut Animation,
         blend_factor: f32,
-        extract_root_motion: bool,
+        current_key: AnimationType,
+        next_key: AnimationType,
         root_motion_state: &mut RootMotionState,
     ) {
         let delta1 = self.current_time % self.duration;
@@ -145,19 +137,29 @@ impl Animation {
         let final_rot = rot1.slerp(rot2, blend_factor);
         let final_scale = scale1.lerp(scale2, blend_factor);
 
-        // Same idea for blends: extract planar motion from the blended root pose,
-        // then zero out planar render translation so the mesh doesn't double-move.
-        if extract_root_motion && skeleton.name == root_motion_state.root_bone {
-            let authored_root_pos = final_pos;
+        if skeleton.name == root_motion_state.root_bone {
+            let source = if other_animation.do_root_motion {
+                Some(next_key.clone())
+            } else if self.do_root_motion {
+                Some(current_key.clone())
+            } else {
+                None
+            };
 
-            if let Some(last) = root_motion_state.last_root_pos {
-                let mut delta = authored_root_pos - last;
-                delta.y = 0.0;
-                root_motion_state.frame_root_delta = delta;
+            root_motion_state.use_source(source.clone());
+
+            match source {
+                Some(src) if src == next_key => {
+                    root_motion_state.sample_root(pos2);
+                }
+                Some(src) if src == current_key => {
+                    root_motion_state.sample_root(pos1);
+                }
+                _ => {}
             }
 
-            root_motion_state.last_root_pos = Some(authored_root_pos);
-
+            // Important: even though root motion is sampled from one source clip,
+            // the rendered blended root position should still have planar motion removed.
             final_pos.x = 0.0;
             final_pos.z = 0.0;
         }
@@ -169,16 +171,8 @@ impl Animation {
 
         skeleton.global_transform = global_transform;
 
-        self.current_pose[skeleton.id as usize] = match 0 {
-            0 => global_inverse_transform * global_transform * skeleton.offset,
-            1 => global_transform * skeleton.offset * global_inverse_transform,
-            2 => global_transform * skeleton.offset,
-            3 => global_inverse_transform * global_transform,
-            4 => global_inverse_transform * skeleton.offset * global_transform,
-            5 => global_transform * global_inverse_transform * skeleton.offset,
-            10 => Mat4::IDENTITY,
-            _ => global_inverse_transform * global_transform * skeleton.offset,
-        };
+        self.current_pose[skeleton.id as usize] =
+            global_inverse_transform * global_transform * skeleton.offset;
 
         for child in skeleton.children.iter_mut() {
             self.calculate_pose_blended(
@@ -187,7 +181,8 @@ impl Animation {
                 global_inverse_transform,
                 other_animation,
                 blend_factor,
-                extract_root_motion,
+                current_key.clone(),
+                next_key.clone(),
                 root_motion_state,
             );
         }
@@ -272,12 +267,11 @@ impl Animation {
         None
     }
 
-    pub fn update(
+    pub fn update_single(
         &mut self,
         skellington: &mut Bone,
-        other_animation: Option<&mut Animation>,
-        blend_factor: f32,
         dt: f32,
+        current_key: AnimationType,
         root_motion_state: &mut RootMotionState,
     ) {
         if let Some(hold_frame) = self.hold_frame {
@@ -287,11 +281,12 @@ impl Animation {
         }
 
         self.current_time += dt;
+
         if self.current_time > self.duration {
             if self.looping {
                 self.current_time = 0.0;
+                root_motion_state.reset_tracking();
             } else {
-                // self.current_time = self.duration;
                 self.current_time = self.duration - ANIMATION_EPSILON;
             }
         }
@@ -306,33 +301,77 @@ impl Animation {
             }
         }
 
-        if let Some(other_animation) = other_animation {
-            let use_rm = other_animation.do_root_motion;
-
-            if use_rm {}
-            self.calculate_pose_blended(
-                skellington,
-                Mat4::IDENTITY,
-                Mat4::IDENTITY,
-                other_animation,
-                blend_factor,
-                self.do_root_motion,
-                root_motion_state,
-            );
-
-            other_animation.current_time += dt;
-            if other_animation.current_time > other_animation.duration {
-                other_animation.current_time = 0.0;
-            }
+        let root_motion_source = if self.do_root_motion {
+            Some(current_key)
         } else {
-            self.calculate_pose(
-                skellington,
-                Mat4::IDENTITY,
-                Mat4::IDENTITY,
-                self.do_root_motion,
-                root_motion_state,
-            );
+            None
+        };
+
+        self.calculate_pose(
+            skellington,
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            root_motion_source,
+            root_motion_state,
+        );
+    }
+
+    pub fn update_blended(
+        &mut self,
+        skellington: &mut Bone,
+        other_animation: &mut Animation,
+        blend_factor: f32,
+        dt: f32,
+        current_key: AnimationType,
+        next_key: AnimationType,
+        root_motion_state: &mut RootMotionState,
+    ) {
+        if let Some(hold_frame) = self.hold_frame {
+            if self.current_segment.get() == hold_frame && self.do_hold {
+                return;
+            }
         }
+
+        self.current_time += dt;
+
+        if self.current_time > self.duration {
+            if self.looping {
+                self.current_time = 0.0;
+            } else {
+                self.current_time = self.duration - ANIMATION_EPSILON;
+            }
+        }
+
+        other_animation.current_time += dt;
+
+        if other_animation.current_time > other_animation.duration {
+            if other_animation.looping {
+                other_animation.current_time = 0.0;
+            } else {
+                other_animation.current_time = other_animation.duration - ANIMATION_EPSILON;
+            }
+        }
+
+        let skip = self.lod_skip;
+
+        if skip > 0 {
+            self.lod_counter = self.lod_counter.wrapping_add(1);
+
+            if (self.lod_counter % (skip + 1)) != 0 {
+                return;
+            }
+        }
+
+        self.calculate_pose_blended(
+            skellington,
+            Mat4::IDENTITY,
+            Mat4::IDENTITY,
+            other_animation,
+            blend_factor,
+            current_key,
+            next_key,
+            root_motion_state,
+        );
     }
 }
 

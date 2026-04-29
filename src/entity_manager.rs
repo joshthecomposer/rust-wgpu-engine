@@ -551,6 +551,7 @@ impl EntityManager {
                         root_bone: bone.clone(),
                         last_root_pos: None,
                         frame_root_delta: Vec3::ZERO,
+                        active_source: None,
                     };
                 }
 
