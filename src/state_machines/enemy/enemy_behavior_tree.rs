@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config::Config, entity_manager::EntityManager};
 
+use rand::seq::SliceRandom;
+
 #[derive(Clone, Deserialize, Serialize)]
 pub struct BehaviorTree {
     pub root: NodeId,
@@ -23,6 +25,7 @@ impl BehaviorTree {
             BtNode::Condition(node) => self.evaluate_condition(node, ctx),
             BtNode::Sequence(node) => self.evaluate_sequence(node, ctx),
             BtNode::Selector(node) => self.evaluate_selector(node, ctx),
+            BtNode::RandomSelector(node) => self.evaluate_random_selector(node, ctx),
         }
     }
 
@@ -42,6 +45,10 @@ impl BehaviorTree {
             }
             ActionKind::Block => {
                 ctx.desired_action = Some(ActionKind::Block);
+                BtStatus::Running
+            }
+            ActionKind::Dodge => {
+                ctx.desired_action = Some(ActionKind::Dodge);
                 BtStatus::Running
             }
         }
@@ -101,7 +108,24 @@ impl BehaviorTree {
             }
         }
 
-        BtStatus::Success
+        BtStatus::Failure
+    }
+
+    fn evaluate_random_selector(&self, node: &SelectorNode, ctx: &mut BtContext) -> BtStatus {
+        let mut children = node.children.clone();
+
+        let mut rng = rand::rng();
+        children.shuffle(&mut rng);
+
+        for child in &children {
+            match self.visit_node(&child, ctx) {
+                BtStatus::Success => return BtStatus::Success,
+                BtStatus::Failure => continue,
+                BtStatus::Running => return BtStatus::Running,
+            }
+        }
+
+        BtStatus::Failure
     }
 
     #[allow(dead_code)]
@@ -133,6 +157,7 @@ pub enum BtNode {
     Selector(SelectorNode),
     Sequence(SequenceNode),
     Condition(ConditionNode),
+    RandomSelector(SelectorNode),
     // Inverter(InverterNode),
     // RepeatUntilFail(RepeatUntilFailNode),
 }
@@ -163,6 +188,7 @@ pub enum ActionKind {
     ChasePlayer,
     AttackPlayer,
     Block,
+    Dodge,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]

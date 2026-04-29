@@ -24,6 +24,9 @@ pub fn update(em: &mut EntityManager) {
 
         if let Some(pid) = player_id {
             let player_pos = em.transforms.get(pid).unwrap().position;
+            let p_animator = em.animators.get(pid).unwrap();
+            let p_anim = p_animator.get_next_animation().unwrap();
+
             let entity_trans = em.transforms.get(id).unwrap();
             let pctrl = em.player_controllers.get(pid).unwrap();
 
@@ -49,15 +52,15 @@ pub fn update(em: &mut EntityManager) {
                 false
             };
 
-            ctx.player_is_attacking = matches!(
-                pctrl.combat_state,
-                Some(
-                    CombatState::Basic
-                        | CombatState::Skill1
-                        | CombatState::Skill2
-                        | CombatState::Ultimate
-                )
-            );
+            ctx.player_is_attacking = if let Some(hba) = &p_anim.hurtbox_activation {
+                if p_anim.current_segment.get() <= *hba.segment_range.end() {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
         }
 
         bt.update(&mut ctx);

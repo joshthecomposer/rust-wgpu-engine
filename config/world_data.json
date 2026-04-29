@@ -458,7 +458,7 @@
       ],
       "weapons": [
         {
-          "entity_type": "Staff",
+          "entity_type": "OrcSword",
           "faction": "Item",
           "position": [
             0.0,

@@ -669,7 +669,7 @@
           "continuous_sounds": [],
           "hurtbox_activation": [],
           "hold_frame": 5,
-          "interrupt_frame": 8,
+          "interrupt_frame": 10,
           "reset_on_change": true
         },
         {

@@ -59,7 +59,7 @@
     {
       "_idx_": "11",
       "node_type": "Sequence",
-      "children": [12, 13]
+      "children": [12, 14]
     },
     {
       "_idx_": "12",
@@ -70,6 +70,16 @@
       "_idx_": "13",
       "node_type": "Action",
       "action": "Block"
+    },
+    {
+      "_idx_": "14",
+      "node_type": "RandomSelector",
+      "children": [13, 15]
+    },
+    {
+      "_idx_": "15",
+      "node_type": "Action",
+      "action": "Dodge"
     }
   ]
 }

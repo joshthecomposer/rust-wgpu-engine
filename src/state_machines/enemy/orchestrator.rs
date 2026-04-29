@@ -28,11 +28,6 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
 
         let weap_id = em.active_items.get(eid).and_then(|w| w.right_hand);
 
-        let next_action = match anim.can_interrupt() {
-            false => Some(ctrl.current_action),
-            true => ctrl.desired_action,
-        };
-
         let desired_action = ctrl.desired_action;
 
         let leaving_block =
@@ -99,6 +94,12 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                             cmds.set_anim_hold(eid, AnimationType::Block, true, weap_id);
                         }
                     }
+                }
+            }
+            Some(ActionKind::Dodge) => {
+                if anim.can_interrupt() {
+                    cmds.next_anim_from_lookup(eid, "dash".to_string(), weap_id);
+                    ctrl.current_action = ActionKind::Dodge;
                 }
             }
             None => {}
