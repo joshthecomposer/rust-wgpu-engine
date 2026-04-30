@@ -252,7 +252,7 @@ impl Default for EnemyController {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Hash, Eq, Deserialize, Serialize, Copy)]
 pub enum AnimationType {
     Run,
     Idle,
