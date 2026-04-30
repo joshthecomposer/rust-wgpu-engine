@@ -202,12 +202,11 @@ fn transition_to_combat(
 ) {
     match ability {
         EVADE => {
-            println!("IMPULSE");
             cmds.impulse(
                 player_id,
                 None,
                 ImpulseKind::Action,
-                glam::vec3(10.0, 1.0, 10.0),
+                glam::vec3(1000.0, 1.0, 1000.0),
             );
         }
         _ => (),
