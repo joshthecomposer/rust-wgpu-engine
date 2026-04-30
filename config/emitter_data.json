@@ -26,36 +26,42 @@
         ]
       ],
       "particle_lifetime": [
-        0.8,
-        3.0
+        2.0,
+        7.0
       ],
       "particle_scale": [
-        0.09,
-        0.2
+        0.5,
+        1.0
       ],
       "particle_count": 3,
       "colors": [
         [
-          0.498,
-          0.498,
-          0.498,
-          0.7
+          0.01,
+          0.01,
+          0.01,
+          1.0
+        ],
+        [
+          0.5,
+          0.5,
+          0.5,
+          1.0
         ]
       ],
       "texture_path": "resources/textures/particles/smoke.png",
       "texture_idx": 1,
       "texture_has_alpha": true,
       "radial_speed": [
-        0.0,
-        0.12
+        0.12,
+        0.25
       ],
       "up_speed": [
         0.0,
         1.0
       ],
       "jitter": [
-        0.3,
-        0.8
+        0.5,
+        1.2
       ],
       "base_alpha": [
         0.40,
@@ -64,11 +70,11 @@
       "alpha_multiplier": 0.0,
       "alpha_power": 0.35,
       "base_scale": [
-        0.16,
-        0.198
+        0.25,
+        0.5
       ],
-      "scale_multiplier": 8.0,
-      "scale_power": 0.2,
+      "scale_multiplier": 5.0,
+      "scale_power": 1.0,
       "direction": [
         0.0,
         1.0,

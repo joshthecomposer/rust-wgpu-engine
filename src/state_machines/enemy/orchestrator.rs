@@ -3,9 +3,11 @@ use rapier3d::prelude::RigidBodyType;
 
 use crate::{
     animation::animator::{self, Animator},
-    command_buffer::{CommandBuffer, LocoCmd, LocoIntent, LocoSpace, PartCmd, PartKind},
+    command_buffer::{
+        CommandBuffer, LocoCmd, LocoIntent, LocoSpace, PartCmd, PartKind, SoundCmd, SoundKind,
+    },
     entity_manager::EntityManager,
-    enums_types::{AnimationType, EnemyController, LifeState},
+    enums_types::{AnimationType, EnemyController, LifeState, SoundType},
     state_machines::enemy::enemy_behavior_tree::ActionKind,
 };
 
@@ -57,6 +59,10 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                 for bone in &skellington.children {
                     stack.push(bone);
                 }
+
+                cmds.sound.push(SoundCmd {
+                    kind: SoundKind::Sound3d(SoundType::Bloop, trans.position),
+                });
 
                 while let Some(bone) = stack.pop() {
                     let bone_world = entity_world * bone.global_transform;
