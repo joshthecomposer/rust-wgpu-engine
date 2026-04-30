@@ -200,17 +200,6 @@ fn transition_to_combat(
     ability: u32,
     weap_id: usize,
 ) {
-    match ability {
-        EVADE => {
-            cmds.impulse(
-                player_id,
-                None,
-                ImpulseKind::Action,
-                glam::vec3(1000.0, 1.0, 1000.0),
-            );
-        }
-        _ => (),
-    }
     ctrl.control_state = ControlState::Combat;
     cmds.next_anim_from_lookup(player_id, ability_to_anim_lookup(ability), Some(weap_id));
     ctrl.combat_state = Some(ability_to_state(ability));
