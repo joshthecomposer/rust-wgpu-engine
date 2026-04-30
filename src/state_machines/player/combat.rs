@@ -5,7 +5,7 @@ use winit::keyboard::KeyCode;
 
 use crate::{
     animation::{animation::Animation, animator::Animator},
-    command_buffer::{CommandBuffer, ImpulseKind, LocoIntent, PartCmd, PartKind},
+    command_buffer::{CommandBuffer, ImpulseKind, LocoIntent, LocoSpace, PartCmd, PartKind},
     enums_types::{
         AnimationType, BufferedAction, CombatState, ControlState, LocoState, PlayerController,
         ANIMATION_EPSILON,
@@ -53,7 +53,18 @@ pub fn combat_state_machine(
         }
     }
 
-    try_reset_to_loco(player_id, weap_id, anim, ctrl, cmds);
+    if try_reset_to_loco(player_id, weap_id, anim, ctrl, cmds) {
+        return;
+    } else {
+        // always allow rotation if in combat for now
+        cmds.loco.push(crate::command_buffer::LocoCmd {
+            target: player_id,
+            intent,
+            allow_trans: false,
+            allow_rot: true,
+            space: LocoSpace::Camera,
+        });
+    }
 }
 
 fn try_consume_buffered_combat_action(
@@ -143,7 +154,7 @@ pub fn try_reset_to_loco(
     anim: &Animation,
     ctrl: &mut PlayerController,
     cmds: &mut CommandBuffer,
-) {
+) -> bool {
     if anim.current_time >= anim.duration - ANIMATION_EPSILON {
         cmds.next_anim(player_id, AnimationType::Idle, None);
         ctrl.loco_state = LocoState::Idle;
@@ -152,5 +163,8 @@ pub fn try_reset_to_loco(
         ctrl.control_state = ControlState::Player;
         ctrl.particle_cmd_issued = false;
         cmds.reset_attacks(player_id, Some(weap_id));
+        true
+    } else {
+        false
     }
 }
