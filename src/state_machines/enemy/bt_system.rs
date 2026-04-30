@@ -36,28 +36,24 @@ pub fn update(em: &mut EntityManager) {
             let p_anim = p_animator.get_next_animation().unwrap();
 
             let entity_trans = em.transforms.get(id).unwrap();
-            let pctrl = em.player_controllers.get(pid).unwrap();
 
-            let fov_threshold = 0.5;
-            let to_player = (player_pos - entity_trans.position)
-                .with_y(0.0)
-                .normalize_or_zero();
+            //ctx.can_see_player = {
+            //    let forward = (entity_trans.rotation * Vec3::Z)
+            //        .with_y(0.0)
+            //        .normalize_or_zero();
+            //    let alignment = forward.dot(to_player);
 
-            ctx.can_see_player = {
-                let forward = (entity_trans.rotation * Vec3::Z)
-                    .with_y(0.0)
-                    .normalize_or_zero();
-                let alignment = forward.dot(to_player);
-
-                alignment >= fov_threshold
-            };
+            //    alignment >= fov_threshold
+            //};
+            ctx.can_see_player = true;
 
             ctx.is_in_melee_range = entity_trans.position.distance(player_pos) <= 1.0;
-            ctx.is_in_aggro_range = if let Some(ar) = em.aggro_ranges.get(id) {
-                entity_trans.position.distance(player_pos) <= *ar
-            } else {
-                false
-            };
+            //ctx.is_in_aggro_range = if let Some(ar) = em.aggro_ranges.get(id) {
+            //    entity_trans.position.distance(player_pos) <= *ar
+            //} else {
+            //    false
+            //};
+            ctx.is_in_aggro_range = true;
 
             ctx.player_is_attacking = if let Some(hba) = &p_anim.hurtbox_activation {
                 if p_anim.current_segment.get() <= *hba.segment_range.end() {
