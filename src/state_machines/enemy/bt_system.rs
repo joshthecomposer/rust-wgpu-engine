@@ -22,6 +22,10 @@ pub fn update(em: &mut EntityManager) {
         let mut ctx = BtContext::default();
         let ctrl = em.enemy_controllers.get_mut(id).unwrap();
 
+        if ctrl.took_damage {
+            continue;
+        }
+
         if ctrl.life_state != LifeState::Alive {
             continue;
         }
@@ -48,7 +52,6 @@ pub fn update(em: &mut EntityManager) {
                 alignment >= fov_threshold
             };
 
-            ctx.was_recently_damaged = ctrl.took_damage;
             ctx.is_in_melee_range = entity_trans.position.distance(player_pos) <= 1.0;
             ctx.is_in_aggro_range = if let Some(ar) = em.aggro_ranges.get(id) {
                 entity_trans.position.distance(player_pos) <= *ar

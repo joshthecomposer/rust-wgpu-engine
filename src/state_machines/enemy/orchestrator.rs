@@ -51,6 +51,12 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             }
         }
 
+        if ctrl.took_damage {
+            cmds.next_anim(eid, AnimationType::Stagger, None);
+            ctrl.took_damage = false;
+            continue;
+        }
+
         let weap_id = em.active_items.get(eid).and_then(|w| w.right_hand);
 
         let desired_action = ctrl.desired_action;
@@ -80,22 +86,25 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                 ctrl.current_action = ActionKind::Idle;
             }
             Some(ActionKind::ChasePlayer) => {
-                if let Some(pid) = player_id {
-                    let ptrans = em.transforms.get(pid).unwrap();
-                    let etrans = em.transforms.get(eid).unwrap();
-                    em.destinations.insert(eid, ptrans.position);
-                    cmds.next_anim(eid, AnimationType::Run, weap_id);
-                    ctrl.current_action = ActionKind::ChasePlayer;
-                    let intent = LocoIntent::build_ai_loco_intent(etrans.position, ptrans.position);
+                if anim.can_interrupt() {
+                    if let Some(pid) = player_id {
+                        let ptrans = em.transforms.get(pid).unwrap();
+                        let etrans = em.transforms.get(eid).unwrap();
+                        em.destinations.insert(eid, ptrans.position);
+                        cmds.next_anim(eid, AnimationType::Run, weap_id);
+                        ctrl.current_action = ActionKind::ChasePlayer;
+                        let intent =
+                            LocoIntent::build_ai_loco_intent(etrans.position, ptrans.position);
 
-                    if !intent.is_zero() {
-                        cmds.loco.push(LocoCmd {
-                            target: eid,
-                            intent,
-                            allow_trans: true,
-                            allow_rot: true,
-                            space: LocoSpace::World,
-                        });
+                        if !intent.is_zero() {
+                            cmds.loco.push(LocoCmd {
+                                target: eid,
+                                intent,
+                                allow_trans: true,
+                                allow_rot: true,
+                                space: LocoSpace::World,
+                            });
+                        }
                     }
                 }
             }

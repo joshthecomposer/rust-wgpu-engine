@@ -722,6 +722,16 @@
           "interrupt_frame": 20,
           "reset_on_change": true,
           "do_root_motion": true
+        },
+        {
+          "name": "Stagger",
+          "one_shots": {},
+          "continuous_sounds": [],
+          "hurtbox_activation": [],
+          "hold_frame": null,
+          "interrupt_frame": 20,
+          "reset_on_change": true,
+          "do_root_motion": false
         }
       ],
       "item_bones": {
