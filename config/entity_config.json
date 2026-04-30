@@ -613,7 +613,7 @@
           "continuous_sounds": [],
           "hurtbox_activation": [],
           "hold_frame": null,
-          "reset_on_change": false,
+          "reset_on_change": false
         },
         {
           "name": "Basic1",
