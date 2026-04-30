@@ -443,7 +443,7 @@
       "pickup_range": null
     },
     {
-      "entity_type": "YRobot",
+      "entity_type": "Peasant1",
       "faction": "Player",
       "position": [
         -10.508932,
