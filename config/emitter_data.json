@@ -109,8 +109,8 @@
         ]
       ],
       "particle_lifetime": [
-        0.35,
-        1.0
+        3.0,
+        3.0
       ],
       "particle_scale": [
         0.005,
@@ -119,39 +119,39 @@
       "particle_count": 8,
       "colors": [
         [
-          0.58,
-          0.1,
-          0.1,
-          1.0
+            0.16,
+            0.01,
+            0.008,
+            1.0
         ]
       ],
       "texture_path": null,
       "texture_idx": null,
       "texture_has_alpha": false,
       "radial_speed": [
-        0.0,
-        0.0
+        0.01,
+        0.08
       ],
       "up_speed": [
-        0.0,
-        0.0
+        0.1,
+        0.3
       ],
       "jitter": [
-        0.0,
-        0.0
+        0.02,
+        0.1
       ],
       "base_alpha": [
-        0.0,
-        0.0
+        0.89,
+        0.89
       ],
-      "alpha_multiplier": 0.0,
-      "alpha_power": 0.0,
+      "alpha_multiplier": 1.0,
+      "alpha_power": 1.0,
       "base_scale": [
-        0.0,
-        0.0
+        0.04,
+        0.09
       ],
-      "scale_multiplier": 0.0,
-      "scale_power": 0.0,
+      "scale_multiplier": 1.0,
+      "scale_power": 1.0,
       "direction": [
         0.0,
         0.0,
