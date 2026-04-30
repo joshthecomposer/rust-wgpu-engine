@@ -34,9 +34,9 @@ impl SpawnManager {
 
         if self.accumulator >= self.spawn_every {
             self.accumulator -= self.spawn_every;
-            match Self::find_spawn_point(em, ps) {
-                Some(point) => {
-                    for _ in 0..self.amount_per {
+            for _ in 0..self.amount_per {
+                match Self::find_spawn_point(em, ps) {
+                    Some(point) => {
                         let weapon_type =
                             &enemy_weapon_types[em.rng.random_range(0..enemy_weapon_types.len())];
 
@@ -76,9 +76,9 @@ impl SpawnManager {
                         let parent_id = em.create_mesh_entity(&instance, ps);
                         em.populate_inventory(parent_id, &instance, ps);
                     }
-                }
-                None => {
-                    dbg!("Somehow we didn't get a spawn??? why?????");
+                    None => {
+                        dbg!("Somehow we didn't get a spawn??? why?????");
+                    }
                 }
             }
         }

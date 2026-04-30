@@ -1,8 +1,9 @@
+use glam::{Mat4, Vec3};
 use rapier3d::prelude::RigidBodyType;
 
 use crate::{
     animation::animator::{self, Animator},
-    command_buffer::{CommandBuffer, LocoCmd, LocoIntent, LocoSpace},
+    command_buffer::{CommandBuffer, LocoCmd, LocoIntent, LocoSpace, PartCmd, PartKind},
     entity_manager::EntityManager,
     enums_types::{AnimationType, EnemyController, LifeState},
     state_machines::enemy::enemy_behavior_tree::ActionKind,
@@ -36,17 +37,46 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             ctrl.life_state = LifeState::Dead;
         }
 
+        let skellington = em.skellingtons.get(eid).unwrap();
+        let trans = em.transforms.get(eid).unwrap();
+
         match ctrl.life_state {
             LifeState::Alive => {}
             LifeState::Dying => {
-                ctrl.dying_counter += dt;
-                cmds.next_anim(eid, AnimationType::Idle, None);
-                cmds.set_rb_type(eid, RigidBodyType::Dynamic);
-                em.drop_active_items(eid);
+                let Some(t) = em.transforms.get(eid) else {
+                    em.entity_trashcan.push(eid);
+                    continue;
+                };
+
+                let entity_world =
+                    glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
+
+                // Walk the full bone tree, not just the root's direct children.
+                let mut stack = Vec::new();
+
+                for bone in &skellington.children {
+                    stack.push(bone);
+                }
+
+                while let Some(bone) = stack.pop() {
+                    let bone_world = entity_world * bone.global_transform;
+                    let pos = bone_world.w_axis.truncate();
+
+                    cmds.particles.push(PartCmd {
+                        name: "BodyPoof".to_string(),
+                        kind: PartKind::WorldOrigin(pos),
+                        direction: Vec3::Y,
+                    });
+
+                    for child in &bone.children {
+                        stack.push(child);
+                    }
+                }
+
+                em.entity_trashcan.push(eid);
                 continue;
             }
             LifeState::Dead => {
-                em.entity_trashcan.push(eid);
                 continue;
             }
         }
