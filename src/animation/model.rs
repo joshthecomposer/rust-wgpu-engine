@@ -79,7 +79,7 @@ impl Model {
         }
     }
 
-    /// Convenience: get by "type" using a fixed mapping
+    // Convenience: get by "type" using a fixed mapping
     // pub fn get_tex_by_type(&self, tex_type: &str) -> Option<&Texture> {
     //     match tex_type {
     //         "Diffuse" => self.textures[0].as_ref(),
