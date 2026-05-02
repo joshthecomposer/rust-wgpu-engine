@@ -1,5 +1,5 @@
 //! Ability bar renderer - renders ability bar to an offscreen FBO for compositing.
-//! Uses a separate Slint window with PBO-based rendering to avoid CPU readback.
+//! Uses a separate Slint window with renderer-owned texture upload helpers.
 //! Implements throttled updates to reduce Slint dirty checking overhead.
 
 use std::rc::Rc;
@@ -8,7 +8,7 @@ use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgb
 use slint::PhysicalSize;
 
 use crate::gl_call;
-use crate::renderer::{Renderer, UiTextureDescriptor};
+use crate::renderer::{Renderer, UiTextureDescriptor, UiUploadBuffer};
 use crate::ui::game::views::ability_bar::SlotDisplayData;
 use crate::ui::image_cache::UiImageCache;
 
@@ -31,7 +31,7 @@ pub struct AbilityBarRenderer {
     window: Rc<MinimalSoftwareWindow>,
     ability_bar: AbilityBarStandalone,
     texture: u32,
-    pbo: u32,
+    ui_upload_buffer: UiUploadBuffer,
     width: u32,
     height: u32,
 
@@ -66,14 +66,14 @@ impl AbilityBarRenderer {
             None,
         );
 
-        // create PBO for async upload
-        let pbo = Renderer::create_ui_upload_pbo();
+        // Native builds currently back this with a PBO; the API stays upload-path neutral.
+        let ui_upload_buffer = Renderer::create_ui_upload_buffer();
 
         Self {
             window,
             ability_bar,
             texture,
-            pbo,
+            ui_upload_buffer,
             width,
             height,
             cached_slots: Default::default(),
@@ -133,7 +133,7 @@ impl AbilityBarRenderer {
         self.ability_bar.set_slot_r(slots[2].to_slint(image_cache));
     }
 
-    /// Render the ability bar to the FBO texture using PBO for zero-copy upload.
+    /// Render the ability bar to the texture using the renderer-owned upload path.
     pub fn render(&mut self) {
         if !self.needs_render {
             return;
@@ -144,8 +144,8 @@ impl AbilityBarRenderer {
         self.window.draw_if_needed(|renderer| {
             let size = (self.width * self.height * 4) as isize;
             let pixel_count = (self.width * self.height) as usize;
-            Renderer::write_ui_upload_pbo(
-                self.pbo,
+            Renderer::write_ui_upload_buffer(
+                self.ui_upload_buffer,
                 size,
                 pixel_count,
                 true,
@@ -155,10 +155,9 @@ impl AbilityBarRenderer {
             );
         });
 
-        // upload to texture from PBO
-        Renderer::update_ui_texture_from_pbo(
+        Renderer::update_ui_texture_from_upload_buffer(
             self.texture,
-            self.pbo,
+            self.ui_upload_buffer,
             UiTextureDescriptor::rgba_linear_clamped(self.width, self.height),
         );
 
@@ -175,7 +174,7 @@ impl Drop for AbilityBarRenderer {
     fn drop(&mut self) {
         unsafe {
             gl_call!(gl::DeleteTextures(1, &self.texture));
-            gl_call!(gl::DeleteBuffers(1, &self.pbo));
+            Renderer::delete_ui_upload_buffer(self.ui_upload_buffer);
         }
     }
 }

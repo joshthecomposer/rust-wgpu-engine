@@ -132,10 +132,10 @@ impl AbilityBarView {
         let rgba = img.to_rgba8();
         let raw = rgba.as_raw();
 
-        Renderer::create_ui_texture(
-            UiTextureDescriptor::rgba8_linear_clamped(width, height),
-            Some(raw),
-        )
+        let desc = UiTextureDescriptor::rgba8_linear_clamped(width, height);
+        let texture = Renderer::create_ui_texture(desc, None);
+        Renderer::update_ui_texture_from_pixels(texture, desc, raw);
+        texture
     }
 
     /// Process input and update tooltips.

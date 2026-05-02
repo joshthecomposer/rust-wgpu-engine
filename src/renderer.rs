@@ -75,6 +75,11 @@ pub struct UiTextureDescriptor {
     pub wrap_t: UiTextureWrap,
 }
 
+#[derive(Clone, Copy)]
+pub struct UiUploadBuffer {
+    id: u32,
+}
+
 impl UiTextureDescriptor {
     pub fn rgba_linear_clamped(width: u32, height: u32) -> Self {
         Self {
@@ -1367,9 +1372,13 @@ impl Renderer {
         });
     }
 
-    pub fn update_ui_texture_from_pbo(texture: u32, pbo: u32, desc: UiTextureDescriptor) {
+    pub fn update_ui_texture_from_upload_buffer(
+        texture: u32,
+        upload_buffer: UiUploadBuffer,
+        desc: UiTextureDescriptor,
+    ) {
         Self::with_ui_unpack_alignment(desc.format, || unsafe {
-            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, pbo));
+            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, upload_buffer.id));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
             gl_call!(gl::TexSubImage2D(
                 gl::TEXTURE_2D,
@@ -1385,6 +1394,22 @@ impl Renderer {
             gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
         });
+    }
+
+    pub fn update_ui_texture_from_pixels(
+        texture: u32,
+        desc: UiTextureDescriptor,
+        pixels: &[u8],
+    ) {
+        Self::update_ui_texture_region(
+            texture,
+            desc.format,
+            0,
+            0,
+            desc.width as i32,
+            desc.height as i32,
+            pixels,
+        );
     }
 
     pub fn update_ui_texture_region(
@@ -1412,23 +1437,29 @@ impl Renderer {
         });
     }
 
-    pub fn create_ui_upload_pbo() -> u32 {
-        let mut pbo = 0;
+    pub fn create_ui_upload_buffer() -> UiUploadBuffer {
+        let mut id = 0;
         unsafe {
-            gl_call!(gl::GenBuffers(1, &mut pbo));
+            gl_call!(gl::GenBuffers(1, &mut id));
         }
-        pbo
+        UiUploadBuffer { id }
     }
 
-    pub fn write_ui_upload_pbo<T>(
-        pbo: u32,
+    pub fn delete_ui_upload_buffer(upload_buffer: UiUploadBuffer) {
+        unsafe {
+            gl_call!(gl::DeleteBuffers(1, &upload_buffer.id));
+        }
+    }
+
+    pub fn write_ui_upload_buffer<T>(
+        upload_buffer: UiUploadBuffer,
         byte_len: isize,
         item_count: usize,
         allocate_storage: bool,
         write: impl FnOnce(&mut [T]),
     ) {
         unsafe {
-            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, pbo));
+            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, upload_buffer.id));
             if allocate_storage {
                 gl_call!(gl::BufferData(
                     gl::PIXEL_UNPACK_BUFFER,

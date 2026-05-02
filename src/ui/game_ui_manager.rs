@@ -16,7 +16,7 @@ use crate::entity_manager::EntityManager;
 use crate::gl_call;
 use crate::input::InputState;
 use crate::lights::Lights;
-use crate::renderer::{DefaultTextures, Renderer, UiTextureDescriptor};
+use crate::renderer::{DefaultTextures, Renderer, UiTextureDescriptor, UiUploadBuffer};
 use crate::shaders::Shader;
 use crate::ui::game::views::ability_bar::AbilityBarData;
 use crate::ui::game::views::{GameRootContext, GameRootView, SettingsContext, SystemContext};
@@ -73,7 +73,7 @@ pub struct GameUiManager {
     needs_texture_resize: bool,
     overlay_vao: u32,
     overlay_vbo: u32,
-    pbo: u32,
+    ui_upload_buffer: UiUploadBuffer,
 
     is_paused: bool,
 
@@ -113,8 +113,8 @@ impl GameUiManager {
         // create VAO/VBO for fullscreen quad overlay
         let (overlay_vao, overlay_vbo) = Self::create_overlay_quad();
 
-        // create PBO for async texture upload
-        let pbo = Renderer::create_ui_upload_pbo();
+        // Native builds currently back this with a PBO; WebGL can use the same handle-shaped API differently.
+        let ui_upload_buffer = Renderer::create_ui_upload_buffer();
 
         // create portrait renderer for player HUD
         let portrait_renderer = PortraitRenderer::new();
@@ -155,7 +155,7 @@ impl GameUiManager {
             needs_texture_resize: false,
             overlay_vao,
             overlay_vbo,
-            pbo,
+            ui_upload_buffer,
             is_paused: false,
             game_hud_view,
             pause_menu_view,
@@ -472,7 +472,7 @@ impl GameUiManager {
         self.last_render_time = elapsed_time;
 
         // --------------------------------------------------------
-        // PART 1: PBO Upload (Zero-Copy Slint Render)
+        // PART 1: UI texture upload
         // --------------------------------------------------------
         let texture_desc = UiTextureDescriptor::rgba_linear_clamped(self.width, self.height);
         if self.needs_texture_resize {
@@ -486,8 +486,8 @@ impl GameUiManager {
         self.window.draw_if_needed(|renderer| {
             let size = (self.width * self.height * 4) as isize;
             let pixel_count = (self.width * self.height) as usize;
-            Renderer::write_ui_upload_pbo(
-                self.pbo,
+            Renderer::write_ui_upload_buffer(
+                self.ui_upload_buffer,
                 size,
                 pixel_count,
                 self.needs_texture_resize,
@@ -500,7 +500,11 @@ impl GameUiManager {
             }
         });
 
-        Renderer::update_ui_texture_from_pbo(self.texture, self.pbo, texture_desc);
+        Renderer::update_ui_texture_from_upload_buffer(
+            self.texture,
+            self.ui_upload_buffer,
+            texture_desc,
+        );
 
         // --------------------------------------------------------
         // PART 2: Compositing
@@ -649,7 +653,7 @@ impl Drop for GameUiManager {
             gl_call!(gl::DeleteTextures(1, &self.texture));
             gl_call!(gl::DeleteVertexArrays(1, &self.overlay_vao));
             gl_call!(gl::DeleteBuffers(1, &self.overlay_vbo));
-            gl_call!(gl::DeleteBuffers(1, &self.pbo));
+            Renderer::delete_ui_upload_buffer(self.ui_upload_buffer);
         }
     }
 }
