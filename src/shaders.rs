@@ -26,14 +26,15 @@ impl Shader {
     }
 
     pub fn new_with_profile(file_path: &str, profile: ShaderProfile) -> Self {
-        let id = init_shader_program_with_profile(file_path, profile);
+        let source_path = shader_source_path(file_path, profile);
+        let id = init_shader_program_with_profile(source_path, profile);
 
         let mut shader = Self {
             id,
             uniform_locations: HashMap::new(),
         };
 
-        shader.parse_and_store_uniforms(file_path);
+        shader.parse_and_store_uniforms(source_path);
 
         shader
     }
@@ -277,7 +278,8 @@ pub fn init_shader_program(file_path: &str) -> u32 {
 }
 
 pub fn init_shader_program_with_profile(file_path: &str, profile: ShaderProfile) -> u32 {
-    let (vs_source, gs_source, fs_source) = extract_shader_sources(file_path, profile);
+    let source_path = shader_source_path(file_path, profile);
+    let (vs_source, gs_source, fs_source) = extract_shader_sources(source_path, profile);
 
     let vs_cstr = CString::new(vs_source).expect("Failed to convert vs source to C string");
     let fs_cstr = CString::new(fs_source).expect("Failed to convert fs source to C string");
@@ -322,6 +324,15 @@ pub fn init_shader_program_with_profile(file_path: &str, profile: ShaderProfile)
             gl::DeleteShader(geometry_shader);
         }
         shader
+    }
+}
+
+fn shader_source_path(file_path: &str, profile: ShaderProfile) -> &str {
+    match (profile, file_path) {
+        (ShaderProfile::GlslEs300, "resources/shaders/custom_ui.glsl") => {
+            "resources/shaders/custom_ui_es300.glsl"
+        }
+        _ => file_path,
     }
 }
 

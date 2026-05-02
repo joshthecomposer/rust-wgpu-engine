@@ -25,7 +25,6 @@ use crate::{
     platform::{GlCapabilities, Platform},
     shaders::Shader,
     sound::sound_manager::SoundManager,
-    ui::game_ui_manager::{GameUiManager, PortraitRenderContext},
     util::constants::{
         BASIC_QUAD_VERTICES, FACES_CUBEMAP, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES,
         SKYBOX_VERTICES, UNIT_CUBE_VERTICES,
@@ -167,6 +166,10 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(platform: &Platform, config: &GameConfig) -> Self {
+        if config.webgl_compatibility_mode || platform.capabilities.is_gles_like {
+            return Self::new_webgl_compatibility(platform, config);
+        }
+
         let render_gizmos = config.render_gizmos;
         // =============================================================
         // Setup Shaders
@@ -209,7 +212,6 @@ impl Renderer {
 
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
-        let game_ui_shader = Shader::new("resources/shaders/game_ui.glsl");
         let hdr_shader = Shader::new("resources/shaders/hdr.glsl");
         let blur_shader = Shader::new("resources/shaders/blur.glsl");
         let fxaa_shader = Shader::new("resources/shaders/fxaa.glsl");
@@ -826,10 +828,6 @@ impl Renderer {
         debug_depth_quad.activate();
         debug_depth_quad.store_uniform_location("depth_map");
         debug_depth_quad.set_int("depth_map", 0);
-        let ui_overlay_shader = Shader::new("resources/shaders/ui_overlay.glsl");
-        ui_overlay_shader.activate();
-        ui_overlay_shader.set_int("ui_texture", 0);
-
         //shaders.insert(ShaderType::Model, model_shader);
         shaders.insert(ShaderType::Skybox, skybox_shader);
         shaders.insert(ShaderType::DebugLight, debug_light_shader);
@@ -838,8 +836,6 @@ impl Renderer {
         shaders.insert(ShaderType::Text, text_shader);
         shaders.insert(ShaderType::Gizmo, gizmo_shader);
         shaders.insert(ShaderType::Particles, particle_shader);
-        shaders.insert(ShaderType::GameUi, game_ui_shader);
-        shaders.insert(ShaderType::UiOverlay, ui_overlay_shader);
         shaders.insert(ShaderType::HDR, hdr_shader);
         shaders.insert(ShaderType::Blur, blur_shader);
         shaders.insert(ShaderType::StaticModel, static_model_shader);
@@ -890,6 +886,51 @@ impl Renderer {
         renderer
     }
 
+    fn new_webgl_compatibility(platform: &Platform, config: &GameConfig) -> Self {
+        let defaults = DefaultTextures {
+            white: Self::make_solid_texture(255, 255, 255, 255),
+            black: Self::make_solid_texture(0, 0, 0, 255),
+            opaque: Self::make_solid_texture(255, 255, 255, 255),
+        };
+
+        Self {
+            capabilities: platform.capabilities.clone(),
+            shaders: HashMap::new(),
+            vaos: HashMap::new(),
+            fbos: HashMap::new(),
+            defaults,
+            depth_map: 0,
+            cubemap_texture: 0,
+            shadow_debug: false,
+            render_gizmos: config.render_gizmos,
+            hdr_color: 0,
+            hdr_bright: 0,
+            pingpong_fbos: [0; 2],
+            pingpong_tex: [0; 2],
+            exposure: 1.0,
+            do_hdr: false,
+            bloom_strength: 0.0,
+            do_msaa: false,
+            do_fxaa: false,
+            fxaa_fbo: 0,
+            fxaa_tex: 0,
+            bloom_mips: Vec::new(),
+            hdr_depth: 0,
+        }
+    }
+
+    pub fn render_webgl_compatibility_frame(&mut self, fb_width: u32, fb_height: u32) {
+        unsafe {
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
+            gl_call!(gl::Disable(gl::DEPTH_TEST));
+            gl_call!(gl::Disable(CULL_FACE));
+            gl_call!(gl::Disable(gl::SCISSOR_TEST));
+            gl_call!(gl::ClearColor(0.02, 0.02, 0.03, 1.0));
+            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT));
+        }
+    }
+
     pub fn render_world(
         &mut self,
         em: &mut EntityManager,
@@ -915,32 +956,6 @@ impl Renderer {
             alpha,
             particles,
         );
-    }
-
-    pub fn render_game_portrait(
-        &mut self,
-        game_ui: &mut GameUiManager,
-        entity_manager: &EntityManager,
-        lights: &Lights,
-        elapsed_time: f64,
-    ) {
-        // Phase 1 renderer boundary: Game should not reach into renderer-owned shader and texture handles.
-        let shader = self.shaders.get_mut(&ShaderType::AnimatedModel).unwrap();
-        let portrait_ctx = PortraitRenderContext {
-            entity_manager,
-            shader,
-            lights,
-            defaults: &self.defaults,
-            cubemap: self.cubemap_texture,
-            elapsed_time,
-        };
-        game_ui.render_portrait(portrait_ctx);
-    }
-
-    pub fn render_game_overlay(&mut self, game_ui: &mut GameUiManager, elapsed_time: f64) {
-        // Phase 1 renderer boundary: overlay shader selection stays inside the renderer.
-        let shader = self.shaders.get_mut(&ShaderType::UiOverlay).unwrap();
-        game_ui.render(shader, elapsed_time);
     }
 
     pub fn draw(
@@ -1218,6 +1233,10 @@ impl Renderer {
         _ps: &PhysicsState,
         alpha: f32,
     ) {
+        if !self.supports_gizmo_wireframe() {
+            return;
+        }
+
         unsafe {
             gl_call!(gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE));
         }
@@ -1247,6 +1266,10 @@ impl Renderer {
         unsafe {
             gl_call!(gl::PolygonMode(gl::FRONT_AND_BACK, gl::FILL));
         }
+    }
+
+    fn supports_gizmo_wireframe(&self) -> bool {
+        !self.capabilities.is_gles_like
     }
 
     fn make_solid_texture(r: u8, g: u8, b: u8, a: u8) -> u32 {

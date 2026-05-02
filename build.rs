@@ -33,8 +33,4 @@ fn main() {
         }
     }
 
-    let config = slint_build::CompilerConfiguration::new()
-        .embed_resources(slint_build::EmbedResourcesKind::EmbedForSoftwareRenderer);
-    // compile the game UI root (pause menu, etc.) without any engine/editor UI
-    slint_build::compile_with_config("resources/ui/game_root.slint", config).unwrap();
 }

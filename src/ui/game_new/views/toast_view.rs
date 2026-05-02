@@ -1,6 +1,4 @@
 //! ToastView - manages the toast notification UI in the custom GPU UI system.
-//!
-//! Replaces the Slint-based toast implementation.
 
 use std::collections::HashMap;
 

@@ -7,7 +7,7 @@ use crate::gl_call;
 use crate::renderer::{Renderer, UiTextureDescriptor, UiTextureFormat};
 use crate::ui::game_new::font_system::FontSystem;
 
-use crate::shaders::Shader;
+use crate::shaders::{Shader, ShaderProfile};
 use crate::ui::game_new::styles::Rect;
 use glyph_brush::{ab_glyph::PxScale, BrushAction, BrushError, Section, Text};
 
@@ -62,7 +62,11 @@ pub struct UiRenderer {
 
 impl UiRenderer {
     pub fn new() -> Self {
-        let shader = Shader::new("resources/shaders/custom_ui.glsl");
+        Self::new_with_profile(ShaderProfile::DesktopCore)
+    }
+
+    pub fn new_with_profile(profile: ShaderProfile) -> Self {
+        let shader = Shader::new_with_profile("resources/shaders/custom_ui.glsl", profile);
 
         let mut vao = 0;
         let mut vbo = 0;

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a GPU-rendered UI system designed to replace Slint's software rendering approach. It uses OpenGL for all rendering, with RON markup files defining the UI structure.
+This is a GPU-rendered UI system. It uses OpenGL for all rendering, with RON markup files defining the UI structure.
 
 ## Core Concepts
 
@@ -47,7 +47,7 @@ RON File → Parser → Widget Tree → Layout → Render Batch → GPU
 
 ## Integration
 
-The custom UI system runs alongside the existing Slint UI during migration. It hooks into the same winit event loop and renders after the main 3D scene.
+The custom UI system hooks into the winit event loop and renders after the main 3D scene when a retained RON view is active.
 
 ## Testing
 

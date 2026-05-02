@@ -18,6 +18,8 @@ pub struct GameConfig {
     pub fxaa_level: FxaaLevels,
     pub font_family: String,
     pub spawn_system_enabled: bool,
+    #[serde(default)]
+    pub webgl_compatibility_mode: bool,
 }
 
 impl Default for GameConfig {
@@ -38,6 +40,7 @@ impl Default for GameConfig {
             fxaa_level: FxaaLevels::Off,
             font_family: "Weiholmir".to_string(),
             spawn_system_enabled: true,
+            webgl_compatibility_mode: false,
         }
     }
 }

@@ -16,14 +16,13 @@ use crate::input::{self, InputState};
 use crate::physics::PhysicsState;
 use crate::platform::{CursorMode, Platform};
 use crate::renderer::Renderer;
+use crate::shaders::ShaderProfile;
 use crate::sound::sound_manager::SoundManager;
-use crate::state_machines::enemy::{self, bt_system};
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
 use crate::toast;
 use crate::ui::game_new::parser::load_view_or_fallback;
 use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
-use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::world::World;
@@ -40,7 +39,6 @@ pub struct Game {
     pub paused: bool,
     cursor_mode: CursorMode,
     message_queue: MessageQueue,
-    game_ui: GameUiManager,
     custom_ui: Option<UiTree>,
     gallery_ui: Option<UiTree>,
     custom_ui_renderer: UiRenderer,
@@ -72,13 +70,10 @@ impl Game {
 
         let renderer = Renderer::new(&platform, &config);
         let sound = SoundManager::new(&sound_config);
-        let game_ui = GameUiManager::new(
-            platform.fb_width,
-            platform.fb_height,
-            platform.scale_factor as f32,
-        );
 
-        let imgui_manager = match config.debug_mode {
+        let webgl_compatibility_mode = config.webgl_compatibility_mode || platform.capabilities.is_gles_like;
+
+        let imgui_manager = match config.debug_mode && !webgl_compatibility_mode {
             true => Some(ImguiManager::new(&platform)),
             false => None,
         };
@@ -89,7 +84,12 @@ impl Game {
         gallery_ui.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
         let gallery_ui = Some(gallery_ui);
 
-        let mut custom_ui_renderer = UiRenderer::new();
+        let ui_shader_profile = if webgl_compatibility_mode {
+            ShaderProfile::GlslEs300
+        } else {
+            ShaderProfile::DesktopCore
+        };
+        let mut custom_ui_renderer = UiRenderer::new_with_profile(ui_shader_profile);
         let font_system = FontSystem::new();
         custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
@@ -104,7 +104,6 @@ impl Game {
             paused: false,
             cursor_mode: CursorMode::Hidden,
             message_queue: MessageQueue::new(),
-            game_ui,
             custom_ui,
             gallery_ui,
             custom_ui_renderer,
@@ -124,6 +123,8 @@ impl Game {
     fn check_settings_require_restart(&self, old_config: &GameConfig) -> bool {
         let msaa_changed = old_config.msaa_level != self.config.msaa_level;
         let debug_mode_changed = old_config.debug_mode != self.config.debug_mode;
+        let compatibility_mode_changed =
+            old_config.webgl_compatibility_mode != self.config.webgl_compatibility_mode;
 
         // log individual changes for debugging
         if msaa_changed {
@@ -138,8 +139,14 @@ impl Game {
                 old_config.debug_mode, self.config.debug_mode
             );
         }
+        if compatibility_mode_changed {
+            println!(
+                "[DEBUG] WebGL compatibility mode changed: {} -> {}",
+                old_config.webgl_compatibility_mode, self.config.webgl_compatibility_mode
+            );
+        }
 
-        msaa_changed || debug_mode_changed
+        msaa_changed || debug_mode_changed || compatibility_mode_changed
     }
 
     pub fn tick(&mut self, now_seconds: f32) {
@@ -268,7 +275,6 @@ impl Game {
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
-        //self.game_ui.handle_window_event(event, &mut self.input);
         if let Some(imgui_manager) = &mut self.imgui_manager {
             imgui_manager.handle_imgui_event(event);
         }
@@ -292,7 +298,14 @@ impl Game {
                 let size = self.platform.window.inner_size();
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
-                self.game_ui.resize(size.width, size.height);
+                if let Some(tree) = &mut self.custom_ui {
+                    tree.set_screen_size(size.width as f32, size.height as f32);
+                }
+                if let Some(tree) = &mut self.gallery_ui {
+                    tree.set_screen_size(size.width as f32, size.height as f32);
+                }
+                self.custom_ui_renderer
+                    .set_screen_size(size.width as f32, size.height as f32);
             }
 
             WindowEvent::DroppedFile(path) => {
@@ -516,21 +529,6 @@ impl Game {
             }
         }
 
-        // update game UI (pause menu, HUD, etc.) BEFORE processing messages
-        // this ensures UI values are synced to game state before ApplySettings saves
-        self.game_ui.update(GameUiUpdateContext {
-            message_queue: &mut self.message_queue,
-            entity_manager: &self.world.ecs,
-            paused: &mut self.paused,
-            render_gizmos: &mut self.renderer.render_gizmos,
-            game_config: &mut self.config,
-            sound_config: &mut self.sound_config,
-            elapsed_time: self.time.elapsed as f64,
-            input_state: &self.input,
-        });
-
-        self.game_ui.set_fps(self.time.fps);
-
         let msgs = self.message_queue.drain();
 
         for msg in msgs.iter() {
@@ -690,6 +688,25 @@ impl Game {
     }
 
     pub fn render(&mut self) {
+        if self.config.webgl_compatibility_mode || self.platform.capabilities.is_gles_like {
+            self.renderer.render_webgl_compatibility_frame(
+                self.platform.fb_width,
+                self.platform.fb_height,
+            );
+
+            if let Some(tree) = &self.gallery_ui {
+                self.custom_ui_renderer.begin();
+                tree.render(&mut self.custom_ui_renderer);
+                self.custom_ui_renderer.end(&mut self.font_system);
+            }
+
+            self.platform
+                .surface
+                .swap_buffers(&self.platform.gl_context)
+                .expect("swap_buffers failed");
+            return;
+        }
+
         self.renderer.render_world(
             &mut self.world.ecs,
             &mut self.world.camera,
@@ -702,15 +719,6 @@ impl Game {
             self.time.alpha,
             &mut self.world.particles,
         );
-
-        self.renderer.render_game_portrait(
-            &mut self.game_ui,
-            &self.world.ecs,
-            &self.world.lights,
-            self.time.elapsed as f64,
-        );
-        self.renderer
-            .render_game_overlay(&mut self.game_ui, self.time.elapsed as f64);
 
         // render custom GPU UI (test view)
         if self.world.camera.move_state == CameraState::Gallery {

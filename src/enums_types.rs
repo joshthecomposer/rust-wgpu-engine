@@ -57,8 +57,6 @@ pub enum ShaderType {
     Text,
     Gizmo,
     Particles,
-    GameUi,
-    UiOverlay,
     HDR,
     Blur,
     StaticModel,

@@ -1,6 +1,6 @@
 //! Pause menu view for the new GPU UI system.
 //!
-//! Replaces the Slint-based pause menu with custom GPU-rendered UI.
+//! Custom GPU-rendered pause menu view.
 //! Handles system actions (reload, save, quit) and settings (display, interface, sound).
 
 use crate::config::game_config::GameConfig;

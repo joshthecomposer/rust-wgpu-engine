@@ -222,26 +222,17 @@ Row(
 
 ### Double Tooltips Appearing
 
-**Problem:** Two tooltips appear when hovering over ability bar slots - one from the old Slint UI and one from the new GPU UI.
+**Problem:** Two tooltips appear when hovering over ability bar slots.
 
-**Cause:** Both tooltip systems were active:
-1. The Slint `GameRoot` component has `AbilityTooltip` components that show on hover
-2. The new `TooltipManager` also renders tooltips based on `AbilitySlot.get_tooltip_info()`
+**Cause:** Two tooltip owners are active for the same slot widgets.
 
-**Solution:** Stop syncing ability data to the old Slint system. In `game_root.rs`, comment out or remove the `set_ability_slot_*` calls:
-```rust
-// NOTE: Slint ability bar tooltips are DISABLED - we now use the new GPU-based tooltips
-// if needs_ability_sync {
-//     self.game_root.set_ability_slot_m1(ability_data.m1.to_slint(ctx.image_cache));
-//     ... etc
-// }
-```
+**Solution:** Keep a single `TooltipManager` owner for ability slots and make sure no other view also renders hover details for those widgets.
 
 ---
 
 ### Tooltip Missing Styling (Shadow, Accent Bar)
 
-**Problem:** Tooltip looks plain compared to the original Slint design - missing drop shadow and left accent bar.
+**Problem:** Tooltip looks plain compared to the intended design - missing drop shadow and left accent bar.
 
 **Solution (implemented in tooltip_manager.rs):** Add visual elements in render():
 ```rust
