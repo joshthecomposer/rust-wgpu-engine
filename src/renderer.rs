@@ -649,6 +649,10 @@ impl Renderer {
         static_model_shader.set_int("material.Opacity", 4);
         static_model_shader.set_int("shadow_map", 7);
         static_model_shader.set_int("skybox", 10);
+        static_model_shader.set_bool(
+            "shadow_border_fallback",
+            !platform.capabilities.supports_clamp_to_border,
+        );
 
         // Animated model shader
         let animated_model_shader = Shader::new("resources/shaders/model/animated_model.glsl");
@@ -659,6 +663,10 @@ impl Renderer {
         animated_model_shader.set_int("material.Opacity", 4);
         animated_model_shader.set_int("shadow_map", 7);
         animated_model_shader.set_int("skybox", 10);
+        animated_model_shader.set_bool(
+            "shadow_border_fallback",
+            !platform.capabilities.supports_clamp_to_border,
+        );
 
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
@@ -891,21 +899,34 @@ impl Renderer {
                 gl::TEXTURE_MAG_FILTER,
                 gl::NEAREST as i32
             ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_S,
-                gl::CLAMP_TO_BORDER as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_T,
-                gl::CLAMP_TO_BORDER as i32
-            ));
-            gl_call!(gl::TexParameterfv(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_BORDER_COLOR,
-                [1.0, 1.0, 1.0, 1.0].as_ptr().cast()
-            ));
+            if platform.capabilities.supports_clamp_to_border {
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_S,
+                    gl::CLAMP_TO_BORDER as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_T,
+                    gl::CLAMP_TO_BORDER as i32
+                ));
+                gl_call!(gl::TexParameterfv(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_BORDER_COLOR,
+                    [1.0, 1.0, 1.0, 1.0].as_ptr().cast()
+                ));
+            } else {
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_S,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_T,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+            }
 
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, fbo));
             gl_call!(gl::FramebufferTexture2D(
