@@ -1,3 +1,5 @@
+use std::ffi::CStr;
+
 use glutin::{
     config::{Config, ConfigTemplateBuilder},
     context::{
@@ -31,11 +33,119 @@ pub struct Platform {
     pub window: Window,
     pub gl_context: PossiblyCurrentContext,
     pub surface: Surface<WindowSurface>,
+    pub capabilities: GlCapabilities,
     pub fb_width: u32,
     pub fb_height: u32,
     pub scale_factor: f64,
     pub cursor_mode: CursorMode,
     pub display: Display,
+}
+
+#[derive(Clone, Debug)]
+pub struct GlCapabilities {
+    pub gl_version: String,
+    pub glsl_version: String,
+    pub vendor: String,
+    pub renderer: String,
+    pub extensions: Vec<String>,
+    pub is_gles_like: bool,
+    pub supports_float_color_buffer: bool,
+    pub supports_msaa_float_renderbuffer: bool,
+    pub supports_clamp_to_border: bool,
+    pub supports_buffer_mapping: bool,
+    pub supports_instancing: bool,
+    pub supports_mrt: bool,
+}
+
+impl GlCapabilities {
+    pub fn query_current_context() -> Self {
+        let gl_version = gl_string(gl::VERSION);
+        let glsl_version = gl_string(gl::SHADING_LANGUAGE_VERSION);
+        let vendor = gl_string(gl::VENDOR);
+        let renderer = gl_string(gl::RENDERER);
+        let extensions = gl_extensions();
+        let is_gles_like = gl_version.contains("OpenGL ES") || gl_version.contains("WebGL");
+        let max_color_attachments = gl_integer(gl::MAX_COLOR_ATTACHMENTS);
+        let max_draw_buffers = gl_integer(gl::MAX_DRAW_BUFFERS);
+        let max_samples = gl_integer(gl::MAX_SAMPLES);
+
+        let has_extension = |name: &str| extensions.iter().any(|extension| extension == name);
+        let has_any_extension = |names: &[&str]| names.iter().any(|name| has_extension(name));
+        let is_webgl_like = gl_version.contains("WebGL");
+        let supports_float_color_buffer = !is_gles_like
+            || has_any_extension(&[
+                "GL_EXT_color_buffer_float",
+                "EXT_color_buffer_float",
+                "GL_ARB_color_buffer_float",
+            ]);
+        let supports_msaa_float_renderbuffer = supports_float_color_buffer
+            && ((!is_gles_like && max_samples > 0)
+                || has_any_extension(&[
+                    "GL_EXT_multisampled_render_to_texture",
+                    "GL_EXT_multisampled_render_to_texture2",
+                    "GL_IMG_multisampled_render_to_texture",
+                ]));
+        let supports_clamp_to_border = !is_gles_like
+            || has_any_extension(&[
+                "GL_ARB_texture_border_clamp",
+                "GL_EXT_texture_border_clamp",
+                "GL_OES_texture_border_clamp",
+                "GL_NV_texture_border_clamp",
+            ]);
+        let supports_buffer_mapping = !is_webgl_like
+            && (!is_gles_like
+                || has_any_extension(&[
+                    "GL_OES_mapbuffer",
+                    "GL_EXT_map_buffer_range",
+                    "GL_NV_map_buffer_range",
+                ])
+                || gl_version.contains("OpenGL ES 3"));
+        let supports_instancing = !is_gles_like
+            || has_any_extension(&[
+                "GL_ANGLE_instanced_arrays",
+                "GL_EXT_instanced_arrays",
+                "GL_NV_instanced_arrays",
+            ])
+            || gl_version.contains("OpenGL ES 3");
+        let supports_mrt = max_color_attachments >= 2 && max_draw_buffers >= 2;
+
+        Self {
+            gl_version,
+            glsl_version,
+            vendor,
+            renderer,
+            extensions,
+            is_gles_like,
+            supports_float_color_buffer,
+            supports_msaa_float_renderbuffer,
+            supports_clamp_to_border,
+            supports_buffer_mapping,
+            supports_instancing,
+            supports_mrt,
+        }
+    }
+
+    pub fn log_startup_report(&self) {
+        println!("GL capabilities:");
+        println!("  Version: {}", self.gl_version);
+        println!("  GLSL: {}", self.glsl_version);
+        println!("  Vendor: {}", self.vendor);
+        println!("  Renderer: {}", self.renderer);
+        println!("  Extensions: {}", self.extensions.len());
+        println!("  GLES/WebGL-like: {}", self.is_gles_like);
+        println!(
+            "  Float color buffer: {}",
+            self.supports_float_color_buffer
+        );
+        println!(
+            "  MSAA float renderbuffer: {}",
+            self.supports_msaa_float_renderbuffer
+        );
+        println!("  Clamp to border: {}", self.supports_clamp_to_border);
+        println!("  Buffer mapping: {}", self.supports_buffer_mapping);
+        println!("  Instancing: {}", self.supports_instancing);
+        println!("  Multiple render targets: {}", self.supports_mrt);
+    }
 }
 
 impl Platform {
@@ -115,6 +225,9 @@ impl Platform {
             display.get_proc_address(&std::ffi::CString::new(symbol).unwrap()) as *const _
         });
 
+        let capabilities = GlCapabilities::query_current_context();
+        capabilities.log_startup_report();
+
         unsafe { gl_call!(gl::Enable(gl::MULTISAMPLE)) };
 
         let size = window.inner_size();
@@ -124,6 +237,7 @@ impl Platform {
             window,
             gl_context,
             surface,
+            capabilities,
             fb_width: size.width,
             fb_height: size.height,
             scale_factor,
@@ -170,4 +284,46 @@ fn pick_config<'a>(configs: Box<dyn Iterator<Item = Config> + 'a>) -> Config {
             }
         })
         .expect("No GL configs found")
+}
+
+fn gl_string(name: u32) -> String {
+    unsafe {
+        let value = gl::GetString(name);
+        if value.is_null() {
+            return "Unavailable".to_string();
+        }
+
+        CStr::from_ptr(value.cast())
+            .to_string_lossy()
+            .into_owned()
+    }
+}
+
+fn gl_extensions() -> Vec<String> {
+    let extension_count = gl_integer(gl::NUM_EXTENSIONS);
+    if extension_count > 0 {
+        return (0..extension_count)
+            .filter_map(|index| unsafe {
+                let extension = gl::GetStringi(gl::EXTENSIONS, index as u32);
+                if extension.is_null() {
+                    None
+                } else {
+                    Some(CStr::from_ptr(extension.cast()).to_string_lossy().into_owned())
+                }
+            })
+            .collect();
+    }
+
+    gl_string(gl::EXTENSIONS)
+        .split_whitespace()
+        .map(str::to_string)
+        .collect()
+}
+
+fn gl_integer(name: u32) -> i32 {
+    let mut value = 0;
+    unsafe {
+        gl::GetIntegerv(name, &mut value);
+    }
+    value
 }

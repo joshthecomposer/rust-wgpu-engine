@@ -22,7 +22,7 @@ use crate::{
     lights::Lights,
     particles::ParticleSystem,
     physics::PhysicsState,
-    platform::Platform,
+    platform::{GlCapabilities, Platform},
     shaders::Shader,
     sound::sound_manager::SoundManager,
     ui::game_ui_manager::{GameUiManager, PortraitRenderContext},
@@ -131,6 +131,7 @@ impl UiTextureDescriptor {
 }
 
 pub struct Renderer {
+    pub capabilities: GlCapabilities,
     pub shaders: HashMap<ShaderType, Shader>,
     pub vaos: HashMap<VaoType, u32>,
     pub fbos: HashMap<FboType, u32>,
@@ -855,6 +856,7 @@ impl Renderer {
         };
 
         let mut renderer = Self {
+            capabilities: platform.capabilities.clone(),
             shaders,
             vaos,
             fbos,

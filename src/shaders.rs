@@ -14,9 +14,19 @@ pub struct Shader {
     pub uniform_locations: HashMap<String, GLint>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ShaderProfile {
+    DesktopCore,
+    GlslEs300,
+}
+
 impl Shader {
     pub fn new(file_path: &str) -> Self {
-        let id = init_shader_program(file_path);
+        Self::new_with_profile(file_path, ShaderProfile::DesktopCore)
+    }
+
+    pub fn new_with_profile(file_path: &str, profile: ShaderProfile) -> Self {
+        let id = init_shader_program_with_profile(file_path, profile);
 
         let mut shader = Self {
             id,
@@ -263,7 +273,11 @@ impl Shader {
 }
 
 pub fn init_shader_program(file_path: &str) -> u32 {
-    let (vs_source, gs_source, fs_source) = extract_shader_sources(file_path);
+    init_shader_program_with_profile(file_path, ShaderProfile::DesktopCore)
+}
+
+pub fn init_shader_program_with_profile(file_path: &str, profile: ShaderProfile) -> u32 {
+    let (vs_source, gs_source, fs_source) = extract_shader_sources(file_path, profile);
 
     let vs_cstr = CString::new(vs_source).expect("Failed to convert vs source to C string");
     let fs_cstr = CString::new(fs_source).expect("Failed to convert fs source to C string");
@@ -311,7 +325,10 @@ pub fn init_shader_program(file_path: &str) -> u32 {
     }
 }
 
-fn extract_shader_sources(file_path: &str) -> (String, Option<String>, String) {
+fn extract_shader_sources(
+    file_path: &str,
+    profile: ShaderProfile,
+) -> (String, Option<String>, String) {
     println!("{}", file_path);
     let data = read_to_string(file_path).unwrap();
     let mut lines = data.lines();
@@ -332,6 +349,12 @@ fn extract_shader_sources(file_path: &str) -> (String, Option<String>, String) {
                 shader_sources.insert("FRAGMENT_SHADER".to_string(), String::new());
             }
             "// GEOMETRY_SHADER" => {
+                if profile == ShaderProfile::GlslEs300 {
+                    panic!(
+                        "GLSL ES 3.00 profile does not support geometry shaders: {}",
+                        file_path
+                    );
+                }
                 println!("Located geometry shader shader, extracting now...");
                 current_shader = Some("GEOMETRY_SHADER".to_string());
                 shader_sources.insert("GEOMETRY_SHADER".to_string(), String::new());
