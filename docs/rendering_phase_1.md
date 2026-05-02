@@ -26,22 +26,25 @@ remaining raw GL for model resources is owned by `src/renderer.rs`.
 `Renderer::upload_model_texture`; model draw paths use `Renderer::draw_model`
 or `Renderer::draw_model_geometry`.
 
-## Phase 3 Handoff
+## Phase 3 Update
 
-Phase 3 should focus on UI texture upload ownership, not a WebGL/wgpu migration
-yet. The goal is to put UI image/overlay texture creation and updates behind a
-small renderer-owned texture upload API while preserving current UI behavior.
+Phase 3 centralized UI texture upload ownership behind renderer-owned helper
+APIs while preserving current UI behavior. See
+`docs/rendering_phase_3_handoff.md` for the detailed handoff and next-phase
+WebGL compatibility guidance.
 
-Recommended first targets:
+Completed targets:
 
-- `src/ui/game_ui_manager.rs`: Slint software buffer upload currently owns a PBO
-path and overlay texture updates.
-- `src/ui/ability_bar_renderer.rs`: ability bar texture streaming and cleanup
-should share the same upload/update boundary.
-- `src/ui/game_new/views/ability_bar_view.rs`: ability icon loading/cache should
-stop creating raw GL textures directly.
+- `src/ui/game_ui_manager.rs`: Slint overlay texture resize/upload and PBO writes
+now route through `Renderer`.
+- `src/ui/ability_bar_renderer.rs`: standalone ability bar texture/PBO creation
+and upload now route through `Renderer`.
+- `src/ui/game_new/views/ability_bar_view.rs`: ability icon texture creation now
+routes through `Renderer` while keeping the existing path cache behavior.
+- `src/ui/game_new/render/renderer.rs`: custom UI white texture and glyph atlas
+texture updates now use renderer-owned texture helpers.
 
-Keep out of scope for Phase 3:
+Kept out of scope for Phase 3:
 
 - ECS storage changes.
 - Shader language/version migration.
@@ -60,10 +63,10 @@ Keep out of scope for Phase 3:
 | `src/animation/model.rs`                    | Model CPU data and current GL handle fields for existing ECS storage                               | Data-only model container after Phase 2       | Medium: handle fields still exist until a later resource-cache phase                                                                     |
 | `src/animation/data_loader.rs`              | Parses model and animation data, then asks `Renderer` to upload model resources                    | Uses renderer-owned upload APIs after Phase 2 | Medium: source pixel formats, mip generation, wrapping, and compressed/unsupported image formats still need backend review               |
 | `src/particles.rs`                          | Particle buffer uploads, instancing, blending/depth state, particle texture upload                 | Feature renderer                              | Medium: instancing requires WebGL2; streaming buffer patterns may need tuning                                                            |
-| `src/ui/game_new/render/renderer.rs`        | Batched GPU UI, dynamic buffers, glyph atlas upload, scissor, blend/depth/cull state               | UI renderer island                            | Medium: scissor/state use is fine, but dynamic buffer upload and atlas formats need verification                                         |
-| `src/ui/game_ui_manager.rs`                 | Slint software buffer upload through PBO and overlay composite                                     | UI integration island                         | High: `PIXEL_UNPACK_BUFFER`, `MapBuffer`, and PBO upload flow are not a good WebGL target                                                |
-| `src/ui/ability_bar_renderer.rs`            | Ability bar texture streaming and cleanup                                                          | Feature UI renderer                           | High: PBO-style streaming and texture update path need replacement or consolidation                                                      |
-| `src/ui/game_new/views/ability_bar_view.rs` | Ability icon texture loading and cache for custom UI widgets                                       | UI asset upload island                        | Medium: texture format, mip generation, and cache ownership should move behind a UI/renderer texture API                                 |
+| `src/ui/game_new/render/renderer.rs`        | Batched GPU UI, dynamic buffers, glyph atlas upload, scissor, blend/depth/cull state               | UI renderer island; texture upload helpers now routed through `Renderer` | Medium: scissor/state use is fine, but dynamic buffer upload and atlas formats need verification                                         |
+| `src/ui/game_ui_manager.rs`                 | Slint software buffer upload through PBO and overlay composite                                     | UI texture resize/upload now routed through `Renderer`; overlay draw remains local | High: `PIXEL_UNPACK_BUFFER`, `MapBuffer`, and PBO upload flow are not a good WebGL target                                                |
+| `src/ui/ability_bar_renderer.rs`            | Ability bar texture streaming and cleanup                                                          | Texture/PBO creation and upload now routed through `Renderer`; cleanup remains local | High: PBO-style streaming still needs a WebGL-compatible implementation behind the renderer API                                          |
+| `src/ui/game_new/views/ability_bar_view.rs` | Ability icon texture loading and cache for custom UI widgets                                       | Icon texture creation now routed through `Renderer`; cache behavior unchanged | Medium: texture format and cache ownership need backend review for web packaging                                                         |
 | `src/ui/portrait_renderer.rs`               | Offscreen portrait framebuffer, renderbuffer/depth setup, model draw into HUD texture              | Feature renderer                              | Medium: framebuffer formats and renderbuffer attachments need WebGL-compatible choices                                                   |
 
 
@@ -79,7 +82,7 @@ ownership.
 
 - Phase 2: completed. Model GPU upload/draw helpers now route through
 renderer-owned resource APIs without changing ECS storage.
-- Phase 3: consolidate UI texture upload paths, especially PBO use, behind a small
-texture upload abstraction.
-- Phase 4: audit shader versions, framebuffer formats, and state calls against a
-WebGL2/OpenGL ES compatibility checklist.
+- Phase 3: completed. UI texture upload paths now route through renderer-owned
+texture helpers without changing UI behavior.
+- Phase 4: audit shader versions, framebuffer formats, upload paths, and state
+calls against a WebGL2/OpenGL ES compatibility checklist.
