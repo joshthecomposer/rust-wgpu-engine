@@ -243,7 +243,7 @@ impl Default for EnemyController {
         Self {
             took_damage: false,
             taken_damage_ago: 0.0,
-            taken_damage_ttl: 5.0,
+            taken_damage_ttl: 0.875,
             desired_action: None,
             current_action: ActionKind::Idle,
             life_state: LifeState::Alive,

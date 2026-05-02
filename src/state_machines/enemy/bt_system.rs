@@ -37,22 +37,10 @@ pub fn update(em: &mut EntityManager) {
 
             let entity_trans = em.transforms.get(id).unwrap();
 
-            //ctx.can_see_player = {
-            //    let forward = (entity_trans.rotation * Vec3::Z)
-            //        .with_y(0.0)
-            //        .normalize_or_zero();
-            //    let alignment = forward.dot(to_player);
-
-            //    alignment >= fov_threshold
-            //};
             ctx.can_see_player = true;
 
             ctx.is_in_melee_range = entity_trans.position.distance(player_pos) <= 1.0;
-            //ctx.is_in_aggro_range = if let Some(ar) = em.aggro_ranges.get(id) {
-            //    entity_trans.position.distance(player_pos) <= *ar
-            //} else {
-            //    false
-            //};
+
             ctx.is_in_aggro_range = true;
 
             ctx.player_is_attacking = if let Some(hba) = &p_anim.hurtbox_activation {

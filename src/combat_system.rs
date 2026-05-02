@@ -1,17 +1,18 @@
-use glam::vec3;
+use glam::{vec3, Vec3};
 
 use crate::{
+    command_buffer::{CommandBuffer, PartCmd, PartKind},
     entity_manager::EntityManager,
     enums_types::{Knockback, LifeState},
     particles::ParticleSystem,
     physics::{self, PhysicsState},
 };
 
-pub fn update(em: &mut EntityManager, _dt: f32, ps: &mut PhysicsState) {
-    handle_melee_hits(em, ps);
+pub fn update(em: &mut EntityManager, _dt: f32, ps: &mut PhysicsState, cmds: &mut CommandBuffer) {
+    handle_melee_hits(em, ps, cmds);
 }
 
-fn handle_melee_hits(em: &mut EntityManager, ps: &mut PhysicsState) {
+fn handle_melee_hits(em: &mut EntityManager, ps: &mut PhysicsState, cmds: &mut CommandBuffer) {
     let Some(player_id) = em.get_player_id() else {
         eprintln!("There is no player");
         return;
@@ -83,6 +84,35 @@ fn handle_melee_hits(em: &mut EntityManager, ps: &mut PhysicsState) {
                     };
 
                     let enemy_ctrl = em.enemy_controllers.get_mut(target_id).unwrap();
+
+                    let t = em.transforms.get(target_id).unwrap();
+
+                    let entity_world = glam::Mat4::from_scale_rotation_translation(
+                        t.scale, t.rotation, t.position,
+                    );
+
+                    let skellington = em.skellingtons.get(target_id).unwrap();
+
+                    let mut stack = Vec::new();
+
+                    for bone in &skellington.children {
+                        stack.push(bone);
+                    }
+
+                    while let Some(bone) = stack.pop() {
+                        let bone_world = entity_world * bone.global_transform;
+                        let pos = bone_world.w_axis.truncate();
+
+                        cmds.particles.push(PartCmd {
+                            name: "DamageBlood".to_string(),
+                            kind: PartKind::WorldOrigin(pos),
+                            direction: Vec3::Y,
+                        });
+
+                        for child in &bone.children {
+                            stack.push(child);
+                        }
+                    }
 
                     enemy_ctrl.took_damage = true;
 

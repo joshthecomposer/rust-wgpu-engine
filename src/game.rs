@@ -210,7 +210,12 @@ impl Game {
                     self.time.fixed_dt,
                 );
 
-                combat_system::update(&mut self.world.ecs, self.time.fixed_dt, &mut self.physics);
+                combat_system::update(
+                    &mut self.world.ecs,
+                    self.time.fixed_dt,
+                    &mut self.physics,
+                    &mut self.command_buffer,
+                );
 
                 self.world.ecs.update(
                     &mut self.sound,

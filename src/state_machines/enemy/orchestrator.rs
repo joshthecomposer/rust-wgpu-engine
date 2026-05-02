@@ -27,6 +27,8 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             return;
         };
 
+        let anim_name = animator.next_animation;
+
         let Some(ctrl) = em.enemy_controllers.get_mut(eid) else {
             continue;
         };
@@ -34,10 +36,6 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
         // ==========================================
         // Evaluate death stuff
         // ==========================================
-
-        if ctrl.dying_counter >= 5.0 {
-            ctrl.life_state = LifeState::Dead;
-        }
 
         let skellington = em.skellingtons.get(eid).unwrap();
         let trans = em.transforms.get(eid).unwrap();
@@ -87,39 +85,20 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             }
         }
 
-        if ctrl.took_damage {
-            let Some(t) = em.transforms.get(eid) else {
-                em.entity_trashcan.push(eid);
-                continue;
-            };
+        dbg!(anim_name);
 
-            let entity_world =
-                glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
-
-            // Walk the full bone tree, not just the root's direct children.
-            let mut stack = Vec::new();
-
-            for bone in &skellington.children {
-                stack.push(bone);
-            }
-
-            while let Some(bone) = stack.pop() {
-                let bone_world = entity_world * bone.global_transform;
-                let pos = bone_world.w_axis.truncate();
-
-                cmds.particles.push(PartCmd {
-                    name: "DamageBlood".to_string(),
-                    kind: PartKind::WorldOrigin(pos),
-                    direction: Vec3::Y,
-                });
-
-                for child in &bone.children {
-                    stack.push(child);
-                }
-            }
-
+        if ctrl.took_damage
+            && !matches!(
+                anim_name,
+                AnimationType::Basic1
+                    | AnimationType::Basic2
+                    | AnimationType::Basic3
+                    | AnimationType::OSBasic1
+                    | AnimationType::OSBasic2
+                    | AnimationType::OSBasic3
+            )
+        {
             cmds.next_anim(eid, AnimationType::Stagger, None);
-            ctrl.took_damage = false;
             continue;
         }
 
