@@ -5,9 +5,9 @@ use glam::vec3;
 use glam::{vec2, Vec3, Vec4};
 use image::{ImageBuffer, Rgba};
 
-use crate::animation::data_loader::texture_from_file;
 use crate::animation::model::{Model, Vertex};
 use crate::enums_types::{TextureProfile, TextureType};
+use crate::renderer::Renderer;
 use crate::util::constants::MAX_BONE_INFLUENCE;
 use crate::{enums_types::CellType, shaders::Shader};
 
@@ -84,7 +84,7 @@ impl Grid {
         let mut model = self.generate_grid_mesh();
         model.directory = "resources/textures".to_string();
 
-        texture_from_file(
+        Renderer::upload_model_texture(
             &mut model,
             "half_dark_half_light.png".to_string(),
             TextureType::Diffuse,
@@ -200,7 +200,7 @@ impl Grid {
 
         model.vertices.append(&mut vertices);
         model.indices.append(&mut indices);
-        model.setup_opengl();
+        Renderer::upload_model_mesh(&mut model);
 
         model
     }
@@ -237,7 +237,7 @@ impl Grid {
     }
 
     pub fn draw(&mut self, shader: &mut Shader) {
-        self.model.draw(shader);
+        Renderer::draw_model(&self.model, shader);
     }
 
     pub fn generate_height_map() {

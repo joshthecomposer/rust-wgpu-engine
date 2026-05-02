@@ -11,7 +11,7 @@ use crate::command_buffer::CommandBuffer;
 use crate::config::game_config::GameConfig;
 use crate::config::sound_config::SoundConfig;
 use crate::config::Config;
-use crate::enums_types::{CameraState, ShaderType, SoundType};
+use crate::enums_types::{CameraState, SoundType};
 use crate::input::{self, InputState};
 use crate::physics::PhysicsState;
 use crate::platform::{CursorMode, Platform};
@@ -23,7 +23,7 @@ use crate::time::Time;
 use crate::toast;
 use crate::ui::game_new::parser::load_view_or_fallback;
 use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
-use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext, PortraitRenderContext};
+use crate::ui::game_ui_manager::{GameUiManager, GameUiUpdateContext};
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::world::World;
@@ -690,7 +690,7 @@ impl Game {
     }
 
     pub fn render(&mut self) {
-        self.renderer.draw(
+        self.renderer.render_world(
             &mut self.world.ecs,
             &mut self.world.camera,
             &self.world.lights,
@@ -703,31 +703,14 @@ impl Game {
             &mut self.world.particles,
         );
 
-        // render player portrait for HUD (uses animated model shader)
-        {
-            let anim_shader = self
-                .renderer
-                .shaders
-                .get_mut(&ShaderType::AnimatedModel)
-                .unwrap();
-            let portrait_ctx = PortraitRenderContext {
-                entity_manager: &self.world.ecs,
-                shader: anim_shader,
-                lights: &self.world.lights,
-                defaults: &self.renderer.defaults,
-                cubemap: self.renderer.cubemap_texture,
-                elapsed_time: self.time.elapsed as f64,
-            };
-            self.game_ui.render_portrait(portrait_ctx);
-        }
-
-        // render game UI overlay (pause menu when paused, HUD when playing)
-        let ui_shader = self
-            .renderer
-            .shaders
-            .get_mut(&ShaderType::UiOverlay)
-            .unwrap();
-        self.game_ui.render(ui_shader, self.time.elapsed as f64);
+        self.renderer.render_game_portrait(
+            &mut self.game_ui,
+            &self.world.ecs,
+            &self.world.lights,
+            self.time.elapsed as f64,
+        );
+        self.renderer
+            .render_game_overlay(&mut self.game_ui, self.time.elapsed as f64);
 
         // render custom GPU UI (test view)
         if self.world.camera.move_state == CameraState::Gallery {

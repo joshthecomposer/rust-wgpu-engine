@@ -1,15 +1,21 @@
 #![allow(clippy::too_many_arguments)]
-use std::{collections::HashMap, ffi::c_void, mem, ptr::null_mut};
+use std::{
+    collections::HashMap,
+    ffi::c_void,
+    mem::{self, offset_of},
+    ptr::{self, null_mut},
+};
 
 use gl::CULL_FACE;
 use glam::{vec3, vec4, Mat4};
-use image::GenericImageView;
+use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
 
 use crate::{
+    animation::model::{Model, Texture, Vertex},
     camera::Camera,
     config::game_config::GameConfig,
     entity_manager::EntityManager,
-    enums_types::{FboType, FxaaLevels, ShaderType, Transform, VaoType},
+    enums_types::{FboType, FxaaLevels, ShaderType, TextureProfile, TextureType, Transform, VaoType},
     gl_call,
     lights::Lights,
     particles::ParticleSystem,
@@ -17,6 +23,7 @@ use crate::{
     platform::Platform,
     shaders::Shader,
     sound::sound_manager::SoundManager,
+    ui::game_ui_manager::{GameUiManager, PortraitRenderContext},
     util::constants::{
         BASIC_QUAD_VERTICES, FACES_CUBEMAP, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES,
         SKYBOX_VERTICES, UNIT_CUBE_VERTICES,
@@ -794,6 +801,59 @@ impl Renderer {
         renderer
     }
 
+    pub fn render_world(
+        &mut self,
+        em: &mut EntityManager,
+        camera: &mut Camera,
+        light_manager: &Lights,
+        sound_manager: &mut SoundManager,
+        fb_width: u32,
+        fb_height: u32,
+        elapsed: f32,
+        ps: &PhysicsState,
+        alpha: f32,
+        particles: &mut ParticleSystem,
+    ) {
+        self.draw(
+            em,
+            camera,
+            light_manager,
+            sound_manager,
+            fb_width,
+            fb_height,
+            elapsed,
+            ps,
+            alpha,
+            particles,
+        );
+    }
+
+    pub fn render_game_portrait(
+        &mut self,
+        game_ui: &mut GameUiManager,
+        entity_manager: &EntityManager,
+        lights: &Lights,
+        elapsed_time: f64,
+    ) {
+        // Phase 1 renderer boundary: Game should not reach into renderer-owned shader and texture handles.
+        let shader = self.shaders.get_mut(&ShaderType::AnimatedModel).unwrap();
+        let portrait_ctx = PortraitRenderContext {
+            entity_manager,
+            shader,
+            lights,
+            defaults: &self.defaults,
+            cubemap: self.cubemap_texture,
+            elapsed_time,
+        };
+        game_ui.render_portrait(portrait_ctx);
+    }
+
+    pub fn render_game_overlay(&mut self, game_ui: &mut GameUiManager, elapsed_time: f64) {
+        // Phase 1 renderer boundary: overlay shader selection stays inside the renderer.
+        let shader = self.shaders.get_mut(&ShaderType::UiOverlay).unwrap();
+        game_ui.render(shader, elapsed_time);
+    }
+
     pub fn draw(
         &mut self,
         em: &mut EntityManager,
@@ -1092,7 +1152,7 @@ impl Renderer {
             shader.set_mat4("model", m_mat);
             shader.set_mat4("projection", camera.projection);
             shader.set_mat4("view", camera.view);
-            model.draw(shader);
+            Self::draw_model(model, shader);
         }
 
         unsafe {
@@ -1124,6 +1184,316 @@ impl Renderer {
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
         id
+    }
+
+    pub fn upload_model_mesh(model: &mut Model) {
+        unsafe {
+            gl_call!(gl::GenVertexArrays(1, &mut model.vao));
+            gl_call!(gl::GenBuffers(1, &mut model.vbo));
+            gl_call!(gl::GenBuffers(1, &mut model.ebo));
+
+            gl_call!(gl::BindVertexArray(model.vao));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, model.vbo));
+
+            gl_call!(gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (mem::size_of::<Vertex>() * model.vertices.len()) as isize,
+                model.vertices.as_ptr().cast(),
+                gl::STATIC_DRAW,
+            ));
+
+            gl_call!(gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, model.ebo));
+            gl_call!(gl::BufferData(
+                gl::ELEMENT_ARRAY_BUFFER,
+                (mem::size_of::<u32>() * model.indices.len()) as isize,
+                model.indices.as_ptr().cast(),
+                gl::STATIC_DRAW
+            ));
+
+            gl_call!(gl::EnableVertexAttribArray(0));
+            gl_call!(gl::VertexAttribPointer(
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as i32,
+                ptr::null(),
+            ));
+
+            gl_call!(gl::EnableVertexAttribArray(1));
+            gl_call!(gl::VertexAttribPointer(
+                1,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as i32,
+                offset_of!(Vertex, normal) as *const _
+            ));
+
+            gl_call!(gl::EnableVertexAttribArray(2));
+            gl_call!(gl::VertexAttribPointer(
+                2,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as i32,
+                offset_of!(Vertex, uv) as *const _
+            ));
+
+            gl_call!(gl::EnableVertexAttribArray(3));
+            gl_call!(gl::VertexAttribPointer(
+                3,
+                4,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as i32,
+                offset_of!(Vertex, base_color) as *const _
+            ));
+
+            gl_call!(gl::EnableVertexAttribArray(4));
+            gl_call!(gl::VertexAttribIPointer(
+                4,
+                4,
+                gl::INT,
+                mem::size_of::<Vertex>() as i32,
+                offset_of!(Vertex, bone_ids) as *const _
+            ));
+
+            gl_call!(gl::EnableVertexAttribArray(5));
+            gl_call!(gl::VertexAttribPointer(
+                5,
+                4,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as i32,
+                offset_of!(Vertex, bone_weights) as *const _
+            ));
+
+            gl_call!(gl::BindVertexArray(0));
+        }
+    }
+
+    pub fn upload_model_texture(
+        model: &mut Model,
+        path: String,
+        texture_type: TextureType,
+        texture_prof: TextureProfile,
+    ) {
+        println!("texture is {}", &path);
+        let file_name = model.directory.clone() + "/" + path.as_str();
+
+        dbg!(&path);
+        dbg!(&file_name);
+
+        let mut texture_id = 0;
+        unsafe {
+            gl_call!(gl::GenTextures(1, &mut texture_id));
+
+            let img = match image::open(file_name.clone()) {
+                Ok(data) => Some(data),
+                Err(_) => {
+                    if texture_type == TextureType::Diffuse {
+                        // TODO: Parse BSDF color instead or something.
+                        let mut imgbuf = ImageBuffer::new(1, 1);
+                        let color_u8 = [198, 198, 198, 255];
+
+                        for pixel in imgbuf.pixels_mut() {
+                            *pixel = Rgba(color_u8);
+                        }
+
+                        let color_path = format!(
+                            "{:.3}-{:.3}-{:.3}.png",
+                            color_u8[0], color_u8[1], color_u8[2]
+                        );
+                        let save_loc = format!("{}/{}", model.directory, color_path);
+
+                        imgbuf.save(save_loc).expect("Failed to save texture image");
+
+                        Some(DynamicImage::ImageRgba8(imgbuf))
+                    } else {
+                        None
+                    }
+                }
+            };
+
+            if let Some(img) = img {
+                let (img_width, img_height) = img.dimensions();
+                let rgba = img.to_rgba8();
+                let raw = rgba.as_raw();
+
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture_id));
+                gl_call!(gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    gl::SRGB8 as i32,
+                    img_width as i32,
+                    img_height as i32,
+                    0,
+                    gl::RGBA,
+                    gl::UNSIGNED_BYTE,
+                    raw.as_ptr() as *const c_void
+                ));
+
+                match texture_prof {
+                    TextureProfile::DecalCrisp => {
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_WRAP_S,
+                            gl::CLAMP_TO_EDGE as i32
+                        ));
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_WRAP_T,
+                            gl::CLAMP_TO_EDGE as i32
+                        ));
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_MIN_FILTER,
+                            gl::NEAREST as i32
+                        ));
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_MAG_FILTER,
+                            gl::NEAREST as i32
+                        ));
+                    }
+                    TextureProfile::BroadDefault => {
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_WRAP_S,
+                            gl::REPEAT as i32
+                        ));
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_WRAP_T,
+                            gl::REPEAT as i32
+                        ));
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_MIN_FILTER,
+                            gl::NEAREST_MIPMAP_LINEAR as i32
+                        ));
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_MAG_FILTER,
+                            gl::NEAREST as i32
+                        ));
+                        gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
+                    }
+                    TextureProfile::AlphaMasked => {
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_WRAP_S,
+                            gl::CLAMP_TO_EDGE as i32
+                        ));
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_WRAP_T,
+                            gl::CLAMP_TO_EDGE as i32
+                        ));
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_MIN_FILTER,
+                            gl::LINEAR_MIPMAP_LINEAR as i32
+                        ));
+                        gl_call!(gl::TexParameteri(
+                            gl::TEXTURE_2D,
+                            gl::TEXTURE_MAG_FILTER,
+                            gl::LINEAR as i32
+                        ));
+                        gl_call!(gl::GenerateMipmap(gl::TEXTURE_2D));
+                    }
+                }
+
+                let texture = Texture {
+                    id: texture_id,
+                    _type: texture_type.clone().to_string(),
+                    path: file_name,
+                };
+
+                match texture_type {
+                    TextureType::Diffuse => {
+                        model.textures[1] = Some(texture);
+                    }
+                    TextureType::Specular => {
+                        model.textures[2] = Some(texture);
+                    }
+                    TextureType::Emissive => {
+                        model.textures[3] = Some(texture);
+                    }
+                    TextureType::NormalMap => {
+                        model.textures[4] = Some(texture);
+                    }
+                    TextureType::Roughness => {
+                        model.textures[5] = Some(texture);
+                    }
+                    TextureType::Metalness => {
+                        model.textures[6] = Some(texture);
+                    }
+                    TextureType::Displacement => {
+                        model.textures[7] = Some(texture);
+                    }
+                    TextureType::Opacity => {
+                        model.textures[8] = Some(texture);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn draw_model(model: &Model, shader: &mut Shader) {
+        if model.color_for_texture {
+            shader.set_bool("use_base_color", true);
+            shader.set_bool("has_opacity_texture", false);
+        } else {
+            shader.set_bool("use_base_color", false);
+            if let Some(diff) = model.get_tex(1) {
+                unsafe {
+                    gl_call!(gl::ActiveTexture(gl::TEXTURE1));
+                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, diff.id));
+                }
+            }
+            if let Some(spec) = model.get_tex(2) {
+                unsafe {
+                    gl_call!(gl::ActiveTexture(gl::TEXTURE2));
+                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, spec.id));
+                }
+            }
+            if let Some(emis) = model.get_tex(3) {
+                unsafe {
+                    gl_call!(gl::ActiveTexture(gl::TEXTURE3));
+                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, emis.id));
+                }
+            }
+            if let Some(opac) = model.get_tex(8) {
+                shader.set_bool("has_opacity_texture", true);
+                unsafe {
+                    gl_call!(gl::ActiveTexture(gl::TEXTURE4));
+                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, opac.id));
+                }
+            } else {
+                shader.set_bool("has_opacity_texture", false);
+            }
+        }
+
+        Self::draw_model_geometry(model);
+
+        shader.set_bool("has_opacity_texture", false);
+        shader.set_bool("use_base_color", false);
+    }
+
+    pub fn draw_model_geometry(model: &Model) {
+        unsafe {
+            gl_call!(gl::BindVertexArray(model.vao));
+            gl_call!(gl::DrawElements(
+                gl::TRIANGLES,
+                model.indices.len() as i32,
+                gl::UNSIGNED_INT,
+                ptr::null(),
+            ));
+
+            gl_call!(gl::BindVertexArray(0));
+        }
     }
 
     fn model_pass(
@@ -1249,7 +1619,7 @@ impl Renderer {
                 }
 
                 unsafe {
-                    model.draw(shader);
+                    Self::draw_model(model, shader);
                     gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
                 }
                 shader.set_bool("selection_fresnel", false);
@@ -1395,20 +1765,8 @@ impl Renderer {
 
             let model_model =
                 Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
-            unsafe {
-                gl::BindVertexArray(model.vao);
-            }
             shader.set_mat4("model", model_model);
-            unsafe {
-                gl_call!(gl::DrawElements(
-                    gl::TRIANGLES,
-                    model.indices.len() as i32,
-                    gl::UNSIGNED_INT,
-                    std::ptr::null(),
-                ));
-
-                gl_call!(gl::BindVertexArray(0));
-            }
+            Self::draw_model_geometry(model);
         }
     }
 

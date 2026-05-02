@@ -2,6 +2,7 @@ use glam::Vec3;
 use serde::Deserialize;
 
 use crate::animation::model::{Model, Vertex};
+use crate::renderer::Renderer;
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum Dimension {
@@ -80,7 +81,7 @@ impl Cuboid {
 
         cuboid.vertices = vertices;
         cuboid.indices = indices;
-        cuboid.setup_opengl();
+        Renderer::upload_model_mesh(&mut cuboid);
 
         cuboid
     }
@@ -180,7 +181,7 @@ impl Cylinder {
 
         model.vertices = vertices;
         model.indices = indices;
-        model.setup_opengl();
+        Renderer::upload_model_mesh(&mut model);
 
         model
     }
@@ -241,7 +242,7 @@ impl Sphere {
 
         model.vertices = vertices;
         model.indices = indices;
-        model.setup_opengl();
+        Renderer::upload_model_mesh(&mut model);
         model
     }
 }
@@ -363,7 +364,7 @@ impl Pill {
 
         model.vertices = vertices;
         model.indices = indices;
-        model.setup_opengl();
+        Renderer::upload_model_mesh(&mut model);
         model
     }
 }
