@@ -7,4 +7,5 @@ config/player_data.json
 config/game_config.json
 config/sound_config.json
 Cargo.lock
+dist.zip
 

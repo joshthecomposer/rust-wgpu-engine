@@ -620,14 +620,17 @@ fn install_input_handlers(
                 event.prevent_default();
                 if is_movement_key(keycode) {
                     web_sys::console::log_1(
-                        &format!("web keydown movement: code={} mapped={keycode:?}", event.code())
-                            .into(),
+                        &format!(
+                            "web keydown movement: code={} mapped={keycode:?}",
+                            event.code()
+                        )
+                        .into(),
                     );
                 }
-                runtime.borrow_mut().game.handle_web_keyboard_input(
-                    keycode,
-                    winit::event::ElementState::Pressed,
-                );
+                runtime
+                    .borrow_mut()
+                    .game
+                    .handle_web_keyboard_input(keycode, winit::event::ElementState::Pressed);
             }
         }));
         document.add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref())?;
@@ -639,10 +642,10 @@ fn install_input_handlers(
         let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::wrap(Box::new(move |event| {
             if let Some(keycode) = map_keyboard_code(&event.code()) {
                 event.prevent_default();
-                runtime.borrow_mut().game.handle_web_keyboard_input(
-                    keycode,
-                    winit::event::ElementState::Released,
-                );
+                runtime
+                    .borrow_mut()
+                    .game
+                    .handle_web_keyboard_input(keycode, winit::event::ElementState::Released);
             }
         }));
         document.add_event_listener_with_callback("keyup", closure.as_ref().unchecked_ref())?;
@@ -657,7 +660,10 @@ fn install_input_handlers(
             let y = event.offset_y() as f32;
             let dx = event.movement_x() as f64;
             let dy = event.movement_y() as f64;
-            runtime.borrow_mut().game.handle_web_mouse_move(x, y, dx, dy);
+            runtime
+                .borrow_mut()
+                .game
+                .handle_web_mouse_move(x, y, dx, dy);
         }));
         canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())?;
         closure.forget();

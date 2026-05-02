@@ -35,6 +35,9 @@ use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::world::World;
 use crate::{combat_system, items, movement_system, physics};
 
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsValue;
+
 const UI_ENABLED: bool = false;
 
 pub struct Game {
@@ -484,10 +487,14 @@ impl Game {
             self.paused = !self.paused;
         }
 
-        if keycode == winit::keyboard::KeyCode::KeyF
-            && state == winit::event::ElementState::Pressed
+        if keycode == winit::keyboard::KeyCode::KeyF && state == winit::event::ElementState::Pressed
         {
-            let maybe_player_id = self.world.ecs.factions.iter().find(|e| *e.value() == "Player");
+            let maybe_player_id = self
+                .world
+                .ecs
+                .factions
+                .iter()
+                .find(|e| *e.value() == "Player");
 
             self.world.camera.move_state = match self.world.camera.move_state {
                 CameraState::Free => {
@@ -503,14 +510,12 @@ impl Game {
             };
         }
 
-        if keycode == winit::keyboard::KeyCode::KeyG
-            && state == winit::event::ElementState::Pressed
+        if keycode == winit::keyboard::KeyCode::KeyG && state == winit::event::ElementState::Pressed
         {
             self.world.ecs.try_pickup_weapon(&mut self.physics);
         }
 
-        if keycode == winit::keyboard::KeyCode::Tab
-            && state == winit::event::ElementState::Pressed
+        if keycode == winit::keyboard::KeyCode::Tab && state == winit::event::ElementState::Pressed
         {
             self.cursor_mode = match self.cursor_mode {
                 CursorMode::Normal => CursorMode::Hidden,
@@ -533,7 +538,10 @@ impl Game {
         button: winit::event::MouseButton,
         state: winit::event::ElementState,
     ) {
-        let fb = glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32);
+        let fb = glam::vec2(
+            self.platform.fb_width as f32,
+            self.platform.fb_height as f32,
+        );
         input::handle_mouse_input(
             button,
             state,
@@ -676,9 +684,9 @@ impl Game {
                     }
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                    // reload configs from disk to discard changes
-                    self.config = GameConfig::load_from_file(&self.config_path);
-                    self.sound_config = SoundConfig::load_from_file(&self.sound_config_path);
+                        // reload configs from disk to discard changes
+                        self.config = GameConfig::load_from_file(&self.config_path);
+                        self.sound_config = SoundConfig::load_from_file(&self.sound_config_path);
                     }
 
                     // sync renderer state from reloaded config

@@ -28,7 +28,6 @@ use winit::{
 #[cfg(not(target_arch = "wasm32"))]
 use crate::gl_call;
 
-#[allow(dead_code)]
 #[derive(PartialEq, Copy, Clone)]
 pub enum CursorMode {
     Normal,
@@ -53,14 +52,12 @@ pub struct Platform {
 #[cfg(target_arch = "wasm32")]
 pub type Platform = web_canvas::WebCanvasPlatform;
 
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PlatformBackend {
     NativeGlutin,
     WebCanvas,
 }
 
-#[allow(dead_code)]
 pub struct RenderSurface<'a> {
     pub backend: PlatformBackend,
     pub fb_width: u32,
@@ -69,7 +66,6 @@ pub struct RenderSurface<'a> {
     pub capabilities: &'a GlCapabilities,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct GlCapabilities {
     pub gl_version: String,
@@ -352,10 +348,7 @@ pub mod web_canvas {
             WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
         );
 
-        ctx.bind_framebuffer(
-            WebGl2RenderingContext::FRAMEBUFFER,
-            Some(&fbo),
-        );
+        ctx.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, Some(&fbo));
         ctx.framebuffer_texture_2d(
             WebGl2RenderingContext::FRAMEBUFFER,
             WebGl2RenderingContext::COLOR_ATTACHMENT0,
@@ -420,10 +413,13 @@ pub mod web_canvas {
                         Some(&tex1),
                         0,
                     );
-                    draw_buffers_gl(ctx, &[
-                        WebGl2RenderingContext::COLOR_ATTACHMENT0,
-                        WebGl2RenderingContext::COLOR_ATTACHMENT1,
-                    ]);
+                    draw_buffers_gl(
+                        ctx,
+                        &[
+                            WebGl2RenderingContext::COLOR_ATTACHMENT0,
+                            WebGl2RenderingContext::COLOR_ATTACHMENT1,
+                        ],
+                    );
                     mrt_ok = ctx.check_framebuffer_status(WebGl2RenderingContext::FRAMEBUFFER)
                         == WebGl2RenderingContext::FRAMEBUFFER_COMPLETE;
                 }
@@ -1389,12 +1385,10 @@ pub mod web_canvas {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Platform {
-    #[allow(dead_code)]
     pub fn backend(&self) -> PlatformBackend {
         PlatformBackend::NativeGlutin
     }
 
-    #[allow(dead_code)]
     pub fn render_surface(&self) -> RenderSurface<'_> {
         RenderSurface {
             backend: self.backend(),
@@ -1405,7 +1399,6 @@ impl Platform {
         }
     }
 
-    #[allow(dead_code)]
     pub fn framebuffer_size(&self) -> (u32, u32) {
         (self.fb_width, self.fb_height)
     }

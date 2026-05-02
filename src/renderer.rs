@@ -111,7 +111,8 @@ struct RenderTargetPolicy {
 impl RenderTargetPolicy {
     fn for_capabilities(capabilities: &GlCapabilities, config: &GameConfig) -> Self {
         let compatibility_mode = config.webgl_compatibility_mode || capabilities.is_gles_like;
-        let force_ldr = config.webgl_compatibility_mode || !capabilities.supports_float_color_buffer;
+        let force_ldr =
+            config.webgl_compatibility_mode || !capabilities.supports_float_color_buffer;
 
         if force_ldr {
             return Self {
@@ -144,7 +145,10 @@ impl RenderTargetPolicy {
 
     fn log_startup(self) {
         println!("Render target policy:");
-        println!("  Compatibility / GLES shader path: {}", self.compatibility_mode);
+        println!(
+            "  Compatibility / GLES shader path: {}",
+            self.compatibility_mode
+        );
         println!("  Color format: {}", self.color_format.label());
         println!("  Depth format: {}", self.depth_format.label());
         println!("  HDR: {}", self.hdr_enabled);
@@ -431,11 +435,7 @@ impl Renderer {
                 ));
             }
 
-            let attach1 = if mrt {
-                gl::COLOR_ATTACHMENT1
-            } else {
-                gl::NONE
-            };
+            let attach1 = if mrt { gl::COLOR_ATTACHMENT1 } else { gl::NONE };
             let attachments = [gl::COLOR_ATTACHMENT0, attach1];
             gl_call!(gl::DrawBuffers(
                 attachments.len() as i32,
@@ -761,8 +761,10 @@ impl Renderer {
                 shaders.insert(ShaderType::BloomUpsample, bloom_up_shader);
             }
             if policy.fxaa_enabled {
-                let fxaa_shader =
-                    Shader::new_with_profile("resources/shaders/fxaa.glsl", ShaderProfile::GlslEs300);
+                let fxaa_shader = Shader::new_with_profile(
+                    "resources/shaders/fxaa.glsl",
+                    ShaderProfile::GlslEs300,
+                );
                 shaders.insert(ShaderType::Fxaa, fxaa_shader);
             }
         }
@@ -1037,8 +1039,12 @@ impl Renderer {
         let width = platform.fb_width;
         let height = platform.fb_height;
 
-        let hdr_framebuffer =
-            Self::create_hdr_framebuffer(width, height, render_target_policy, &platform.capabilities);
+        let hdr_framebuffer = Self::create_hdr_framebuffer(
+            width,
+            height,
+            render_target_policy,
+            &platform.capabilities,
+        );
         fbos.insert(FboType::HDR, hdr_framebuffer.fbo);
         let hdr_color = hdr_framebuffer.color;
         let hdr_bright = hdr_framebuffer.bright;
@@ -1483,10 +1489,8 @@ impl Renderer {
         config: &GameConfig,
         render_target_policy: RenderTargetPolicy,
     ) -> Self {
-        let shaders = Self::create_compatibility_shaders(
-            &platform.capabilities,
-            &render_target_policy,
-        );
+        let shaders =
+            Self::create_compatibility_shaders(&platform.capabilities, &render_target_policy);
         let skybox_resources = Self::create_compatibility_skybox_resources();
         let shadow_map = Self::create_compatibility_shadow_map(&platform.capabilities);
 
@@ -1685,7 +1689,6 @@ impl Renderer {
         renderer
     }
 
-    #[allow(dead_code)]
     pub fn render_webgl_compatibility_frame(&mut self, fb_width: u32, fb_height: u32) {
         unsafe {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
@@ -2915,6 +2918,16 @@ impl Renderer {
                 let animator = em.animators.get(*id).unwrap();
                 let animation = animator.get_current_animation().unwrap();
                 shader.set_mat4_array("bone_transforms", &animation.current_pose);
+
+                if let Some(fa) = &animation.hurtbox_activation {
+                    if fa.segment_range.contains(&animation.current_segment.get()) {
+                        if !fa.triggered.get() {
+                            fa.triggered.set(true);
+                        }
+                    } else {
+                        fa.triggered.set(false);
+                    }
+                }
             }
 
             Self::bind_default_model_textures(defaults);

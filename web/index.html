@@ -59,14 +59,22 @@
       }
       const assetManifest = await manifestResponse.json();
 
-      await Promise.all(assetManifest.map(async (path) => {
-        const response = await fetch(path);
-        if (!response.ok) {
-          throw new Error(`Failed to load asset ${path}: ${response.status}`);
+      // Hundreds of parallel fetches exhausts the browser (net::ERR_INSUFFICIENT_RESOURCES).
+      const concurrency = 8;
+      let next = 0;
+      async function worker() {
+        while (true) {
+          const i = next++;
+          if (i >= assetManifest.length) return;
+          const path = assetManifest[i];
+          const response = await fetch(path);
+          if (!response.ok) {
+            throw new Error(`Failed to load asset ${path}: ${response.status}`);
+          }
+          assets[path] = new Uint8Array(await response.arrayBuffer());
         }
-
-        assets[path] = new Uint8Array(await response.arrayBuffer());
-      }));
+      }
+      await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
       window.__learn_opengl_rs_assets = assets;
     }

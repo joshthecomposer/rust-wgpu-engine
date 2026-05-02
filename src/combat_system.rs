@@ -7,6 +7,7 @@ use crate::{
     particles::ParticleSystem,
     physics::{self, PhysicsState},
 };
+use wasm_bindgen::JsValue;
 
 pub fn update(em: &mut EntityManager, _dt: f32, ps: &mut PhysicsState, cmds: &mut CommandBuffer) {
     handle_melee_hits(em, ps, cmds);
@@ -34,6 +35,14 @@ fn handle_melee_hits(em: &mut EntityManager, ps: &mut PhysicsState, cmds: &mut C
         .get_next_animation()
         .and_then(|anim| anim.hurtbox_activation.as_ref())
         .map_or(false, |ha| ha.triggered.get());
+
+    if active {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let msg = format!("{}", "COLLIDERRRRRRRRRRRRRRRRRRRRRSSS");
+            web_sys::console::log_1(&JsValue::from_str(&msg));
+        }
+    }
 
     if !active {
         hitset.clear();
