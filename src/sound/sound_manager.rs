@@ -1,6 +1,12 @@
-use std::{cell::Cell, collections::HashMap, ffi::CString};
+use std::{cell::Cell, collections::HashMap};
 
-use gl::PixelStoref;
+#[cfg(all(
+    feature = "native_audio",
+    any(target_os = "macos", target_os = "windows"),
+    not(target_arch = "wasm32")
+))]
+use std::ffi::CString;
+
 use glam::Vec3;
 
 use crate::{
@@ -8,9 +14,20 @@ use crate::{
     command_buffer::{CommandBuffer, SoundKind},
     config::sound_config::SoundConfig,
     enums_types::SoundType,
-    sound::fmod::{FMOD_Studio_EventDescription_LoadSampleData, FMOD_INIT_3D_RIGHTHANDED},
 };
 
+#[cfg(all(
+    feature = "native_audio",
+    any(target_os = "macos", target_os = "windows"),
+    not(target_arch = "wasm32")
+))]
+use crate::sound::fmod::{FMOD_Studio_EventDescription_LoadSampleData, FMOD_INIT_3D_RIGHTHANDED};
+
+#[cfg(all(
+    feature = "native_audio",
+    any(target_os = "macos", target_os = "windows"),
+    not(target_arch = "wasm32")
+))]
 use super::fmod::{
     FMOD_Studio_EventDescription_CreateInstance, FMOD_Studio_EventInstance_Release,
     FMOD_Studio_EventInstance_Set3DAttributes, FMOD_Studio_EventInstance_SetParameterByName,
@@ -21,6 +38,11 @@ use super::fmod::{
     FMOD_STUDIO_INIT_NORMAL, FMOD_STUDIO_SYSTEM, FMOD_VECTOR, FMOD_VERSION,
 };
 
+#[cfg(all(
+    feature = "native_audio",
+    any(target_os = "macos", target_os = "windows"),
+    not(target_arch = "wasm32")
+))]
 pub struct SoundData {
     description: FMOD_STUDIO_EVENTDESCRIPTION,
     // instance: FMOD_STUDIO_EVENTINSTANCE,
@@ -39,6 +61,11 @@ pub struct ContinuousSound {
     pub playing: Cell<bool>,
 }
 
+#[cfg(all(
+    feature = "native_audio",
+    any(target_os = "macos", target_os = "windows"),
+    not(target_arch = "wasm32")
+))]
 pub struct SoundManager {
     pub fmod_system: FMOD_STUDIO_SYSTEM,
     pub sounds: HashMap<SoundType, SoundData>, //The key (String) is the sound_name in the game_config.json
@@ -47,6 +74,11 @@ pub struct SoundManager {
     pub master_volume: f32,
 }
 
+#[cfg(all(
+    feature = "native_audio",
+    any(target_os = "macos", target_os = "windows"),
+    not(target_arch = "wasm32")
+))]
 impl SoundManager {
     pub fn new(config: &SoundConfig) -> SoundManager {
         let sound_props = &config.sounds;
@@ -330,4 +362,52 @@ impl SoundManager {
             z: -v.z,
         }
     }
+}
+
+#[cfg(not(all(
+    feature = "native_audio",
+    any(target_os = "macos", target_os = "windows"),
+    not(target_arch = "wasm32")
+)))]
+pub struct SoundManager {
+    pub active_sounds: HashMap<SoundType, ()>,
+    pub active_3d_sounds: HashMap<usize, Vec<()>>,
+    pub master_volume: f32,
+}
+
+#[cfg(not(all(
+    feature = "native_audio",
+    any(target_os = "macos", target_os = "windows"),
+    not(target_arch = "wasm32")
+)))]
+impl SoundManager {
+    pub fn new(_config: &SoundConfig) -> SoundManager {
+        SoundManager {
+            active_3d_sounds: HashMap::new(),
+            active_sounds: HashMap::new(),
+            master_volume: 1.0,
+        }
+    }
+
+    pub fn update(&mut self, _camera: &Camera, cmds: &mut CommandBuffer) {
+        let _ = std::mem::take(&mut cmds.sound);
+    }
+
+    pub fn set_listener_attributes(&self, _camera: &Camera) {}
+
+    pub fn play_sound_3d(&mut self, _sound_type: SoundType, _position: &Vec3) {}
+
+    pub fn play_sound_2d(&mut self, sound_type: SoundType) {
+        self.active_sounds.insert(sound_type, ());
+    }
+
+    pub fn stop_sound(&mut self, sound_type: &SoundType) {
+        self.active_sounds.remove(sound_type);
+    }
+
+    pub fn cleanup_entity_sounds(&mut self, entity_id: usize) {
+        self.active_3d_sounds.remove(&entity_id);
+    }
+
+    pub fn set_master_volume(&mut self, _sound_type: &SoundType) {}
 }

@@ -37,6 +37,11 @@ opt-level = 3
 opt-level = 3 
 
 [features]
+default = ["native", "native_audio", "editor_ui"]
+native = []
+native_audio = []
+editor_ui = []
+web = []
 gl_debug = []
 track_draw_calls = []
 

@@ -12,6 +12,7 @@ use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba};
 
 use crate::{
     animation::model::{Model, Texture, Vertex},
+    assets,
     camera::Camera,
     config::game_config::GameConfig,
     entity_manager::EntityManager,
@@ -23,7 +24,7 @@ use crate::{
     particles::ParticleSystem,
     physics::PhysicsState,
     platform::{GlCapabilities, Platform},
-    shaders::Shader,
+    shaders::{Shader, ShaderProfile},
     sound::sound_manager::SoundManager,
     util::constants::{
         BASIC_QUAD_VERTICES, FACES_CUBEMAP, SHADOW_HEIGHT, SHADOW_WIDTH, SKYBOX_INDICES,
@@ -50,6 +51,17 @@ struct BloomPingpongFramebuffers {
     textures: [u32; 2],
 }
 
+struct SkyboxResources {
+    vao: u32,
+    cubemap_texture: u32,
+}
+
+struct ShadowMapResources {
+    fbo: u32,
+    depth_map: u32,
+}
+
+#[derive(Clone, Copy)]
 pub struct DefaultTextures {
     pub white: u32,
     pub black: u32,
@@ -611,6 +623,247 @@ impl Renderer {
         Some(fbo)
     }
 
+    fn create_compatibility_shaders(capabilities: &GlCapabilities) -> HashMap<ShaderType, Shader> {
+        let mut shaders = HashMap::new();
+
+        let skybox_shader =
+            Shader::new_with_profile("resources/shaders/skybox.glsl", ShaderProfile::GlslEs300);
+        skybox_shader.activate();
+        skybox_shader.set_int("skybox", 1);
+        let depth_shader = Shader::new_with_profile(
+            "resources/shaders/depth_shader.glsl",
+            ShaderProfile::GlslEs300,
+        );
+
+        let static_model_shader = Shader::new_with_profile(
+            "resources/shaders/model/static_model.glsl",
+            ShaderProfile::GlslEs300,
+        );
+        static_model_shader.activate();
+        static_model_shader.set_int("material.Diffuse", 1);
+        static_model_shader.set_int("material.Specular", 2);
+        static_model_shader.set_int("material.Emissive", 3);
+        static_model_shader.set_int("material.Opacity", 4);
+        static_model_shader.set_int("shadow_map", 7);
+        static_model_shader.set_int("skybox", 10);
+        static_model_shader.set_bool(
+            "shadow_border_fallback",
+            !capabilities.supports_clamp_to_border,
+        );
+        static_model_shader.set_bool("use_shadows", false);
+
+        let animated_model_shader = Shader::new_with_profile(
+            "resources/shaders/model/animated_model.glsl",
+            ShaderProfile::GlslEs300,
+        );
+        animated_model_shader.activate();
+        animated_model_shader.set_int("material.Diffuse", 1);
+        animated_model_shader.set_int("material.Specular", 2);
+        animated_model_shader.set_int("material.Emissive", 3);
+        animated_model_shader.set_int("material.Opacity", 4);
+        animated_model_shader.set_int("shadow_map", 7);
+        animated_model_shader.set_int("skybox", 10);
+        animated_model_shader.set_bool(
+            "shadow_border_fallback",
+            !capabilities.supports_clamp_to_border,
+        );
+        animated_model_shader.set_bool("use_shadows", false);
+
+        shaders.insert(ShaderType::Skybox, skybox_shader);
+        shaders.insert(ShaderType::Depth, depth_shader);
+        shaders.insert(ShaderType::StaticModel, static_model_shader);
+        shaders.insert(ShaderType::AnimatedModel, animated_model_shader);
+
+        shaders
+    }
+
+    fn create_compatibility_skybox_resources() -> SkyboxResources {
+        let mut vao = 0;
+        let mut vbo = 0;
+        let mut ebo = 0;
+        let mut cubemap_texture = 0;
+
+        unsafe {
+            gl_call!(gl::GenVertexArrays(1, &mut vao));
+            gl_call!(gl::GenBuffers(1, &mut vbo));
+            gl_call!(gl::GenBuffers(1, &mut ebo));
+
+            gl_call!(gl::BindVertexArray(vao));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, vbo));
+            gl_call!(gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (mem::size_of::<f32>() * SKYBOX_VERTICES.len()) as isize,
+                SKYBOX_VERTICES.as_ptr().cast(),
+                gl::STATIC_DRAW
+            ));
+
+            gl_call!(gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ebo));
+            gl_call!(gl::BufferData(
+                gl::ELEMENT_ARRAY_BUFFER,
+                (mem::size_of::<u32>() * SKYBOX_INDICES.len()) as isize,
+                SKYBOX_INDICES.as_ptr().cast(),
+                gl::STATIC_DRAW
+            ));
+
+            gl_call!(gl::VertexAttribPointer(
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                (3 * mem::size_of::<f32>()) as i32,
+                std::ptr::null(),
+            ));
+            gl_call!(gl::EnableVertexAttribArray(0));
+
+            gl_call!(gl::BindVertexArray(0));
+            gl_call!(gl::BindBuffer(gl::ARRAY_BUFFER, 0));
+            gl_call!(gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, 0));
+
+            gl_call!(gl::GenTextures(1, &mut cubemap_texture));
+            gl_call!(gl::BindTexture(gl::TEXTURE_CUBE_MAP, cubemap_texture));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_MAG_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_MIN_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_CUBE_MAP,
+                gl::TEXTURE_WRAP_R,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+
+            for i in 0..FACES_CUBEMAP.len() {
+                let img = match assets::load_image(FACES_CUBEMAP[i]) {
+                    Ok(img) => img,
+                    _ => panic!("Error opening {}", FACES_CUBEMAP[i]),
+                };
+                let (img_width, img_height) = img.dimensions();
+                let rgb = img.to_rgb8();
+                let raw = rgb.as_raw();
+
+                gl_call!(gl::TexImage2D(
+                    gl::TEXTURE_CUBE_MAP_POSITIVE_X + i as u32,
+                    0,
+                    gl::RGB8 as i32,
+                    img_width as i32,
+                    img_height as i32,
+                    0,
+                    gl::RGB,
+                    gl::UNSIGNED_BYTE,
+                    raw.as_ptr().cast()
+                ));
+            }
+
+            gl_call!(gl::BindTexture(gl::TEXTURE_CUBE_MAP, 0));
+        }
+
+        SkyboxResources {
+            vao,
+            cubemap_texture,
+        }
+    }
+
+    fn create_compatibility_shadow_map(capabilities: &GlCapabilities) -> ShadowMapResources {
+        let mut fbo = 0;
+        let mut depth_map = 0;
+
+        unsafe {
+            gl_call!(gl::GenFramebuffers(1, &mut fbo));
+            gl_call!(gl::GenTextures(1, &mut depth_map));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, depth_map));
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::DEPTH_COMPONENT24 as i32,
+                SHADOW_WIDTH,
+                SHADOW_HEIGHT,
+                0,
+                gl::DEPTH_COMPONENT,
+                gl::UNSIGNED_INT,
+                null_mut()
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::NEAREST as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::NEAREST as i32
+            ));
+
+            if capabilities.supports_clamp_to_border {
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_S,
+                    gl::CLAMP_TO_BORDER as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_T,
+                    gl::CLAMP_TO_BORDER as i32
+                ));
+                gl_call!(gl::TexParameterfv(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_BORDER_COLOR,
+                    [1.0, 1.0, 1.0, 1.0].as_ptr().cast()
+                ));
+            } else {
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_S,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+                gl_call!(gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_WRAP_T,
+                    gl::CLAMP_TO_EDGE as i32
+                ));
+            }
+
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, fbo));
+            gl_call!(gl::FramebufferTexture2D(
+                gl::FRAMEBUFFER,
+                gl::DEPTH_ATTACHMENT,
+                gl::TEXTURE_2D,
+                depth_map,
+                0
+            ));
+            let draw_buffers = [gl::NONE];
+            gl_call!(gl::DrawBuffers(1, draw_buffers.as_ptr()));
+            gl_call!(gl::ReadBuffer(gl::NONE));
+            Self::check_framebuffer_complete(
+                "Compatibility shadow FBO",
+                format!(
+                    "size={}x{} depth={}",
+                    SHADOW_WIDTH,
+                    SHADOW_HEIGHT,
+                    RenderTargetDepthFormat::DepthComponent24.label()
+                ),
+            );
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+        }
+
+        ShadowMapResources { fbo, depth_map }
+    }
+
     pub fn new(platform: &Platform, config: &GameConfig) -> Self {
         let render_target_policy =
             RenderTargetPolicy::for_capabilities(&platform.capabilities, config);
@@ -795,7 +1048,7 @@ impl Renderer {
             ));
 
             for i in 0..FACES_CUBEMAP.len() {
-                let img = match image::open(FACES_CUBEMAP[i]) {
+                let img = match assets::load_image(FACES_CUBEMAP[i]) {
                     Ok(img) => img,
                     _ => panic!("Error opening {}", FACES_CUBEMAP[i]),
                 };
@@ -1131,6 +1384,16 @@ impl Renderer {
         config: &GameConfig,
         render_target_policy: RenderTargetPolicy,
     ) -> Self {
+        let shaders = Self::create_compatibility_shaders(&platform.capabilities);
+        let skybox_resources = Self::create_compatibility_skybox_resources();
+        let shadow_map = Self::create_compatibility_shadow_map(&platform.capabilities);
+
+        let mut vaos = HashMap::new();
+        vaos.insert(VaoType::Skybox, skybox_resources.vao);
+
+        let mut fbos = HashMap::new();
+        fbos.insert(FboType::DepthMap, shadow_map.fbo);
+
         let defaults = DefaultTextures {
             white: Self::make_solid_texture(255, 255, 255, 255),
             black: Self::make_solid_texture(0, 0, 0, 255),
@@ -1139,12 +1402,12 @@ impl Renderer {
 
         Self {
             capabilities: platform.capabilities.clone(),
-            shaders: HashMap::new(),
-            vaos: HashMap::new(),
-            fbos: HashMap::new(),
+            shaders,
+            vaos,
+            fbos,
             defaults,
-            depth_map: 0,
-            cubemap_texture: 0,
+            depth_map: shadow_map.depth_map,
+            cubemap_texture: skybox_resources.cubemap_texture,
             shadow_debug: false,
             render_gizmos: config.render_gizmos,
             hdr_color: 0,
@@ -1167,6 +1430,7 @@ impl Renderer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn render_webgl_compatibility_frame(&mut self, fb_width: u32, fb_height: u32) {
         unsafe {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
@@ -1176,6 +1440,66 @@ impl Renderer {
             gl_call!(gl::Disable(gl::SCISSOR_TEST));
             gl_call!(gl::ClearColor(0.02, 0.02, 0.03, 1.0));
             gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT));
+        }
+    }
+
+    pub fn render_world_webgl_compatibility(
+        &mut self,
+        em: &mut EntityManager,
+        camera: &mut Camera,
+        light_manager: &Lights,
+        fb_width: u32,
+        fb_height: u32,
+        elapsed: f32,
+        ps: &PhysicsState,
+        alpha: f32,
+    ) {
+        let ids_by_type = em.get_ids_by_type();
+
+        self.shadow_begin(camera, light_manager);
+        for ids in ids_by_type.values() {
+            if ids.is_empty() {
+                continue;
+            }
+
+            let is_animated = em.animators.contains(*ids.first().unwrap());
+            self.shadow_draw_bucket(em, ps, alpha, ids, is_animated);
+        }
+        self.shadow_end();
+
+        unsafe {
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
+            gl_call!(gl::Enable(gl::DEPTH_TEST));
+            gl_call!(gl::DepthMask(gl::TRUE));
+            gl_call!(gl::Disable(gl::BLEND));
+            gl_call!(gl::Disable(gl::SCISSOR_TEST));
+            gl_call!(gl::ClearColor(0.02, 0.02, 0.03, 1.0));
+            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT));
+        }
+
+        self.skybox_pass(camera, fb_width, fb_height);
+
+        for ids in ids_by_type.values() {
+            if ids.is_empty() {
+                continue;
+            }
+
+            let is_animated = em.animators.contains(*ids.first().unwrap());
+            self.model_pass_webgl_compatibility(
+                camera,
+                em,
+                light_manager,
+                alpha,
+                elapsed,
+                ids,
+                is_animated,
+            );
+        }
+
+        unsafe {
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_CUBE_MAP, 0));
         }
     }
 
@@ -1854,7 +2178,7 @@ impl Renderer {
         unsafe {
             gl_call!(gl::GenTextures(1, &mut texture_id));
 
-            let img = match image::open(file_name.clone()) {
+            let img = match assets::load_image(&file_name) {
                 Ok(data) => Some(data),
                 Err(_) => {
                     if texture_type == TextureType::Diffuse {
@@ -1865,14 +2189,6 @@ impl Renderer {
                         for pixel in imgbuf.pixels_mut() {
                             *pixel = Rgba(color_u8);
                         }
-
-                        let color_path = format!(
-                            "{:.3}-{:.3}-{:.3}.png",
-                            color_u8[0], color_u8[1], color_u8[2]
-                        );
-                        let save_loc = format!("{}/{}", model.directory, color_path);
-
-                        imgbuf.save(save_loc).expect("Failed to save texture image");
 
                         Some(DynamicImage::ImageRgba8(imgbuf))
                     } else {
@@ -2047,6 +2363,19 @@ impl Renderer {
         shader.set_bool("use_base_color", false);
     }
 
+    fn bind_default_model_textures(defaults: DefaultTextures) {
+        unsafe {
+            gl_call!(gl::ActiveTexture(gl::TEXTURE1));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, defaults.white));
+            gl_call!(gl::ActiveTexture(gl::TEXTURE2));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, defaults.black));
+            gl_call!(gl::ActiveTexture(gl::TEXTURE3));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, defaults.black));
+            gl_call!(gl::ActiveTexture(gl::TEXTURE4));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, defaults.opaque));
+        }
+    }
+
     pub fn draw_model_geometry(model: &Model) {
         unsafe {
             gl_call!(gl::BindVertexArray(model.vao));
@@ -2194,6 +2523,86 @@ impl Renderer {
         unsafe {
             gl_call!(gl::Disable(gl::BLEND));
             gl::Disable(gl::CULL_FACE);
+            gl_call!(gl::DepthMask(gl::TRUE));
+        }
+
+        shader.set_bool("do_reg_fresnel", false);
+        shader.set_bool("selection_fresnel", false);
+    }
+
+    fn model_pass_webgl_compatibility(
+        &mut self,
+        camera: &mut Camera,
+        em: &EntityManager,
+        light_manager: &Lights,
+        alpha: f32,
+        elapsed: f32,
+        ids: &Vec<usize>,
+        is_animated: bool,
+    ) {
+        unsafe {
+            gl_call!(gl::Enable(gl::DEPTH_TEST));
+            gl_call!(gl::DepthMask(gl::TRUE));
+            gl_call!(gl::Disable(gl::BLEND));
+            gl_call!(gl::Enable(CULL_FACE));
+            gl_call!(gl::CullFace(gl::BACK));
+            gl_call!(gl::FrontFace(gl::CCW));
+
+            gl_call!(gl::ActiveTexture(gl::TEXTURE7));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
+            gl_call!(gl::ActiveTexture(gl::TEXTURE10));
+            gl_call!(gl::BindTexture(gl::TEXTURE_CUBE_MAP, self.cubemap_texture));
+        }
+
+        let shader = match is_animated {
+            true => self.shaders.get_mut(&ShaderType::AnimatedModel).unwrap(),
+            false => self.shaders.get_mut(&ShaderType::StaticModel).unwrap(),
+        };
+
+        shader.activate();
+        shader.set_bool("alpha_test_pass", false);
+        shader.set_mat4("projection", camera.projection);
+        shader.set_mat4("view", camera.view);
+        shader.set_mat4("light_space_mat", camera.light_space);
+        shader.set_dir_light("dir_light", &light_manager.dir_light);
+        shader.set_float("bias_scalar", light_manager.bias_scalar);
+        shader.set_vec3("view_position", camera.position);
+        shader.set_int("skybox", 10);
+        shader.set_float("elapsed", elapsed);
+
+        let defaults = self.defaults;
+        for id in ids {
+            if em.is_equipped.get(*id).is_none() && em.owners.get(*id).is_some() {
+                continue;
+            }
+
+            let model = match em.models.get(*id) {
+                Some(m) => m,
+                None => continue,
+            };
+            let trans = Self::render_transform(em, *id, alpha);
+            let m_mat =
+                Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
+            shader.set_mat4("model", m_mat);
+            shader.set_bool("selection_fresnel", em.selected.contains(id));
+
+            if is_animated {
+                let animator = em.animators.get(*id).unwrap();
+                let animation = animator.get_current_animation().unwrap();
+                shader.set_mat4_array("bone_transforms", &animation.current_pose);
+            }
+
+            Self::bind_default_model_textures(defaults);
+            unsafe {
+                Self::draw_model(model, shader);
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+            }
+            shader.set_bool("selection_fresnel", false);
+        }
+
+        unsafe {
+            gl_call!(gl::Disable(gl::BLEND));
+            gl_call!(gl::Disable(CULL_FACE));
             gl_call!(gl::DepthMask(gl::TRUE));
         }
 

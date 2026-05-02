@@ -1,10 +1,11 @@
 #![allow(dead_code, clippy::while_let_on_iterator, clippy::collapsible_if)]
-use std::{collections::HashMap, ffi::CString, fs::read_to_string, ptr};
+use std::{collections::HashMap, ffi::CString, ptr};
 
 use gl::types::{GLint, GLuint};
 use glam::{Mat4, Vec3};
 
 use crate::{
+    assets,
     gl_call,
     lights::{DirLight, PointLight},
 };
@@ -44,7 +45,7 @@ impl Shader {
     }
 
     fn parse_and_store_uniforms(&mut self, file_path: &str) {
-        let data = read_to_string(file_path).unwrap();
+        let data = assets::read_text(file_path).unwrap();
         let mut lines = data.lines();
 
         while let Some(line) = lines.next() {
@@ -332,6 +333,18 @@ fn shader_source_path(file_path: &str, profile: ShaderProfile) -> &str {
         (ShaderProfile::GlslEs300, "resources/shaders/custom_ui.glsl") => {
             "resources/shaders/custom_ui_es300.glsl"
         }
+        (ShaderProfile::GlslEs300, "resources/shaders/depth_shader.glsl") => {
+            "resources/shaders/depth_shader_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/skybox.glsl") => {
+            "resources/shaders/skybox_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/model/static_model.glsl") => {
+            "resources/shaders/model/static_model_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/model/animated_model.glsl") => {
+            "resources/shaders/model/animated_model_es300.glsl"
+        }
         _ => file_path,
     }
 }
@@ -341,7 +354,7 @@ fn extract_shader_sources(
     profile: ShaderProfile,
 ) -> (String, Option<String>, String) {
     println!("{}", file_path);
-    let data = read_to_string(file_path).unwrap();
+    let data = assets::read_text(file_path).unwrap();
     let mut lines = data.lines();
 
     let mut current_shader = None;

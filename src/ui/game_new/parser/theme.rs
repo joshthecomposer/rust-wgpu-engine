@@ -1,8 +1,9 @@
 use std::collections::HashMap;
-use std::fs;
 use std::path::Path;
 
 use serde::Deserialize;
+
+use crate::assets;
 
 use super::super::styles::{Color, Length};
 
@@ -32,8 +33,12 @@ impl Theme {
 }
 
 pub fn load_theme<P: AsRef<Path>>(path: P) -> Result<Theme, String> {
-    let content = fs::read_to_string(path.as_ref())
-        .map_err(|e| format!("Failed to read theme file: {}", e))?;
+    let path = path
+        .as_ref()
+        .to_str()
+        .ok_or_else(|| "Theme path contains invalid UTF-8".to_string())?;
+    let content =
+        assets::read_text(path).map_err(|e| format!("Failed to read theme file: {}", e))?;
     parse_theme(&content)
 }
 

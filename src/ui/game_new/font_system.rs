@@ -1,10 +1,10 @@
+use crate::assets;
 use crate::ui::game_new::render::UiGlyph;
 use glyph_brush::{
     ab_glyph::{FontArc, PxScale},
     FontId, GlyphBrush, GlyphBrushBuilder, GlyphCruncher, Section, Text,
 };
 use std::collections::HashMap;
-use std::fs;
 
 pub struct FontSystem {
     pub(crate) glyph_brush: GlyphBrush<UiGlyph>,
@@ -22,7 +22,7 @@ impl FontSystem {
         let mut fonts = Vec::new();
         for (path, name) in &font_paths {
             let font_data =
-                fs::read(path).unwrap_or_else(|_| panic!("Failed to load font: {}", path));
+                assets::read_bytes(path).unwrap_or_else(|_| panic!("Failed to load font: {}", path));
             let font = FontArc::try_from_vec(font_data)
                 .unwrap_or_else(|_| panic!("Error parsing font: {}", name));
             fonts.push(font);

@@ -10,6 +10,7 @@ use crate::{
         model::{Model, Vertex},
         skellington::{Bone, BoneJoinInfo, BoneTransformTrack},
     },
+    assets,
     enums_types::{AnimationType, TextureProfile, TextureType},
     renderer::Renderer,
     util::constants::MAX_BONE_INFLUENCE,
@@ -20,7 +21,7 @@ pub fn import_bone_data(
     flip_180: bool,
     weapon_bone: Option<&str>,
 ) -> (Bone, Animator, Animation, Option<usize>) {
-    let data = match std::fs::read_to_string(file_path) {
+    let data = match assets::read_text(file_path) {
         Ok(data) => data,
         Err(_) => panic!("{}", file_path),
     };
@@ -283,7 +284,7 @@ pub fn import_bone_data(
 }
 
 pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
-    let data = std::fs::read_to_string(file_path).unwrap();
+    let data = assets::read_text(file_path).unwrap();
     let mut lines = data.lines().peekable();
 
     let mut model = Model::new();

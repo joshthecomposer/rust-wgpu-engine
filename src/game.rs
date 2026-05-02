@@ -1,3 +1,4 @@
+#[cfg(feature = "editor_ui")]
 use std::path::Path;
 
 use glutin::surface::{GlSurface, SwapInterval};
@@ -23,10 +24,13 @@ use crate::time::Time;
 use crate::toast;
 use crate::ui::game_new::parser::load_view_or_fallback;
 use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
+#[cfg(feature = "editor_ui")]
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::world::World;
 use crate::{combat_system, items, movement_system, physics};
+
+const UI_ENABLED: bool = false;
 
 pub struct Game {
     pub platform: Platform, // OS/window/events
@@ -44,6 +48,7 @@ pub struct Game {
     custom_ui_renderer: UiRenderer,
     font_system: FontSystem,
     pub should_quit: bool,
+    #[cfg(feature = "editor_ui")]
     imgui_manager: Option<ImguiManager>,
     config: GameConfig,
     config_path: String,
@@ -71,18 +76,24 @@ impl Game {
         let renderer = Renderer::new(&platform, &config);
         let sound = SoundManager::new(&sound_config);
 
-        let webgl_compatibility_mode = config.webgl_compatibility_mode || platform.capabilities.is_gles_like;
+        let webgl_compatibility_mode =
+            config.webgl_compatibility_mode || platform.capabilities.is_gles_like;
 
-        let imgui_manager = match config.debug_mode && !webgl_compatibility_mode {
+        #[cfg(feature = "editor_ui")]
+        let imgui_manager = match UI_ENABLED && config.debug_mode && !webgl_compatibility_mode {
             true => Some(ImguiManager::new(&platform)),
             false => None,
         };
 
         let custom_ui = None;
 
-        let mut gallery_ui = load_view_or_fallback("resources/ui/gallery_view.ron");
-        gallery_ui.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
-        let gallery_ui = Some(gallery_ui);
+        let gallery_ui = if UI_ENABLED {
+            let mut gallery_ui = load_view_or_fallback("resources/ui/gallery_view.ron");
+            gallery_ui.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+            Some(gallery_ui)
+        } else {
+            None
+        };
 
         let ui_shader_profile = if webgl_compatibility_mode {
             ShaderProfile::GlslEs300
@@ -109,6 +120,7 @@ impl Game {
             custom_ui_renderer,
             font_system,
             should_quit: false,
+            #[cfg(feature = "editor_ui")]
             imgui_manager,
             config,
             config_path: "config/game_config.json".to_string(),
@@ -275,21 +287,26 @@ impl Game {
     }
 
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
-        if let Some(imgui_manager) = &mut self.imgui_manager {
-            imgui_manager.handle_imgui_event(event);
+        #[cfg(feature = "editor_ui")]
+        if UI_ENABLED {
+            if let Some(imgui_manager) = &mut self.imgui_manager {
+                imgui_manager.handle_imgui_event(event);
+            }
         }
         match event {
             WindowEvent::Resized(size) => {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
-                if let Some(tree) = &mut self.custom_ui {
-                    tree.set_screen_size(size.width as f32, size.height as f32);
+                if UI_ENABLED {
+                    if let Some(tree) = &mut self.custom_ui {
+                        tree.set_screen_size(size.width as f32, size.height as f32);
+                    }
+                    if let Some(tree) = &mut self.gallery_ui {
+                        tree.set_screen_size(size.width as f32, size.height as f32);
+                    }
+                    self.custom_ui_renderer
+                        .set_screen_size(size.width as f32, size.height as f32);
                 }
-                if let Some(tree) = &mut self.gallery_ui {
-                    tree.set_screen_size(size.width as f32, size.height as f32);
-                }
-                self.custom_ui_renderer
-                    .set_screen_size(size.width as f32, size.height as f32);
             }
 
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
@@ -298,17 +315,20 @@ impl Game {
                 let size = self.platform.window.inner_size();
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
-                if let Some(tree) = &mut self.custom_ui {
-                    tree.set_screen_size(size.width as f32, size.height as f32);
+                if UI_ENABLED {
+                    if let Some(tree) = &mut self.custom_ui {
+                        tree.set_screen_size(size.width as f32, size.height as f32);
+                    }
+                    if let Some(tree) = &mut self.gallery_ui {
+                        tree.set_screen_size(size.width as f32, size.height as f32);
+                    }
+                    self.custom_ui_renderer
+                        .set_screen_size(size.width as f32, size.height as f32);
                 }
-                if let Some(tree) = &mut self.gallery_ui {
-                    tree.set_screen_size(size.width as f32, size.height as f32);
-                }
-                self.custom_ui_renderer
-                    .set_screen_size(size.width as f32, size.height as f32);
             }
 
             WindowEvent::DroppedFile(path) => {
+                #[cfg(feature = "editor_ui")]
                 if let Some(imgui_manager) = &mut self.imgui_manager {
                     let path = Path::new(path);
                     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
@@ -351,25 +371,14 @@ impl Game {
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
+                let mut mouse_captured_by_imgui = false;
+                #[cfg(feature = "editor_ui")]
                 if let Some(imgui_manager) = &mut self.imgui_manager {
                     let io = imgui_manager.imgui.io();
-                    if !io.want_capture_mouse {
-                        let fb = glam::vec2(
-                            self.platform.fb_width as f32,
-                            self.platform.fb_height as f32,
-                        );
+                    mouse_captured_by_imgui = io.want_capture_mouse;
+                }
 
-                        input::handle_mouse_input(
-                            *button,
-                            *state,
-                            fb,
-                            &self.world.camera,
-                            &mut self.world.ecs,
-                            &mut self.input,
-                            &mut self.physics,
-                        );
-                    }
-                } else {
+                if !mouse_captured_by_imgui {
                     let fb = glam::vec2(
                         self.platform.fb_width as f32,
                         self.platform.fb_height as f32,
@@ -397,45 +406,15 @@ impl Game {
             } => {
                 if let PhysicalKey::Code(code) = physical_key {
                     let keycode: KeyCode = *code;
+                    let mut keyboard_captured_by_imgui = false;
 
+                    #[cfg(feature = "editor_ui")]
                     if let Some(imgui_manager) = &mut self.imgui_manager {
                         let io = imgui_manager.imgui.io();
-                        // ignore if imgui has keyboard focus
-                        if !io.want_capture_keyboard {
-                            input::handle_keyboard_input(keycode, *state, &mut self.input);
+                        keyboard_captured_by_imgui = io.want_capture_keyboard;
+                    }
 
-                            if keycode == KeyCode::Escape && *state == ElementState::Pressed {
-                                self.paused = !self.paused;
-                            }
-
-                            // F toggles camera mode (Free <-> Third <-> Locked)
-                            if keycode == KeyCode::KeyF && *state == ElementState::Pressed {
-                                let maybe_player_id = self
-                                    .world
-                                    .ecs
-                                    .factions
-                                    .iter()
-                                    .find(|e| *e.value() == "Player");
-
-                                self.world.camera.move_state = match self.world.camera.move_state {
-                                    CameraState::Free => {
-                                        if maybe_player_id.is_none() {
-                                            CameraState::Locked
-                                        } else {
-                                            CameraState::Third
-                                        }
-                                    }
-                                    CameraState::Third => CameraState::Locked,
-                                    CameraState::Locked => CameraState::Gallery,
-                                    CameraState::Gallery => CameraState::Free,
-                                };
-                            }
-
-                            if keycode == KeyCode::KeyG && *state == ElementState::Pressed {
-                                self.world.ecs.try_pickup_weapon(&mut self.physics);
-                            }
-                        }
-                    } else {
+                    if !keyboard_captured_by_imgui {
                         input::handle_keyboard_input(keycode, *state, &mut self.input);
 
                         if keycode == KeyCode::Escape && *state == ElementState::Pressed {
@@ -500,31 +479,31 @@ impl Game {
             .particles
             .update(self.time.dt, &mut self.command_buffer, &self.world.ecs);
 
-        // update custom GPU UI
-        if self.world.camera.move_state == CameraState::Gallery {
-            if let Some(tree) = &mut self.gallery_ui {
-                tree.layout(&mut self.font_system);
-                let mut ctx = UiContext {
-                    input: &self.input,
-                    messages: &mut self.message_queue,
-                };
-                if tree.update(&mut ctx) {
-                    // Widget state changed (e.g., scrolling), re-layout to apply changes
-                    tree.force_layout();
+        if UI_ENABLED {
+            // update custom GPU UI
+            if self.world.camera.move_state == CameraState::Gallery {
+                if let Some(tree) = &mut self.gallery_ui {
                     tree.layout(&mut self.font_system);
+                    let mut ctx = UiContext {
+                        input: &self.input,
+                        messages: &mut self.message_queue,
+                    };
+                    if tree.update(&mut ctx) {
+                        tree.force_layout();
+                        tree.layout(&mut self.font_system);
+                    }
                 }
-            }
-        } else {
-            if let Some(tree) = &mut self.custom_ui {
-                tree.layout(&mut self.font_system);
-                let mut ctx = UiContext {
-                    input: &self.input,
-                    messages: &mut self.message_queue,
-                };
-                if tree.update(&mut ctx) {
-                    // Widget state changed, re-layout
-                    tree.force_layout();
+            } else {
+                if let Some(tree) = &mut self.custom_ui {
                     tree.layout(&mut self.font_system);
+                    let mut ctx = UiContext {
+                        input: &self.input,
+                        messages: &mut self.message_queue,
+                    };
+                    if tree.update(&mut ctx) {
+                        tree.force_layout();
+                        tree.layout(&mut self.font_system);
+                    }
                 }
             }
         }
@@ -689,15 +668,23 @@ impl Game {
 
     pub fn render(&mut self) {
         if self.config.webgl_compatibility_mode || self.platform.capabilities.is_gles_like {
-            self.renderer.render_webgl_compatibility_frame(
+            self.renderer.render_world_webgl_compatibility(
+                &mut self.world.ecs,
+                &mut self.world.camera,
+                &self.world.lights,
                 self.platform.fb_width,
                 self.platform.fb_height,
+                self.time.elapsed,
+                &self.physics,
+                self.time.alpha,
             );
 
-            if let Some(tree) = &self.gallery_ui {
-                self.custom_ui_renderer.begin();
-                tree.render(&mut self.custom_ui_renderer);
-                self.custom_ui_renderer.end(&mut self.font_system);
+            if UI_ENABLED {
+                if let Some(tree) = &self.gallery_ui {
+                    self.custom_ui_renderer.begin();
+                    tree.render(&mut self.custom_ui_renderer);
+                    self.custom_ui_renderer.end(&mut self.font_system);
+                }
             }
 
             self.platform
@@ -720,37 +707,42 @@ impl Game {
             &mut self.world.particles,
         );
 
-        // render custom GPU UI (test view)
-        if self.world.camera.move_state == CameraState::Gallery {
-            if let Some(tree) = &self.gallery_ui {
-                self.custom_ui_renderer.begin();
-                tree.render(&mut self.custom_ui_renderer);
-                self.custom_ui_renderer.end(&mut self.font_system);
-            }
-        } else {
-            if let Some(tree) = &self.custom_ui {
-                self.custom_ui_renderer.begin();
-                tree.render(&mut self.custom_ui_renderer);
-                self.custom_ui_renderer.end(&mut self.font_system);
+        if UI_ENABLED {
+            // render custom GPU UI (test view)
+            if self.world.camera.move_state == CameraState::Gallery {
+                if let Some(tree) = &self.gallery_ui {
+                    self.custom_ui_renderer.begin();
+                    tree.render(&mut self.custom_ui_renderer);
+                    self.custom_ui_renderer.end(&mut self.font_system);
+                }
+            } else {
+                if let Some(tree) = &self.custom_ui {
+                    self.custom_ui_renderer.begin();
+                    tree.render(&mut self.custom_ui_renderer);
+                    self.custom_ui_renderer.end(&mut self.font_system);
+                }
             }
         }
 
-        if let Some(imgui_manager) = &mut self.imgui_manager {
-            imgui_manager.draw(
-                &mut self.platform.window,
-                self.platform.fb_width as f32,
-                self.platform.fb_height as f32,
-                self.time.dt,
-                &mut self.world.lights,
-                &mut self.renderer,
-                &mut self.sound,
-                &self.world.camera,
-                &mut self.world.ecs,
-                &mut self.physics,
-                &mut self.input,
-                &mut self.world.particles,
-                &mut self.message_queue,
-            );
+        #[cfg(feature = "editor_ui")]
+        if UI_ENABLED {
+            if let Some(imgui_manager) = &mut self.imgui_manager {
+                imgui_manager.draw(
+                    &mut self.platform.window,
+                    self.platform.fb_width as f32,
+                    self.platform.fb_height as f32,
+                    self.time.dt,
+                    &mut self.world.lights,
+                    &mut self.renderer,
+                    &mut self.sound,
+                    &self.world.camera,
+                    &mut self.world.ecs,
+                    &mut self.physics,
+                    &mut self.input,
+                    &mut self.world.particles,
+                    &mut self.message_queue,
+                );
+            }
         }
 
         self.platform

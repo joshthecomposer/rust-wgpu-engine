@@ -22,10 +22,12 @@ use winit::{
 
 use crate::gl_call;
 
+#[allow(dead_code)]
 #[derive(PartialEq, Copy, Clone)]
 pub enum CursorMode {
     Normal,
     Hidden,
+    #[allow(dead_code)]
     Disabled,
 }
 
@@ -39,6 +41,13 @@ pub struct Platform {
     pub scale_factor: f64,
     pub cursor_mode: CursorMode,
     pub display: Display,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PlatformBackend {
+    NativeGlutin,
+    WebCanvas,
 }
 
 #[derive(Clone, Debug)]
@@ -58,6 +67,24 @@ pub struct GlCapabilities {
 }
 
 impl GlCapabilities {
+    #[cfg(target_arch = "wasm32")]
+    pub fn webgl2_defaults() -> Self {
+        Self {
+            gl_version: "WebGL 2.0".to_string(),
+            glsl_version: "GLSL ES 3.00".to_string(),
+            vendor: "Browser".to_string(),
+            renderer: "WebGL2 canvas".to_string(),
+            extensions: Vec::new(),
+            is_gles_like: true,
+            supports_float_color_buffer: false,
+            supports_msaa_float_renderbuffer: false,
+            supports_clamp_to_border: false,
+            supports_buffer_mapping: false,
+            supports_instancing: true,
+            supports_mrt: true,
+        }
+    }
+
     pub fn query_current_context() -> Self {
         let gl_version = gl_string(gl::VERSION);
         let glsl_version = gl_string(gl::SHADING_LANGUAGE_VERSION);
@@ -148,7 +175,44 @@ impl GlCapabilities {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+pub mod web_canvas {
+    use super::{CursorMode, GlCapabilities, PlatformBackend};
+
+    #[allow(dead_code)]
+    pub struct WebCanvasPlatform {
+        pub capabilities: GlCapabilities,
+        pub fb_width: u32,
+        pub fb_height: u32,
+        pub scale_factor: f64,
+        pub cursor_mode: CursorMode,
+    }
+
+    impl WebCanvasPlatform {
+        #[allow(dead_code)]
+        pub fn backend(&self) -> PlatformBackend {
+            PlatformBackend::WebCanvas
+        }
+
+        #[allow(dead_code)]
+        pub fn placeholder(w: u32, h: u32) -> Self {
+            Self {
+                capabilities: GlCapabilities::webgl2_defaults(),
+                fb_width: w,
+                fb_height: h,
+                scale_factor: 1.0,
+                cursor_mode: CursorMode::Normal,
+            }
+        }
+    }
+}
+
 impl Platform {
+    #[allow(dead_code)]
+    pub fn backend(&self) -> PlatformBackend {
+        PlatformBackend::NativeGlutin
+    }
+
     pub fn new(title: &str, w: u32, h: u32, _vsync: bool) -> (Self, EventLoop<()>) {
         let event_loop = EventLoop::new().expect("Failed to create EventLoop");
 
