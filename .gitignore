@@ -1,4 +1,5 @@
 /target
+/dist
 .DS_Store
 debug_output.txt
 debug_out/

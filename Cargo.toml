@@ -5,25 +5,54 @@ edition = "2021"
 
 [dependencies]
 gl = "0.14.0"
-winit = "0.30.12"
-imgui-winit-support = "0.13.0"
-glutin = "0.32.3"
-glutin-winit = "0.5.0"
 glam = { version = "0.29.2", features = ["serde"] }
 image = { version = "0.25.5", features = ["serde"] }
-imgui-opengl-renderer = "0.13.0"
-imgui = "0.12.0"
-rand = "0.9.0"
-rand_chacha = "0.9.0"
 rusttype = "0.9.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ron = "0.8"
-libc = "0.2.171"
 toml = "0.8.22"
 nalgebra = { version = "0.33.2", features = [ "convert-glam029" ] }
-rapier3d = { version = "0.26.1", features = [ "simd-stable", "parallel", "serde-serialize" ] }
 glyph_brush = "0.7"
+winit = "0.30.12"
+rand = "0.9.0"
+rand_chacha = "0.9.0"
+rapier3d = { version = "0.26.1", features = [ "simd-stable", "serde-serialize" ] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+glutin = "0.32.3"
+glutin-winit = "0.5.0"
+imgui-winit-support = { version = "0.13.0", optional = true }
+imgui-opengl-renderer = { version = "0.13.0", optional = true }
+imgui = { version = "0.12.0", optional = true }
+libc = { version = "0.2.171", optional = true }
+rapier3d = { version = "0.26.1", features = [ "parallel" ] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3.4", features = ["wasm_js"] }
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "KeyboardEvent",
+    "MouseEvent",
+    "WheelEvent",
+    "EventTarget",
+    "CssStyleDeclaration",
+    "Window",
+    "WebGl2RenderingContext",
+    "WebGlBuffer",
+    "WebGlFramebuffer",
+    "WebGlProgram",
+    "WebGlShader",
+    "WebGlTexture",
+    "WebGlUniformLocation",
+    "WebGlVertexArrayObject",
+    "console",
+] }
 
 [profile.rwd] # release with debug
 inherits = "release"
@@ -39,8 +68,8 @@ opt-level = 3
 [features]
 default = ["native", "native_audio", "editor_ui"]
 native = []
-native_audio = []
-editor_ui = []
+native_audio = ["dep:libc"]
+editor_ui = ["dep:imgui", "dep:imgui-winit-support", "dep:imgui-opengl-renderer"]
 web = []
 gl_debug = []
 track_draw_calls = []

@@ -14,6 +14,7 @@ use rapier3d::prelude::*;
 use winit::keyboard::KeyCode;
 
 use crate::{
+    assets,
     abilities::{AbilitiesConfig, WeaponAbilities, WeaponPoolsConfig},
     animation::{
         self,
@@ -1793,7 +1794,7 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     //let path = "resources/textures/brushes/mountain.png";
     //let path = "resources/textures/brushes/blendertest.png";
     let path = "resources/textures/small_terrain.png";
-    let img = image::open(path)
+    let img = assets::load_image(path)
         .expect("Failed to load terrain image")
         .to_luma8();
     let (width, height) = img.dimensions();

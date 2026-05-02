@@ -1,10 +1,15 @@
-#[cfg(feature = "editor_ui")]
+#[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
 use std::path::Path;
 
+#[cfg(not(target_arch = "wasm32"))]
 use glutin::surface::{GlSurface, SwapInterval};
+#[cfg(not(target_arch = "wasm32"))]
 use winit::dpi::LogicalSize;
+#[cfg(not(target_arch = "wasm32"))]
 use winit::event::{ElementState, KeyEvent, WindowEvent};
+#[cfg(not(target_arch = "wasm32"))]
 use winit::keyboard::{KeyCode, PhysicalKey};
+#[cfg(not(target_arch = "wasm32"))]
 use winit::window::Fullscreen;
 
 use crate::animation::animation_system;
@@ -24,7 +29,7 @@ use crate::time::Time;
 use crate::toast;
 use crate::ui::game_new::parser::load_view_or_fallback;
 use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
-#[cfg(feature = "editor_ui")]
+#[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::world::World;
@@ -48,7 +53,7 @@ pub struct Game {
     custom_ui_renderer: UiRenderer,
     font_system: FontSystem,
     pub should_quit: bool,
-    #[cfg(feature = "editor_ui")]
+    #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
     imgui_manager: Option<ImguiManager>,
     config: GameConfig,
     config_path: String,
@@ -79,7 +84,7 @@ impl Game {
         let webgl_compatibility_mode =
             config.webgl_compatibility_mode || platform.capabilities.is_gles_like;
 
-        #[cfg(feature = "editor_ui")]
+        #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
         let imgui_manager = match UI_ENABLED && config.debug_mode && !webgl_compatibility_mode {
             true => Some(ImguiManager::new(&platform)),
             false => None,
@@ -120,7 +125,7 @@ impl Game {
             custom_ui_renderer,
             font_system,
             should_quit: false,
-            #[cfg(feature = "editor_ui")]
+            #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
             imgui_manager,
             config,
             config_path: "config/game_config.json".to_string(),
@@ -286,6 +291,7 @@ impl Game {
         self.input.update_ui();
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
         #[cfg(feature = "editor_ui")]
         if UI_ENABLED {
@@ -327,7 +333,8 @@ impl Game {
                 }
             }
 
-            WindowEvent::DroppedFile(path) => {
+            WindowEvent::DroppedFile(path) =>
+            {
                 #[cfg(feature = "editor_ui")]
                 if let Some(imgui_manager) = &mut self.imgui_manager {
                     let path = Path::new(path);
@@ -463,6 +470,86 @@ impl Game {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn handle_web_keyboard_input(
+        &mut self,
+        keycode: winit::keyboard::KeyCode,
+        state: winit::event::ElementState,
+    ) {
+        input::handle_keyboard_input(keycode, state, &mut self.input);
+
+        if keycode == winit::keyboard::KeyCode::Escape
+            && state == winit::event::ElementState::Pressed
+        {
+            self.paused = !self.paused;
+        }
+
+        if keycode == winit::keyboard::KeyCode::KeyF
+            && state == winit::event::ElementState::Pressed
+        {
+            let maybe_player_id = self.world.ecs.factions.iter().find(|e| *e.value() == "Player");
+
+            self.world.camera.move_state = match self.world.camera.move_state {
+                CameraState::Free => {
+                    if maybe_player_id.is_none() {
+                        CameraState::Locked
+                    } else {
+                        CameraState::Third
+                    }
+                }
+                CameraState::Third => CameraState::Locked,
+                CameraState::Locked => CameraState::Gallery,
+                CameraState::Gallery => CameraState::Free,
+            };
+        }
+
+        if keycode == winit::keyboard::KeyCode::KeyG
+            && state == winit::event::ElementState::Pressed
+        {
+            self.world.ecs.try_pickup_weapon(&mut self.physics);
+        }
+
+        if keycode == winit::keyboard::KeyCode::Tab
+            && state == winit::event::ElementState::Pressed
+        {
+            self.cursor_mode = match self.cursor_mode {
+                CursorMode::Normal => CursorMode::Hidden,
+                _ => CursorMode::Normal,
+            };
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn handle_web_mouse_move(&mut self, x: f32, y: f32, dx: f64, dy: f64) {
+        self.input.mouse_pos_current = glam::vec2(x, y);
+        if !self.paused && !self.cursor_unlocked() {
+            self.world.camera.process_mouse_input(dx, dy);
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn handle_web_mouse_button(
+        &mut self,
+        button: winit::event::MouseButton,
+        state: winit::event::ElementState,
+    ) {
+        let fb = glam::vec2(self.platform.fb_width as f32, self.platform.fb_height as f32);
+        input::handle_mouse_input(
+            button,
+            state,
+            fb,
+            &self.world.camera,
+            &mut self.world.ecs,
+            &mut self.input,
+            &mut self.physics,
+        );
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn handle_web_scroll(&mut self, x: f32, y: f32) {
+        self.input.scroll_delta = glam::vec2(x, y);
+    }
+
     pub fn update(&mut self) {
         self.world.camera.update(
             &self.world.ecs,
@@ -561,73 +648,7 @@ impl Game {
                     // sync renderer state to config before saving
                     self.config.render_gizmos = self.renderer.render_gizmos;
 
-                    // apply resolution if it changed
-                    let current_size = self.platform.window.inner_size();
-                    let new_width = self.config.win_width as u32;
-                    let new_height = self.config.win_height as u32;
-
-                    if current_size.width != new_width || current_size.height != new_height {
-                        let _ = self
-                            .platform
-                            .window
-                            .request_inner_size(LogicalSize::new(new_width, new_height));
-                        println!(
-                            "[DEBUG] ApplySettings - Requested window resize to {}x{}",
-                            new_width, new_height
-                        );
-                    }
-
-                    // apply vsync setting
-                    if self.config.vsync {
-                        let _ = self.platform.surface.set_swap_interval(
-                            &self.platform.gl_context,
-                            SwapInterval::Wait(std::num::NonZeroU32::new(1).unwrap()),
-                        );
-                        println!("[DEBUG] ApplySettings - VSync enabled");
-                    } else {
-                        let _ = self
-                            .platform
-                            .surface
-                            .set_swap_interval(&self.platform.gl_context, SwapInterval::DontWait);
-                        println!("[DEBUG] ApplySettings - VSync disabled");
-                    }
-
-                    // apply window mode setting
-                    match self.config.window_mode.as_str() {
-                        "Windowed" => {
-                            self.platform.window.set_fullscreen(None);
-                            println!("[DEBUG] ApplySettings - Window mode set to Windowed");
-                        }
-                        "Fullscreen" => {
-                            // get current monitor and its video mode
-                            if let Some(monitor) = self.platform.window.current_monitor() {
-                                if let Some(video_mode) = monitor.video_modes().next() {
-                                    self.platform
-                                        .window
-                                        .set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
-                                    println!(
-                                        "[DEBUG] ApplySettings - Window mode set to Fullscreen"
-                                    );
-                                }
-                            }
-                        }
-                        "Borderless" => {
-                            self.platform
-                                .window
-                                .set_fullscreen(Some(Fullscreen::Borderless(None)));
-                            println!("[DEBUG] ApplySettings - Window mode set to Borderless");
-                        }
-                        _ => {
-                            println!(
-                                "[WARN] ApplySettings - Unknown window mode: {}",
-                                self.config.window_mode
-                            );
-                        }
-                    }
-
-                    // save configs to disk
-                    self.config.save_to_file(&self.config_path);
-                    self.sound_config.save_to_file(&self.sound_config_path);
+                    self.apply_platform_settings();
 
                     self.paused = false;
 
@@ -649,9 +670,16 @@ impl Game {
                     }
                 }
                 UiMessage::CancelSettings => {
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        println!("[DEBUG] CancelSettings ignored on web");
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
                     // reload configs from disk to discard changes
                     self.config = GameConfig::load_from_file(&self.config_path);
                     self.sound_config = SoundConfig::load_from_file(&self.sound_config_path);
+                    }
 
                     // sync renderer state from reloaded config
                     self.renderer.render_gizmos = self.config.render_gizmos;
@@ -664,6 +692,81 @@ impl Game {
                 }
             }
         }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn apply_platform_settings(&mut self) {
+        // apply resolution if it changed
+        let current_size = self.platform.window.inner_size();
+        let new_width = self.config.win_width as u32;
+        let new_height = self.config.win_height as u32;
+
+        if current_size.width != new_width || current_size.height != new_height {
+            let _ = self
+                .platform
+                .window
+                .request_inner_size(LogicalSize::new(new_width, new_height));
+            println!(
+                "[DEBUG] ApplySettings - Requested window resize to {}x{}",
+                new_width, new_height
+            );
+        }
+
+        // apply vsync setting
+        if self.config.vsync {
+            let _ = self.platform.surface.set_swap_interval(
+                &self.platform.gl_context,
+                SwapInterval::Wait(std::num::NonZeroU32::new(1).unwrap()),
+            );
+            println!("[DEBUG] ApplySettings - VSync enabled");
+        } else {
+            let _ = self
+                .platform
+                .surface
+                .set_swap_interval(&self.platform.gl_context, SwapInterval::DontWait);
+            println!("[DEBUG] ApplySettings - VSync disabled");
+        }
+
+        // apply window mode setting
+        match self.config.window_mode.as_str() {
+            "Windowed" => {
+                self.platform.window.set_fullscreen(None);
+                println!("[DEBUG] ApplySettings - Window mode set to Windowed");
+            }
+            "Fullscreen" => {
+                // get current monitor and its video mode
+                if let Some(monitor) = self.platform.window.current_monitor() {
+                    if let Some(video_mode) = monitor.video_modes().next() {
+                        self.platform
+                            .window
+                            .set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
+                        println!("[DEBUG] ApplySettings - Window mode set to Fullscreen");
+                    }
+                }
+            }
+            "Borderless" => {
+                self.platform
+                    .window
+                    .set_fullscreen(Some(Fullscreen::Borderless(None)));
+                println!("[DEBUG] ApplySettings - Window mode set to Borderless");
+            }
+            _ => {
+                println!(
+                    "[WARN] ApplySettings - Unknown window mode: {}",
+                    self.config.window_mode
+                );
+            }
+        }
+
+        // save configs to disk
+        self.config.save_to_file(&self.config_path);
+        self.sound_config.save_to_file(&self.sound_config_path);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn apply_platform_settings(&mut self) {
+        self.renderer.render_gizmos = self.config.render_gizmos;
+        println!("[DEBUG] ApplySettings - runtime-only web settings applied");
     }
 
     pub fn render(&mut self) {
@@ -687,10 +790,7 @@ impl Game {
                 }
             }
 
-            self.platform
-                .surface
-                .swap_buffers(&self.platform.gl_context)
-                .expect("swap_buffers failed");
+            self.platform.swap_buffers();
             return;
         }
 
@@ -745,9 +845,6 @@ impl Game {
             }
         }
 
-        self.platform
-            .surface
-            .swap_buffers(&self.platform.gl_context)
-            .expect("swap_buffers failed");
+        self.platform.swap_buffers();
     }
 }

@@ -1993,11 +1993,7 @@ impl Renderer {
         });
     }
 
-    pub fn update_ui_texture_from_pixels(
-        texture: u32,
-        desc: UiTextureDescriptor,
-        pixels: &[u8],
-    ) {
+    pub fn update_ui_texture_from_pixels(texture: u32, desc: UiTextureDescriptor, pixels: &[u8]) {
         Self::update_ui_texture_region(
             texture,
             desc.format,
@@ -2206,7 +2202,7 @@ impl Renderer {
                 gl_call!(gl::TexImage2D(
                     gl::TEXTURE_2D,
                     0,
-                    gl::SRGB8 as i32,
+                    gl::SRGB8_ALPHA8 as i32,
                     img_width as i32,
                     img_height as i32,
                     0,

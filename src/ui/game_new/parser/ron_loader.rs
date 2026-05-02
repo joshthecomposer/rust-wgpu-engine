@@ -870,8 +870,7 @@ pub fn load_view<P: AsRef<Path>>(path: P) -> Result<UiTree, String> {
         .as_ref()
         .to_str()
         .ok_or_else(|| "RON path contains invalid UTF-8".to_string())?;
-    let content =
-        assets::read_text(path).map_err(|e| format!("Failed to read RON file: {}", e))?;
+    let content = assets::read_text(path).map_err(|e| format!("Failed to read RON file: {}", e))?;
 
     let mut root_def: NodeDefinition =
         ron::from_str(&content).map_err(|e| format!("Failed to parse RON: {}", e))?;

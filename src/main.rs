@@ -29,26 +29,37 @@ mod spawn_system;
 mod state_machines;
 mod time;
 mod util;
+#[cfg(target_arch = "wasm32")]
+mod web_game;
 
 mod command_buffer;
 mod world;
 
+#[cfg(not(target_arch = "wasm32"))]
 use config::{game_config::GameConfig, Config};
+#[cfg(not(target_arch = "wasm32"))]
 use game::Game;
 
+#[cfg(not(target_arch = "wasm32"))]
 use crate::platform::Platform;
 
+#[cfg(not(target_arch = "wasm32"))]
 use winit::event::WindowEvent;
+#[cfg(not(target_arch = "wasm32"))]
 use winit::event_loop::ActiveEventLoop;
+#[cfg(not(target_arch = "wasm32"))]
 use winit::window::WindowId;
+#[cfg(not(target_arch = "wasm32"))]
 use winit::{application::ApplicationHandler, event::DeviceEvent};
 
+#[cfg(not(target_arch = "wasm32"))]
 struct App {
     game: Game,
     window_id: WindowId,
     start: std::time::Instant,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl App {
     fn new(game: Game) -> Self {
         let window_id = game.platform.window.id();
@@ -60,6 +71,7 @@ impl App {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl ApplicationHandler for App {
     fn window_event(
         &mut self,
@@ -114,6 +126,7 @@ impl ApplicationHandler for App {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let config = GameConfig::load_or_create_default("config/game_config.json");
 
@@ -129,3 +142,6 @@ fn main() {
 
     event_loop.run_app(&mut app).expect("event loop error");
 }
+
+#[cfg(target_arch = "wasm32")]
+fn main() {}

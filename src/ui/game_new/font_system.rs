@@ -21,8 +21,8 @@ impl FontSystem {
 
         let mut fonts = Vec::new();
         for (path, name) in &font_paths {
-            let font_data =
-                assets::read_bytes(path).unwrap_or_else(|_| panic!("Failed to load font: {}", path));
+            let font_data = assets::read_bytes(path)
+                .unwrap_or_else(|_| panic!("Failed to load font: {}", path));
             let font = FontArc::try_from_vec(font_data)
                 .unwrap_or_else(|_| panic!("Error parsing font: {}", name));
             fonts.push(font);

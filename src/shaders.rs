@@ -4,11 +4,8 @@ use std::{collections::HashMap, ffi::CString, ptr};
 use gl::types::{GLint, GLuint};
 use glam::{Mat4, Vec3};
 
-use crate::{
-    assets,
-    gl_call,
-    lights::{DirLight, PointLight},
-};
+use crate::lights::{DirLight, PointLight};
+use crate::{assets, gl_call};
 
 pub struct Shader {
     pub id: GLuint,

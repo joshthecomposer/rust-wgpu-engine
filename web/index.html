@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>learn-opengl-rs</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #12141c;
+      color: #d8dbe8;
+      font-family: system-ui, sans-serif;
+    }
+
+    #shell {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+    }
+
+    #game-canvas {
+      width: min(100vw, 177.7778vh);
+      height: min(56.25vw, 100vh);
+      background: #12141c;
+      outline: none;
+    }
+
+    #status {
+      position: fixed;
+      left: 1rem;
+      bottom: 1rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      background: rgb(0 0 0 / 60%);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <main id="shell">
+    <canvas id="game-canvas" width="1280" height="720" tabindex="0"></canvas>
+  </main>
+  <div id="status">Loading WebGL...</div>
+
+  <script type="module">
+    import init from "./learn_opengl_rs.js";
+
+    const status = document.getElementById("status");
+    async function preloadAssets() {
+      const assets = {};
+      const manifestResponse = await fetch("asset-manifest.json");
+      if (!manifestResponse.ok) {
+        throw new Error(`Failed to load asset manifest: ${manifestResponse.status}`);
+      }
+      const assetManifest = await manifestResponse.json();
+
+      await Promise.all(assetManifest.map(async (path) => {
+        const response = await fetch(path);
+        if (!response.ok) {
+          throw new Error(`Failed to load asset ${path}: ${response.status}`);
+        }
+
+        assets[path] = new Uint8Array(await response.arrayBuffer());
+      }));
+
+      window.__learn_opengl_rs_assets = assets;
+    }
+
+    try {
+      status.textContent = "Loading assets...";
+      await preloadAssets();
+      status.textContent = "Loading WebGL...";
+      await init();
+      status.textContent = "WebGL2 web game boot ready";
+      document.getElementById("game-canvas").focus();
+    } catch (error) {
+      console.error(error);
+      status.textContent = `Failed to start: ${error?.message ?? error}`;
+    }
+  </script>
+</body>
+</html>

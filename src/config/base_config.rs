@@ -56,6 +56,17 @@ pub trait Config: Default + for<'de> Deserialize<'de> + Serialize + Sized {
             println!("Config file found at {}, loading data", file_name);
             Self::load_from_file(file_name)
         } else {
+            #[cfg(target_arch = "wasm32")]
+            {
+                println!(
+                    "Config file not found at {}, using in-memory default for web",
+                    file_name
+                );
+                return Self::default();
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
             println!(
                 "Config file not found at {}, creating default config",
                 file_name
@@ -63,6 +74,7 @@ pub trait Config: Default + for<'de> Deserialize<'de> + Serialize + Sized {
             let config = Self::default();
             config.save_to_file(file_name);
             config
+            }
         }
     }
 }

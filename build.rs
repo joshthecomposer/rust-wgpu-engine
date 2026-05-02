@@ -32,5 +32,4 @@ fn main() {
             panic!("Script failed with status: {:?}", status);
         }
     }
-
 }
