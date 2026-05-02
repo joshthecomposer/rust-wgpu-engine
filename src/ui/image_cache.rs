@@ -1,8 +1,8 @@
 //! Cache for Slint images to avoid redundant disk I/O.
 //! Images are indexed by their file path.
 
-use std::collections::HashMap;
 use slint::Image;
+use std::collections::HashMap;
 
 /// Simple cache for Slint images loaded from disk.
 #[derive(Default)]
@@ -40,4 +40,3 @@ impl UiImageCache {
         img
     }
 }
-

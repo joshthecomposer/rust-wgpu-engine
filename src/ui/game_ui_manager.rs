@@ -16,7 +16,7 @@ use crate::entity_manager::EntityManager;
 use crate::gl_call;
 use crate::input::InputState;
 use crate::lights::Lights;
-use crate::renderer::DefaultTextures;
+use crate::renderer::{DefaultTextures, Renderer, UiTextureDescriptor};
 use crate::shaders::Shader;
 use crate::ui::game::views::ability_bar::AbilityBarData;
 use crate::ui::game::views::{GameRootContext, GameRootView, SettingsContext, SystemContext};
@@ -105,16 +105,16 @@ impl GameUiManager {
         let (game_root_view, window) = GameRootView::new(width, height, scale_factor);
         let pixel_count = (width * height) as usize;
         let buffer = vec![PremultipliedRgbaColor::default(); pixel_count];
-        let texture = Self::create_gl_texture(width, height);
+        let texture = Renderer::create_ui_texture(
+            UiTextureDescriptor::rgba_linear_clamped(width, height),
+            None,
+        );
 
         // create VAO/VBO for fullscreen quad overlay
         let (overlay_vao, overlay_vbo) = Self::create_overlay_quad();
 
         // create PBO for async texture upload
-        let mut pbo = 0;
-        unsafe {
-            gl_call!(gl::GenBuffers(1, &mut pbo));
-        }
+        let pbo = Renderer::create_ui_upload_pbo();
 
         // create portrait renderer for player HUD
         let portrait_renderer = PortraitRenderer::new();
@@ -170,48 +170,6 @@ impl GameUiManager {
         };
 
         manager
-    }
-
-    /// Create a GL texture for UI overlay
-    fn create_gl_texture(width: u32, height: u32) -> u32 {
-        unsafe {
-            let mut tex = 0u32;
-            gl_call!(gl::GenTextures(1, &mut tex));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MIN_FILTER,
-                gl::LINEAR as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MAG_FILTER,
-                gl::LINEAR as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_S,
-                gl::CLAMP_TO_EDGE as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_T,
-                gl::CLAMP_TO_EDGE as i32
-            ));
-            gl_call!(gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::RGBA as i32,
-                width as i32,
-                height as i32,
-                0,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                std::ptr::null()
-            ));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            tex
-        }
     }
 
     /// Create VAO/VBO for fullscreen quad overlay
@@ -516,56 +474,33 @@ impl GameUiManager {
         // --------------------------------------------------------
         // PART 1: PBO Upload (Zero-Copy Slint Render)
         // --------------------------------------------------------
+        let texture_desc = UiTextureDescriptor::rgba_linear_clamped(self.width, self.height);
         if self.needs_texture_resize {
-            Self::resize_texture(self.texture, self.width, self.height);
+            Renderer::resize_ui_texture(self.texture, texture_desc);
         }
 
         // always call request_redraw - Slint's internal dirty tracking handles optimization
         // (attempting to throttle this causes crashes due to Slint's internal state management)
         self.window.request_redraw();
 
-        self.window.draw_if_needed(|renderer| unsafe {
-            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, self.pbo));
-
+        self.window.draw_if_needed(|renderer| {
+            let size = (self.width * self.height * 4) as isize;
+            let pixel_count = (self.width * self.height) as usize;
+            Renderer::write_ui_upload_pbo(
+                self.pbo,
+                size,
+                pixel_count,
+                self.needs_texture_resize,
+                |buffer_slice: &mut [PremultipliedRgbaColor]| {
+                    renderer.render(buffer_slice, self.width as usize);
+                },
+            );
             if self.needs_texture_resize {
-                let size = (self.width * self.height * 4) as isize;
-                gl_call!(gl::BufferData(
-                    gl::PIXEL_UNPACK_BUFFER,
-                    size,
-                    std::ptr::null(),
-                    gl::STREAM_DRAW
-                ));
                 self.needs_texture_resize = false;
-            }
-
-            let ptr = gl::MapBuffer(gl::PIXEL_UNPACK_BUFFER, gl::WRITE_ONLY);
-            if !ptr.is_null() {
-                let pixel_count = (self.width * self.height) as usize;
-                let buffer_slice = std::slice::from_raw_parts_mut(
-                    ptr as *mut slint::platform::software_renderer::PremultipliedRgbaColor,
-                    pixel_count,
-                );
-                renderer.render(buffer_slice, self.width as usize);
-                gl_call!(gl::UnmapBuffer(gl::PIXEL_UNPACK_BUFFER));
             }
         });
 
-        unsafe {
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.texture));
-            gl_call!(gl::TexSubImage2D(
-                gl::TEXTURE_2D,
-                0,
-                0,
-                0,
-                self.width as i32,
-                self.height as i32,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                std::ptr::null()
-            ));
-            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-        }
+        Renderer::update_ui_texture_from_pbo(self.texture, self.pbo, texture_desc);
 
         // --------------------------------------------------------
         // PART 2: Compositing
@@ -703,25 +638,6 @@ impl GameUiManager {
             gl_call!(gl::BindVertexArray(self.overlay_vao));
             gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
             gl_call!(gl::BindVertexArray(0));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-        }
-    }
-
-    /// Resize a GL texture
-    fn resize_texture(texture: u32, width: u32, height: u32) {
-        unsafe {
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
-            gl_call!(gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::RGBA as i32,
-                width as i32,
-                height as i32,
-                0,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                std::ptr::null(),
-            ));
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
         }
     }

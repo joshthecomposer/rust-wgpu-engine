@@ -1,2 +1,2 @@
-pub mod sound_manager;
 pub mod fmod;
+pub mod sound_manager;

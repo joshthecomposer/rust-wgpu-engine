@@ -4,6 +4,7 @@ use std::ptr;
 use super::batch::RenderBatch;
 use super::vertex::UiVertex;
 use crate::gl_call;
+use crate::renderer::{Renderer, UiTextureDescriptor, UiTextureFormat};
 use crate::ui::game_new::font_system::FontSystem;
 
 use crate::shaders::Shader;
@@ -156,33 +157,11 @@ impl UiRenderer {
         }
 
         // initialize font texture
-        let mut white_texture = 0;
-        unsafe {
-            gl_call!(gl::GenTextures(1, &mut white_texture));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, white_texture));
-            let white_pixel: [u8; 4] = [255, 255, 255, 255];
-            gl_call!(gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::RGBA as i32,
-                1,
-                1,
-                0,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                white_pixel.as_ptr() as *const _
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MIN_FILTER,
-                gl::NEAREST as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MAG_FILTER,
-                gl::NEAREST as i32
-            ));
-        }
+        let white_pixel: [u8; 4] = [255, 255, 255, 255];
+        let white_texture = Renderer::create_ui_texture(
+            UiTextureDescriptor::rgba_nearest_clamped(1, 1),
+            Some(&white_pixel),
+        );
 
         Self {
             shader,
@@ -579,59 +558,22 @@ impl UiRenderer {
             let (cache_width, cache_height) = font_system.glyph_brush.texture_dimensions();
 
             let result = font_system.glyph_brush.process_queued(
-                |rect, tex_data| unsafe {
+                |rect, tex_data| {
                     if font_texture == 0 {
-                        gl_call!(gl::GenTextures(1, &mut font_texture));
-                        gl_call!(gl::BindTexture(gl::TEXTURE_2D, font_texture));
-                        gl_call!(gl::TexParameteri(
-                            gl::TEXTURE_2D,
-                            gl::TEXTURE_WRAP_S,
-                            gl::CLAMP_TO_EDGE as i32
-                        ));
-                        gl_call!(gl::TexParameteri(
-                            gl::TEXTURE_2D,
-                            gl::TEXTURE_WRAP_T,
-                            gl::CLAMP_TO_EDGE as i32
-                        ));
-                        gl_call!(gl::TexParameteri(
-                            gl::TEXTURE_2D,
-                            gl::TEXTURE_MIN_FILTER,
-                            gl::LINEAR as i32
-                        ));
-                        gl_call!(gl::TexParameteri(
-                            gl::TEXTURE_2D,
-                            gl::TEXTURE_MAG_FILTER,
-                            gl::LINEAR as i32
-                        ));
-
-                        gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 1));
-                        gl_call!(gl::TexImage2D(
-                            gl::TEXTURE_2D,
-                            0,
-                            gl::R8 as i32,
-                            cache_width as i32,
-                            cache_height as i32,
-                            0,
-                            gl::RED,
-                            gl::UNSIGNED_BYTE,
-                            ptr::null()
-                        ));
-                        gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 4));
+                        font_texture = Renderer::create_ui_texture(
+                            UiTextureDescriptor::alpha_linear_clamped(cache_width, cache_height),
+                            None,
+                        );
                     }
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, font_texture));
-                    gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 1));
-                    gl_call!(gl::TexSubImage2D(
-                        gl::TEXTURE_2D,
-                        0,
+                    Renderer::update_ui_texture_region(
+                        font_texture,
+                        UiTextureFormat::AlphaMask,
                         rect.min[0] as i32,
                         rect.min[1] as i32,
                         rect.width() as i32,
                         rect.height() as i32,
-                        gl::RED,
-                        gl::UNSIGNED_BYTE,
-                        tex_data.as_ptr() as *const _
-                    ));
-                    gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 4));
+                        tex_data,
+                    );
                 },
                 |vertex| {
                     let uv = vertex.tex_coords;

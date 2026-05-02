@@ -15,7 +15,9 @@ use crate::{
     camera::Camera,
     config::game_config::GameConfig,
     entity_manager::EntityManager,
-    enums_types::{FboType, FxaaLevels, ShaderType, TextureProfile, TextureType, Transform, VaoType},
+    enums_types::{
+        FboType, FxaaLevels, ShaderType, TextureProfile, TextureType, Transform, VaoType,
+    },
     gl_call,
     lights::Lights,
     particles::ParticleSystem,
@@ -41,6 +43,86 @@ pub struct DefaultTextures {
     pub white: u32,
     pub black: u32,
     pub opaque: u32,
+}
+
+#[derive(Clone, Copy)]
+pub enum UiTextureFormat {
+    Rgba,
+    Rgba8,
+    AlphaMask,
+}
+
+#[derive(Clone, Copy)]
+pub enum UiTextureFilter {
+    Nearest,
+    Linear,
+}
+
+#[derive(Clone, Copy)]
+pub enum UiTextureWrap {
+    ClampToEdge,
+    Repeat,
+}
+
+#[derive(Clone, Copy)]
+pub struct UiTextureDescriptor {
+    pub width: u32,
+    pub height: u32,
+    pub format: UiTextureFormat,
+    pub min_filter: UiTextureFilter,
+    pub mag_filter: UiTextureFilter,
+    pub wrap_s: UiTextureWrap,
+    pub wrap_t: UiTextureWrap,
+}
+
+impl UiTextureDescriptor {
+    pub fn rgba_linear_clamped(width: u32, height: u32) -> Self {
+        Self {
+            width,
+            height,
+            format: UiTextureFormat::Rgba,
+            min_filter: UiTextureFilter::Linear,
+            mag_filter: UiTextureFilter::Linear,
+            wrap_s: UiTextureWrap::ClampToEdge,
+            wrap_t: UiTextureWrap::ClampToEdge,
+        }
+    }
+
+    pub fn rgba_nearest_clamped(width: u32, height: u32) -> Self {
+        Self {
+            width,
+            height,
+            format: UiTextureFormat::Rgba,
+            min_filter: UiTextureFilter::Nearest,
+            mag_filter: UiTextureFilter::Nearest,
+            wrap_s: UiTextureWrap::ClampToEdge,
+            wrap_t: UiTextureWrap::ClampToEdge,
+        }
+    }
+
+    pub fn rgba8_linear_clamped(width: u32, height: u32) -> Self {
+        Self {
+            width,
+            height,
+            format: UiTextureFormat::Rgba8,
+            min_filter: UiTextureFilter::Linear,
+            mag_filter: UiTextureFilter::Linear,
+            wrap_s: UiTextureWrap::ClampToEdge,
+            wrap_t: UiTextureWrap::ClampToEdge,
+        }
+    }
+
+    pub fn alpha_linear_clamped(width: u32, height: u32) -> Self {
+        Self {
+            width,
+            height,
+            format: UiTextureFormat::AlphaMask,
+            min_filter: UiTextureFilter::Linear,
+            mag_filter: UiTextureFilter::Linear,
+            wrap_s: UiTextureWrap::ClampToEdge,
+            wrap_t: UiTextureWrap::ClampToEdge,
+        }
+    }
 }
 
 pub struct Renderer {
@@ -1184,6 +1266,185 @@ impl Renderer {
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
         id
+    }
+
+    fn ui_texture_internal_format(format: UiTextureFormat) -> i32 {
+        match format {
+            UiTextureFormat::Rgba => gl::RGBA as i32,
+            UiTextureFormat::Rgba8 => gl::RGBA8 as i32,
+            UiTextureFormat::AlphaMask => gl::R8 as i32,
+        }
+    }
+
+    fn ui_texture_upload_format(format: UiTextureFormat) -> u32 {
+        match format {
+            UiTextureFormat::Rgba => gl::RGBA,
+            UiTextureFormat::Rgba8 => gl::RGBA,
+            UiTextureFormat::AlphaMask => gl::RED,
+        }
+    }
+
+    fn ui_texture_filter(filter: UiTextureFilter) -> i32 {
+        match filter {
+            UiTextureFilter::Nearest => gl::NEAREST as i32,
+            UiTextureFilter::Linear => gl::LINEAR as i32,
+        }
+    }
+
+    fn ui_texture_wrap(wrap: UiTextureWrap) -> i32 {
+        match wrap {
+            UiTextureWrap::ClampToEdge => gl::CLAMP_TO_EDGE as i32,
+            UiTextureWrap::Repeat => gl::REPEAT as i32,
+        }
+    }
+
+    fn with_ui_unpack_alignment(format: UiTextureFormat, f: impl FnOnce()) {
+        unsafe {
+            if matches!(format, UiTextureFormat::AlphaMask) {
+                gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 1));
+            }
+            f();
+            if matches!(format, UiTextureFormat::AlphaMask) {
+                gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 4));
+            }
+        }
+    }
+
+    pub fn create_ui_texture(desc: UiTextureDescriptor, pixels: Option<&[u8]>) -> u32 {
+        let mut texture = 0u32;
+        unsafe {
+            gl_call!(gl::GenTextures(1, &mut texture));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                Self::ui_texture_filter(desc.min_filter)
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                Self::ui_texture_filter(desc.mag_filter)
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                Self::ui_texture_wrap(desc.wrap_s)
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                Self::ui_texture_wrap(desc.wrap_t)
+            ));
+        }
+        Self::resize_ui_texture_with_pixels(texture, desc, pixels);
+        texture
+    }
+
+    pub fn resize_ui_texture(texture: u32, desc: UiTextureDescriptor) {
+        Self::resize_ui_texture_with_pixels(texture, desc, None);
+    }
+
+    fn resize_ui_texture_with_pixels(
+        texture: u32,
+        desc: UiTextureDescriptor,
+        pixels: Option<&[u8]>,
+    ) {
+        let data = pixels.map_or(ptr::null(), |p| p.as_ptr().cast());
+        Self::with_ui_unpack_alignment(desc.format, || unsafe {
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                Self::ui_texture_internal_format(desc.format),
+                desc.width as i32,
+                desc.height as i32,
+                0,
+                Self::ui_texture_upload_format(desc.format),
+                gl::UNSIGNED_BYTE,
+                data
+            ));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+        });
+    }
+
+    pub fn update_ui_texture_from_pbo(texture: u32, pbo: u32, desc: UiTextureDescriptor) {
+        Self::with_ui_unpack_alignment(desc.format, || unsafe {
+            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, pbo));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
+            gl_call!(gl::TexSubImage2D(
+                gl::TEXTURE_2D,
+                0,
+                0,
+                0,
+                desc.width as i32,
+                desc.height as i32,
+                Self::ui_texture_upload_format(desc.format),
+                gl::UNSIGNED_BYTE,
+                ptr::null()
+            ));
+            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+        });
+    }
+
+    pub fn update_ui_texture_region(
+        texture: u32,
+        format: UiTextureFormat,
+        x: i32,
+        y: i32,
+        width: i32,
+        height: i32,
+        pixels: &[u8],
+    ) {
+        Self::with_ui_unpack_alignment(format, || unsafe {
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, texture));
+            gl_call!(gl::TexSubImage2D(
+                gl::TEXTURE_2D,
+                0,
+                x,
+                y,
+                width,
+                height,
+                Self::ui_texture_upload_format(format),
+                gl::UNSIGNED_BYTE,
+                pixels.as_ptr().cast()
+            ));
+        });
+    }
+
+    pub fn create_ui_upload_pbo() -> u32 {
+        let mut pbo = 0;
+        unsafe {
+            gl_call!(gl::GenBuffers(1, &mut pbo));
+        }
+        pbo
+    }
+
+    pub fn write_ui_upload_pbo<T>(
+        pbo: u32,
+        byte_len: isize,
+        item_count: usize,
+        allocate_storage: bool,
+        write: impl FnOnce(&mut [T]),
+    ) {
+        unsafe {
+            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, pbo));
+            if allocate_storage {
+                gl_call!(gl::BufferData(
+                    gl::PIXEL_UNPACK_BUFFER,
+                    byte_len,
+                    ptr::null(),
+                    gl::STREAM_DRAW
+                ));
+            }
+
+            let ptr = gl::MapBuffer(gl::PIXEL_UNPACK_BUFFER, gl::WRITE_ONLY);
+            if !ptr.is_null() {
+                let buffer_slice = std::slice::from_raw_parts_mut(ptr.cast::<T>(), item_count);
+                write(buffer_slice);
+                gl_call!(gl::UnmapBuffer(gl::PIXEL_UNPACK_BUFFER));
+            }
+        }
     }
 
     pub fn upload_model_mesh(model: &mut Model) {

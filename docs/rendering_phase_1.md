@@ -22,6 +22,31 @@ model draws now route through `Renderer` resource helpers.
 handle fields so entity/model cloning behavior stays stable for this phase.
 - `src/animation/model.rs` is now data-only for renderer centralization purposes;
 remaining raw GL for model resources is owned by `src/renderer.rs`.
+- Model producers now call `Renderer::upload_model_mesh` and
+`Renderer::upload_model_texture`; model draw paths use `Renderer::draw_model`
+or `Renderer::draw_model_geometry`.
+
+## Phase 3 Handoff
+
+Phase 3 should focus on UI texture upload ownership, not a WebGL/wgpu migration
+yet. The goal is to put UI image/overlay texture creation and updates behind a
+small renderer-owned texture upload API while preserving current UI behavior.
+
+Recommended first targets:
+
+- `src/ui/game_ui_manager.rs`: Slint software buffer upload currently owns a PBO
+path and overlay texture updates.
+- `src/ui/ability_bar_renderer.rs`: ability bar texture streaming and cleanup
+should share the same upload/update boundary.
+- `src/ui/game_new/views/ability_bar_view.rs`: ability icon loading/cache should
+stop creating raw GL textures directly.
+
+Keep out of scope for Phase 3:
+
+- ECS storage changes.
+- Shader language/version migration.
+- Framebuffer format compatibility work.
+- Replacing OpenGL with WebGL, OpenGL ES, or wgpu.
 
 ## Remaining Raw GL Inventory
 
@@ -52,10 +77,9 @@ ownership.
 
 ## Suggested Next Phases
 
-- Phase 2: move model GPU upload/draw helpers behind renderer-owned resource APIs
-without changing ECS storage yet.
+- Phase 2: completed. Model GPU upload/draw helpers now route through
+renderer-owned resource APIs without changing ECS storage.
 - Phase 3: consolidate UI texture upload paths, especially PBO use, behind a small
 texture upload abstraction.
 - Phase 4: audit shader versions, framebuffer formats, and state calls against a
 WebGL2/OpenGL ES compatibility checklist.
-

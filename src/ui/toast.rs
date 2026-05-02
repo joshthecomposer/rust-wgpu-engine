@@ -57,8 +57,11 @@ pub fn show_toast(
 ) {
     let title_str = title.into();
     let message_str = message.into();
-    println!("[show_toast] Adding toast: {:?} - {} | {}", toast_type, title_str, message_str);
-    
+    println!(
+        "[show_toast] Adding toast: {:?} - {} | {}",
+        toast_type, title_str, message_str
+    );
+
     TOAST_QUEUE.with(|queue| {
         queue.borrow_mut().push(PendingToast {
             toast_type,

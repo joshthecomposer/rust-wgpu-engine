@@ -7,7 +7,7 @@ use std::path::Path;
 
 use image::GenericImageView;
 
-use crate::gl_call;
+use crate::renderer::{Renderer, UiTextureDescriptor};
 use crate::ui::game::views::ability_bar::SlotDisplayData;
 use crate::ui::game_new::context::UiContext;
 use crate::ui::game_new::font_system::FontSystem;
@@ -132,44 +132,10 @@ impl AbilityBarView {
         let rgba = img.to_rgba8();
         let raw = rgba.as_raw();
 
-        let mut tex_id = 0;
-        unsafe {
-            gl_call!(gl::GenTextures(1, &mut tex_id));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex_id));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MIN_FILTER,
-                gl::LINEAR as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MAG_FILTER,
-                gl::LINEAR as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_S,
-                gl::CLAMP_TO_EDGE as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_T,
-                gl::CLAMP_TO_EDGE as i32
-            ));
-            gl_call!(gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::RGBA8 as i32,
-                width as i32,
-                height as i32,
-                0,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                raw.as_ptr().cast(),
-            ));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-        }
-        tex_id
+        Renderer::create_ui_texture(
+            UiTextureDescriptor::rgba8_linear_clamped(width, height),
+            Some(raw),
+        )
     }
 
     /// Process input and update tooltips.

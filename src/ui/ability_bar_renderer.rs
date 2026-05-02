@@ -8,6 +8,7 @@ use slint::platform::software_renderer::{MinimalSoftwareWindow, PremultipliedRgb
 use slint::PhysicalSize;
 
 use crate::gl_call;
+use crate::renderer::{Renderer, UiTextureDescriptor};
 use crate::ui::game::views::ability_bar::SlotDisplayData;
 use crate::ui::image_cache::UiImageCache;
 
@@ -60,13 +61,13 @@ impl AbilityBarRenderer {
         window.set_size(PhysicalSize::new(width, height));
 
         // create GL texture
-        let texture = Self::create_gl_texture(width, height);
+        let texture = Renderer::create_ui_texture(
+            UiTextureDescriptor::rgba_linear_clamped(width, height),
+            None,
+        );
 
         // create PBO for async upload
-        let mut pbo = 0;
-        unsafe {
-            gl_call!(gl::GenBuffers(1, &mut pbo));
-        }
+        let pbo = Renderer::create_ui_upload_pbo();
 
         Self {
             window,
@@ -79,48 +80,6 @@ impl AbilityBarRenderer {
             cached_show: false,
             last_update_time: -999.0, // force first update
             needs_render: true,
-        }
-    }
-
-    /// Create a GL texture for the ability bar.
-    fn create_gl_texture(width: u32, height: u32) -> u32 {
-        unsafe {
-            let mut tex = 0u32;
-            gl_call!(gl::GenTextures(1, &mut tex));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, tex));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MIN_FILTER,
-                gl::LINEAR as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_MAG_FILTER,
-                gl::LINEAR as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_S,
-                gl::CLAMP_TO_EDGE as i32
-            ));
-            gl_call!(gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_WRAP_T,
-                gl::CLAMP_TO_EDGE as i32
-            ));
-            gl_call!(gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::RGBA as i32,
-                width as i32,
-                height as i32,
-                0,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                std::ptr::null()
-            ));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-            tex
         }
     }
 
@@ -182,46 +141,26 @@ impl AbilityBarRenderer {
 
         self.window.request_redraw();
 
-        self.window.draw_if_needed(|renderer| unsafe {
-            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, self.pbo));
-
-            // allocate PBO if needed
+        self.window.draw_if_needed(|renderer| {
             let size = (self.width * self.height * 4) as isize;
-            gl_call!(gl::BufferData(
-                gl::PIXEL_UNPACK_BUFFER,
+            let pixel_count = (self.width * self.height) as usize;
+            Renderer::write_ui_upload_pbo(
+                self.pbo,
                 size,
-                std::ptr::null(),
-                gl::STREAM_DRAW
-            ));
-
-            // map PBO and render directly to it
-            let ptr = gl::MapBuffer(gl::PIXEL_UNPACK_BUFFER, gl::WRITE_ONLY);
-            if !ptr.is_null() {
-                let pixel_count = (self.width * self.height) as usize;
-                let buffer_slice =
-                    std::slice::from_raw_parts_mut(ptr as *mut PremultipliedRgbaColor, pixel_count);
-                renderer.render(buffer_slice, self.width as usize);
-                gl_call!(gl::UnmapBuffer(gl::PIXEL_UNPACK_BUFFER));
-            }
+                pixel_count,
+                true,
+                |buffer_slice: &mut [PremultipliedRgbaColor]| {
+                    renderer.render(buffer_slice, self.width as usize);
+                },
+            );
         });
 
         // upload to texture from PBO
-        unsafe {
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.texture));
-            gl_call!(gl::TexSubImage2D(
-                gl::TEXTURE_2D,
-                0,
-                0,
-                0,
-                self.width as i32,
-                self.height as i32,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                std::ptr::null() // reads from bound PBO
-            ));
-            gl_call!(gl::BindBuffer(gl::PIXEL_UNPACK_BUFFER, 0));
-            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-        }
+        Renderer::update_ui_texture_from_pbo(
+            self.texture,
+            self.pbo,
+            UiTextureDescriptor::rgba_linear_clamped(self.width, self.height),
+        );
 
         self.needs_render = false;
     }
