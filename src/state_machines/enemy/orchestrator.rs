@@ -1,10 +1,11 @@
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use rapier3d::prelude::RigidBodyType;
 
 use crate::{
     animation::animator::{self, Animator},
     command_buffer::{
-        CommandBuffer, LocoCmd, LocoIntent, LocoSpace, PartCmd, PartKind, SoundCmd, SoundKind,
+        CommandBuffer, ImpulseKind, LocoCmd, LocoIntent, LocoSpace, PartCmd, PartKind, SoundCmd,
+        SoundKind,
     },
     entity_manager::EntityManager,
     enums_types::{AnimationType, EnemyController, LifeState, SoundType},
@@ -85,8 +86,6 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             }
         }
 
-        dbg!(anim_name);
-
         if ctrl.took_damage
             && !matches!(
                 anim_name,
@@ -96,6 +95,7 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                     | AnimationType::OSBasic1
                     | AnimationType::OSBasic2
                     | AnimationType::OSBasic3
+                    | AnimationType::Roll
             )
         {
             cmds.next_anim(eid, AnimationType::Stagger, None);
@@ -181,6 +181,25 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             }
             Some(ActionKind::Dodge) => {
                 if anim.can_interrupt() {
+                    if let Some(pid) = player_id {
+                        let ppos = em.transforms.get(pid).unwrap().position;
+                        let en_pos = em.transforms.get(eid).unwrap().position;
+                        let mut away = en_pos - ppos;
+                        away.y = 0.0;
+                        if away.length_squared() > 1e-6 {
+                            let away = away.normalize();
+                            let yaw = f32::atan2(away.x, away.z);
+                            let q = Quat::from_rotation_y(yaw);
+                            let t = em.transforms.get_mut(eid).unwrap();
+                            t.rotation = q;
+                            if let Some(r) = em.rotators.get_mut(eid) {
+                                r.cur_rot = q;
+                                r.next_rot = q;
+                                r.blend_factor = 0.0;
+                            }
+                            cmds.set_rot(eid, ImpulseKind::Locomotion, q);
+                        }
+                    }
                     cmds.next_anim_from_lookup(eid, "dash".to_string(), weap_id);
                     ctrl.current_action = ActionKind::Dodge;
                 }
