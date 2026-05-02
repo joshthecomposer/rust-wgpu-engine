@@ -342,6 +342,18 @@ fn shader_source_path(file_path: &str, profile: ShaderProfile) -> &str {
         (ShaderProfile::GlslEs300, "resources/shaders/model/animated_model.glsl") => {
             "resources/shaders/model/animated_model_es300.glsl"
         }
+        (ShaderProfile::GlslEs300, "resources/shaders/hdr.glsl") => {
+            "resources/shaders/hdr_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/fxaa.glsl") => {
+            "resources/shaders/fxaa_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/bloom/bloom_downsample.glsl") => {
+            "resources/shaders/bloom/bloom_downsample_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/bloom/bloom_upsample.glsl") => {
+            "resources/shaders/bloom/bloom_upsample_es300.glsl"
+        }
         _ => file_path,
     }
 }

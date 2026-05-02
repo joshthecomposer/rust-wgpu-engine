@@ -72,7 +72,11 @@ uniform bool do_reg_fresnel;
 uniform float elapsed;
 uniform bool flash_white;
 
-out vec4 FragColor;
+// true when drawing into the HDR scene target (linear); false when drawing to the swapchain (sRGB).
+uniform bool hdr_render_target;
+
+layout(location = 0) out vec4 FragColor;
+layout(location = 1) out vec4 BrightColor;
 
 float fresnel_bias = 0.1;
 float fresnel_scale = 1.0;
@@ -115,9 +119,10 @@ vec4 calculate_directional_light() {
         tex_color = base_color.rgb;
         alpha = base_color.a;
     } else {
-        float view_dist = length(view_position - FragPos);
-        float lod = clamp((view_dist - 5.0) / 5.0, 0.0, 30.0);
-        vec4 tex_sample = textureLod(material.Diffuse, TexCoords, lod);
+        // Use base-level sampling on ES/WebGL2: glGenerateMipmap on sRGB diffuse often
+        // produces mips that are too dark on some implementations; terrain is heavily
+        // minified so textureLod pulled those mips more than props/characters.
+        vec4 tex_sample = texture(material.Diffuse, TexCoords);
         vec3 safe_color = mix(vec3(1.0), tex_sample.rgb, tex_sample.a);
         tex_color = safe_color;
         alpha = tex_sample.a;
@@ -171,5 +176,19 @@ vec4 calculate_directional_light() {
 }
 
 void main() {
-    FragColor = calculate_directional_light();
+    vec4 litLinear = calculate_directional_light();
+
+    vec3 displayRgb = litLinear.rgb;
+    if (!hdr_render_target) {
+        displayRgb = pow(max(displayRgb, vec3(0.0)), vec3(1.0 / 2.2));
+    }
+    FragColor = vec4(displayRgb, litLinear.a);
+
+    vec3 result = litLinear.rgb;
+    float brightness = dot(result, vec3(0.2126, 0.7152, 0.0722));
+    if (brightness > 1.0) {
+        BrightColor = vec4(result, 1.0);
+    } else {
+        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
+    }
 }

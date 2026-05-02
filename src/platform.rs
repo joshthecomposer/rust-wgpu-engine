@@ -90,10 +90,10 @@ impl GlCapabilities {
     #[cfg(target_arch = "wasm32")]
     pub fn webgl2_defaults() -> Self {
         Self {
-            gl_version: "WebGL 2.0".to_string(),
-            glsl_version: "GLSL ES 3.00".to_string(),
-            vendor: "Browser".to_string(),
-            renderer: "WebGL2 canvas".to_string(),
+            gl_version: "WebGL 2.0 (pending probe)".to_string(),
+            glsl_version: "GLSL ES 3.00 (pending probe)".to_string(),
+            vendor: String::new(),
+            renderer: String::new(),
             extensions: Vec::new(),
             is_gles_like: true,
             supports_float_color_buffer: false,
@@ -101,7 +101,7 @@ impl GlCapabilities {
             supports_clamp_to_border: false,
             supports_buffer_mapping: false,
             supports_instancing: true,
-            supports_mrt: true,
+            supports_mrt: false,
         }
     }
 
@@ -242,6 +242,275 @@ pub mod web_canvas {
         }
     }
 
+    fn probe_hdr_framebuffers(ctx: &WebGl2RenderingContext) -> (bool, bool) {
+        fn draw_buffers_gl(ctx: &WebGl2RenderingContext, attachments: &[u32]) {
+            let array = js_sys::Array::new();
+            for a in attachments {
+                array.push(&JsValue::from_f64(*a as f64));
+            }
+            let v = JsValue::from(array);
+            let _ = ctx.draw_buffers(&v);
+        }
+
+        const W: i32 = 4;
+        const H: i32 = 4;
+
+        let Some(fbo) = ctx.create_framebuffer() else {
+            return (false, false);
+        };
+        let Some(tex0) = ctx.create_texture() else {
+            ctx.delete_framebuffer(Some(&fbo));
+            return (false, false);
+        };
+        let Some(depth) = ctx.create_texture() else {
+            ctx.delete_texture(Some(&tex0));
+            ctx.delete_framebuffer(Some(&fbo));
+            return (false, false);
+        };
+
+        ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&tex0));
+        if ctx
+            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+                WebGl2RenderingContext::TEXTURE_2D,
+                0,
+                WebGl2RenderingContext::RGBA16F as i32,
+                W,
+                H,
+                0,
+                WebGl2RenderingContext::RGBA,
+                WebGl2RenderingContext::HALF_FLOAT,
+                None,
+            )
+            .is_err()
+        {
+            ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, None);
+            ctx.delete_texture(Some(&tex0));
+            ctx.delete_texture(Some(&depth));
+            ctx.delete_framebuffer(Some(&fbo));
+            return (false, false);
+        }
+        ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_MIN_FILTER,
+            WebGl2RenderingContext::LINEAR as i32,
+        );
+        ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_MAG_FILTER,
+            WebGl2RenderingContext::LINEAR as i32,
+        );
+        ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_S,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
+        ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_T,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
+
+        ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&depth));
+        if ctx
+            .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+                WebGl2RenderingContext::TEXTURE_2D,
+                0,
+                WebGl2RenderingContext::DEPTH_COMPONENT24 as i32,
+                W,
+                H,
+                0,
+                WebGl2RenderingContext::DEPTH_COMPONENT,
+                WebGl2RenderingContext::UNSIGNED_INT,
+                None,
+            )
+            .is_err()
+        {
+            ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, None);
+            ctx.delete_texture(Some(&tex0));
+            ctx.delete_texture(Some(&depth));
+            ctx.delete_framebuffer(Some(&fbo));
+            return (false, false);
+        }
+        ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_MIN_FILTER,
+            WebGl2RenderingContext::NEAREST as i32,
+        );
+        ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_MAG_FILTER,
+            WebGl2RenderingContext::NEAREST as i32,
+        );
+        ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_S,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
+        ctx.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_WRAP_T,
+            WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+        );
+
+        ctx.bind_framebuffer(
+            WebGl2RenderingContext::FRAMEBUFFER,
+            Some(&fbo),
+        );
+        ctx.framebuffer_texture_2d(
+            WebGl2RenderingContext::FRAMEBUFFER,
+            WebGl2RenderingContext::COLOR_ATTACHMENT0,
+            WebGl2RenderingContext::TEXTURE_2D,
+            Some(&tex0),
+            0,
+        );
+        ctx.framebuffer_texture_2d(
+            WebGl2RenderingContext::FRAMEBUFFER,
+            WebGl2RenderingContext::DEPTH_ATTACHMENT,
+            WebGl2RenderingContext::TEXTURE_2D,
+            Some(&depth),
+            0,
+        );
+        draw_buffers_gl(ctx, &[WebGl2RenderingContext::COLOR_ATTACHMENT0]);
+
+        let status = ctx.check_framebuffer_status(WebGl2RenderingContext::FRAMEBUFFER);
+        let float_ok = status == WebGl2RenderingContext::FRAMEBUFFER_COMPLETE;
+
+        let mut mrt_ok = false;
+        if float_ok {
+            if let Some(tex1) = ctx.create_texture() {
+                ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&tex1));
+                let tex1_ok = ctx
+                    .tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+                        WebGl2RenderingContext::TEXTURE_2D,
+                        0,
+                        WebGl2RenderingContext::RGBA16F as i32,
+                        W,
+                        H,
+                        0,
+                        WebGl2RenderingContext::RGBA,
+                        WebGl2RenderingContext::HALF_FLOAT,
+                        None,
+                    )
+                    .is_ok();
+                if tex1_ok {
+                    ctx.tex_parameteri(
+                        WebGl2RenderingContext::TEXTURE_2D,
+                        WebGl2RenderingContext::TEXTURE_MIN_FILTER,
+                        WebGl2RenderingContext::LINEAR as i32,
+                    );
+                    ctx.tex_parameteri(
+                        WebGl2RenderingContext::TEXTURE_2D,
+                        WebGl2RenderingContext::TEXTURE_MAG_FILTER,
+                        WebGl2RenderingContext::LINEAR as i32,
+                    );
+                    ctx.tex_parameteri(
+                        WebGl2RenderingContext::TEXTURE_2D,
+                        WebGl2RenderingContext::TEXTURE_WRAP_S,
+                        WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+                    );
+                    ctx.tex_parameteri(
+                        WebGl2RenderingContext::TEXTURE_2D,
+                        WebGl2RenderingContext::TEXTURE_WRAP_T,
+                        WebGl2RenderingContext::CLAMP_TO_EDGE as i32,
+                    );
+                    ctx.framebuffer_texture_2d(
+                        WebGl2RenderingContext::FRAMEBUFFER,
+                        WebGl2RenderingContext::COLOR_ATTACHMENT1,
+                        WebGl2RenderingContext::TEXTURE_2D,
+                        Some(&tex1),
+                        0,
+                    );
+                    draw_buffers_gl(ctx, &[
+                        WebGl2RenderingContext::COLOR_ATTACHMENT0,
+                        WebGl2RenderingContext::COLOR_ATTACHMENT1,
+                    ]);
+                    mrt_ok = ctx.check_framebuffer_status(WebGl2RenderingContext::FRAMEBUFFER)
+                        == WebGl2RenderingContext::FRAMEBUFFER_COMPLETE;
+                }
+                ctx.delete_texture(Some(&tex1));
+            }
+        }
+
+        ctx.bind_framebuffer(WebGl2RenderingContext::FRAMEBUFFER, None);
+        ctx.bind_texture(WebGl2RenderingContext::TEXTURE_2D, None);
+        ctx.delete_texture(Some(&tex0));
+        ctx.delete_texture(Some(&depth));
+        ctx.delete_framebuffer(Some(&fbo));
+
+        (float_ok, mrt_ok)
+    }
+
+    fn probe_webgl_capabilities(ctx: &WebGl2RenderingContext) -> GlCapabilities {
+        let gl_version = ctx
+            .get_parameter(WebGl2RenderingContext::VERSION)
+            .ok()
+            .and_then(|v| v.as_string())
+            .unwrap_or_else(|| "WebGL 2.0".to_string());
+        let glsl_version = ctx
+            .get_parameter(WebGl2RenderingContext::SHADING_LANGUAGE_VERSION)
+            .ok()
+            .and_then(|v| v.as_string())
+            .unwrap_or_else(|| "GLSL ES 3.00".to_string());
+        let vendor = ctx
+            .get_parameter(WebGl2RenderingContext::VENDOR)
+            .ok()
+            .and_then(|v| v.as_string())
+            .unwrap_or_default();
+        let renderer = ctx
+            .get_parameter(WebGl2RenderingContext::RENDERER)
+            .ok()
+            .and_then(|v| v.as_string())
+            .unwrap_or_default();
+
+        let mut extensions: Vec<String> = Vec::new();
+        if let Some(arr) = ctx.get_supported_extensions() {
+            for i in 0..arr.length() {
+                if let Some(name) = arr.get(i).as_string() {
+                    extensions.push(name);
+                }
+            }
+        }
+
+        let has_ext = |name: &str| extensions.iter().any(|e| e == name);
+
+        for ext_name in ["EXT_color_buffer_half_float", "EXT_color_buffer_float"] {
+            let _ = ctx.get_extension(ext_name);
+        }
+
+        let max_color_attachments = ctx
+            .get_parameter(WebGl2RenderingContext::MAX_COLOR_ATTACHMENTS)
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(1.0) as i32;
+        let max_draw_buffers = ctx
+            .get_parameter(WebGl2RenderingContext::MAX_DRAW_BUFFERS)
+            .ok()
+            .and_then(|v| v.as_f64())
+            .unwrap_or(1.0) as i32;
+
+        let supports_clamp_to_border =
+            has_ext("EXT_texture_border_clamp") || has_ext("OES_texture_border_clamp");
+
+        let (float_probe_ok, mrt_probe_ok) = probe_hdr_framebuffers(ctx);
+        let supports_float_color_buffer = float_probe_ok;
+        let supports_mrt = mrt_probe_ok && max_color_attachments >= 2 && max_draw_buffers >= 2;
+
+        GlCapabilities {
+            gl_version,
+            glsl_version,
+            vendor,
+            renderer,
+            extensions,
+            is_gles_like: true,
+            supports_float_color_buffer,
+            supports_msaa_float_renderbuffer: false,
+            supports_clamp_to_border,
+            supports_buffer_mapping: false,
+            supports_instancing: true,
+            supports_mrt,
+        }
+    }
+
     #[allow(dead_code)]
     pub struct WebCanvasPlatform {
         pub canvas: HtmlCanvasElement,
@@ -314,12 +583,13 @@ pub mod web_canvas {
             })
         }
 
-        pub fn load_gl(&self) {
+        pub fn load_gl(&mut self) {
             WEBGL_STATE.with(|state| {
                 *state.borrow_mut() = Some(WebGlState::new(self.context.clone()));
             });
 
             gl::load_with(webgl_proc_address);
+            self.capabilities = probe_webgl_capabilities(&self.context);
         }
 
         pub fn swap_buffers(&self) {}
@@ -1033,6 +1303,7 @@ pub mod web_canvas {
         };
         let bytes_per_channel = match type_ {
             gl::UNSIGNED_SHORT | gl::SHORT => 2,
+            gl::HALF_FLOAT => 2,
             gl::UNSIGNED_INT | gl::INT | gl::FLOAT => 4,
             _ => 1,
         };

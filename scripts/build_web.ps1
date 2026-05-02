@@ -86,6 +86,10 @@ $assetManifest = Get-ChildItem -Path $distDir -Recurse -File |
     } |
     Sort-Object
 
-$assetManifest | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $distDir "asset-manifest.json")
+# UTF-8 without BOM — BOM breaks `fetch(...).json()` in browsers for this manifest.
+$manifestPath = Join-Path $distDir "asset-manifest.json"
+$json = $assetManifest | ConvertTo-Json
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($manifestPath, $json, $utf8NoBom)
 
 Write-Host "WASM package ready: $distDir"

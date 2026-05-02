@@ -87,6 +87,22 @@ Test Chrome / Firefox / Safari (Safari historically weirdest for FP render targe
 
 ---
 
+## Progress (2026-05)
+
+Implemented **tiered render targets** driven by **WebGL2 probes**, not by `is_gles_like` alone:
+
+- **Tier A (LDR):** `config.webgl_compatibility_mode == true` **or** float FBO probe fails → direct-to-default path (no HDR FBO), same as before.
+- **Tier B (HDR, no bloom):** float RGBA16F + depth probe passes but **MRT probe fails** → single color attachment + `DrawBuffers(COLOR0, NONE)`; second fragment output discarded; tonemapping runs; bloom skipped (empty chain; bloom sample uses black).
+- **Tier C (HDR + bloom):** MRT probe passes → two half-float colors, bloom, tonemap, optional FXAA.
+
+`WebCanvasPlatform::load_gl` is `&mut self`: after GL load, **`probe_webgl_capabilities`** replaces placeholders—requests `EXT_color_buffer_half_float` / `EXT_color_buffer_float`, reads version/limits, and runs **framebuffer completeness** tests on `RGBA16F` + `HALF_FLOAT` (+ depth, then optional `COLOR_ATTACHMENT1`). HDR textures use **HALF_FLOAT** when `is_gles_like`, **FLOAT** on desktop GL.
+
+`web_game`: platform is **mutable** for `load_gl`; removed forced `webgl_compatibility_mode = true` so HDR can activate when config keeps it off.
+
+Added ES300 post shaders (`hdr_es300.glsl`, `fxaa_es300.glsl`, bloom `*_es300.glsl`) and **BrightColor** on model ES300 shaders for bloom extraction when MRT is on.
+
+---
+
 ## Files likely touched
 
 - `src/platform.rs` — extension list, FBO probes, extend `GlCapabilities`.

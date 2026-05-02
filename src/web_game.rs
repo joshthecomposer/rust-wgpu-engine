@@ -38,11 +38,10 @@ pub struct WebGameRuntime {
 
 impl WebGameRuntime {
     fn new() -> Result<Self, JsValue> {
-        let platform = platform::web_canvas::WebCanvasPlatform::new("game-canvas", 1280, 720)?;
+        let mut platform = platform::web_canvas::WebCanvasPlatform::new("game-canvas", 1280, 720)?;
         platform.load_gl();
 
         let mut config = GameConfig::load_or_create_default("config/game_config.json");
-        config.webgl_compatibility_mode = true;
         config.win_width = platform.fb_width as f32;
         config.win_height = platform.fb_height as f32;
         let game = Game::new(platform, config);

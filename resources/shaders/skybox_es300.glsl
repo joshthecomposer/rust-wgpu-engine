@@ -24,9 +24,15 @@ in vec3 texCoords;
 
 uniform samplerCube skybox;
 
+uniform bool hdr_render_target;
+
 out vec4 FragColor;
 
 void main()
 {
-    FragColor = texture(skybox, texCoords);
+    vec3 c = texture(skybox, texCoords).rgb;
+    if (!hdr_render_target) {
+        c = pow(max(c, vec3(0.0)), vec3(1.0 / 2.2));
+    }
+    FragColor = vec4(c, 1.0);
 }
