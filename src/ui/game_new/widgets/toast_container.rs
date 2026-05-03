@@ -11,9 +11,7 @@ use crate::ui::game_new::context::UiContext;
 use crate::ui::game_new::font_system::FontSystem;
 use crate::ui::game_new::render::UiRenderer;
 use crate::ui::game_new::styles::{Alignment, Color, Length, Rect, Style};
-use crate::ui::game_new::widgets::{
-    BoxWidget, CloseButton, Column, Label, Row, TextureRect, Widget,
-};
+use crate::ui::game_new::widgets::{BoxWidget, CloseButton, Column, Label, Row, Widget};
 use crate::ui::toast::ToastType;
 
 /// Animation state for a toast notification.
@@ -60,7 +58,7 @@ impl ToastContainer {
             rect: Rect::default(),
             max_toasts: 5,
             enter_duration: 0.3,
-            exit_duration: 0.3, // match Slint animation duration (300ms)
+            exit_duration: 0.3,
             gap: 8.0,
             needs_layout_update: false,
         }
@@ -115,7 +113,7 @@ impl ToastContainer {
         toast_type: ToastType,
         title: String,
         message: String,
-        icon_texture: Option<u32>,
+        _icon_texture: Option<u32>,
     ) -> Box<dyn Widget> {
         // println!(
         //     "[ToastContainer::build_toast_widget] building toast id={}",
@@ -455,9 +453,10 @@ impl Widget for ToastContainer {
         for toast in self.toasts.iter_mut().rev() {
             if toast.widget.update(ctx) {
                 // check if close button was clicked
-                if let Some(close_btn_id) = toast
+                if toast
                     .widget
                     .find_widget_mut(&format!("toast_close_{}", toast.id))
+                    .is_some()
                 {
                     // transition to exiting state
                     toast.state = ToastState::Exiting;

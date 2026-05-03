@@ -9,11 +9,9 @@ use rapier3d::prelude::{
 };
 
 use crate::{
-    animation::{
-        data_loader::texture_from_file,
-        model::{Model, Vertex},
-    },
+    animation::model::{Model, Vertex},
     enums_types::{TextureProfile, TextureType},
+    renderer::Renderer,
     util::constants::{GROUP_TERRAIN, MAX_BONE_INFLUENCE},
 };
 
@@ -174,7 +172,7 @@ impl Terrain {
         }
 
         model.directory = "resources/models/static/terrain".to_string();
-        texture_from_file(
+        Renderer::upload_model_texture(
             &mut model,
             "ai_slop/dark_dirt_pixelated.png".to_string(),
             TextureType::Diffuse,
@@ -182,7 +180,7 @@ impl Terrain {
         );
 
         model.indices = self.indices.clone();
-        model.setup_opengl();
+        Renderer::upload_model_mesh(&mut model);
 
         model
     }

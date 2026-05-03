@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use glam::{Quat, Vec3};
 use nalgebra::{point, vector};
 use rand::Rng;
@@ -5,14 +7,23 @@ use rand_chacha::ChaCha8Rng;
 use rapier3d::prelude::{Group, InteractionGroups, QueryFilter, Ray};
 
 use crate::{
-    config::world_data::EntityInstance, debug::gizmos::Dimension, entity_manager::EntityManager,
-    physics::PhysicsState, util::constants::GROUP_TERRAIN,
+    config::{weapon_anim_map, world_data::EntityInstance},
+    debug::gizmos::Dimension,
+    entity_manager::EntityManager,
+    physics::PhysicsState,
+    util::constants::GROUP_TERRAIN,
 };
 
+// round data for
+pub struct RoundData {
+    amount: u32,
+    spawned: bool,
+}
+
 pub struct SpawnManager {
-    pub spawn_every: f32, // seconds
-    pub amount_per: u32,  // how many guysf
-    pub accumulator: f32,
+    pub rounds: VecDeque<RoundData>,
+    pub next_round_ttl: f32,
+    pub next_round_accumulator: f32,
 }
 
 impl SpawnManager {
@@ -27,64 +38,84 @@ impl SpawnManager {
             return;
         }
 
+        let Some(curr) = self.rounds.front_mut() else {
+            println!("Game over, all rounds are done!");
+            return;
+        };
+
+        if !curr.spawned {
+            self.next_round_accumulator += dt;
+        }
+
+        if !curr.spawned && self.next_round_accumulator >= self.next_round_ttl {
+            Self::spawn_enemies(curr.amount, em, ps);
+            curr.spawned = true;
+            self.next_round_accumulator = 0.0;
+            return;
+        }
+
+        if curr.spawned && em.current_round_enemies.is_empty() {
+            self.rounds.pop_front();
+            return;
+        }
+        println!("[NEXT ROUND COMING] {}", self.next_round_accumulator);
+    }
+
+    fn spawn_enemies(amount: u32, em: &mut EntityManager, ps: &mut PhysicsState) {
         let enemy_weapon_types: Vec<String> =
             em.weapon_anim_map.weapon_types.keys().cloned().collect();
 
-        self.accumulator += dt;
+        for _ in 0..amount {
+            match Self::find_spawn_point(em, ps) {
+                Some(point) => {
+                    let weapon_type =
+                        &enemy_weapon_types[em.rng.random_range(0..enemy_weapon_types.len())];
 
-        if self.accumulator >= self.spawn_every {
-            self.accumulator -= self.spawn_every;
-            for _ in 0..self.amount_per {
-                match Self::find_spawn_point(em, ps) {
-                    Some(point) => {
-                        let weapon_type =
-                            &enemy_weapon_types[em.rng.random_range(0..enemy_weapon_types.len())];
-
-                        let instance = EntityInstance {
-                            entity_type: "Peasant1".to_string(),
-                            position: point,
-                            faction: Some("Enemy".to_string()),
+                    let instance = EntityInstance {
+                        entity_type: "Peasant1".to_string(),
+                        position: point,
+                        faction: Some("Enemy".to_string()),
+                        rotation: Quat::IDENTITY,
+                        weapons: Some(vec![EntityInstance {
+                            entity_type: weapon_type.to_string(),
+                            position: Vec3::ZERO,
                             rotation: Quat::IDENTITY,
-                            weapons: Some(vec![EntityInstance {
-                                entity_type: weapon_type.to_string(),
-                                position: Vec3::ZERO,
-                                rotation: Quat::IDENTITY,
-                                faction: Some("Item".to_string()),
-                                base_speed: None,
-                                jump_height: None,
-                                health: None,
-                                max_health: None,
-                                mana: None,
-                                max_mana: None,
-                                level: None,
-                                name: None,
-                                weapons: None,
-                                cleanup_timer: None,
-                                pickup_range: None,
-                            }]),
-                            base_speed: Some(3.5),
-                            health: Some(5.0),
+                            faction: Some("Item".to_string()),
+                            base_speed: None,
+                            jump_height: None,
+                            health: None,
                             max_health: None,
                             mana: None,
                             max_mana: None,
                             level: None,
                             name: None,
-                            jump_height: Some(1.0),
+                            weapons: None,
                             cleanup_timer: None,
                             pickup_range: None,
-                        };
-                        let parent_id = em.create_mesh_entity(&instance, ps);
-                        em.populate_inventory(parent_id, &instance, ps);
-                    }
-                    None => {
-                        dbg!("Somehow we didn't get a spawn??? why?????");
-                    }
+                        }]),
+                        base_speed: Some(3.5),
+                        health: Some(5.0),
+                        max_health: None,
+                        mana: None,
+                        max_mana: None,
+                        level: None,
+                        name: None,
+                        jump_height: Some(1.0),
+                        cleanup_timer: None,
+                        pickup_range: None,
+                    };
+                    let parent_id = em.create_mesh_entity(&instance, ps);
+                    em.populate_inventory(parent_id, &instance, ps);
+                    em.current_round_enemies.push(parent_id);
+                }
+                None => {
+                    dbg!("Somehow we didn't get a spawn??? why????? WHYYYY????");
                 }
             }
         }
     }
 
-    pub fn find_spawn_point(em: &mut EntityManager, ps: &PhysicsState) -> Option<Vec3> {
+    fn find_spawn_point(em: &mut EntityManager, ps: &PhysicsState) -> Option<Vec3> {
         let spawn_area_entry = em
             .entity_types
             .iter()
@@ -135,5 +166,28 @@ impl SpawnManager {
         let u: f32 = rng.random();
         let r = radius * u.sqrt();
         origin + Vec3::new(theta.cos(), 0.0, theta.sin()) * r
+    }
+}
+
+impl Default for SpawnManager {
+    fn default() -> Self {
+        Self {
+            rounds: VecDeque::from([
+                RoundData {
+                    amount: 5,
+                    spawned: false,
+                },
+                RoundData {
+                    amount: 7,
+                    spawned: false,
+                },
+                RoundData {
+                    amount: 10,
+                    spawned: false,
+                },
+            ]),
+            next_round_ttl: 5.0,
+            next_round_accumulator: 0.0,
+        }
     }
 }

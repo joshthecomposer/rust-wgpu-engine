@@ -105,7 +105,6 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
         let weap_id = em.active_items.get(eid).and_then(|w| w.right_hand);
 
         let desired_action = ctrl.desired_action;
-
         let leaving_block =
             ctrl.current_action == ActionKind::Block && desired_action != Some(ActionKind::Block);
 

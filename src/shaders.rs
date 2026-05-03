@@ -1,29 +1,38 @@
 #![allow(dead_code, clippy::while_let_on_iterator, clippy::collapsible_if)]
-use std::{collections::HashMap, ffi::CString, fs::read_to_string, ptr};
+use std::{collections::HashMap, ffi::CString, ptr};
 
 use gl::types::{GLint, GLuint};
 use glam::{Mat4, Vec3};
 
-use crate::{
-    gl_call,
-    lights::{DirLight, PointLight},
-};
+use crate::lights::{DirLight, PointLight};
+use crate::{assets, gl_call};
 
 pub struct Shader {
     pub id: GLuint,
     pub uniform_locations: HashMap<String, GLint>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ShaderProfile {
+    DesktopCore,
+    GlslEs300,
+}
+
 impl Shader {
     pub fn new(file_path: &str) -> Self {
-        let id = init_shader_program(file_path);
+        Self::new_with_profile(file_path, ShaderProfile::DesktopCore)
+    }
+
+    pub fn new_with_profile(file_path: &str, profile: ShaderProfile) -> Self {
+        let source_path = shader_source_path(file_path, profile);
+        let id = init_shader_program_with_profile(source_path, profile);
 
         let mut shader = Self {
             id,
             uniform_locations: HashMap::new(),
         };
 
-        shader.parse_and_store_uniforms(file_path);
+        shader.parse_and_store_uniforms(source_path);
 
         shader
     }
@@ -33,7 +42,7 @@ impl Shader {
     }
 
     fn parse_and_store_uniforms(&mut self, file_path: &str) {
-        let data = read_to_string(file_path).unwrap();
+        let data = assets::read_text(file_path).unwrap();
         let mut lines = data.lines();
 
         while let Some(line) = lines.next() {
@@ -263,7 +272,12 @@ impl Shader {
 }
 
 pub fn init_shader_program(file_path: &str) -> u32 {
-    let (vs_source, gs_source, fs_source) = extract_shader_sources(file_path);
+    init_shader_program_with_profile(file_path, ShaderProfile::DesktopCore)
+}
+
+pub fn init_shader_program_with_profile(file_path: &str, profile: ShaderProfile) -> u32 {
+    let source_path = shader_source_path(file_path, profile);
+    let (vs_source, gs_source, fs_source) = extract_shader_sources(source_path, profile);
 
     let vs_cstr = CString::new(vs_source).expect("Failed to convert vs source to C string");
     let fs_cstr = CString::new(fs_source).expect("Failed to convert fs source to C string");
@@ -311,9 +325,48 @@ pub fn init_shader_program(file_path: &str) -> u32 {
     }
 }
 
-fn extract_shader_sources(file_path: &str) -> (String, Option<String>, String) {
+fn shader_source_path(file_path: &str, profile: ShaderProfile) -> &str {
+    match (profile, file_path) {
+        (ShaderProfile::GlslEs300, "resources/shaders/custom_ui.glsl") => {
+            "resources/shaders/custom_ui_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/depth_shader.glsl") => {
+            "resources/shaders/depth_shader_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/skybox.glsl") => {
+            "resources/shaders/skybox_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/model/static_model.glsl") => {
+            "resources/shaders/model/static_model_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/model/animated_model.glsl") => {
+            "resources/shaders/model/animated_model_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/hdr.glsl") => {
+            "resources/shaders/hdr_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/fxaa.glsl") => {
+            "resources/shaders/fxaa_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/bloom/bloom_downsample.glsl") => {
+            "resources/shaders/bloom/bloom_downsample_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/bloom/bloom_upsample.glsl") => {
+            "resources/shaders/bloom/bloom_upsample_es300.glsl"
+        }
+        (ShaderProfile::GlslEs300, "resources/shaders/particles.glsl") => {
+            "resources/shaders/particles_es300.glsl"
+        }
+        _ => file_path,
+    }
+}
+
+fn extract_shader_sources(
+    file_path: &str,
+    profile: ShaderProfile,
+) -> (String, Option<String>, String) {
     println!("{}", file_path);
-    let data = read_to_string(file_path).unwrap();
+    let data = assets::read_text(file_path).unwrap();
     let mut lines = data.lines();
 
     let mut current_shader = None;
@@ -332,6 +385,12 @@ fn extract_shader_sources(file_path: &str) -> (String, Option<String>, String) {
                 shader_sources.insert("FRAGMENT_SHADER".to_string(), String::new());
             }
             "// GEOMETRY_SHADER" => {
+                if profile == ShaderProfile::GlslEs300 {
+                    panic!(
+                        "GLSL ES 3.00 profile does not support geometry shaders: {}",
+                        file_path
+                    );
+                }
                 println!("Located geometry shader shader, extracting now...");
                 current_shader = Some("GEOMETRY_SHADER".to_string());
                 shader_sources.insert("GEOMETRY_SHADER".to_string(), String::new());

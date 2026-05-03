@@ -2,9 +2,11 @@ use std::time::Instant;
 
 use crate::{
     animation::{animation::Animation, animator::Animator},
-    command_buffer::{CommandBuffer, LocoIntent},
+    command_buffer::{CommandBuffer, LocoIntent, PartCmd, PartKind, SoundCmd, SoundKind},
     entity_manager::EntityManager,
-    enums_types::{AnimationType, BufferedAction, CombatState, ControlState, LocoState},
+    enums_types::{
+        AnimationType, BufferedAction, CombatState, ControlState, LifeState, LocoState, SoundType,
+    },
     input::InputState,
     state_machines::player::{
         combat::combat_state_machine,
@@ -13,6 +15,7 @@ use crate::{
     util::constants::{BASIC, DEFENSIVE, EVADE, SKILL1, SKILL2, ULTIMATE},
 };
 
+use glam::Vec3;
 use winit::keyboard::KeyCode;
 
 pub fn player_state_orchestrator(
@@ -30,6 +33,8 @@ pub fn player_state_orchestrator(
         return;
     };
 
+    let anim_name = animator.next_animation;
+
     let Some(ctrl) = em.player_controllers.get_mut(player_id) else {
         return;
     };
@@ -46,6 +51,70 @@ pub fn player_state_orchestrator(
         if buf.ttl <= 0.0 {
             ctrl.queued_action = None;
         }
+    }
+
+    let skellington = em.skellingtons.get(player_id).unwrap();
+    let trans = em.transforms.get(player_id).unwrap();
+
+    match ctrl.life_state {
+        LifeState::Alive => {}
+        LifeState::Dying => {
+            let Some(t) = em.transforms.get(player_id) else {
+                em.entity_trashcan.push(player_id);
+                return;
+            };
+
+            let entity_world =
+                glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
+
+            // Walk the full bone tree, not just the root's direct children.
+            let mut stack = Vec::new();
+
+            for bone in &skellington.children {
+                stack.push(bone);
+            }
+
+            cmds.sound.push(SoundCmd {
+                kind: SoundKind::Sound3d(SoundType::Bloop, trans.position),
+            });
+
+            while let Some(bone) = stack.pop() {
+                let bone_world = entity_world * bone.global_transform;
+                let pos = bone_world.w_axis.truncate();
+
+                cmds.particles.push(PartCmd {
+                    name: "BodyPoof".to_string(),
+                    kind: PartKind::WorldOrigin(pos),
+                    direction: Vec3::Y,
+                });
+
+                for child in &bone.children {
+                    stack.push(child);
+                }
+            }
+
+            em.entity_trashcan.push(player_id);
+            return;
+        }
+        LifeState::Dead => {
+            return;
+        }
+    }
+
+    if ctrl.took_damage
+        && !matches!(
+            anim_name,
+            AnimationType::Basic1
+                | AnimationType::Basic2
+                | AnimationType::Basic3
+                | AnimationType::OSBasic1
+                | AnimationType::OSBasic2
+                | AnimationType::OSBasic3
+                | AnimationType::Roll
+        )
+    {
+        cmds.next_anim(player_id, AnimationType::Stagger, None);
+        return;
     }
 
     let weap_id = em.active_items.get(player_id).and_then(|w| w.right_hand);

@@ -22,6 +22,7 @@ use crate::{
         model::Model,
         skellington::Bone,
     },
+    assets,
     command_buffer::{CommandBuffer, ImpulseKind},
     config::{
         entity_config::{
@@ -128,6 +129,8 @@ pub struct EntityManager {
 
     pub serializable_world_data: WorldData,
     pub weapon_anim_map: WeaponAnimMapHelper,
+
+    pub current_round_enemies: Vec<usize>,
 }
 
 impl EntityManager {
@@ -210,6 +213,7 @@ impl EntityManager {
             ),
             serializable_world_data: wd,
             weapon_anim_map,
+            current_round_enemies: Vec::new(),
         }
     }
 
@@ -1257,6 +1261,9 @@ impl EntityManager {
 
             // Sound cleanup last
             sm.cleanup_entity_sounds(id);
+
+            self.current_round_enemies
+                .retain(|enemy_id| *enemy_id != id);
         }
 
         self.entity_trashcan.clear();
@@ -1793,7 +1800,7 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     //let path = "resources/textures/brushes/mountain.png";
     //let path = "resources/textures/brushes/blendertest.png";
     let path = "resources/textures/small_terrain.png";
-    let img = image::open(path)
+    let img = assets::load_image(path)
         .expect("Failed to load terrain image")
         .to_luma8();
     let (width, height) = img.dimensions();

@@ -8,6 +8,7 @@ use crate::entity_manager::EntityManager;
 use crate::enums_types::Transform;
 use crate::gl_call;
 use crate::lights::Lights;
+use crate::renderer::Renderer;
 use crate::shaders::Shader;
 
 /// Size of the portrait texture in pixels.
@@ -268,7 +269,7 @@ impl PortraitRenderer {
 
         // draw the model
         unsafe {
-            model.draw(shader);
+            Renderer::draw_model(model, shader);
             gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
             gl_call!(gl::Disable(gl::CULL_FACE));
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));

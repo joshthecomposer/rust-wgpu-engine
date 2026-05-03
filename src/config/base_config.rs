@@ -1,6 +1,4 @@
-use std::fs::{read_to_string, write};
-use std::path::Path;
-
+use crate::assets;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
@@ -19,7 +17,7 @@ pub trait Config: Default + for<'de> Deserialize<'de> + Serialize + Sized {
             std::any::type_name::<Self>(),
             file_name
         );
-        let config_str = read_to_string(file_name).unwrap();
+        let config_str = assets::read_text(file_name).unwrap();
 
         serde_json::from_str(&config_str).expect("The file was missing or malformed")
     }
@@ -34,7 +32,7 @@ pub trait Config: Default + for<'de> Deserialize<'de> + Serialize + Sized {
     fn save_to_file(&self, file_name: &str) {
         println!("saving {} to {}", std::any::type_name::<Self>(), file_name);
         let json_string = serde_json::to_string_pretty(self).expect("Failed to serialize data");
-        write(file_name, json_string).expect("Failed to write data");
+        assets::write_text(file_name, &json_string).expect("Failed to write data");
 
         println!(
             "Completed writing {} to {}",
@@ -54,17 +52,29 @@ pub trait Config: Default + for<'de> Deserialize<'de> + Serialize + Sized {
     /// # Panics
     /// Panics if the file cannot be read, deserialization fails, or if writing the default config fails.
     fn load_or_create_default(file_name: &str) -> Self {
-        if Path::new(file_name).exists() {
+        if assets::path_exists(file_name) {
             println!("Config file found at {}, loading data", file_name);
             Self::load_from_file(file_name)
         } else {
-            println!(
-                "Config file not found at {}, creating default config",
-                file_name
-            );
-            let config = Self::default();
-            config.save_to_file(file_name);
-            config
+            #[cfg(target_arch = "wasm32")]
+            {
+                println!(
+                    "Config file not found at {}, using in-memory default for web",
+                    file_name
+                );
+                return Self::default();
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                println!(
+                    "Config file not found at {}, creating default config",
+                    file_name
+                );
+                let config = Self::default();
+                config.save_to_file(file_name);
+                config
+            }
         }
     }
 }

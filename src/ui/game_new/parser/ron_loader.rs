@@ -1,8 +1,8 @@
-use std::fs;
 use std::path::Path;
 
 use serde::Deserialize;
 
+use crate::assets;
 use crate::ui::game_new::parser::theme::{load_theme, Theme};
 use crate::ui::game_new::styles::{Alignment, Color, Length, ScrollbarStyle, Style};
 use crate::ui::game_new::tree::UiTree;
@@ -866,8 +866,11 @@ fn resolve_variables(def: &mut NodeDefinition, theme: &Theme) {
 /// This function reads the RON file, parses it into a [`NodeDefinition`],
 /// resolves any variables in the style properties, and returns a [`UiTree`].
 pub fn load_view<P: AsRef<Path>>(path: P) -> Result<UiTree, String> {
-    let content =
-        fs::read_to_string(path.as_ref()).map_err(|e| format!("Failed to read RON file: {}", e))?;
+    let path = path
+        .as_ref()
+        .to_str()
+        .ok_or_else(|| "RON path contains invalid UTF-8".to_string())?;
+    let content = assets::read_text(path).map_err(|e| format!("Failed to read RON file: {}", e))?;
 
     let mut root_def: NodeDefinition =
         ron::from_str(&content).map_err(|e| format!("Failed to parse RON: {}", e))?;

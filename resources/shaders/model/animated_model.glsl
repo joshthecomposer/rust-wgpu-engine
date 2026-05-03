@@ -71,6 +71,7 @@ in vec4 FragPosLightSpace;
 
 uniform bool has_opacity_texture;
 uniform sampler2D shadow_map;
+uniform bool shadow_border_fallback;
 
 uniform bool use_base_color;      // set true to use a flat color
 
@@ -120,8 +121,15 @@ float ShadowCalculation(float dot_light_normal) {
     vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y) {
-            float depth = texture(shadow_map, pos.xy + vec2(x, y) * texel_size).r;
-            shadow += (depth + bias) < pos.z ? 0.0 : 1.0;
+            vec2 sample_uv = pos.xy + vec2(x, y) * texel_size;
+            if (shadow_border_fallback &&
+                (sample_uv.x < 0.0 || sample_uv.x > 1.0 ||
+                 sample_uv.y < 0.0 || sample_uv.y > 1.0)) {
+                shadow += 1.0;
+            } else {
+                float depth = texture(shadow_map, sample_uv).r;
+                shadow += (depth + bias) < pos.z ? 0.0 : 1.0;
+            }
         }
     }
     return shadow / 9.0;

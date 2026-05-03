@@ -4,6 +4,7 @@ use rand::{rng, Rng};
 use rapier3d::parry::utils::hashmap::HashMap;
 
 use crate::{
+    assets,
     camera::Camera,
     command_buffer::{CommandBuffer, PartKind},
     config::{
@@ -394,7 +395,7 @@ impl ParticleSystem {
                 gl::CLAMP_TO_EDGE as i32
             ));
 
-            let img = match image::open(path) {
+            let img = match assets::load_image(path) {
                 Ok(img) => img,
                 _ => panic!("error opening smoke texture"),
             };
