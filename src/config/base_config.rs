@@ -67,13 +67,13 @@ pub trait Config: Default + for<'de> Deserialize<'de> + Serialize + Sized {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-            println!(
-                "Config file not found at {}, creating default config",
-                file_name
-            );
-            let config = Self::default();
-            config.save_to_file(file_name);
-            config
+                println!(
+                    "Config file not found at {}, creating default config",
+                    file_name
+                );
+                let config = Self::default();
+                config.save_to_file(file_name);
+                config
             }
         }
     }

@@ -738,10 +738,16 @@ impl Renderer {
         );
         animated_model_shader.set_bool("use_shadows", true);
 
+        let particles_shader =
+            Shader::new_with_profile("resources/shaders/particles.glsl", ShaderProfile::GlslEs300);
+        particles_shader.activate();
+        particles_shader.set_int("texture1", 0);
+
         shaders.insert(ShaderType::Skybox, skybox_shader);
         shaders.insert(ShaderType::Depth, depth_shader);
         shaders.insert(ShaderType::StaticModel, static_model_shader);
         shaders.insert(ShaderType::AnimatedModel, animated_model_shader);
+        shaders.insert(ShaderType::Particles, particles_shader);
 
         if policy.hdr_enabled {
             let hdr_shader =
@@ -1711,6 +1717,7 @@ impl Renderer {
         elapsed: f32,
         ps: &PhysicsState,
         alpha: f32,
+        particles: &mut ParticleSystem,
     ) {
         let ids_by_type = em.get_ids_by_type();
 
@@ -1753,8 +1760,13 @@ impl Renderer {
                     elapsed,
                     ids,
                     is_animated,
+                    particles,
                 );
             }
+
+            let particle_shader = self.shaders.get_mut(&ShaderType::Particles).unwrap();
+            particle_shader.set_bool("hdr_render_target", self.hdr_color != 0);
+            particles.render(particle_shader, camera);
         } else {
             unsafe {
                 gl_call!(gl::BindFramebuffer(
@@ -1793,8 +1805,13 @@ impl Renderer {
                     elapsed,
                     ids,
                     is_animated,
+                    particles,
                 );
             }
+
+            let particle_shader = self.shaders.get_mut(&ShaderType::Particles).unwrap();
+            particle_shader.set_bool("hdr_render_target", self.hdr_color != 0);
+            particles.render(particle_shader, camera);
 
             self.resolve_msaa_blit_to_hdr_textures(fb_width, fb_height);
             self.resolve_tonemap_fxaa_to_default(camera, fb_width, fb_height);
@@ -2866,6 +2883,7 @@ impl Renderer {
         elapsed: f32,
         ids: &Vec<usize>,
         is_animated: bool,
+        particles: &mut ParticleSystem,
     ) {
         unsafe {
             gl_call!(gl::Enable(gl::DEPTH_TEST));
@@ -2918,6 +2936,27 @@ impl Renderer {
                 let animator = em.animators.get(*id).unwrap();
                 let animation = animator.get_current_animation().unwrap();
                 shader.set_mat4_array("bone_transforms", &animation.current_pose);
+
+                let cam_pos = camera.position;
+                let d2 = (trans.position - cam_pos).length_squared();
+                let do_particles = d2 < (40.0 * 40.0);
+
+                if do_particles {
+                    for os in animation.one_shots.iter() {
+                        if animation.current_segment.get() == os.segment {
+                            if !os.triggered.get() {
+                                particles.spawn_oneshot_emitter(
+                                    "DesertStep",
+                                    trans.position,
+                                    None,
+                                );
+                                os.triggered.set(true);
+                            }
+                        } else {
+                            os.triggered.set(false);
+                        }
+                    }
+                }
 
                 if let Some(fa) = &animation.hurtbox_activation {
                     if fa.segment_range.contains(&animation.current_segment.get()) {

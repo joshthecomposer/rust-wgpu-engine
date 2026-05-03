@@ -354,6 +354,9 @@ fn shader_source_path(file_path: &str, profile: ShaderProfile) -> &str {
         (ShaderProfile::GlslEs300, "resources/shaders/bloom/bloom_upsample.glsl") => {
             "resources/shaders/bloom/bloom_upsample_es300.glsl"
         }
+        (ShaderProfile::GlslEs300, "resources/shaders/particles.glsl") => {
+            "resources/shaders/particles_es300.glsl"
+        }
         _ => file_path,
     }
 }

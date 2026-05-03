@@ -14,7 +14,6 @@ use rapier3d::prelude::*;
 use winit::keyboard::KeyCode;
 
 use crate::{
-    assets,
     abilities::{AbilitiesConfig, WeaponAbilities, WeaponPoolsConfig},
     animation::{
         self,
@@ -23,6 +22,7 @@ use crate::{
         model::Model,
         skellington::Bone,
     },
+    assets,
     command_buffer::{CommandBuffer, ImpulseKind},
     config::{
         entity_config::{

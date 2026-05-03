@@ -4,9 +4,9 @@ use crate::{
     command_buffer::{CommandBuffer, PartCmd, PartKind},
     entity_manager::EntityManager,
     enums_types::{Knockback, LifeState},
-    particles::ParticleSystem,
     physics::{self, PhysicsState},
 };
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsValue;
 
 pub fn update(em: &mut EntityManager, _dt: f32, ps: &mut PhysicsState, cmds: &mut CommandBuffer) {

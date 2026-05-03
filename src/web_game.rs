@@ -1,5 +1,8 @@
 use glam::{Mat4, Quat, Vec3};
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::panic;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
@@ -550,15 +553,20 @@ fn parse_web_floats(line: &str, expected: usize) -> Result<Vec<f32>, String> {
 pub fn start() -> Result<(), JsValue> {
     install_panic_hook();
 
-    let runtime = std::rc::Rc::new(std::cell::RefCell::new(WebGameRuntime::new()?));
-    install_input_handlers(runtime.clone())?;
-    let frame_callback: std::rc::Rc<std::cell::RefCell<Option<Closure<dyn FnMut(f64)>>>> =
-        std::rc::Rc::new(std::cell::RefCell::new(None));
+    let runtime = Rc::new(RefCell::new(WebGameRuntime::new()?));
+    let input_queue: Rc<RefCell<VecDeque<WebInputEvent>>> = Rc::new(RefCell::new(VecDeque::new()));
+    install_input_handlers(runtime.clone(), input_queue.clone())?;
+    let frame_callback: Rc<RefCell<Option<Closure<dyn FnMut(f64)>>>> = Rc::new(RefCell::new(None));
     let frame_callback_handle = frame_callback.clone();
     let runtime_handle = runtime.clone();
+    let input_queue_handle = input_queue.clone();
 
     *frame_callback_handle.borrow_mut() = Some(Closure::wrap(Box::new(move |now_ms: f64| {
+        drain_and_apply_web_inputs(&runtime_handle, &input_queue_handle);
+
         runtime_handle.borrow_mut().tick(now_ms);
+
+        drain_and_apply_web_inputs(&runtime_handle, &input_queue_handle);
 
         if let Some(window) = web_sys::window() {
             if let Some(callback) = frame_callback.borrow().as_ref() {
@@ -578,6 +586,66 @@ pub fn start() -> Result<(), JsValue> {
 
     web_sys::console::log_1(&"learn-opengl-rs real Game bootstrap initialized".into());
     Ok(())
+}
+
+#[derive(Clone)]
+enum WebInputEvent {
+    Key {
+        keycode: winit::keyboard::KeyCode,
+        state: winit::event::ElementState,
+    },
+    MouseMove {
+        x: f32,
+        y: f32,
+        dx: f64,
+        dy: f64,
+    },
+    MouseButton {
+        button: winit::event::MouseButton,
+        state: winit::event::ElementState,
+    },
+    Scroll {
+        x: f32,
+        y: f32,
+    },
+}
+
+fn apply_pending_web_inputs(rt: &mut WebGameRuntime, event: WebInputEvent) {
+    match event {
+        WebInputEvent::Key { keycode, state } => {
+            if state == winit::event::ElementState::Pressed && is_movement_key(keycode) {
+                web_sys::console::log_1(
+                    &format!("web keydown movement: mapped={keycode:?}").into(),
+                );
+            }
+            rt.game.handle_web_keyboard_input(keycode, state);
+        }
+        WebInputEvent::MouseMove { x, y, dx, dy } => {
+            rt.game.handle_web_mouse_move(x, y, dx, dy);
+        }
+        WebInputEvent::MouseButton { button, state } => {
+            rt.game.handle_web_mouse_button(button, state);
+        }
+        WebInputEvent::Scroll { x, y } => {
+            rt.game.handle_web_scroll(x, y);
+        }
+    }
+}
+
+/// Apply DOM input that was queued while `runtime` was already mutably borrowed
+/// (e.g. events fired during `request_animation_frame`).
+fn drain_and_apply_web_inputs(
+    runtime: &RefCell<WebGameRuntime>,
+    queue: &RefCell<VecDeque<WebInputEvent>>,
+) {
+    let drained: Vec<_> = queue.borrow_mut().drain(..).collect();
+    if drained.is_empty() {
+        return;
+    }
+    let mut rt = runtime.borrow_mut();
+    for event in drained {
+        apply_pending_web_inputs(&mut rt, event);
+    }
 }
 
 fn install_panic_hook() {
@@ -605,7 +673,8 @@ fn install_panic_hook() {
 }
 
 fn install_input_handlers(
-    runtime: std::rc::Rc<std::cell::RefCell<WebGameRuntime>>,
+    runtime: Rc<RefCell<WebGameRuntime>>,
+    input_queue: Rc<RefCell<VecDeque<WebInputEvent>>>,
 ) -> Result<(), JsValue> {
     let canvas = runtime.borrow().game.platform.canvas.clone();
     focus_canvas(&canvas);
@@ -614,23 +683,14 @@ fn install_input_handlers(
         .ok_or_else(|| JsValue::from_str("missing document"))?;
 
     {
-        let runtime = runtime.clone();
+        let input_queue = input_queue.clone();
         let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::wrap(Box::new(move |event| {
             if let Some(keycode) = map_keyboard_code(&event.code()) {
                 event.prevent_default();
-                if is_movement_key(keycode) {
-                    web_sys::console::log_1(
-                        &format!(
-                            "web keydown movement: code={} mapped={keycode:?}",
-                            event.code()
-                        )
-                        .into(),
-                    );
-                }
-                runtime
-                    .borrow_mut()
-                    .game
-                    .handle_web_keyboard_input(keycode, winit::event::ElementState::Pressed);
+                input_queue.borrow_mut().push_back(WebInputEvent::Key {
+                    keycode,
+                    state: winit::event::ElementState::Pressed,
+                });
             }
         }));
         document.add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref())?;
@@ -638,14 +698,14 @@ fn install_input_handlers(
     }
 
     {
-        let runtime = runtime.clone();
+        let input_queue = input_queue.clone();
         let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::wrap(Box::new(move |event| {
             if let Some(keycode) = map_keyboard_code(&event.code()) {
                 event.prevent_default();
-                runtime
-                    .borrow_mut()
-                    .game
-                    .handle_web_keyboard_input(keycode, winit::event::ElementState::Released);
+                input_queue.borrow_mut().push_back(WebInputEvent::Key {
+                    keycode,
+                    state: winit::event::ElementState::Released,
+                });
             }
         }));
         document.add_event_listener_with_callback("keyup", closure.as_ref().unchecked_ref())?;
@@ -653,17 +713,16 @@ fn install_input_handlers(
     }
 
     {
-        let runtime = runtime.clone();
+        let input_queue = input_queue.clone();
         let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::wrap(Box::new(move |event| {
             event.prevent_default();
             let x = event.offset_x() as f32;
             let y = event.offset_y() as f32;
             let dx = event.movement_x() as f64;
             let dy = event.movement_y() as f64;
-            runtime
+            input_queue
                 .borrow_mut()
-                .game
-                .handle_web_mouse_move(x, y, dx, dy);
+                .push_back(WebInputEvent::MouseMove { x, y, dx, dy });
         }));
         canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())?;
         closure.forget();
@@ -671,19 +730,30 @@ fn install_input_handlers(
 
     {
         let runtime = runtime.clone();
+        let input_queue = input_queue.clone();
         let canvas_for_focus = canvas.clone();
         let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::wrap(Box::new(move |event| {
             if let Some(button) = map_mouse_button(event.button()) {
                 event.prevent_default();
                 focus_canvas(&canvas_for_focus);
 
-                let mut runtime = runtime.borrow_mut();
-                if !runtime.game.paused && !runtime.game.cursor_unlocked() {
-                    runtime.game.platform.request_pointer_lock();
+                if let Ok(mut rt) = runtime.try_borrow_mut() {
+                    if button == winit::event::MouseButton::Left
+                        && !rt.game.paused
+                        && !rt.game.cursor_unlocked()
+                    {
+                        rt.game.platform.request_pointer_lock();
+                    }
+                    rt.game
+                        .handle_web_mouse_button(button, winit::event::ElementState::Pressed);
+                } else {
+                    input_queue
+                        .borrow_mut()
+                        .push_back(WebInputEvent::MouseButton {
+                            button,
+                            state: winit::event::ElementState::Pressed,
+                        });
                 }
-                runtime
-                    .game
-                    .handle_web_mouse_button(button, winit::event::ElementState::Pressed);
             }
         }));
         canvas.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref())?;
@@ -691,14 +761,16 @@ fn install_input_handlers(
     }
 
     {
-        let runtime = runtime.clone();
+        let input_queue = input_queue.clone();
         let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::wrap(Box::new(move |event| {
             if let Some(button) = map_mouse_button(event.button()) {
                 event.prevent_default();
-                runtime
+                input_queue
                     .borrow_mut()
-                    .game
-                    .handle_web_mouse_button(button, winit::event::ElementState::Released);
+                    .push_back(WebInputEvent::MouseButton {
+                        button,
+                        state: winit::event::ElementState::Released,
+                    });
             }
         }));
         canvas.add_event_listener_with_callback("mouseup", closure.as_ref().unchecked_ref())?;
@@ -706,13 +778,13 @@ fn install_input_handlers(
     }
 
     {
-        let runtime = runtime.clone();
+        let input_queue = input_queue.clone();
         let closure = Closure::<dyn FnMut(web_sys::WheelEvent)>::wrap(Box::new(move |event| {
             event.prevent_default();
-            runtime
-                .borrow_mut()
-                .game
-                .handle_web_scroll(event.delta_x() as f32, event.delta_y() as f32);
+            input_queue.borrow_mut().push_back(WebInputEvent::Scroll {
+                x: event.delta_x() as f32,
+                y: event.delta_y() as f32,
+            });
         }));
         canvas.add_event_listener_with_callback("wheel", closure.as_ref().unchecked_ref())?;
         closure.forget();

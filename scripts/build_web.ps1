@@ -71,6 +71,7 @@ foreach ($root in $assetRoots) {
 }
 
 $configFiles = Get-ChildItem -Path (Join-Path $repoRoot "config") -Filter "*.json" -File
+# Includes emitter_data.json (ParticleSystem presets) and game_config.json for wasm.
 foreach ($file in $configFiles) {
     $relative = "config\$($file.Name)"
     $destination = Join-Path $distDir $relative

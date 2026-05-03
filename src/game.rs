@@ -788,6 +788,7 @@ impl Game {
                 self.time.elapsed,
                 &self.physics,
                 self.time.alpha,
+                &mut self.world.particles,
             );
 
             if UI_ENABLED {

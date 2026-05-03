@@ -654,7 +654,11 @@ pub mod web_canvas {
             "glDrawArrays" | "DrawArrays" => webgl_draw_arrays as *const c_void,
             "glDrawBuffers" | "DrawBuffers" => webgl_draw_buffers as *const c_void,
             "glDrawElements" | "DrawElements" => webgl_draw_elements as *const c_void,
+            "glDrawArraysInstanced" | "DrawArraysInstanced" => {
+                webgl_draw_arrays_instanced as *const c_void
+            }
             "glEnable" | "Enable" => webgl_enable as *const c_void,
+            "glBlendFunc" | "BlendFunc" => webgl_blend_func as *const c_void,
             "glFramebufferTexture2D" | "FramebufferTexture2D" => {
                 webgl_framebuffer_texture_2d as *const c_void
             }
@@ -691,6 +695,9 @@ pub mod web_canvas {
             "glVertexAttribPointer" | "VertexAttribPointer" => {
                 webgl_vertex_attrib_pointer as *const c_void
             }
+            "glVertexAttribDivisor" | "VertexAttribDivisor" => {
+                webgl_vertex_attrib_divisor as *const c_void
+            }
             "glViewport" | "Viewport" => webgl_viewport as *const c_void,
             _ => std::ptr::null(),
         }
@@ -724,6 +731,13 @@ pub mod web_canvas {
 
     unsafe extern "system" fn webgl_enable(cap: gl::types::GLenum) {
         with_webgl_state(|state| state.context.enable(cap));
+    }
+
+    unsafe extern "system" fn webgl_blend_func(
+        sfactor: gl::types::GLenum,
+        dfactor: gl::types::GLenum,
+    ) {
+        with_webgl_state(|state| state.context.blend_func(sfactor, dfactor));
     }
 
     unsafe extern "system" fn webgl_depth_func(func: gl::types::GLenum) {
@@ -760,6 +774,19 @@ pub mod web_canvas {
             state
                 .context
                 .draw_elements_with_i32(mode, count, element_type, indices as i32);
+        });
+    }
+
+    unsafe extern "system" fn webgl_draw_arrays_instanced(
+        mode: gl::types::GLenum,
+        first: gl::types::GLint,
+        count: gl::types::GLsizei,
+        instance_count: gl::types::GLsizei,
+    ) {
+        with_webgl_state(|state| {
+            state
+                .context
+                .draw_arrays_instanced(mode, first, count, instance_count);
         });
     }
 
@@ -960,6 +987,13 @@ pub mod web_canvas {
                 pointer as i32,
             );
         });
+    }
+
+    unsafe extern "system" fn webgl_vertex_attrib_divisor(
+        index: gl::types::GLuint,
+        divisor: gl::types::GLuint,
+    ) {
+        with_webgl_state(|state| state.context.vertex_attrib_divisor(index, divisor));
     }
 
     unsafe extern "system" fn webgl_active_texture(texture: gl::types::GLenum) {
