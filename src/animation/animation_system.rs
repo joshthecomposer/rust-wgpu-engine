@@ -15,7 +15,7 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             continue;
         };
 
-        let Some(next_anim) = animator.get_next_animation() else {
+        let Some(_next_anim) = animator.get_next_animation() else {
             eprintln!("Tried to find a next animation and failed...");
             continue;
         };

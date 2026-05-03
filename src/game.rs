@@ -17,7 +17,7 @@ use crate::command_buffer::CommandBuffer;
 use crate::config::game_config::GameConfig;
 use crate::config::sound_config::SoundConfig;
 use crate::config::Config;
-use crate::enums_types::{CameraState, SoundType};
+use crate::enums_types::{CameraState, ShaderType, SoundType};
 use crate::input::{self, InputState};
 use crate::physics::PhysicsState;
 use crate::platform::{CursorMode, Platform};
@@ -28,7 +28,10 @@ use crate::state_machines::state_machine_system;
 use crate::time::Time;
 use crate::toast;
 use crate::ui::game_new::parser::load_view_or_fallback;
+use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
+use crate::ui::game_new::views::pause_menu_view::{PauseMenuUpdateContext, PauseMenuView};
 use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
+use crate::ui::portrait_renderer::PortraitRenderer;
 #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
@@ -38,7 +41,7 @@ use crate::{combat_system, items, movement_system, physics};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsValue;
 
-const UI_ENABLED: bool = false;
+const UI_ENABLED: bool = true;
 
 pub struct Game {
     pub platform: Platform, // OS/window/events
@@ -51,7 +54,9 @@ pub struct Game {
     pub paused: bool,
     cursor_mode: CursorMode,
     message_queue: MessageQueue,
-    custom_ui: Option<UiTree>,
+    pause_menu: PauseMenuView,
+    game_hud: GameHudView,
+    portrait_renderer: PortraitRenderer,
     gallery_ui: Option<UiTree>,
     custom_ui_renderer: UiRenderer,
     font_system: FontSystem,
@@ -66,6 +71,46 @@ pub struct Game {
 }
 
 impl Game {
+    fn show_in_game_hud(&self) -> bool {
+        UI_ENABLED
+            && !self.paused
+            && self.world.camera.move_state != CameraState::Gallery
+            && self.world.ecs.get_player_id().is_some()
+    }
+
+    /// Portrait FBO refresh (throttled), then GPU HUD (vitals + ability bar).
+    fn render_in_game_overlay(&mut self) {
+        if !self.show_in_game_hud() {
+            return;
+        }
+
+        if let Some(pid) = self.world.ecs.get_player_id() {
+            if self.portrait_renderer.should_update(self.time.elapsed as f64) {
+                let has_anim = self.world.ecs.animators.get(pid).is_some();
+                let shader_ty = if has_anim {
+                    ShaderType::AnimatedModel
+                } else {
+                    ShaderType::StaticModel
+                };
+                if let Some(shader) = self.renderer.shaders.get_mut(&shader_ty) {
+                    self.portrait_renderer.render_portrait(
+                        &self.world.ecs,
+                        pid,
+                        shader,
+                        &self.world.lights,
+                        &self.renderer.defaults,
+                        self.renderer.cubemap_texture,
+                        self.time.elapsed as f64,
+                    );
+                }
+            }
+        }
+
+        self.custom_ui_renderer.begin();
+        self.game_hud.tree.render(&mut self.custom_ui_renderer);
+        self.custom_ui_renderer.end(&mut self.font_system);
+    }
+
     pub fn cursor_unlocked(&self) -> bool {
         self.cursor_mode == CursorMode::Normal
     }
@@ -93,7 +138,21 @@ impl Game {
             false => None,
         };
 
-        let custom_ui = None;
+        let ui_shader_profile = if webgl_compatibility_mode {
+            ShaderProfile::GlslEs300
+        } else {
+            ShaderProfile::DesktopCore
+        };
+        let mut custom_ui_renderer = UiRenderer::new_with_profile(ui_shader_profile);
+        let mut font_system = FontSystem::new();
+
+        let mut pause_menu = PauseMenuView::new(&mut font_system);
+        pause_menu.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+
+        let mut game_hud = GameHudView::new(&mut font_system);
+        game_hud.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+
+        let portrait_renderer = PortraitRenderer::new();
 
         let gallery_ui = if UI_ENABLED {
             let mut gallery_ui = load_view_or_fallback("resources/ui/gallery_view.ron");
@@ -103,13 +162,6 @@ impl Game {
             None
         };
 
-        let ui_shader_profile = if webgl_compatibility_mode {
-            ShaderProfile::GlslEs300
-        } else {
-            ShaderProfile::DesktopCore
-        };
-        let mut custom_ui_renderer = UiRenderer::new_with_profile(ui_shader_profile);
-        let font_system = FontSystem::new();
         custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
         Self {
@@ -123,7 +175,9 @@ impl Game {
             paused: false,
             cursor_mode: CursorMode::Hidden,
             message_queue: MessageQueue::new(),
-            custom_ui,
+            pause_menu,
+            game_hud,
+            portrait_renderer,
             gallery_ui,
             custom_ui_renderer,
             font_system,
@@ -188,6 +242,14 @@ impl Game {
                         self.platform.fb_height as f32,
                     );
                 }
+                self.pause_menu.set_screen_size(
+                    self.platform.fb_width as f32,
+                    self.platform.fb_height as f32,
+                );
+                self.game_hud.set_screen_size(
+                    self.platform.fb_width as f32,
+                    self.platform.fb_height as f32,
+                );
             }
         }
 
@@ -328,9 +390,10 @@ impl Game {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
                 if UI_ENABLED {
-                    if let Some(tree) = &mut self.custom_ui {
-                        tree.set_screen_size(size.width as f32, size.height as f32);
-                    }
+                    self.pause_menu
+                        .set_screen_size(size.width as f32, size.height as f32);
+                    self.game_hud
+                        .set_screen_size(size.width as f32, size.height as f32);
                     if let Some(tree) = &mut self.gallery_ui {
                         tree.set_screen_size(size.width as f32, size.height as f32);
                     }
@@ -346,9 +409,10 @@ impl Game {
                 self.platform.fb_width = size.width;
                 self.platform.fb_height = size.height;
                 if UI_ENABLED {
-                    if let Some(tree) = &mut self.custom_ui {
-                        tree.set_screen_size(size.width as f32, size.height as f32);
-                    }
+                    self.pause_menu
+                        .set_screen_size(size.width as f32, size.height as f32);
+                    self.game_hud
+                        .set_screen_size(size.width as f32, size.height as f32);
                     if let Some(tree) = &mut self.gallery_ui {
                         tree.set_screen_size(size.width as f32, size.height as f32);
                     }
@@ -610,18 +674,33 @@ impl Game {
                         tree.layout(&mut self.font_system);
                     }
                 }
-            } else {
-                if let Some(tree) = &mut self.custom_ui {
-                    tree.layout(&mut self.font_system);
-                    let mut ctx = UiContext {
-                        input: &self.input,
-                        messages: &mut self.message_queue,
-                    };
-                    if tree.update(&mut ctx) {
-                        tree.force_layout();
-                        tree.layout(&mut self.font_system);
-                    }
-                }
+            } else if self.paused {
+                let mut pause_ctx = PauseMenuUpdateContext {
+                    paused: &mut self.paused,
+                    render_gizmos: &mut self.renderer.render_gizmos,
+                    game_config: &mut self.config,
+                    sound_config: &mut self.sound_config,
+                    entity_manager: &self.world.ecs,
+                    message_queue: &mut self.message_queue,
+                    input_state: &self.input,
+                };
+                self.pause_menu
+                    .update(&mut pause_ctx, &mut self.font_system);
+            } else if self.show_in_game_hud() {
+                let data = PlayerHudData::from_entity_manager(&self.world.ecs);
+                let portrait_tex = self.portrait_renderer.get_texture_id();
+                let mut ui_ctx = UiContext {
+                    input: &self.input,
+                    messages: &mut self.message_queue,
+                };
+                self.game_hud.update(
+                    &mut self.font_system,
+                    &mut ui_ctx,
+                    &data,
+                    portrait_tex,
+                    &self.world.ecs,
+                    self.time.dt,
+                );
             }
         }
 
@@ -815,10 +894,18 @@ impl Game {
             );
 
             if UI_ENABLED {
-                if let Some(tree) = &self.gallery_ui {
+                if self.world.camera.move_state == CameraState::Gallery {
+                    if let Some(tree) = &self.gallery_ui {
+                        self.custom_ui_renderer.begin();
+                        tree.render(&mut self.custom_ui_renderer);
+                        self.custom_ui_renderer.end(&mut self.font_system);
+                    }
+                } else if self.paused {
                     self.custom_ui_renderer.begin();
-                    tree.render(&mut self.custom_ui_renderer);
+                    self.pause_menu.tree.render(&mut self.custom_ui_renderer);
                     self.custom_ui_renderer.end(&mut self.font_system);
+                } else {
+                    self.render_in_game_overlay();
                 }
             }
 
@@ -840,19 +927,18 @@ impl Game {
         );
 
         if UI_ENABLED {
-            // render custom GPU UI (test view)
             if self.world.camera.move_state == CameraState::Gallery {
                 if let Some(tree) = &self.gallery_ui {
                     self.custom_ui_renderer.begin();
                     tree.render(&mut self.custom_ui_renderer);
                     self.custom_ui_renderer.end(&mut self.font_system);
                 }
+            } else if self.paused {
+                self.custom_ui_renderer.begin();
+                self.pause_menu.tree.render(&mut self.custom_ui_renderer);
+                self.custom_ui_renderer.end(&mut self.font_system);
             } else {
-                if let Some(tree) = &self.custom_ui {
-                    self.custom_ui_renderer.begin();
-                    tree.render(&mut self.custom_ui_renderer);
-                    self.custom_ui_renderer.end(&mut self.font_system);
-                }
+                self.render_in_game_overlay();
             }
         }
 

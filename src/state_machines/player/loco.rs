@@ -93,7 +93,7 @@ pub fn locomotion_state_machine(
 
                 let jump_anim = animator.animations.get(&AnimationType::Jump).unwrap();
 
-                if gs.just_landed {
+                if gs.just_landed || (gs.is_grounded && ctrl.loco_time >= 0.4) {
                     loco_transition(player_id, ctrl, cmds, LocoState::Running, intent, animator);
                     cmds.particles.push(PartCmd {
                         name: "DesertLand".to_string(),

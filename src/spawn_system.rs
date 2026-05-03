@@ -39,7 +39,6 @@ impl SpawnManager {
         }
 
         let Some(curr) = self.rounds.front_mut() else {
-            println!("Game over, all rounds are done!");
             return;
         };
 
@@ -58,7 +57,6 @@ impl SpawnManager {
             self.rounds.pop_front();
             return;
         }
-        println!("[NEXT ROUND COMING] {}", self.next_round_accumulator);
     }
 
     fn spawn_enemies(amount: u32, em: &mut EntityManager, ps: &mut PhysicsState) {
@@ -174,15 +172,15 @@ impl Default for SpawnManager {
         Self {
             rounds: VecDeque::from([
                 RoundData {
-                    amount: 5,
+                    amount: 2,
+                    spawned: false,
+                },
+                RoundData {
+                    amount: 4,
                     spawned: false,
                 },
                 RoundData {
                     amount: 7,
-                    spawned: false,
-                },
-                RoundData {
-                    amount: 10,
                     spawned: false,
                 },
             ]),

@@ -2066,7 +2066,6 @@ impl Renderer {
             }
 
             let particle_shader = self.shaders.get_mut(&ShaderType::Particles).unwrap();
-            particle_shader.set_bool("hdr_render_target", self.hdr_color != 0);
             particles.render(particle_shader, camera);
         } else {
             unsafe {
@@ -2112,7 +2111,6 @@ impl Renderer {
             }
 
             let particle_shader = self.shaders.get_mut(&ShaderType::Particles).unwrap();
-            particle_shader.set_bool("hdr_render_target", self.hdr_color != 0);
             particles.render(particle_shader, camera);
 
             self.resolve_msaa_blit_to_hdr_textures(fb_width, fb_height);
@@ -2527,10 +2525,16 @@ impl Renderer {
     fn with_ui_unpack_alignment(format: UiTextureFormat, f: impl FnOnce()) {
         unsafe {
             if matches!(format, UiTextureFormat::AlphaMask) {
+                #[cfg(target_arch = "wasm32")]
+                crate::platform::web_canvas::pixel_store_unpack_alignment(1);
+                #[cfg(not(target_arch = "wasm32"))]
                 gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 1));
             }
             f();
             if matches!(format, UiTextureFormat::AlphaMask) {
+                #[cfg(target_arch = "wasm32")]
+                crate::platform::web_canvas::pixel_store_unpack_alignment(4);
+                #[cfg(not(target_arch = "wasm32"))]
                 gl_call!(gl::PixelStorei(gl::UNPACK_ALIGNMENT, 4));
             }
         }

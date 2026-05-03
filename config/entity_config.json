@@ -621,7 +621,7 @@
             "Footstep": []
           },
           "continuous_sounds": [],
-          "hurtbox_activation": [],
+          "hurtbox_activation": [13,18],
           "hold_frame": null,
           "interrupt_frame": 18,
           "reset_on_change": true,
@@ -633,7 +633,7 @@
             "Footstep": []
           },
           "continuous_sounds": [],
-          "hurtbox_activation": [],
+          "hurtbox_activation": [13, 18],
           "hold_frame": null,
           "interrupt_frame": 18,
           "reset_on_change": true,
@@ -645,7 +645,7 @@
             "Footstep": []
           },
           "continuous_sounds": [],
-          "hurtbox_activation": [],
+          "hurtbox_activation": [17,22],
           "hold_frame": null,
           "interrupt_frame": 38,
           "reset_on_change": true,

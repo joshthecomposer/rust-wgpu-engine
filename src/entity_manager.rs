@@ -1309,6 +1309,14 @@ impl EntityManager {
             .map(|f| f.key())
     }
 
+    /// Player's primary (right-hand) weapon entity, if equipped and configured with [`WeaponAbilities`].
+    pub fn player_main_hand_weapon(&self) -> Option<usize> {
+        let pid = self.get_player_id()?;
+        let wid = self.active_items.get(pid)?.right_hand?;
+        self.weapon_abilities.get(wid)?;
+        Some(wid)
+    }
+
     pub fn get_ids_for_type(&self, entity_type: &str) -> Vec<usize> {
         let result: Vec<usize> = self
             .entity_types

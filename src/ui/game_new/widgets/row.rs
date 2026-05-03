@@ -193,23 +193,64 @@ impl Widget for Row {
                     0.0
                 };
 
-                // position children with their calculated widths
-                let mut x_offset = 0.0;
+                let resolved_widths: Vec<f32> = (0..child_count)
+                    .map(|i| {
+                        if child_widths[i] < 999999.0 {
+                            child_widths[i]
+                        } else {
+                            flexible_width
+                        }
+                    })
+                    .collect();
+                let total_used: f32 = resolved_widths.iter().sum();
+
+                let start_offset = match self.justify {
+                    Alignment::Start => 0.0,
+                    Alignment::Center => (total_width - total_used) / 2.0,
+                    Alignment::End => total_width - total_used,
+                    Alignment::SpaceBetween => 0.0,
+                    Alignment::SpaceAround => {
+                        if child_count > 0 {
+                            (total_width - total_used) / (child_count as f32 * 2.0)
+                        } else {
+                            0.0
+                        }
+                    }
+                };
+
+                let gap = match self.justify {
+                    Alignment::SpaceBetween if child_count > 1 => {
+                        (total_width - total_used) / (child_count - 1) as f32
+                    }
+                    Alignment::SpaceAround if child_count > 0 => {
+                        (total_width - total_used) / child_count as f32
+                    }
+                    _ => 0.0,
+                };
+
+                let max_child_height = self
+                    .children
+                    .iter()
+                    .map(|c| c.rect().height)
+                    .fold(0.0f32, f32::max);
+                let y_offset = match self.align {
+                    Alignment::Center => (inner_rect.height - max_child_height) / 2.0,
+                    Alignment::End => inner_rect.height - max_child_height,
+                    _ => 0.0,
+                };
+
+                let mut x_offset = start_offset;
                 for (i, child) in self.children.iter_mut().enumerate() {
-                    let child_width = if child_widths[i] < 999999.0 {
-                        child_widths[i]
-                    } else {
-                        flexible_width
-                    };
+                    let child_width = resolved_widths[i];
                     let child_height = child.rect().height;
                     let child_rect = Rect::new(
                         inner_rect.x + x_offset,
-                        inner_rect.y,
+                        inner_rect.y + y_offset,
                         child_width,
                         child_height,
                     );
                     child.layout(font_system, child_rect);
-                    x_offset += child_width;
+                    x_offset += child_width + gap;
                 }
             }
             return;

@@ -37,7 +37,6 @@ in vec4 particle_color;
 uniform sampler2D texture1;
 uniform bool has_tex;
 uniform bool texture_has_alpha;
-uniform bool hdr_render_target;
 
 vec4 luminance_texture() {
     if (particle_alpha <= 0.001) discard;
@@ -70,12 +69,6 @@ vec4 alpha_texture() {
 }
 
 void main() {
-    vec4 color =
+    FragColor =
         texture_has_alpha ? alpha_texture() : luminance_texture();
-
-    vec3 displayRgb = color.rgb;
-    if (!hdr_render_target) {
-        displayRgb = pow(max(displayRgb, vec3(0.0)), vec3(1.0 / 2.2));
-    }
-    FragColor = vec4(displayRgb, color.a);
 }

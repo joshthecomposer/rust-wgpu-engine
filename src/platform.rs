@@ -194,10 +194,11 @@ impl GlCapabilities {
 pub mod web_canvas {
     use super::{CursorMode, GlCapabilities, PlatformBackend};
     use std::{cell::RefCell, collections::HashMap, ffi::c_void};
+    use js_sys::Int32Array;
     use wasm_bindgen::{JsCast, JsValue};
     use web_sys::{
         HtmlCanvasElement, WebGl2RenderingContext, WebGlBuffer, WebGlFramebuffer, WebGlProgram,
-        WebGlShader, WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
+        WebGlRenderbuffer, WebGlShader, WebGlTexture, WebGlUniformLocation, WebGlVertexArrayObject,
     };
 
     thread_local! {
@@ -211,6 +212,7 @@ pub mod web_canvas {
         programs: HashMap<u32, WebGlProgram>,
         buffers: HashMap<u32, WebGlBuffer>,
         framebuffers: HashMap<u32, WebGlFramebuffer>,
+        renderbuffers: HashMap<u32, WebGlRenderbuffer>,
         textures: HashMap<u32, WebGlTexture>,
         uniform_locations: HashMap<u32, WebGlUniformLocation>,
         vertex_arrays: HashMap<u32, WebGlVertexArrayObject>,
@@ -225,6 +227,7 @@ pub mod web_canvas {
                 programs: HashMap::new(),
                 buffers: HashMap::new(),
                 framebuffers: HashMap::new(),
+                renderbuffers: HashMap::new(),
                 textures: HashMap::new(),
                 uniform_locations: HashMap::new(),
                 vertex_arrays: HashMap::new(),
@@ -700,6 +703,7 @@ pub mod web_canvas {
             "glAttachShader" | "AttachShader" => webgl_attach_shader as *const c_void,
             "glActiveTexture" | "ActiveTexture" => webgl_active_texture as *const c_void,
             "glBindBuffer" | "BindBuffer" => webgl_bind_buffer as *const c_void,
+            "glBindRenderbuffer" | "BindRenderbuffer" => webgl_bind_renderbuffer as *const c_void,
             "glBindFramebuffer" | "BindFramebuffer" => webgl_bind_framebuffer as *const c_void,
             "glBindTexture" | "BindTexture" => webgl_bind_texture as *const c_void,
             "glBufferData" | "BufferData" => webgl_buffer_data as *const c_void,
@@ -713,6 +717,13 @@ pub mod web_canvas {
             "glCreateProgram" | "CreateProgram" => webgl_create_program as *const c_void,
             "glCreateShader" | "CreateShader" => webgl_create_shader as *const c_void,
             "glDeleteShader" | "DeleteShader" => webgl_delete_shader as *const c_void,
+            "glDeleteFramebuffers" | "DeleteFramebuffers" => {
+                webgl_delete_framebuffers as *const c_void
+            }
+            "glDeleteRenderbuffers" | "DeleteRenderbuffers" => {
+                webgl_delete_renderbuffers as *const c_void
+            }
+            "glDeleteTextures" | "DeleteTextures" => webgl_delete_textures as *const c_void,
             "glDisable" | "Disable" => webgl_disable as *const c_void,
             "glDepthFunc" | "DepthFunc" => webgl_depth_func as *const c_void,
             "glDepthMask" | "DepthMask" => webgl_depth_mask as *const c_void,
@@ -727,7 +738,11 @@ pub mod web_canvas {
             "glFramebufferTexture2D" | "FramebufferTexture2D" => {
                 webgl_framebuffer_texture_2d as *const c_void
             }
+            "glFramebufferRenderbuffer" | "FramebufferRenderbuffer" => {
+                webgl_framebuffer_renderbuffer as *const c_void
+            }
             "glFrontFace" | "FrontFace" => webgl_front_face as *const c_void,
+            "glGetIntegerv" | "GetIntegerv" => webgl_get_integerv as *const c_void,
             "glGetShaderInfoLog" | "GetShaderInfoLog" => webgl_get_shader_info_log as *const c_void,
             "glGetShaderiv" | "GetShaderiv" => webgl_get_shaderiv as *const c_void,
             "glGetUniformLocation" | "GetUniformLocation" => {
@@ -741,11 +756,18 @@ pub mod web_canvas {
             "glGenTextures" | "GenTextures" => webgl_gen_textures as *const c_void,
             "glBindVertexArray" | "BindVertexArray" => webgl_bind_vertex_array as *const c_void,
             "glGenVertexArrays" | "GenVertexArrays" => webgl_gen_vertex_arrays as *const c_void,
+            "glGenRenderbuffers" | "GenRenderbuffers" => webgl_gen_renderbuffers as *const c_void,
             "glGenerateMipmap" | "GenerateMipmap" => webgl_generate_mipmap as *const c_void,
             "glLinkProgram" | "LinkProgram" => webgl_link_program as *const c_void,
+            "glPixelStorei" | "PixelStorei" => webgl_pixel_storei as *const c_void,
             "glReadBuffer" | "ReadBuffer" => webgl_read_buffer as *const c_void,
+            "glRenderbufferStorage" | "RenderbufferStorage" => {
+                webgl_renderbuffer_storage as *const c_void
+            }
+            "glScissor" | "Scissor" => webgl_scissor as *const c_void,
             "glShaderSource" | "ShaderSource" => webgl_shader_source as *const c_void,
             "glTexImage2D" | "TexImage2D" => webgl_tex_image_2d as *const c_void,
+            "glTexSubImage2D" | "TexSubImage2D" => webgl_tex_sub_image_2d as *const c_void,
             "glTexParameterfv" | "TexParameterfv" => webgl_tex_parameterfv as *const c_void,
             "glTexParameteri" | "TexParameteri" => webgl_tex_parameteri as *const c_void,
             "glUniform1f" | "Uniform1f" => webgl_uniform_1f as *const c_void,
@@ -790,12 +812,28 @@ pub mod web_canvas {
         with_webgl_state(|state| state.context.viewport(x, y, width, height));
     }
 
+    unsafe extern "system" fn webgl_scissor(
+        x: gl::types::GLint,
+        y: gl::types::GLint,
+        width: gl::types::GLsizei,
+        height: gl::types::GLsizei,
+    ) {
+        with_webgl_state(|state| state.context.scissor(x, y, width, height));
+    }
+
     unsafe extern "system" fn webgl_disable(cap: gl::types::GLenum) {
         with_webgl_state(|state| state.context.disable(cap));
     }
 
     unsafe extern "system" fn webgl_enable(cap: gl::types::GLenum) {
         with_webgl_state(|state| state.context.enable(cap));
+    }
+
+    unsafe extern "system" fn webgl_pixel_storei(
+        pname: gl::types::GLenum,
+        param: gl::types::GLint,
+    ) {
+        with_webgl_state(|state| state.context.pixel_storei(pname, param));
     }
 
     unsafe extern "system" fn webgl_blend_func(
@@ -938,6 +976,141 @@ pub mod web_canvas {
         with_webgl_state(|state| {
             let framebuffer = state.framebuffers.get(&framebuffer);
             state.context.bind_framebuffer(target, framebuffer);
+        });
+    }
+
+    unsafe extern "system" fn webgl_bind_renderbuffer(
+        target: gl::types::GLenum,
+        renderbuffer: gl::types::GLuint,
+    ) {
+        with_webgl_state(|state| {
+            let rb = state.renderbuffers.get(&renderbuffer);
+            state.context.bind_renderbuffer(target, rb);
+        });
+    }
+
+    unsafe extern "system" fn webgl_gen_renderbuffers(
+        n: gl::types::GLsizei,
+        renderbuffers: *mut gl::types::GLuint,
+    ) {
+        if renderbuffers.is_null() || n <= 0 {
+            return;
+        }
+
+        with_webgl_state_mut(|state| {
+            for index in 0..n {
+                let id = if let Some(rb) = state.context.create_renderbuffer() {
+                    let id = state.next_handle();
+                    state.renderbuffers.insert(id, rb);
+                    id
+                } else {
+                    0
+                };
+
+                *renderbuffers.add(index as usize) = id;
+            }
+        });
+    }
+
+    unsafe extern "system" fn webgl_renderbuffer_storage(
+        target: gl::types::GLenum,
+        internalformat: gl::types::GLenum,
+        width: gl::types::GLsizei,
+        height: gl::types::GLsizei,
+    ) {
+        with_webgl_state(|state| {
+            state
+                .context
+                .renderbuffer_storage(target, internalformat, width, height);
+        });
+    }
+
+    unsafe extern "system" fn webgl_framebuffer_renderbuffer(
+        target: gl::types::GLenum,
+        attachment: gl::types::GLenum,
+        renderbuffertarget: gl::types::GLenum,
+        renderbuffer: gl::types::GLuint,
+    ) {
+        with_webgl_state(|state| {
+            let rb = state.renderbuffers.get(&renderbuffer);
+            state
+                .context
+                .framebuffer_renderbuffer(target, attachment, renderbuffertarget, rb);
+        });
+    }
+
+    unsafe extern "system" fn webgl_delete_framebuffers(
+        n: gl::types::GLsizei,
+        framebuffers: *const gl::types::GLuint,
+    ) {
+        if framebuffers.is_null() || n <= 0 {
+            return;
+        }
+        let ids = std::slice::from_raw_parts(framebuffers, n as usize);
+        with_webgl_state_mut(|state| {
+            for &id in ids {
+                if let Some(fbo) = state.framebuffers.remove(&id) {
+                    state.context.delete_framebuffer(Some(&fbo));
+                }
+            }
+        });
+    }
+
+    unsafe extern "system" fn webgl_delete_renderbuffers(
+        n: gl::types::GLsizei,
+        renderbuffers: *const gl::types::GLuint,
+    ) {
+        if renderbuffers.is_null() || n <= 0 {
+            return;
+        }
+        let ids = std::slice::from_raw_parts(renderbuffers, n as usize);
+        with_webgl_state_mut(|state| {
+            for &id in ids {
+                if let Some(rb) = state.renderbuffers.remove(&id) {
+                    state.context.delete_renderbuffer(Some(&rb));
+                }
+            }
+        });
+    }
+
+    unsafe extern "system" fn webgl_delete_textures(
+        n: gl::types::GLsizei,
+        textures: *const gl::types::GLuint,
+    ) {
+        if textures.is_null() || n <= 0 {
+            return;
+        }
+        let ids = std::slice::from_raw_parts(textures, n as usize);
+        with_webgl_state_mut(|state| {
+            for &id in ids {
+                if let Some(tex) = state.textures.remove(&id) {
+                    state.context.delete_texture(Some(&tex));
+                }
+            }
+        });
+    }
+
+    unsafe extern "system" fn webgl_get_integerv(
+        pname: gl::types::GLenum,
+        params: *mut gl::types::GLint,
+    ) {
+        if params.is_null() {
+            return;
+        }
+
+        if pname != gl::VIEWPORT {
+            return;
+        }
+
+        with_webgl_state(|state| {
+            if let Ok(js) = state.context.get_parameter(pname) {
+                if let Some(arr) = js.dyn_ref::<Int32Array>() {
+                    let n = arr.length().min(4);
+                    for i in 0..n {
+                        *params.add(i as usize) = arr.get_index(i);
+                    }
+                }
+            }
         });
     }
 
@@ -1152,6 +1325,58 @@ pub mod web_canvas {
                     type_,
                     data,
                 );
+
+            if let Err(error) = result {
+                web_sys::console::error_1(&error);
+            }
+        });
+    }
+
+    unsafe extern "system" fn webgl_tex_sub_image_2d(
+        target: gl::types::GLenum,
+        level: gl::types::GLint,
+        xoffset: gl::types::GLint,
+        yoffset: gl::types::GLint,
+        width: gl::types::GLsizei,
+        height: gl::types::GLsizei,
+        format: gl::types::GLenum,
+        type_: gl::types::GLenum,
+        pixels: *const c_void,
+    ) {
+        with_webgl_state(|state| {
+            // web-sys names overloads by parameter types; see `WebGl2RenderingContext::texSubImage2D`.
+            let result: Result<(), JsValue> = if pixels.is_null() {
+                // Pixel data from bound PIXEL_UNPACK_BUFFER at byte offset 0.
+                state.context.tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_i32(
+                    target,
+                    level,
+                    xoffset,
+                    yoffset,
+                    width,
+                    height,
+                    format,
+                    type_,
+                    0,
+                )
+            } else if width <= 0 || height <= 0 {
+                Ok(())
+            } else {
+                let byte_len = texture_byte_len(width, height, format, type_);
+                let data = std::slice::from_raw_parts(pixels.cast::<u8>(), byte_len);
+                state
+                    .context
+                    .tex_sub_image_2d_with_i32_and_i32_and_u32_and_type_and_opt_u8_array(
+                        target,
+                        level,
+                        xoffset,
+                        yoffset,
+                        width,
+                        height,
+                        format,
+                        type_,
+                        Some(data),
+                    )
+            };
 
             if let Err(error) = result {
                 web_sys::console::error_1(&error);
@@ -1414,6 +1639,16 @@ pub mod web_canvas {
                 panic!("WebGL context was not loaded before gl call");
             }
         })
+    }
+
+    /// Set [`WebGl2RenderingContext::pixel_storei`] for `UNPACK_ALIGNMENT` only.
+    ///
+    /// The `gl` crate's Wasm import for `glPixelStorei` can hit a JS signature mismatch; font/UI
+    /// uploads need this path to stay on `web_sys` like the rest of the custom loader.
+    pub(crate) fn pixel_store_unpack_alignment(param: i32) {
+        with_webgl_state(|state| {
+            state.context.pixel_storei(gl::UNPACK_ALIGNMENT, param);
+        });
     }
 
     fn with_webgl_state_mut<T>(callback: impl FnOnce(&mut WebGlState) -> T) -> T {

@@ -3,6 +3,7 @@ use crate::ui::game_new::context::UiContext;
 use crate::ui::game_new::font_system::FontSystem;
 use crate::ui::game_new::parser::load_view_or_fallback;
 use crate::ui::game_new::tree::UiTree;
+use crate::ui::game_new::widgets::AbilitySlot;
 use crate::ui::game_new::widgets::Label;
 use crate::ui::game_new::widgets::ProgressBar;
 use crate::ui::game_new::widgets::TextureRect;
@@ -58,55 +59,48 @@ impl PlayerHudData {
 
 pub struct GameHudView {
     pub tree: UiTree,
-    needs_layout: bool,
 }
 
 impl GameHudView {
     pub fn new(_font_system: &mut FontSystem) -> Self {
         let tree = load_view_or_fallback("resources/ui/game_hud.ron");
-        Self {
-            tree,
-            needs_layout: true,
-        }
+        Self { tree }
     }
 
-    pub fn update(&mut self, ctx: &mut UiContext, data: &PlayerHudData, portrait_texture_id: u32) {
-        if !data.visible {
-            // TODO: Hide the view or not update?
-            // If we have a root widget, we could hide it or just not update/render?
-            // UiTree render checks specific things?
-            // For now, let's assume we update anyway or handle visibility in tree.
-            // But we can early return if we want constant state, but we should update values.
-        }
+    pub fn set_screen_size(&mut self, width: f32, height: f32) {
+        self.tree.set_screen_size(width, height);
+    }
 
-        // Simpler approach: Always request layout update when data comes in for now.
-        // Optimization: Only set if data actually changed.
-        self.needs_layout = true;
+    /// Layout, apply game data, drive hit-testing — call each frame while the HUD is visible.
+    pub fn update(
+        &mut self,
+        font_system: &mut FontSystem,
+        ctx: &mut UiContext,
+        data: &PlayerHudData,
+        portrait_texture_id: u32,
+        em: &EntityManager,
+        dt: f32,
+    ) {
+        self.tree.layout(font_system);
 
-        self.tree.update(ctx);
-
-        // update Portrait
         if let Some(w) = self.tree.find_widget_mut("portrait") {
             if let Some(tr) = w.as_any_mut().downcast_mut::<TextureRect>() {
                 tr.texture_id = portrait_texture_id;
             }
         }
 
-        // update Name
         if let Some(w) = self.tree.find_widget_mut("player_name") {
             if let Some(lbl) = w.as_any_mut().downcast_mut::<Label>() {
                 lbl.set_text(data.name.clone());
             }
         }
 
-        // update Level
         if let Some(w) = self.tree.find_widget_mut("player_level") {
             if let Some(lbl) = w.as_any_mut().downcast_mut::<Label>() {
                 lbl.set_text(format!("LV {}", data.level));
             }
         }
 
-        // update HP Bar
         if let Some(w) = self.tree.find_widget_mut("hp_bar") {
             if let Some(bar) = w.as_any_mut().downcast_mut::<ProgressBar>() {
                 bar.set_value(data.health);
@@ -114,20 +108,58 @@ impl GameHudView {
             }
         }
 
-        // update Mana Bar
         if let Some(w) = self.tree.find_widget_mut("mana_bar") {
             if let Some(bar) = w.as_any_mut().downcast_mut::<ProgressBar>() {
                 bar.set_value(data.mana);
                 bar.set_max_value(data.max_mana);
             }
         }
+
+        self.sync_weapon_ability_slots(em, dt);
+
+        let relayout_widgets = self.tree.update(ctx);
+        if relayout_widgets {
+            self.tree.force_layout();
+        }
+        self.tree.layout(font_system);
     }
 
-    pub fn needs_render(&self) -> bool {
-        self.needs_layout
-    }
+    fn sync_weapon_ability_slots(&mut self, em: &EntityManager, dt: f32) {
+        let slots = [
+            ("slot_q", 2usize),
+            ("slot_e", 3usize),
+            ("slot_r", 5usize),
+        ];
+        let wa = em
+            .player_main_hand_weapon()
+            .and_then(|wid| em.weapon_abilities.get(wid));
 
-    pub fn clear_render_flag(&mut self) {
-        self.needs_layout = false;
+        for (widget_id, slot_index) in slots {
+            let (prog, ready, id_str, name, desc) = if let Some(w) = wa {
+                let aid = match slot_index {
+                    2 => w.q,
+                    3 => w.e,
+                    5 => w.r,
+                    _ => 0,
+                };
+                let def = em.abilities_config.get(aid);
+                (
+                    w.get_cooldown_progress(slot_index, &em.abilities_config),
+                    w.is_ready(slot_index),
+                    format!("{}", aid),
+                    def.map(|d| d.name.as_str()).unwrap_or(""),
+                    def.map(|d| d.description.as_str()).unwrap_or(""),
+                )
+            } else {
+                (0.0_f32, true, String::new(), "", "")
+            };
+
+            if let Some(widget) = self.tree.find_widget_mut(widget_id) {
+                if let Some(slot) = widget.as_any_mut().downcast_mut::<AbilitySlot>() {
+                    slot.set_data(0, prog, ready, &id_str, name, desc);
+                    slot.update_glow_time(dt);
+                }
+            }
+        }
     }
 }
