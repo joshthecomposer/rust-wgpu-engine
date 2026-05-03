@@ -518,10 +518,73 @@ pub mod web_canvas {
         pub cursor_mode: CursorMode,
     }
 
+    /// Physical backing-store size so the WebGL buffer matches CSS layout × `devicePixelRatio`.
+    fn web_canvas_buffer_dimensions(
+        canvas: &HtmlCanvasElement,
+        window: &web_sys::Window,
+        fallback_css_w: u32,
+        fallback_css_h: u32,
+    ) -> (u32, u32) {
+        let dpr = window.device_pixel_ratio();
+        let css_w = canvas.client_width();
+        let css_h = canvas.client_height();
+        let (bw, bh) = if css_w > 0 && css_h > 0 {
+            (
+                ((f64::from(css_w) * dpr).round() as u32).max(1),
+                ((f64::from(css_h) * dpr).round() as u32).max(1),
+            )
+        } else {
+            (
+                (((fallback_css_w as f64) * dpr).round() as u32).max(1),
+                (((fallback_css_h as f64) * dpr).round() as u32).max(1),
+            )
+        };
+        (bw, bh)
+    }
+
     impl WebCanvasPlatform {
         #[allow(dead_code)]
         pub fn backend(&self) -> PlatformBackend {
             PlatformBackend::WebCanvas
+        }
+
+        /// Sizes the canvas backing store from layout + DPR. Call when the window resizes or DPR changes.
+        /// Returns `true` if width/height (or DPR) changed so GPU resources should be resized.
+        pub fn sync_canvas_buffer_to_display(
+            &mut self,
+            fallback_css_w: u32,
+            fallback_css_h: u32,
+        ) -> bool {
+            let window = match web_sys::window() {
+                Some(w) => w,
+                None => return false,
+            };
+            let dpr = window.device_pixel_ratio();
+            let (bw, bh) = web_canvas_buffer_dimensions(
+                &self.canvas,
+                &window,
+                fallback_css_w,
+                fallback_css_h,
+            );
+            if bw == self.fb_width && bh == self.fb_height && (self.scale_factor - dpr).abs() < 1e-6 {
+                return false;
+            }
+            self.canvas.set_width(bw);
+            self.canvas.set_height(bh);
+            self.fb_width = bw;
+            self.fb_height = bh;
+            self.scale_factor = dpr;
+            true
+        }
+
+        /// Mouse events use CSS pixel coordinates; picking and rays use framebuffer pixels.
+        pub fn canvas_css_to_framebuffer_px(&self, x_css: f32, y_css: f32) -> glam::Vec2 {
+            let cw = self.canvas.client_width().max(1) as f32;
+            let ch = self.canvas.client_height().max(1) as f32;
+            glam::Vec2::new(
+                x_css * self.fb_width as f32 / cw,
+                y_css * self.fb_height as f32 / ch,
+            )
         }
 
         pub fn render_surface(&self) -> super::RenderSurface<'_> {
@@ -560,8 +623,10 @@ pub mod web_canvas {
                 }
             };
 
-            canvas.set_width(w);
-            canvas.set_height(h);
+            let window_ref = &window;
+            let (buf_w, buf_h) = web_canvas_buffer_dimensions(&canvas, window_ref, w, h);
+            canvas.set_width(buf_w);
+            canvas.set_height(buf_h);
 
             let context = canvas
                 .get_context("webgl2")?
@@ -572,8 +637,8 @@ pub mod web_canvas {
                 canvas,
                 context,
                 capabilities: GlCapabilities::webgl2_defaults(),
-                fb_width: w,
-                fb_height: h,
+                fb_width: buf_w,
+                fb_height: buf_h,
                 scale_factor: window.device_pixel_ratio(),
                 cursor_mode: CursorMode::Normal,
             })

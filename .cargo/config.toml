@@ -1,6 +1,7 @@
 [alias]
-# Build dist/ + start python http.server (default port 8080). Use: cargo web -- 9000
+# Build dist/ (wasm + web_audio for FMOD JS bridge) + python http.server. Port: cargo web -- 9000
 web = "run --bin serve-web"
+desktop = "run --bin learn-opengl-rs"
 
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]

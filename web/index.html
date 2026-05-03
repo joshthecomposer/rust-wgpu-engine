@@ -54,6 +54,30 @@
     import init from "./learn_opengl_rs.js";
 
     const status = document.getElementById("status");
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = false;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error(`script failed: ${src}`));
+        document.head.appendChild(s);
+      });
+    }
+
+    /** Optional FMOD HTML5 SDK, then the learn-opengl-rs bridge (always). */
+    async function loadFmodBridgeScripts() {
+      try {
+        await loadScript("third_party/fmod/fmodstudio.js");
+      } catch {
+        console.info(
+          "[learn-opengl-rs] third_party/fmod/fmodstudio.js missing — web FMOD disabled (see docs/fmod_web_setup.md)"
+        );
+      }
+      await loadScript("game_fmod_bridge.js");
+    }
+
     async function preloadAssets() {
       const assets = {};
       const manifestResponse = await fetch("asset-manifest.json");
@@ -83,6 +107,8 @@
     }
 
     try {
+      status.textContent = "Loading audio bridge...";
+      await loadFmodBridgeScripts();
       status.textContent = "Loading assets...";
       await preloadAssets();
       status.textContent = "Loading WebGL...";

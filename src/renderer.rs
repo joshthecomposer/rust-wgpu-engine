@@ -515,6 +515,146 @@ impl Renderer {
         }
     }
 
+    /// LDR scene target (RGBA8 + depth texture) for WebGL compatibility when HDR float buffers are off.
+    /// The HDR tonemap shader still runs as a composite pass for distance fog + gamma.
+    fn create_ldr_scene_framebuffer(
+        width: u32,
+        height: u32,
+        policy: RenderTargetPolicy,
+    ) -> HdrFramebuffer {
+        assert!(!policy.hdr_enabled);
+        assert!(matches!(
+            policy.color_format,
+            RenderTargetColorFormat::Rgba8
+        ));
+        assert!(matches!(
+            policy.depth_format,
+            RenderTargetDepthFormat::DepthComponent24
+        ));
+
+        let mut fbo = 0;
+        let mut depth = 0;
+        let mut color_main = 0u32;
+
+        unsafe {
+            gl_call!(gl::GenFramebuffers(1, &mut fbo));
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, fbo));
+
+            gl_call!(gl::GenTextures(1, &mut color_main));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, color_main));
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA8 as i32,
+                width as i32,
+                height as i32,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                std::ptr::null()
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::LINEAR as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::FramebufferTexture2D(
+                gl::FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::TEXTURE_2D,
+                color_main,
+                0
+            ));
+
+            let attachments = [gl::COLOR_ATTACHMENT0];
+            gl_call!(gl::DrawBuffers(
+                attachments.len() as i32,
+                attachments.as_ptr()
+            ));
+
+            gl_call!(gl::GenTextures(1, &mut depth));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, depth));
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::DEPTH_COMPONENT24 as i32,
+                width as i32,
+                height as i32,
+                0,
+                gl::DEPTH_COMPONENT,
+                gl::UNSIGNED_INT,
+                std::ptr::null(),
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MIN_FILTER,
+                gl::NEAREST as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_MAG_FILTER,
+                gl::NEAREST as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                gl::CLAMP_TO_EDGE as i32
+            ));
+            gl_call!(gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_COMPARE_MODE,
+                gl::NONE as i32
+            ));
+            gl_call!(gl::FramebufferTexture2D(
+                gl::FRAMEBUFFER,
+                gl::DEPTH_ATTACHMENT,
+                gl::TEXTURE_2D,
+                depth,
+                0
+            ));
+
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+
+            Self::check_framebuffer_complete(
+                "LDR scene FBO (compat)",
+                format!(
+                    "size={}x{} depth={}",
+                    width,
+                    height,
+                    policy.depth_format.label()
+                ),
+            );
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+        }
+
+        HdrFramebuffer {
+            fbo,
+            color: color_main,
+            bright: 0,
+            depth,
+        }
+    }
+
     fn create_bloom_pingpong_framebuffers(
         width: u32,
         height: u32,
@@ -749,11 +889,12 @@ impl Renderer {
         shaders.insert(ShaderType::AnimatedModel, animated_model_shader);
         shaders.insert(ShaderType::Particles, particles_shader);
 
-        if policy.hdr_enabled {
-            let hdr_shader =
-                Shader::new_with_profile("resources/shaders/hdr.glsl", ShaderProfile::GlslEs300);
-            shaders.insert(ShaderType::HDR, hdr_shader);
+        // Always load for compatibility: used for LDR fog + gamma when HDR float targets are disabled.
+        let hdr_shader =
+            Shader::new_with_profile("resources/shaders/hdr.glsl", ShaderProfile::GlslEs300);
+        shaders.insert(ShaderType::HDR, hdr_shader);
 
+        if policy.hdr_enabled {
             if policy.bloom_enabled {
                 let bloom_down_shader = Shader::new_with_profile(
                     "resources/shaders/bloom/bloom_downsample.glsl",
@@ -1525,10 +1666,10 @@ impl Renderer {
             false
         };
 
-        if render_target_policy.hdr_enabled {
-            let width = platform.fb_width;
-            let height = platform.fb_height;
+        let width = platform.fb_width;
+        let height = platform.fb_height;
 
+        {
             let mut quad_vao = 0;
             let mut quad_vbo = 0;
             unsafe {
@@ -1573,7 +1714,9 @@ impl Renderer {
                 gl_call!(gl::BindVertexArray(0));
             }
             vaos.insert(VaoType::BaseQuad, quad_vao);
+        }
 
+        if render_target_policy.hdr_enabled {
             let hdr_framebuffer = Self::create_hdr_framebuffer(
                 width,
                 height,
@@ -1652,6 +1795,12 @@ impl Renderer {
                     gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
                 }
             }
+        } else {
+            let ldr_scene = Self::create_ldr_scene_framebuffer(width, height, render_target_policy);
+            fbos.insert(FboType::HDR, ldr_scene.fbo);
+            hdr_color = ldr_scene.color;
+            hdr_depth = ldr_scene.depth;
+            hdr_bright = 0;
         }
 
         let mut renderer = Self {
@@ -1695,6 +1844,156 @@ impl Renderer {
         renderer
     }
 
+    /// Reallocate attachment storage for WebGL compatibility HDR/LDR scene targets after canvas resize.
+    pub fn resize_webgl_compatibility_framebuffers(
+        &mut self,
+        capabilities: &GlCapabilities,
+        width: u32,
+        height: u32,
+    ) {
+        if self.hdr_color == 0 || width == 0 || height == 0 {
+            return;
+        }
+
+        let w = width as i32;
+        let h = height as i32;
+
+        let (internal_fmt, data_fmt, pixel_ty) = if self.do_hdr {
+            Self::hdr_float_texel_format(capabilities)
+        } else {
+            (gl::RGBA8 as i32, gl::RGBA, gl::UNSIGNED_BYTE)
+        };
+
+        unsafe {
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_color));
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                internal_fmt,
+                w,
+                h,
+                0,
+                data_fmt,
+                pixel_ty,
+                std::ptr::null()
+            ));
+
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_depth));
+            gl_call!(gl::TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::DEPTH_COMPONENT24 as i32,
+                w,
+                h,
+                0,
+                gl::DEPTH_COMPONENT,
+                gl::UNSIGNED_INT,
+                std::ptr::null(),
+            ));
+
+            if self.hdr_bright != 0 {
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.hdr_bright));
+                gl_call!(gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    internal_fmt,
+                    w,
+                    h,
+                    0,
+                    data_fmt,
+                    pixel_ty,
+                    std::ptr::null()
+                ));
+            }
+
+            for i in 0..2 {
+                if self.pingpong_tex[i] != 0 {
+                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.pingpong_tex[i]));
+                    gl_call!(gl::TexImage2D(
+                        gl::TEXTURE_2D,
+                        0,
+                        internal_fmt,
+                        w,
+                        h,
+                        0,
+                        data_fmt,
+                        pixel_ty,
+                        std::ptr::null()
+                    ));
+                }
+            }
+
+            if self.do_fxaa && self.fxaa_tex != 0 {
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.fxaa_tex));
+                gl_call!(gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    gl::RGBA8 as i32,
+                    w,
+                    h,
+                    0,
+                    gl::RGBA,
+                    gl::UNSIGNED_BYTE,
+                    std::ptr::null()
+                ));
+            }
+
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+        }
+
+        if !self.bloom_mips.is_empty() {
+            unsafe {
+                for mip in &self.bloom_mips {
+                    gl_call!(gl::DeleteFramebuffers(1, &mip.fbo));
+                    gl_call!(gl::DeleteTextures(1, &mip.tex));
+                }
+            }
+            self.bloom_mips.clear();
+            self.create_bloom_chain(width, height);
+        }
+
+        if let Some(&hdr_fbo) = self.fbos.get(&FboType::HDR) {
+            unsafe {
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, hdr_fbo));
+            }
+            Self::check_framebuffer_complete(
+                "HDR/LDR scene FBO (after resize)",
+                format!("size={}x{}", width, height),
+            );
+            unsafe {
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            }
+        }
+
+        for i in 0..2 {
+            if self.pingpong_fbos[i] != 0 {
+                unsafe {
+                    gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, self.pingpong_fbos[i]));
+                }
+                Self::check_framebuffer_complete(
+                    "Bloom ping-pong FBO (after resize)",
+                    format!("slot={} size={}x{}", i, width, height),
+                );
+            }
+        }
+        unsafe {
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+        }
+
+        if self.do_fxaa && self.fxaa_fbo != 0 {
+            unsafe {
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, self.fxaa_fbo));
+            }
+            Self::check_framebuffer_complete(
+                "FXAA FBO (after resize)",
+                format!("size={}x{}", width, height),
+            );
+            unsafe {
+                gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            }
+        }
+    }
+
     pub fn render_webgl_compatibility_frame(&mut self, fb_width: u32, fb_height: u32) {
         unsafe {
             gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
@@ -1718,6 +2017,7 @@ impl Renderer {
         ps: &PhysicsState,
         alpha: f32,
         particles: &mut ParticleSystem,
+        sound_manager: &mut SoundManager,
     ) {
         let ids_by_type = em.get_ids_by_type();
 
@@ -1761,6 +2061,7 @@ impl Renderer {
                     ids,
                     is_animated,
                     particles,
+                    sound_manager,
                 );
             }
 
@@ -1806,6 +2107,7 @@ impl Renderer {
                     ids,
                     is_animated,
                     particles,
+                    sound_manager,
                 );
             }
 
@@ -2884,6 +3186,7 @@ impl Renderer {
         ids: &Vec<usize>,
         is_animated: bool,
         particles: &mut ParticleSystem,
+        sound_manager: &mut SoundManager,
     ) {
         unsafe {
             gl_call!(gl::Enable(gl::DEPTH_TEST));
@@ -2945,11 +3248,8 @@ impl Renderer {
                     for os in animation.one_shots.iter() {
                         if animation.current_segment.get() == os.segment {
                             if !os.triggered.get() {
-                                particles.spawn_oneshot_emitter(
-                                    "DesertStep",
-                                    trans.position,
-                                    None,
-                                );
+                                sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position);
+                                particles.spawn_oneshot_emitter("DesertStep", trans.position, None);
                                 os.triggered.set(true);
                             }
                         } else {

@@ -170,6 +170,27 @@ impl Game {
     }
 
     pub fn tick(&mut self, now_seconds: f32) {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if self.platform.sync_canvas_buffer_to_display(1280, 720) {
+                self.renderer.resize_webgl_compatibility_framebuffers(
+                    &self.platform.capabilities,
+                    self.platform.fb_width,
+                    self.platform.fb_height,
+                );
+                self.custom_ui_renderer.set_screen_size(
+                    self.platform.fb_width as f32,
+                    self.platform.fb_height as f32,
+                );
+                if let Some(ref mut gallery) = self.gallery_ui {
+                    gallery.set_screen_size(
+                        self.platform.fb_width as f32,
+                        self.platform.fb_height as f32,
+                    );
+                }
+            }
+        }
+
         self.time.begin_frame(now_seconds);
 
         // Mouse lock / cursor mode
@@ -526,7 +547,8 @@ impl Game {
 
     #[cfg(target_arch = "wasm32")]
     pub fn handle_web_mouse_move(&mut self, x: f32, y: f32, dx: f64, dy: f64) {
-        self.input.mouse_pos_current = glam::vec2(x, y);
+        let p = self.platform.canvas_css_to_framebuffer_px(x, y);
+        self.input.mouse_pos_current = p;
         if !self.paused && !self.cursor_unlocked() {
             self.world.camera.process_mouse_input(dx, dy);
         }
@@ -789,6 +811,7 @@ impl Game {
                 &self.physics,
                 self.time.alpha,
                 &mut self.world.particles,
+                &mut self.sound,
             );
 
             if UI_ENABLED {

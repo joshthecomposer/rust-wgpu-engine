@@ -16,6 +16,12 @@ use crate::{
     enums_types::SoundType,
 };
 
+#[cfg(all(target_arch = "wasm32", feature = "web_audio"))]
+use wasm_bindgen::JsValue;
+
+#[cfg(all(target_arch = "wasm32", feature = "web_audio"))]
+use crate::sound::web_fmod_bridge;
+
 #[cfg(all(
     feature = "native_audio",
     any(target_os = "macos", target_os = "windows"),
@@ -364,10 +370,158 @@ impl SoundManager {
     }
 }
 
-#[cfg(not(all(
-    feature = "native_audio",
-    any(target_os = "macos", target_os = "windows"),
-    not(target_arch = "wasm32")
+#[cfg(all(target_arch = "wasm32", feature = "web_audio"))]
+pub struct SoundManager {
+    pub sounds: HashMap<SoundType, String>,
+    pub active_sounds: HashMap<SoundType, ()>,
+    pub active_3d_sounds: HashMap<usize, Vec<()>>,
+    pub master_volume: f32,
+}
+
+#[cfg(all(target_arch = "wasm32", feature = "web_audio"))]
+impl SoundManager {
+    pub fn new(config: &SoundConfig) -> SoundManager {
+        let sounds: HashMap<SoundType, String> = config
+            .sounds
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        let mut sound_paths = serde_json::Map::new();
+        for (k, v) in &config.sounds {
+            sound_paths.insert(k.to_string(), serde_json::Value::String(v.clone()));
+        }
+        let payload = serde_json::json!({
+            "bankBase": "resources/fmod/Web",
+            "sounds": sound_paths,
+        })
+        .to_string();
+        web_fmod_bridge::call_bridge("init", &[JsValue::from_str(&payload)]);
+        SoundManager {
+            sounds,
+            active_sounds: HashMap::new(),
+            active_3d_sounds: HashMap::new(),
+            master_volume: config.master_volume,
+        }
+    }
+
+    pub fn update(&mut self, camera: &Camera, cmds: &mut CommandBuffer) {
+        let soundcmds = std::mem::take(&mut cmds.sound);
+        for c in soundcmds {
+            match c.kind {
+                SoundKind::Sound3d(t, p) => {
+                    self.play_sound_3d(t, &p);
+                }
+                SoundKind::Sound2d(t) => {
+                    self.play_sound_2d(t);
+                }
+            }
+        }
+        if web_fmod_bridge::bridge_is_ready() {
+            web_fmod_bridge::call_bridge("update", &[]);
+            self.set_listener_attributes(camera);
+        }
+    }
+
+    pub fn set_listener_attributes(&self, camera: &Camera) {
+        if !web_fmod_bridge::bridge_is_ready() {
+            return;
+        }
+        let forward = camera.forward.normalize();
+        let up = camera.up.normalize();
+        let p = Self::opengl_to_fmod_vec(camera.position);
+        let f = Self::opengl_to_fmod_vec(forward);
+        let u = Self::opengl_to_fmod_vec(up);
+        web_fmod_bridge::call_bridge(
+            "setListener",
+            &[
+                JsValue::from_f64(f64::from(p.x)),
+                JsValue::from_f64(f64::from(p.y)),
+                JsValue::from_f64(f64::from(p.z)),
+                JsValue::from_f64(f64::from(f.x)),
+                JsValue::from_f64(f64::from(f.y)),
+                JsValue::from_f64(f64::from(f.z)),
+                JsValue::from_f64(f64::from(u.x)),
+                JsValue::from_f64(f64::from(u.y)),
+                JsValue::from_f64(f64::from(u.z)),
+            ],
+        );
+    }
+
+    fn opengl_to_fmod_vec(v: Vec3) -> Vec3 {
+        Vec3::new(v.x, v.y, -v.z)
+    }
+
+    pub fn play_sound_3d(&mut self, sound_type: SoundType, position: &Vec3) {
+        if !self.sounds.contains_key(&sound_type) {
+            eprintln!("Sound {} not found", sound_type);
+            return;
+        }
+        if !web_fmod_bridge::bridge_is_ready() {
+            return;
+        }
+        let p = Self::opengl_to_fmod_vec(*position);
+        let key = sound_type.to_string();
+        web_fmod_bridge::call_bridge(
+            "play3d",
+            &[
+                JsValue::from_str(&key),
+                JsValue::from_f64(f64::from(p.x)),
+                JsValue::from_f64(f64::from(p.y)),
+                JsValue::from_f64(f64::from(p.z)),
+            ],
+        );
+    }
+
+    pub fn play_sound_2d(&mut self, sound_type: SoundType) {
+        if !self.sounds.contains_key(&sound_type) {
+            eprintln!("Sound {} not found", sound_type);
+            return;
+        }
+        if self.active_sounds.contains_key(&sound_type) {
+            return;
+        }
+        if web_fmod_bridge::bridge_is_ready() {
+            web_fmod_bridge::call_bridge("play2d", &[JsValue::from_str(&sound_type.to_string())]);
+            self.active_sounds.insert(sound_type, ());
+        }
+    }
+
+    pub fn stop_sound(&mut self, sound_type: &SoundType) {
+        if self.active_sounds.contains_key(sound_type) {
+            web_fmod_bridge::call_bridge("stop2d", &[JsValue::from_str(&sound_type.to_string())]);
+            self.active_sounds.remove(sound_type);
+        }
+    }
+
+    pub fn cleanup_entity_sounds(&mut self, entity_id: usize) {
+        web_fmod_bridge::call_bridge(
+            "cleanupEntity3d",
+            &[JsValue::from_f64(entity_id as f64)],
+        );
+        self.active_3d_sounds.remove(&entity_id);
+    }
+
+    pub fn set_master_volume(&mut self, sound_type: &SoundType) {
+        if !web_fmod_bridge::bridge_is_ready() {
+            return;
+        }
+        web_fmod_bridge::call_bridge(
+            "setMasterVolumeFor2d",
+            &[
+                JsValue::from_str(&sound_type.to_string()),
+                JsValue::from_f64(f64::from(self.master_volume)),
+            ],
+        );
+    }
+}
+
+#[cfg(not(any(
+    all(
+        feature = "native_audio",
+        any(target_os = "macos", target_os = "windows"),
+        not(target_arch = "wasm32")
+    ),
+    all(target_arch = "wasm32", feature = "web_audio")
 )))]
 pub struct SoundManager {
     pub active_sounds: HashMap<SoundType, ()>,
@@ -375,10 +529,13 @@ pub struct SoundManager {
     pub master_volume: f32,
 }
 
-#[cfg(not(all(
-    feature = "native_audio",
-    any(target_os = "macos", target_os = "windows"),
-    not(target_arch = "wasm32")
+#[cfg(not(any(
+    all(
+        feature = "native_audio",
+        any(target_os = "macos", target_os = "windows"),
+        not(target_arch = "wasm32")
+    ),
+    all(target_arch = "wasm32", feature = "web_audio")
 )))]
 impl SoundManager {
     pub fn new(_config: &SoundConfig) -> SoundManager {

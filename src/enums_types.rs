@@ -200,6 +200,9 @@ pub struct PlayerController {
     pub impulse_cmd_issued: bool,
 
     pub queued_action: Option<BufferedAction>,
+    pub took_damage: bool,
+    pub taken_damage_ago: f32,
+    pub taken_damage_ttl: f32,
 }
 
 impl PlayerController {
@@ -221,6 +224,9 @@ impl Default for PlayerController {
             particle_cmd_issued: false,
             impulse_cmd_issued: false,
             queued_action: None,
+            took_damage: false,
+            taken_damage_ago: 0.0,
+            taken_damage_ttl: 0.875,
         }
     }
 }

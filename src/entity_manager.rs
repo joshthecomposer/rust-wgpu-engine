@@ -129,6 +129,8 @@ pub struct EntityManager {
 
     pub serializable_world_data: WorldData,
     pub weapon_anim_map: WeaponAnimMapHelper,
+
+    pub current_round_enemies: Vec<usize>,
 }
 
 impl EntityManager {
@@ -211,6 +213,7 @@ impl EntityManager {
             ),
             serializable_world_data: wd,
             weapon_anim_map,
+            current_round_enemies: Vec::new(),
         }
     }
 
@@ -1258,6 +1261,9 @@ impl EntityManager {
 
             // Sound cleanup last
             sm.cleanup_entity_sounds(id);
+
+            self.current_round_enemies
+                .retain(|enemy_id| *enemy_id != id);
         }
 
         self.entity_trashcan.clear();

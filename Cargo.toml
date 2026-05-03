@@ -76,6 +76,7 @@ native = []
 native_audio = ["dep:libc"]
 editor_ui = ["dep:imgui", "dep:imgui-winit-support", "dep:imgui-opengl-renderer"]
 web = []
+web_audio = []
 gl_debug = []
 track_draw_calls = []
 
