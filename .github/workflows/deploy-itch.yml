@@ -19,18 +19,21 @@ jobs:
           toolchain: 1.90.0
           target: wasm32-unknown-unknown
 
-      - name: Install cargo-web
-        run: cargo install cargo-web --version 0.6.26
+      - name: Install wasm-bindgen
+        run: cargo install wasm-bindgen-cli
 
-      - name: Build web release
+      - name: Install zip
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Build web release (dist/)
         env:
           RUSTFLAGS: -A warnings
-        run: cargo web deploy --release
+        run: bash scripts/build_web.sh release
 
-      - name: Create zip from deployed web build
+      - name: Create zip from dist/ web build
         run: |
-          cd target/deploy
-          zip -r ../../dist.zip .
+          cd dist
+          zip -r ../dist.zip .
 
       - name: Save zip as GitHub artifact
         uses: actions/upload-artifact@v4

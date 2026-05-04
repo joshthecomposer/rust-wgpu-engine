@@ -2,12 +2,19 @@
 set -e
 cd "$(dirname "$0")/.."
 
-cargo build --target wasm32-unknown-unknown --no-default-features --features web,web_audio
+PROFILE="${1:-debug}"
+if [ "$PROFILE" = "release" ]; then
+  cargo build --release --target wasm32-unknown-unknown --no-default-features --features web,web_audio
+  WASM_DIR="release"
+else
+  cargo build --target wasm32-unknown-unknown --no-default-features --features web,web_audio
+  WASM_DIR="debug"
+fi
 
 rm -rf dist
 mkdir -p dist
 wasm-bindgen --target web --out-dir dist --out-name learn_opengl_rs \
-  target/wasm32-unknown-unknown/debug/learn-opengl-rs.wasm
+  "target/wasm32-unknown-unknown/${WASM_DIR}/learn-opengl-rs.wasm"
 
 cp web/index.html dist/
 cp web/game_fmod_bridge.js dist/
