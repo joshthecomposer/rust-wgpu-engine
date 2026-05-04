@@ -86,7 +86,7 @@ fn main() {
         std::process::exit(1);
     }
 
-    write_dist_zip(root);
+    // write_dist_zip(root);
 
     eprintln!(
         "(serve-web) serving {:?} at http://127.0.0.1:{port}/  (Ctrl+C to stop)",
