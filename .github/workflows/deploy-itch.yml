@@ -23,6 +23,8 @@ jobs:
         run: cargo install cargo-web --version 0.6.26
 
       - name: Build web release
+        env:
+          RUSTFLAGS: -A warnings
         run: cargo web deploy --release
 
       - name: Create zip from deployed web build
