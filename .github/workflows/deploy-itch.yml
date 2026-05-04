@@ -20,7 +20,7 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: Install cargo-web
-        run: cargo install cargo-web --locked
+        run: cargo install cargo-web --version 0.6.26
 
       - name: Build web release
         run: cargo web deploy --release
