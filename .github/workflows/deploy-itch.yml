@@ -13,15 +13,22 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Add your build step here if dist/ is generated in CI.
-      # Example:
-      # - name: Build
-      #   run: npm ci && npm run build
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
 
-      - name: Create zip from dist
+      - name: Install cargo-web
+        run: cargo install cargo-web --locked
+
+      - name: Build web release
+        run: cargo web deploy --release
+
+      - name: Create zip from deployed web build
         run: |
-          cd dist
-          zip -r ../dist.zip .
+          cd target/deploy
+          zip -r ../../dist.zip .
 
       - name: Save zip as GitHub artifact
         uses: actions/upload-artifact@v4
@@ -36,4 +43,4 @@ jobs:
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
-          butler push game.zip terminatormunky/fight-the-guys-demo:web
+          butler push dist.zip terminatormunky/fight-the-guys-demo:web
