@@ -21,7 +21,7 @@ Optional: keep a short `third_party/fmod/README.txt` noting your FMOD version.
 
 - Desktop banks stay under `resources/fmod/Desktop/` (unchanged).
 - For production web builds, export **HTML5** banks from FMOD Studio into **`resources/fmod/Web/`** (e.g. `Master.bank`, `Master.strings.bank`). The bridge fetches them with a URL **resolved from the current page** (`new URL("resources/fmod/Web/...", location.href)`), so the same layout works on `localhost`, itch.io subpaths (`/html/.../`), etc.
-- **Dev fallback:** if `resources/fmod/Web/` is missing, `scripts/build_web.ps1` / `build_web.sh` copies **`*.bank` from `resources/fmod/Desktop/`** into `dist/resources/fmod/Web/` so local `cargo web` can find files. Prefer real HTML5 banks for shipping builds; Desktop bank bytes are not always valid on HTML5 depending on your FMOD Studio settings.
+- **Dev fallback:** if `resources/fmod/Web/` is missing, `scripts/build_web.ps1` / `build_web.sh` copies **`*.bank` from `resources/fmod/Desktop/`** into `dist/resources/fmod/Web/` so local `cargo web-dev` can find files. Prefer real HTML5 banks for shipping builds; Desktop bank bytes are not always valid on HTML5 depending on your FMOD Studio settings.
 
 ## Dev server URL root
 
@@ -29,7 +29,7 @@ Optional: keep a short `third_party/fmod/README.txt` noting your FMOD version.
 
 ## itch.io and `dist.zip`
 
-`cargo web` runs `scripts/build_web.*`, then zips **everything under `dist/`** into `dist.zip` (see `src/bin/serve_web.rs` — no path exclusions). So **`Master.bank` is in the zip iff it exists as `dist/resources/fmod/Web/Master.bank` after the build.**
+`cargo web-dev` runs `scripts/build_web.*`, then zips **everything under `dist/`** into `dist.zip` (see `src/bin/serve_web.rs` — no path exclusions). So **`Master.bank` is in the zip iff it exists as `dist/resources/fmod/Web/Master.bank` after the build.**
 
 Before uploading, unzip `dist.zip` locally and confirm `resources/fmod/Web/Master.bank` is inside. The build scripts print a **warning** if that file is still missing (usually: banks are gitignored and the machine that ran the build had no `resources/fmod/Desktop/*.bank` or `resources/fmod/Web/`).
 
@@ -39,7 +39,7 @@ If itch showed **403** while requesting `https://html-classic.itch.zone/resource
 
 The wasm binary must be built with the **`web_audio`** feature (in addition to `web`) so `SoundManager` calls `LearnOpenglFmod` (see `Cargo.toml`).
 
-**`cargo web`** (alias for `serve-web`) runs `scripts/build_web.*`, which already passes **`--features web,web_audio`**.
+**`cargo web-dev`** (alias for `serve-web`) runs `scripts/build_web.*`, which already passes **`--features web,web_audio`**.
 
 Manual build:
 

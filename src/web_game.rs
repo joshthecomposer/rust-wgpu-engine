@@ -738,7 +738,8 @@ fn install_input_handlers(
         let runtime = runtime.clone();
         let input_queue = input_queue.clone();
         let canvas_for_focus = canvas.clone();
-        let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::wrap(Box::new(move |event| {
+        let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::wrap(Box::new(
+            move |event: web_sys::MouseEvent| {
             if let Some(button) = map_mouse_button(event.button()) {
                 event.prevent_default();
                 focus_canvas(&canvas_for_focus);
@@ -761,14 +762,16 @@ fn install_input_handlers(
                         });
                 }
             }
-        }));
+        },
+        ));
         canvas.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref())?;
         closure.forget();
     }
 
     {
         let input_queue = input_queue.clone();
-        let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::wrap(Box::new(move |event| {
+        let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::wrap(Box::new(
+            move |event: web_sys::MouseEvent| {
             if let Some(button) = map_mouse_button(event.button()) {
                 event.prevent_default();
                 input_queue
@@ -778,20 +781,23 @@ fn install_input_handlers(
                         state: winit::event::ElementState::Released,
                     });
             }
-        }));
+        },
+        ));
         canvas.add_event_listener_with_callback("mouseup", closure.as_ref().unchecked_ref())?;
         closure.forget();
     }
 
     {
         let input_queue = input_queue.clone();
-        let closure = Closure::<dyn FnMut(web_sys::WheelEvent)>::wrap(Box::new(move |event| {
+        let closure = Closure::<dyn FnMut(web_sys::WheelEvent)>::wrap(Box::new(
+            move |event: web_sys::WheelEvent| {
             event.prevent_default();
             input_queue.borrow_mut().push_back(WebInputEvent::Scroll {
                 x: event.delta_x() as f32,
                 y: event.delta_y() as f32,
             });
-        }));
+        },
+        ));
         canvas.add_event_listener_with_callback("wheel", closure.as_ref().unchecked_ref())?;
         closure.forget();
     }

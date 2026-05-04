@@ -1,6 +1,7 @@
 [alias]
-# Build dist/ (wasm + web_audio for FMOD JS bridge) + python http.server. Port: cargo web -- 9000
-web = "run --bin serve-web"
+# Local dev: build dist/ (wasm + web_audio for FMOD JS bridge) and start python http.server.
+# Note: avoid aliasing `web` because it shadows the external `cargo-web` subcommand used in CI.
+web-dev = "run --bin serve-web"
 desktop = "run --bin learn-opengl-rs"
 
 [target.wasm32-unknown-unknown]

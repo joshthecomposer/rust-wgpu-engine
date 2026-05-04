@@ -1,0 +1,6 @@
+[toolchain]
+# Pin Rust so local builds and CI use the same compiler.
+channel = "1.90.0"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]
+
