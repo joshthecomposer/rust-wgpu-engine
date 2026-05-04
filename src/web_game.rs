@@ -684,7 +684,8 @@ fn install_input_handlers(
 
     {
         let input_queue = input_queue.clone();
-        let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::wrap(Box::new(move |event| {
+        let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::wrap(Box::new(
+            move |event: web_sys::KeyboardEvent| {
             if let Some(keycode) = map_keyboard_code(&event.code()) {
                 event.prevent_default();
                 input_queue.borrow_mut().push_back(WebInputEvent::Key {
@@ -692,14 +693,16 @@ fn install_input_handlers(
                     state: winit::event::ElementState::Pressed,
                 });
             }
-        }));
+        },
+        ));
         document.add_event_listener_with_callback("keydown", closure.as_ref().unchecked_ref())?;
         closure.forget();
     }
 
     {
         let input_queue = input_queue.clone();
-        let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::wrap(Box::new(move |event| {
+        let closure = Closure::<dyn FnMut(web_sys::KeyboardEvent)>::wrap(Box::new(
+            move |event: web_sys::KeyboardEvent| {
             if let Some(keycode) = map_keyboard_code(&event.code()) {
                 event.prevent_default();
                 input_queue.borrow_mut().push_back(WebInputEvent::Key {
@@ -707,14 +710,16 @@ fn install_input_handlers(
                     state: winit::event::ElementState::Released,
                 });
             }
-        }));
+        },
+        ));
         document.add_event_listener_with_callback("keyup", closure.as_ref().unchecked_ref())?;
         closure.forget();
     }
 
     {
         let input_queue = input_queue.clone();
-        let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::wrap(Box::new(move |event| {
+        let closure = Closure::<dyn FnMut(web_sys::MouseEvent)>::wrap(Box::new(
+            move |event: web_sys::MouseEvent| {
             event.prevent_default();
             let x = event.offset_x() as f32;
             let y = event.offset_y() as f32;
@@ -723,7 +728,8 @@ fn install_input_handlers(
             input_queue
                 .borrow_mut()
                 .push_back(WebInputEvent::MouseMove { x, y, dx, dy });
-        }));
+        },
+        ));
         canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())?;
         closure.forget();
     }
