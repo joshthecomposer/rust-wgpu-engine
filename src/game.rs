@@ -31,10 +31,10 @@ use crate::ui::game_new::parser::load_view_or_fallback;
 use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
 use crate::ui::game_new::views::pause_menu_view::{PauseMenuUpdateContext, PauseMenuView};
 use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
-use crate::ui::portrait_renderer::PortraitRenderer;
 #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
+use crate::ui::portrait_renderer::PortraitRenderer;
 use crate::world::World;
 use crate::{combat_system, items, movement_system, physics};
 
@@ -85,7 +85,10 @@ impl Game {
         }
 
         if let Some(pid) = self.world.ecs.get_player_id() {
-            if self.portrait_renderer.should_update(self.time.elapsed as f64) {
+            if self
+                .portrait_renderer
+                .should_update(self.time.elapsed as f64)
+            {
                 let has_anim = self.world.ecs.animators.get(pid).is_some();
                 let shader_ty = if has_anim {
                     ShaderType::AnimatedModel
@@ -143,6 +146,7 @@ impl Game {
         } else {
             ShaderProfile::DesktopCore
         };
+
         let mut custom_ui_renderer = UiRenderer::new_with_profile(ui_shader_profile);
         let mut font_system = FontSystem::new();
 
@@ -192,8 +196,6 @@ impl Game {
         }
     }
 
-    /// Check if any settings changed that require an application restart.
-    /// Returns true if restart is required, false otherwise.
     fn check_settings_require_restart(&self, old_config: &GameConfig) -> bool {
         let msaa_changed = old_config.msaa_level != self.config.msaa_level;
         let debug_mode_changed = old_config.debug_mode != self.config.debug_mode;
@@ -261,6 +263,7 @@ impl Game {
         } else {
             self.cursor_mode
         };
+
         self.platform.set_cursor_mode(hardware_mode);
 
         let mut stepped = false;

@@ -1,0 +1,39 @@
+name: Deploy to itch.io
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # Add your build step here if dist/ is generated in CI.
+      # Example:
+      # - name: Build
+      #   run: npm ci && npm run build
+
+      - name: Create zip from dist
+        run: |
+          cd dist
+          zip -r ../dist.zip .
+
+      - name: Save zip as GitHub artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: itch-build
+          path: dist.zip
+
+      - name: Setup butler
+        uses: remarkablegames/setup-butler@v3
+
+      - name: Upload to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          butler push game.zip terminatormunky/fight-the-guys-demo:web
