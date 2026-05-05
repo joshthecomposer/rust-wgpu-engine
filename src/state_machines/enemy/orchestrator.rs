@@ -137,6 +137,7 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                         em.destinations.insert(eid, ptrans.position);
                         cmds.next_anim(eid, AnimationType::Run, weap_id);
                         ctrl.current_action = ActionKind::ChasePlayer;
+
                         let intent =
                             LocoIntent::build_ai_loco_intent(etrans.position, ptrans.position);
 
@@ -156,6 +157,35 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                 if anim.can_interrupt() {
                     cmds.next_anim_from_lookup(eid, "basic".to_string(), weap_id);
                     ctrl.current_action = ActionKind::AttackPlayer;
+                }
+
+                match anim_name {
+                    AnimationType::Basic1
+                    | AnimationType::Basic2
+                    | AnimationType::Basic3
+                    | AnimationType::OSBasic1
+                    | AnimationType::OSBasic2
+                    | AnimationType::OSBasic3 => {
+                        if let Some(pid) = player_id {
+                            let ptrans = em.transforms.get(pid).unwrap();
+                            let etrans = em.transforms.get(eid).unwrap();
+                            em.destinations.insert(eid, ptrans.position);
+
+                            let intent =
+                                LocoIntent::build_ai_loco_intent(etrans.position, ptrans.position);
+
+                            if !intent.is_zero() {
+                                cmds.loco.push(LocoCmd {
+                                    target: eid,
+                                    intent,
+                                    allow_trans: false,
+                                    allow_rot: true,
+                                    space: LocoSpace::World,
+                                });
+                            }
+                        }
+                    }
+                    _ => (),
                 }
             }
             Some(ActionKind::Block) => {

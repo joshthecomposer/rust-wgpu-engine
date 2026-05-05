@@ -11,8 +11,14 @@ pub struct BehaviorTree {
 }
 
 impl BehaviorTree {
-    pub fn new() -> Self {
-        BehaviorTree::load_from_file("config/enemy_behavior_tree.json")
+    pub fn new(kind: &str) -> Self {
+        match kind {
+            "melee" => BehaviorTree::load_from_file("config/enemy_bt_melee.json"),
+            "ranged" => BehaviorTree::load_from_file("config/enemy_bt_ranged.json"),
+            _ => {
+                panic!("{} is not a valid behavior tree type", kind);
+            }
+        }
     }
 
     pub fn update(&self, ctx: &mut BtContext) -> BtStatus {
@@ -70,8 +76,15 @@ impl BehaviorTree {
                     BtStatus::Failure
                 }
             }
-            ConditionKind::InAttackRange => {
+            ConditionKind::InMeleeRange => {
                 if ctx.is_in_melee_range {
+                    BtStatus::Success
+                } else {
+                    BtStatus::Failure
+                }
+            }
+            ConditionKind::InProjectileRange => {
+                if ctx.is_in_projectile_range {
                     BtStatus::Success
                 } else {
                     BtStatus::Failure
@@ -195,7 +208,8 @@ pub enum ActionKind {
 pub enum ConditionKind {
     CanSeePlayer,
     InAggroRange,
-    InAttackRange,
+    InMeleeRange,
+    InProjectileRange,
     PlayerIsAttacking,
 }
 
@@ -211,6 +225,7 @@ pub struct BtContext {
     pub was_recently_damaged: bool,
     pub is_in_melee_range: bool,
     pub is_in_aggro_range: bool,
+    pub is_in_projectile_range: bool,
     pub player_is_attacking: bool,
 
     pub desired_action: Option<ActionKind>,

@@ -39,7 +39,9 @@ pub fn update(em: &mut EntityManager) {
 
             ctx.can_see_player = true;
 
-            ctx.is_in_melee_range = entity_trans.position.distance(player_pos) <= 1.0;
+            ctx.is_in_melee_range = entity_trans.position.distance(player_pos) <= 1.15;
+            dbg!(entity_trans.position.distance(player_pos));
+            ctx.is_in_projectile_range = entity_trans.position.distance(player_pos) <= 25.0;
 
             ctx.is_in_aggro_range = true;
 

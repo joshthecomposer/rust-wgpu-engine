@@ -44,7 +44,7 @@ use crate::{
     projectile_system::ProjectileController,
     sound::sound_manager::{ContinuousSound, OneShot, SoundManager},
     sparse_set::SparseSet,
-    state_machines::enemy::enemy_behavior_tree::BehaviorTree,
+    state_machines::enemy::enemy_behavior_tree::{self, BehaviorTree},
     terrain::{self, Terrain},
     util::constants::{GRAVITY, GROUP_PLAYER},
 };
@@ -276,6 +276,18 @@ impl EntityManager {
             for weapon in weapons_list.iter() {
                 let weapon_id = self.create_weapon(weapon, ps);
 
+                match self.entity_types.get(weapon_id).unwrap().as_str() {
+                    "OrcSword" | "DoubleAxe" => {
+                        let bt = BehaviorTree::new("melee");
+                        self.behavior_trees.insert(parent_id, bt);
+                    }
+                    "FireStaff" | "IceStaff" | "Staff" => {
+                        let bt = BehaviorTree::new("ranged");
+                        self.behavior_trees.insert(parent_id, bt);
+                    }
+                    _ => panic!("don't do that"),
+                }
+
                 self.owners.insert(weapon_id, parent_id);
 
                 match self.inventories.get_mut(parent_id) {
@@ -422,10 +434,6 @@ impl EntityManager {
                     }
                     "Enemy" => {
                         self.destinations.insert(parent_id, position);
-
-                        let bt = BehaviorTree::new();
-
-                        self.behavior_trees.insert(parent_id, bt);
 
                         self.enemy_controllers
                             .insert(parent_id, EnemyController::default());

@@ -264,62 +264,58 @@ fn resolve_projectile_hits_for_source(
         }
 
         if let Some(ph) = em.physics_handles.get(victim_id) {
-            if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
-                let health = em.healths.get_mut(victim_id).unwrap();
+            let health = em.healths.get_mut(victim_id).unwrap();
 
-                *health -= 10.0;
+            *health -= 3.0;
 
-                let t = em.transforms.get(victim_id).unwrap();
+            let t = em.transforms.get(victim_id).unwrap();
 
-                let entity_world =
-                    glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
+            let entity_world =
+                glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
 
-                let skellington = em.skellingtons.get(victim_id).unwrap();
+            let skellington = em.skellingtons.get(victim_id).unwrap();
 
-                let mut stack = Vec::new();
+            let mut stack = Vec::new();
 
-                for bone in &skellington.children {
-                    stack.push(bone);
+            for bone in &skellington.children {
+                stack.push(bone);
+            }
+
+            while let Some(bone) = stack.pop() {
+                let bone_world = entity_world * bone.global_transform;
+                let pos = bone_world.w_axis.truncate();
+
+                cmds.particles.push(PartCmd {
+                    name: "DamageBlood".to_string(),
+                    kind: PartKind::WorldOrigin(pos),
+                    direction: Vec3::Y,
+                });
+
+                for child in &bone.children {
+                    stack.push(child);
                 }
+            }
 
-                while let Some(bone) = stack.pop() {
-                    let bone_world = entity_world * bone.global_transform;
-                    let pos = bone_world.w_axis.truncate();
-
-                    cmds.particles.push(PartCmd {
-                        name: "DamageBlood".to_string(),
-                        kind: PartKind::WorldOrigin(pos),
-                        direction: Vec3::Y,
-                    });
-
-                    for child in &bone.children {
-                        stack.push(child);
-                    }
-                }
-
-                match victim_faction {
-                    "Player" => {
-                        let target_ctrl = em.player_controllers.get_mut(victim_id).unwrap();
-                        target_ctrl.took_damage = true;
-                        if *health <= 0.0 {
-                            if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead)
-                            {
-                                target_ctrl.life_state = LifeState::Dying
-                            }
+            match victim_faction {
+                "Player" => {
+                    let target_ctrl = em.player_controllers.get_mut(victim_id).unwrap();
+                    target_ctrl.took_damage = true;
+                    if *health <= 0.0 {
+                        if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead) {
+                            target_ctrl.life_state = LifeState::Dying
                         }
                     }
-                    "Enemy" => {
-                        let target_ctrl = em.enemy_controllers.get_mut(victim_id).unwrap();
-                        target_ctrl.took_damage = true;
-                        if *health <= 0.0 {
-                            if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead)
-                            {
-                                target_ctrl.life_state = LifeState::Dying
-                            }
+                }
+                "Enemy" => {
+                    let target_ctrl = em.enemy_controllers.get_mut(victim_id).unwrap();
+                    target_ctrl.took_damage = true;
+                    if *health <= 0.0 {
+                        if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead) {
+                            target_ctrl.life_state = LifeState::Dying
                         }
                     }
-                    _ => (),
                 }
+                _ => (),
             }
         }
     }
