@@ -39,6 +39,7 @@ pub struct AnimationPropHelper {
     pub name: AnimationType,
     pub one_shots: HashMap<SoundType, Vec<u32>>,
     pub continuous_sounds: Vec<SoundType>,
+    #[serde(default)]
     pub hurtbox_activation: Vec<u32>,
     #[serde(default)]
     pub hold_frame: Option<u32>,
@@ -48,6 +49,8 @@ pub struct AnimationPropHelper {
     pub reset_on_change: bool,
     #[serde(default)]
     pub do_root_motion: bool,
+    #[serde(default)]
+    pub projectile_frame: Option<u32>,
 }
 
 fn default_true() -> bool {

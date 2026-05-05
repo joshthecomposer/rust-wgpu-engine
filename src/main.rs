@@ -35,6 +35,8 @@ mod web_game;
 mod command_buffer;
 mod world;
 
+mod projectile_system;
+
 #[cfg(not(target_arch = "wasm32"))]
 use config::{game_config::GameConfig, Config};
 #[cfg(not(target_arch = "wasm32"))]

@@ -362,31 +362,24 @@ impl EntityManager {
         &mut self,
         source_id: usize,
         weapon_id: usize,
-        cmds: &mut CommandBuffer,
-    ) {
+        ps: &mut PhysicsState,
+    ) -> Option<usize> {
         self.next_entity_id += 1;
         let projectile_id = self.next_entity_id;
 
         let Some(origin) = self.world_weapon_tips.get(weapon_id) else {
             eprintln!("Failed to find the tip for the given weapon");
-            return;
-        };
-
-        let Some(owner) = self.owners.get(weapon_id) else {
-            eprintln!("Weapon has no owner, this seems wrong...");
-            return;
+            return None;
         };
 
         self.source_ids.insert(projectile_id, source_id);
         self.lifetimes.insert(projectile_id, 10.0);
 
-        let yaw = self.yaws.get(*owner).unwrap();
-        let direction = vec3(yaw.sin(), 0.0, yaw.cos());
-        let v = direction * 10.0;
+        let mut instance =
+            EntityInstance::new("SphereProjectile".to_string(), *origin, Quat::IDENTITY);
+        instance.faction = Some("Projectile".to_string());
 
-        let instance = EntityInstance::new("SphereProjectile".to_string(), *origin, Quat::IDENTITY);
-
-        cmds.impulse(projectile_id, None, ImpulseKind::World, v);
+        Some(self.create_mesh_entity(&instance, ps))
     }
 
     pub fn create_mesh_entity(
@@ -591,6 +584,7 @@ impl EntityManager {
                     anim.interrupt_frame = prop.interrupt_frame;
                     anim.reset_on_change = prop.reset_on_change;
                     anim.do_root_motion = prop.do_root_motion;
+                    anim.projectile_frame = prop.projectile_frame;
                 }
             }
 
@@ -860,7 +854,7 @@ impl EntityManager {
     ) {
         let sphere = Sphere { r };
 
-        let sphere_mod = sphere.create_model(10, 5, 0.0);
+        let sphere_mod = sphere.create_model(15, 15, 0.0);
 
         self.collider_gizmos.insert(parent_id, sphere_mod);
         self.collider_transforms.insert(
@@ -888,8 +882,10 @@ impl EntityManager {
             .build();
 
         let collider = ColliderBuilder::ball(r)
-            .density(0.0)
+            .sensor(true)
+            .active_collision_types(ActiveCollisionTypes::all())
             .active_events(ActiveEvents::COLLISION_EVENTS)
+            .mass(1.0)
             .build();
 
         let body_handle = ps.rigid_body_set.insert(body);
@@ -1299,6 +1295,17 @@ impl EntityManager {
             .collect();
 
         result
+    }
+
+    pub fn next_anim_info(&self, id: usize) -> Option<(AnimationType, &Animation)> {
+        let Some(animator) = self.animators.get(id) else {
+            return None;
+        };
+
+        Some((
+            animator.next_animation,
+            &animator.get_next_animation().unwrap(),
+        ))
     }
 
     /// Returns the entity ID of the player, if one exists.
@@ -1721,6 +1728,7 @@ impl EntityManager {
                                 interrupt_frame: None,
                                 reset_on_change: true,
                                 do_root_motion: false,
+                                projectile_frame: None,
                             }),
                             _ => {}
                         },

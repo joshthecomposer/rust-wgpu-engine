@@ -26,7 +26,6 @@ use crate::shaders::ShaderProfile;
 use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
-use crate::toast;
 use crate::ui::game_new::parser::load_view_or_fallback;
 use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
 use crate::ui::game_new::views::pause_menu_view::{PauseMenuUpdateContext, PauseMenuView};
@@ -37,6 +36,7 @@ use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::ui::portrait_renderer::PortraitRenderer;
 use crate::world::World;
 use crate::{combat_system, items, movement_system, physics};
+use crate::{projectile_system, toast};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsValue;
@@ -321,6 +321,12 @@ impl Game {
                     &mut self.world.ecs,
                     &mut self.command_buffer,
                     self.time.fixed_dt,
+                );
+
+                projectile_system::update(
+                    &mut self.world.ecs,
+                    &mut self.command_buffer,
+                    &mut self.physics,
                 );
 
                 combat_system::update(

@@ -34,6 +34,7 @@ pub struct Animation {
     pub interrupt_frame: Option<u32>,
     pub reset_on_change: bool,
     pub do_root_motion: bool,
+    pub projectile_frame: Option<u32>,
 }
 
 impl Animation {
@@ -60,6 +61,7 @@ impl Animation {
             interrupt_frame: None,
             reset_on_change: true,
             do_root_motion: false,
+            projectile_frame: None,
         }
     }
 

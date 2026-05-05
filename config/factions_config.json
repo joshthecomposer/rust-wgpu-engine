@@ -6,6 +6,7 @@
 		"World",
 		"Player",
 		"NeutralNpc",
-		"None"
+		"None",
+    "Projectile"
 	]
 }
