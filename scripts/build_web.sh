@@ -18,7 +18,29 @@ wasm-bindgen --target web --out-dir dist --out-name learn_opengl_rs \
 
 cp web/index.html dist/
 cp web/game_fmod_bridge.js dist/
-cp -r resources config dist/
+
+# Match build_web.ps1: only publish asset subtrees needed at runtime (not all of resources/).
+ASSET_ROOTS=(
+  resources/shaders
+  resources/models/static
+  resources/models/animated
+  resources/textures
+  resources/fonts
+  resources/ui
+)
+for root in "${ASSET_ROOTS[@]}"; do
+  if [ -d "$root" ]; then
+    mkdir -p "dist/$root"
+    cp -r "$root/." "dist/$root/"
+  fi
+done
+
+mkdir -p dist/config
+shopt -s nullglob
+for f in config/*.json; do
+  cp "$f" dist/config/
+done
+shopt -u nullglob
 
 mkdir -p dist/resources/fmod/Web
 if [ -d resources/fmod/Web ]; then
