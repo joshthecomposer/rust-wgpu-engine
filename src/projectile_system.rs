@@ -2,7 +2,15 @@ use glam::vec3;
 
 use crate::{command_buffer::CommandBuffer, entity_manager::EntityManager, physics::PhysicsState};
 
-pub struct ProjectileShot {}
+pub struct ProjectileController {
+    pub just_shot: bool,
+}
+
+impl ProjectileController {
+    pub fn new() -> Self {
+        Self { just_shot: false }
+    }
+}
 
 pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, ps: &mut PhysicsState) {
     // get active item ids, we don't care about anyone else in these cases.
@@ -18,16 +26,22 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, ps: &mut Physics
             continue;
         };
 
-        let should_spawn = match em.next_anim_info(parent_id) {
-            Some((_, anim)) => match anim.projectile_frame {
-                Some(pf) => anim.current_segment.get() == pf,
-                None => false,
-            },
-            None => {
-                eprintln!("No animation stuffs for this guy, why?");
-                continue;
-            }
+        let animator = em.animators.get(parent_id).unwrap();
+        let anim = animator.get_next_animation().unwrap();
+
+        let Some(pf) = anim.projectile_frame else {
+            continue;
         };
+
+        let Some(p_ctrl) = em.projectile_controllers.get_mut(parent_id) else {
+            continue;
+        };
+
+        let on_projectile_frame = anim.current_segment.get() == pf;
+
+        let should_spawn = on_projectile_frame && !p_ctrl.just_shot;
+
+        p_ctrl.just_shot = on_projectile_frame;
 
         if !should_spawn {
             continue;

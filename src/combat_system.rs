@@ -17,6 +17,16 @@ pub fn update(em: &mut EntityManager, _dt: f32, ps: &mut PhysicsState, cmds: &mu
     for eid in em.get_ids_for_faction("Enemy") {
         resolve_melee_hits_for_source(eid, em, ps, cmds);
     }
+
+    let source_ids = em
+        .source_ids
+        .iter()
+        .map(|e| (e.key(), *e.value()))
+        .collect::<Vec<(usize, usize)>>();
+
+    for entry in source_ids {
+        resolve_projectile_hits_for_source(entry.0, entry.1, em, ps, cmds);
+    }
 }
 
 fn resolve_melee_hits_for_source(
@@ -189,6 +199,127 @@ fn resolve_melee_hits_for_source(
 
                 physics::apply_delta_v(rb, dir, 2.0);
                 em.knockbacks.insert(victim_id, kb);
+            }
+        }
+    }
+}
+
+fn resolve_projectile_hits_for_source(
+    proj_id: usize,
+    source_id: usize,
+    em: &mut EntityManager,
+    ps: &mut PhysicsState,
+    cmds: &mut CommandBuffer,
+) {
+    let source_faction = match em.factions.get(source_id) {
+        Some(f) => f.as_str(),
+        None => return,
+    };
+
+    if !matches!(source_faction, "Player" | "Enemy") {
+        return;
+    }
+
+    let proj_col_handle = match em.physics_handles.get(proj_id) {
+        Some(ph) => ph.collider,
+        None => {
+            eprintln!("NO COLLIDERER");
+            return;
+        }
+    };
+
+    for (c1, c2, i) in ps.narrow_phase.intersection_pairs_with(proj_col_handle) {
+        if !i {
+            continue;
+        }
+
+        let other = if c1 == proj_col_handle {
+            c2
+        } else if c2 == proj_col_handle {
+            c1
+        } else {
+            continue;
+        };
+
+        let Some(&victim_id) = em.collider_to_entity.get(&other) else {
+            continue;
+        };
+
+        if victim_id == source_id {
+            continue;
+        }
+
+        let Some(victim_faction) = em.factions.get(victim_id).map(|f| f.as_str()) else {
+            continue;
+        };
+
+        if !matches!(victim_faction, "Player" | "Enemy") {
+            continue;
+        }
+
+        match (source_faction, victim_faction) {
+            ("Player", "Player") => continue,
+            ("Enemy", "Enemy") => continue,
+            _ => (),
+        }
+
+        if let Some(ph) = em.physics_handles.get(victim_id) {
+            if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
+                let health = em.healths.get_mut(victim_id).unwrap();
+
+                *health -= 10.0;
+
+                let t = em.transforms.get(victim_id).unwrap();
+
+                let entity_world =
+                    glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
+
+                let skellington = em.skellingtons.get(victim_id).unwrap();
+
+                let mut stack = Vec::new();
+
+                for bone in &skellington.children {
+                    stack.push(bone);
+                }
+
+                while let Some(bone) = stack.pop() {
+                    let bone_world = entity_world * bone.global_transform;
+                    let pos = bone_world.w_axis.truncate();
+
+                    cmds.particles.push(PartCmd {
+                        name: "DamageBlood".to_string(),
+                        kind: PartKind::WorldOrigin(pos),
+                        direction: Vec3::Y,
+                    });
+
+                    for child in &bone.children {
+                        stack.push(child);
+                    }
+                }
+
+                match victim_faction {
+                    "Player" => {
+                        let target_ctrl = em.player_controllers.get_mut(victim_id).unwrap();
+                        target_ctrl.took_damage = true;
+                        if *health <= 0.0 {
+                            if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead)
+                            {
+                                target_ctrl.life_state = LifeState::Dying
+                            }
+                        }
+                    }
+                    "Enemy" => {
+                        let target_ctrl = em.enemy_controllers.get_mut(victim_id).unwrap();
+                        target_ctrl.took_damage = true;
+                        if *health <= 0.0 {
+                            if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead)
+                            {
+                                target_ctrl.life_state = LifeState::Dying
+                            }
+                        }
+                    }
+                    _ => (),
+                }
             }
         }
     }

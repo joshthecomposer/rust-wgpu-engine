@@ -41,6 +41,7 @@ use crate::{
     },
     input::InputState,
     physics::PhysicsState,
+    projectile_system::ProjectileController,
     sound::sound_manager::{ContinuousSound, OneShot, SoundManager},
     sparse_set::SparseSet,
     state_machines::enemy::enemy_behavior_tree::BehaviorTree,
@@ -108,6 +109,7 @@ pub struct EntityManager {
     pub pickup_ranges: SparseSet<f32>,
     pub weapon_helper: SparseSet<WeaponActionsHelper>,
     pub behavior_trees: SparseSet<BehaviorTree>,
+    pub projectile_controllers: SparseSet<ProjectileController>,
 
     // Projectile stuff
     // Source id is the ID of the character who originally spawned this projectile (such as a
@@ -199,6 +201,7 @@ impl EntityManager {
             weapon_abilities: SparseSet::with_capacity(max_entities),
             weapon_helper: SparseSet::with_capacity(max_entities),
             behavior_trees: SparseSet::with_capacity(max_entities),
+            projectile_controllers: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json")
@@ -413,6 +416,9 @@ impl EntityManager {
 
                         // default player pickup range
                         self.pickup_ranges.insert(parent_id, 3.0);
+
+                        self.projectile_controllers
+                            .insert(parent_id, ProjectileController::new());
                     }
                     "Enemy" => {
                         self.destinations.insert(parent_id, position);
@@ -423,6 +429,9 @@ impl EntityManager {
 
                         self.enemy_controllers
                             .insert(parent_id, EnemyController::default());
+
+                        self.projectile_controllers
+                            .insert(parent_id, ProjectileController::new());
 
                         if let Some(ar) = archetype.aggro_range {
                             self.aggro_ranges.insert(parent_id, ar);

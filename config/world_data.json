@@ -536,7 +536,7 @@
       ],
       "weapons": [
         {
-          "entity_type": "OrcSword",
+          "entity_type": "FireStaff",
           "faction": "Item",
           "position": [
             0.0,
