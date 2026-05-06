@@ -662,8 +662,13 @@ impl Game {
             &self.input,
             self.platform.fb_width as f32 / self.platform.fb_height as f32,
         );
-        self.sound
-            .update(&self.world.camera, &mut self.command_buffer);
+        self.sound.update(
+            &self.world.camera,
+            &mut self.command_buffer,
+            &mut self.world.ecs,
+            &self.physics,
+            self.time.dt,
+        );
         self.world.lights.update(&self.time.dt);
         self.world
             .particles

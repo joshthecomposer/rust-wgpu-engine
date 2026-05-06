@@ -113,6 +113,12 @@ impl CommandBuffer {
         });
     }
 
+    pub fn sound3d_continuous(&mut self, sound_type: SoundType, entity_id: usize) {
+        self.sound.push(SoundCmd {
+            kind: SoundKind::Sound3dContinuous(sound_type, entity_id),
+        });
+    }
+
     pub fn reset_attacks(&mut self, target: usize, weapon: Option<usize>) {
         self.anim.push(AnimCmd {
             target,
@@ -295,6 +301,7 @@ pub struct SoundCmd {
 pub enum SoundKind {
     Sound2d(SoundType),
     Sound3d(SoundType, Vec3),
+    Sound3dContinuous(SoundType, usize),
 }
 
 // ==================================================================================
