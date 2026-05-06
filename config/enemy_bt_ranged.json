@@ -4,52 +4,52 @@
     {
       "_idx_": "0",
       "node_type": "Selector",
-      "children": [1, 5, 8]
+      "children": [1, 2]
     },
     {
       "_idx_": "1",
       "node_type": "Sequence",
-      "children": [2, 3, 4]
+      "children": [3, 4]
     },
     {
       "_idx_": "2",
-      "node_type": "Condition",
-      "condition": "InProjectileRange"
+      "node_type": "Action",
+      "action": "ChasePlayer"
     },
     {
       "_idx_": "3",
       "node_type": "Condition",
-      "condition": "CanSeePlayer"
+      "condition": "InProjectileRange"
     },
     {
       "_idx_": "4",
-      "node_type": "Action",
-      "action": "AttackPlayer"
+      "node_type": "Selector",
+      "children": [5, 6]
     },
     {
       "_idx_": "5",
       "node_type": "Sequence",
-      "children": [6, 7, 9]
+      "children": [7, 8, 9]
     },
     {
       "_idx_": "6",
-      "node_type": "Condition",
-      "condition": "CanSeePlayer"
+      "node_type": "Action",
+      "action": "AttackPlayer"
     },
     {
       "_idx_": "7",
       "node_type": "Condition",
-      "condition": "InAggroRange"
+      "condition": "InMeleeRange"
     },
     {
       "_idx_": "8",
-      "node_type": "Action",
-      "action": "Idle"
+      "node_type": "Condition",
+      "condition": "PlayerIsAttacking"
     },
     {
       "_idx_": "9",
       "node_type": "Action",
-      "action": "ChasePlayer"
+      "action": "Dodge"
     }
   ]
 }
