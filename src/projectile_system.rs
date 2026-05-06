@@ -1,6 +1,10 @@
 use glam::vec3;
 
-use crate::{command_buffer::CommandBuffer, entity_manager::EntityManager, physics::PhysicsState};
+use crate::{
+    command_buffer::{CommandBuffer, SoundCmd, SoundKind},
+    entity_manager::EntityManager,
+    physics::PhysicsState,
+};
 
 pub struct ProjectileController {
     pub just_shot: bool,
@@ -61,5 +65,7 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, ps: &mut Physics
             crate::command_buffer::ImpulseKind::World,
             v,
         );
+
+        cmds.sound3d_continuous(crate::enums_types::SoundType::Whee, sphere_id);
     }
 }

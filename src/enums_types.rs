@@ -370,6 +370,7 @@ pub enum SoundType {
     Land,
     StopRunning,
     Bloop,
+    Whee,
 }
 
 impl Display for SoundType {
@@ -382,6 +383,7 @@ impl Display for SoundType {
             SoundType::Land => write!(f, "Land"),
             SoundType::StopRunning => write!(f, "StopRunning"),
             SoundType::Bloop => write!(f, "Bloop"),
+            SoundType::Whee => write!(f, "Whee"),
         }
     }
 }
@@ -393,6 +395,7 @@ impl SoundType {
             "MooseHuff" => Some(SoundType::MooseHuff),
             "Music" => Some(SoundType::Music),
             "Bloop" => Some(SoundType::Bloop),
+            "Whee" => Some(SoundType::Whee),
             _ => panic!("Invalid SoundType passed in."),
         }
     }

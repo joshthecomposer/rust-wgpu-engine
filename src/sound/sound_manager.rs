@@ -13,7 +13,9 @@ use crate::{
     camera::Camera,
     command_buffer::{CommandBuffer, SoundKind},
     config::sound_config::SoundConfig,
+    entity_manager::EntityManager,
     enums_types::SoundType,
+    physics::PhysicsState,
 };
 
 #[cfg(all(target_arch = "wasm32", feature = "web_audio"))]
@@ -78,6 +80,9 @@ pub struct SoundManager {
     pub active_sounds: HashMap<SoundType, FMOD_STUDIO_EVENTINSTANCE>,
     pub active_3d_sounds: HashMap<usize, Vec<FMOD_STUDIO_EVENTINSTANCE>>,
     pub master_volume: f32,
+
+    last_listener_pos: Option<Vec3>,
+    last_entity_sound_pos: HashMap<usize, Vec3>,
 }
 
 #[cfg(all(
@@ -164,10 +169,20 @@ impl SoundManager {
             master_volume: 1.0,
             active_3d_sounds: HashMap::new(),
             active_sounds: HashMap::new(),
+
+            last_listener_pos: None,
+            last_entity_sound_pos: HashMap::new(),
         }
     }
 
-    pub fn update(&mut self, camera: &Camera, cmds: &mut CommandBuffer) {
+    pub fn update(
+        &mut self,
+        camera: &Camera,
+        cmds: &mut CommandBuffer,
+        em: &mut EntityManager,
+        ps: &PhysicsState,
+        dt: f32,
+    ) {
         // Evaluate commands
         let soundcmds = std::mem::take(&mut cmds.sound);
 
@@ -179,8 +194,14 @@ impl SoundManager {
                 SoundKind::Sound2d(t) => {
                     self.play_sound_2d(t);
                 }
+                SoundKind::Sound3dContinuous(t, eid) => {
+                    self.start_continuous_entity_sound_3d(t, eid, em);
+                }
             }
         }
+
+        self.set_listener_attributes(camera, dt);
+        self.update_entity_continuous_sounds(em, ps, dt);
 
         unsafe {
             let result = FMOD_Studio_System_Update(self.fmod_system);
@@ -188,7 +209,6 @@ impl SoundManager {
                 eprintln!("FMOD update failed with error code {}", result);
             }
         }
-        self.set_listener_attributes(camera);
 
         //let count = self.get_instance_count(SoundType::Footstep);
         //dbg!(count);
@@ -206,16 +226,24 @@ impl SoundManager {
     //     Some(count as i32)
     // }
 
-    pub fn set_listener_attributes(&self, camera: &Camera) {
+    pub fn set_listener_attributes(&mut self, camera: &Camera, dt: f32) {
         let forward = camera.forward.normalize();
         let up = camera.up.normalize();
+
+        let velocity = if dt > 0.0 {
+            match self.last_listener_pos {
+                Some(prev) => (camera.position - prev) / dt,
+                None => Vec3::ZERO,
+            }
+        } else {
+            Vec3::ZERO
+        };
+
+        self.last_listener_pos = Some(camera.position);
+
         let attributes = FMOD_3D_ATTRIBUTES {
             position: Self::opengl_to_fmod(camera.position),
-            velocity: FMOD_VECTOR {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            },
+            velocity: Self::opengl_to_fmod(velocity),
             forward: Self::opengl_to_fmod(forward),
             up: Self::opengl_to_fmod(up),
         };
@@ -292,6 +320,136 @@ impl SoundManager {
         }
     }
 
+    pub fn start_continuous_entity_sound_3d(
+        &mut self,
+        sound_type: SoundType,
+        entity_id: usize,
+        em: &mut EntityManager,
+    ) {
+        if self.active_3d_sounds.contains_key(&entity_id) {
+            println!("Already have this entity in the sounds");
+            return;
+        }
+        let sound_data = match self.sounds.get(&sound_type) {
+            Some(data) => data,
+            None => {
+                eprintln!("Sound {} not found", sound_type);
+                return;
+            }
+        };
+
+        let mut instance: FMOD_STUDIO_EVENTINSTANCE = std::ptr::null_mut();
+        unsafe {
+            // Create a new instance each time
+            let create_result =
+                FMOD_Studio_EventDescription_CreateInstance(sound_data.description, &mut instance);
+            if create_result != 0 {
+                eprintln!("Failed to create event instance: {}", create_result);
+                return;
+            }
+
+            let trans = em.transforms.get(entity_id).unwrap();
+
+            self.last_entity_sound_pos.insert(entity_id, trans.position);
+
+            let attributes = FMOD_3D_ATTRIBUTES {
+                position: Self::opengl_to_fmod(trans.position),
+                velocity: FMOD_VECTOR {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                forward: FMOD_VECTOR {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 1.0,
+                },
+                up: FMOD_VECTOR {
+                    x: 0.0,
+                    y: 1.0,
+                    z: 0.0,
+                },
+            };
+
+            let set_result = FMOD_Studio_EventInstance_Set3DAttributes(instance, &attributes);
+            if set_result != 0 {
+                eprintln!("Failed to set 3D attributes: {}", set_result);
+            }
+
+            let play_result = FMOD_Studio_EventInstance_Start(instance);
+            if play_result != 0 {
+                eprintln!("FMOD sound failed to start: {}", play_result);
+            }
+
+            self.active_3d_sounds
+                .entry(entity_id)
+                .or_insert(Vec::new())
+                .push(instance);
+        }
+    }
+
+    pub fn update_entity_continuous_sounds(
+        &mut self,
+        em: &mut EntityManager,
+        ps: &PhysicsState,
+        dt: f32,
+    ) {
+        for (eid, sounds) in self.active_3d_sounds.iter() {
+            let trans = em.transforms.get(*eid).unwrap();
+
+            // Prefer the rigid body's authoritative linear velocity. Sound updates run at render
+            // rate while transforms only advance on physics ticks, so a position finite-difference
+            // would alternate between zero (stationary frames) and inflated spikes (frames where
+            // the physics tick happened) and break Doppler.
+            let velocity = match em
+                .physics_handles
+                .get(*eid)
+                .and_then(|ph| ps.rigid_body_set.get(ph.rigid_body))
+            {
+                Some(rb) => {
+                    let v = rb.linvel();
+                    Vec3::new(v.x, v.y, v.z)
+                }
+                None => {
+                    if dt > 0.0 {
+                        match self.last_entity_sound_pos.get(eid) {
+                            Some(prev) => (trans.position - *prev) / dt,
+                            None => Vec3::ZERO,
+                        }
+                    } else {
+                        Vec3::ZERO
+                    }
+                }
+            };
+
+            self.last_entity_sound_pos.insert(*eid, trans.position);
+
+            for sound in sounds {
+                let attributes = FMOD_3D_ATTRIBUTES {
+                    position: Self::opengl_to_fmod(trans.position),
+                    velocity: Self::opengl_to_fmod(velocity),
+                    forward: FMOD_VECTOR {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 1.0,
+                    },
+                    up: FMOD_VECTOR {
+                        x: 0.0,
+                        y: 1.0,
+                        z: 0.0,
+                    },
+                };
+
+                unsafe {
+                    let set_result = FMOD_Studio_EventInstance_Set3DAttributes(*sound, &attributes);
+                    if set_result != 0 {
+                        eprintln!("Failed to set 3D attributes: {}", set_result);
+                    }
+                }
+            }
+        }
+    }
+
     pub fn play_sound_2d(&mut self, sound_type: SoundType) {
         let sound_data = match self.sounds.get(&sound_type) {
             Some(data) => data,
@@ -342,6 +500,7 @@ impl SoundManager {
                 }
             }
         }
+        self.last_entity_sound_pos.remove(&entity_id);
     }
 
     pub fn set_master_volume(&mut self, sound_type: &SoundType) {
@@ -376,6 +535,9 @@ pub struct SoundManager {
     pub active_sounds: HashMap<SoundType, ()>,
     pub active_3d_sounds: HashMap<usize, Vec<()>>,
     pub master_volume: f32,
+
+    last_listener_pos: Option<Vec3>,
+    last_entity_sound_pos: HashMap<usize, Vec3>,
 }
 
 #[cfg(all(target_arch = "wasm32", feature = "web_audio"))]
@@ -401,10 +563,19 @@ impl SoundManager {
             active_sounds: HashMap::new(),
             active_3d_sounds: HashMap::new(),
             master_volume: config.master_volume,
+            last_listener_pos: None,
+            last_entity_sound_pos: HashMap::new(),
         }
     }
 
-    pub fn update(&mut self, camera: &Camera, cmds: &mut CommandBuffer) {
+    pub fn update(
+        &mut self,
+        camera: &Camera,
+        cmds: &mut CommandBuffer,
+        em: &mut EntityManager,
+        ps: &PhysicsState,
+        dt: f32,
+    ) {
         let soundcmds = std::mem::take(&mut cmds.sound);
         for c in soundcmds {
             match c.kind {
@@ -414,21 +585,37 @@ impl SoundManager {
                 SoundKind::Sound2d(t) => {
                     self.play_sound_2d(t);
                 }
+                SoundKind::Sound3dContinuous(t, eid) => {
+                    self.start_continuous_entity_sound_3d(t, eid, em);
+                }
             }
         }
         if web_fmod_bridge::bridge_is_ready() {
             web_fmod_bridge::call_bridge("update", &[]);
-            self.set_listener_attributes(camera);
+            self.set_listener_attributes(camera, dt);
+            self.update_entity_continuous_sounds(em, ps, dt);
         }
     }
 
-    pub fn set_listener_attributes(&self, camera: &Camera) {
+    pub fn set_listener_attributes(&mut self, camera: &Camera, dt: f32) {
         if !web_fmod_bridge::bridge_is_ready() {
             return;
         }
         let forward = camera.forward.normalize();
         let up = camera.up.normalize();
+
+        let velocity = if dt > 0.0 {
+            match self.last_listener_pos {
+                Some(prev) => (camera.position - prev) / dt,
+                None => Vec3::ZERO,
+            }
+        } else {
+            Vec3::ZERO
+        };
+        self.last_listener_pos = Some(camera.position);
+
         let p = Self::opengl_to_fmod_vec(camera.position);
+        let v = Self::opengl_to_fmod_vec(velocity);
         let f = Self::opengl_to_fmod_vec(forward);
         let u = Self::opengl_to_fmod_vec(up);
         web_fmod_bridge::call_bridge(
@@ -437,6 +624,9 @@ impl SoundManager {
                 JsValue::from_f64(f64::from(p.x)),
                 JsValue::from_f64(f64::from(p.y)),
                 JsValue::from_f64(f64::from(p.z)),
+                JsValue::from_f64(f64::from(v.x)),
+                JsValue::from_f64(f64::from(v.y)),
+                JsValue::from_f64(f64::from(v.z)),
                 JsValue::from_f64(f64::from(f.x)),
                 JsValue::from_f64(f64::from(f.y)),
                 JsValue::from_f64(f64::from(f.z)),
@@ -449,6 +639,105 @@ impl SoundManager {
 
     fn opengl_to_fmod_vec(v: Vec3) -> Vec3 {
         Vec3::new(v.x, v.y, -v.z)
+    }
+
+    pub fn start_continuous_entity_sound_3d(
+        &mut self,
+        sound_type: SoundType,
+        entity_id: usize,
+        em: &mut EntityManager,
+    ) {
+        if self.active_3d_sounds.contains_key(&entity_id) {
+            println!("Already have this entity in the sounds");
+            return;
+        }
+        if !self.sounds.contains_key(&sound_type) {
+            eprintln!("Sound {} not found", sound_type);
+            return;
+        }
+        if !web_fmod_bridge::bridge_is_ready() {
+            return;
+        }
+
+        let trans = em.transforms.get(entity_id).unwrap();
+        self.last_entity_sound_pos.insert(entity_id, trans.position);
+
+        let p = Self::opengl_to_fmod_vec(trans.position);
+        let key = sound_type.to_string();
+        web_fmod_bridge::call_bridge(
+            "start3dContinuous",
+            &[
+                JsValue::from_str(&key),
+                JsValue::from_f64(entity_id as f64),
+                JsValue::from_f64(f64::from(p.x)),
+                JsValue::from_f64(f64::from(p.y)),
+                JsValue::from_f64(f64::from(p.z)),
+                JsValue::from_f64(0.0),
+                JsValue::from_f64(0.0),
+                JsValue::from_f64(0.0),
+            ],
+        );
+
+        self.active_3d_sounds
+            .entry(entity_id)
+            .or_insert_with(Vec::new)
+            .push(());
+    }
+
+    pub fn update_entity_continuous_sounds(
+        &mut self,
+        em: &mut EntityManager,
+        ps: &PhysicsState,
+        dt: f32,
+    ) {
+        if !web_fmod_bridge::bridge_is_ready() {
+            return;
+        }
+        for (eid, _instances) in self.active_3d_sounds.iter() {
+            let trans = em.transforms.get(*eid).unwrap();
+
+            // Prefer the rigid body's authoritative linear velocity. Sound updates run at render
+            // rate while transforms only advance on physics ticks, so a position finite-difference
+            // would alternate between zero (stationary frames) and inflated spikes (frames where
+            // the physics tick happened) and break Doppler.
+            let velocity = match em
+                .physics_handles
+                .get(*eid)
+                .and_then(|ph| ps.rigid_body_set.get(ph.rigid_body))
+            {
+                Some(rb) => {
+                    let v = rb.linvel();
+                    Vec3::new(v.x, v.y, v.z)
+                }
+                None => {
+                    if dt > 0.0 {
+                        match self.last_entity_sound_pos.get(eid) {
+                            Some(prev) => (trans.position - *prev) / dt,
+                            None => Vec3::ZERO,
+                        }
+                    } else {
+                        Vec3::ZERO
+                    }
+                }
+            };
+
+            self.last_entity_sound_pos.insert(*eid, trans.position);
+
+            let p = Self::opengl_to_fmod_vec(trans.position);
+            let v = Self::opengl_to_fmod_vec(velocity);
+            web_fmod_bridge::call_bridge(
+                "update3dContinuous",
+                &[
+                    JsValue::from_f64(*eid as f64),
+                    JsValue::from_f64(f64::from(p.x)),
+                    JsValue::from_f64(f64::from(p.y)),
+                    JsValue::from_f64(f64::from(p.z)),
+                    JsValue::from_f64(f64::from(v.x)),
+                    JsValue::from_f64(f64::from(v.y)),
+                    JsValue::from_f64(f64::from(v.z)),
+                ],
+            );
+        }
     }
 
     pub fn play_sound_3d(&mut self, sound_type: SoundType, position: &Vec3) {
@@ -494,11 +783,9 @@ impl SoundManager {
     }
 
     pub fn cleanup_entity_sounds(&mut self, entity_id: usize) {
-        web_fmod_bridge::call_bridge(
-            "cleanupEntity3d",
-            &[JsValue::from_f64(entity_id as f64)],
-        );
+        web_fmod_bridge::call_bridge("cleanupEntity3d", &[JsValue::from_f64(entity_id as f64)]);
         self.active_3d_sounds.remove(&entity_id);
+        self.last_entity_sound_pos.remove(&entity_id);
     }
 
     pub fn set_master_volume(&mut self, sound_type: &SoundType) {
@@ -546,11 +833,18 @@ impl SoundManager {
         }
     }
 
-    pub fn update(&mut self, _camera: &Camera, cmds: &mut CommandBuffer) {
+    pub fn update(
+        &mut self,
+        _camera: &Camera,
+        cmds: &mut CommandBuffer,
+        _em: &mut EntityManager,
+        _ps: &PhysicsState,
+        _dt: f32,
+    ) {
         let _ = std::mem::take(&mut cmds.sound);
     }
 
-    pub fn set_listener_attributes(&self, _camera: &Camera) {}
+    pub fn set_listener_attributes(&self, _camera: &Camera, _dt: f32) {}
 
     pub fn play_sound_3d(&mut self, _sound_type: SoundType, _position: &Vec3) {}
 

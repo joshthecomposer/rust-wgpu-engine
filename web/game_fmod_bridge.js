@@ -209,9 +209,13 @@
     },
 
     /**
+     * Position, velocity, forward, up are already in FMOD (right-handed) space.
      * @param {number} px
      * @param {number} py
      * @param {number} pz
+     * @param {number} vx
+     * @param {number} vy
+     * @param {number} vz
      * @param {number} fx
      * @param {number} fy
      * @param {number} fz
@@ -219,10 +223,10 @@
      * @param {number} uy
      * @param {number} uz
      */
-    setListener(px, py, pz, fx, fy, fz, ux, uy, uz) {
+    setListener(px, py, pz, vx, vy, vz, fx, fy, fz, ux, uy, uz) {
       if (!studio) return;
       const pos = { x: px, y: py, z: pz };
-      const vel = { x: 0, y: 0, z: 0 };
+      const vel = { x: vx, y: vy, z: vz };
       const fwd = { x: fx, y: fy, z: fz };
       const up = { x: ux, y: uy, z: uz };
       const attrs = make3DAttributes(pos, vel, fwd, up);
@@ -318,6 +322,73 @@
         } catch (_) {}
       }
       active3dByEntity.delete(entityId);
+    },
+
+    /**
+     * Spawn a continuous 3D event tied to an entity. The instance is kept alive in
+     * `active3dByEntity` so subsequent `update3dContinuous` calls can mutate its 3D attributes.
+     * Position and velocity are already in FMOD (right-handed) space.
+     * @param {string} soundKey
+     * @param {number} entityId
+     * @param {number} x
+     * @param {number} y
+     * @param {number} z
+     * @param {number} vx
+     * @param {number} vy
+     * @param {number} vz
+     */
+    start3dContinuous(soundKey, entityId, x, y, z, vx, vy, vz) {
+      if (!studio) return;
+      const desc = descriptions.get(soundKey);
+      if (!desc) {
+        console.warn("[LearnOpenglFmod] unknown sound", soundKey);
+        return;
+      }
+      const out = {};
+      if (desc.createInstance(out) !== 0) return;
+      const inst = out.val;
+      const attrs = make3DAttributes(
+        { x, y, z },
+        { x: vx, y: vy, z: vz },
+        { x: 0, y: 0, z: 1 },
+        { x: 0, y: 1, z: 0 }
+      );
+      inst.set3DAttributes(attrs);
+      if (inst.start() !== 0) return;
+      let list = active3dByEntity.get(entityId);
+      if (!list) {
+        list = [];
+        active3dByEntity.set(entityId, list);
+      }
+      list.push(inst);
+    },
+
+    /**
+     * Push fresh 3D attributes to every instance attached to `entityId`.
+     * @param {number} entityId
+     * @param {number} x
+     * @param {number} y
+     * @param {number} z
+     * @param {number} vx
+     * @param {number} vy
+     * @param {number} vz
+     */
+    update3dContinuous(entityId, x, y, z, vx, vy, vz) {
+      const list = active3dByEntity.get(entityId);
+      if (!list) return;
+      const attrs = make3DAttributes(
+        { x, y, z },
+        { x: vx, y: vy, z: vz },
+        { x: 0, y: 0, z: 1 },
+        { x: 0, y: 1, z: 0 }
+      );
+      for (const inst of list) {
+        try {
+          inst.set3DAttributes(attrs);
+        } catch (e) {
+          console.warn("[LearnOpenglFmod] update3dContinuous", e);
+        }
+      }
     },
   };
 })();
