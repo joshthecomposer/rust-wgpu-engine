@@ -5,7 +5,8 @@
     "StopRunning": "event:/stop_running",
     "Jump": "event:/jump",
     "Land": "event:/land",
-    "Music": "event:/music"
+    "Music": "event:/music",
+    "Whee": "event:/whee"
   },
   "master_volume": 1.0,
   "bgm": 1.0,
