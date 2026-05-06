@@ -1,11 +1,12 @@
 {
   "sounds": {
+    "Music": "event:/music",
     "Footstep": "event:/footstep",
+    "Bloop": "event:/bloop",
     "MooseHuff": "event:/moose3D",
+    "Land": "event:/land",
     "StopRunning": "event:/stop_running",
     "Jump": "event:/jump",
-    "Land": "event:/land",
-    "Music": "event:/music",
     "Whee": "event:/whee"
   },
   "master_volume": 1.0,
@@ -15,4 +16,3 @@
   "ui": 1.0,
   "ambience": 1.0
 }
-
