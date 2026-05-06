@@ -26,6 +26,7 @@ impl Default for SoundConfig {
         sounds.insert(SoundType::Jump, "event:/jump".to_string());
         sounds.insert(SoundType::Land, "event:/land".to_string());
         sounds.insert(SoundType::Whee, "event:/whee".to_string());
+        sounds.insert(SoundType::Bloop, "event:/bloop".to_string());
 
         Self {
             sounds,
