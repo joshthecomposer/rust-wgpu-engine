@@ -79,6 +79,14 @@
       "description": "Block something",
       "icon": "resources/ui/icons/fire_ring.png",
       "animation": "Block"
-    }
+    },
+    {
+      "id": 36,
+      "name": "Spin2Win",
+      "cooldown": 5.0,
+      "description": "Spinny winny",
+      "icon": "resources/ui/icons/fire_ring.png",
+      "animation": "Spin2Win"
+  }
   ]
 }

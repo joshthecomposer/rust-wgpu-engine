@@ -34,6 +34,8 @@ pub fn combat_state_machine(
         return;
     };
 
+    let anim_name = animator.next_animation;
+
     let action = ctrl.queued_action;
     let intent = LocoIntent::build_loco_intent(input);
 
@@ -56,7 +58,17 @@ pub fn combat_state_machine(
     if try_reset_to_loco(player_id, weap_id, anim, ctrl, cmds) {
         return;
     } else {
-        // always allow rotation if in combat for now
+        if anim_name == AnimationType::Spin2Win {
+            cmds.loco.push(crate::command_buffer::LocoCmd {
+                target: player_id,
+                intent,
+                allow_trans: true,
+                allow_rot: true,
+                space: LocoSpace::Camera,
+            });
+            return;
+        }
+
         cmds.loco.push(crate::command_buffer::LocoCmd {
             target: player_id,
             intent,
@@ -87,6 +99,21 @@ fn try_consume_buffered_combat_action(
         EVADE => {
             cmds.next_anim(player_id, AnimationType::Roll, Some(weap_id));
             ctrl.combat_state = Some(CombatState::Evade);
+            true
+        }
+        SKILL1 => {
+            cmds.next_anim(player_id, AnimationType::Spin2Win, Some(weap_id));
+            ctrl.combat_state = Some(CombatState::Skill1);
+            true
+        }
+        SKILL2 => {
+            cmds.next_anim(player_id, AnimationType::Spin2Win, Some(weap_id));
+            ctrl.combat_state = Some(CombatState::Skill2);
+            true
+        }
+        ULTIMATE => {
+            cmds.next_anim(player_id, AnimationType::Spin2Win, Some(weap_id));
+            ctrl.combat_state = Some(CombatState::Ultimate);
             true
         }
         DEFENSIVE => {

@@ -179,6 +179,9 @@ pub fn ability_to_anim_lookup(ability: u32) -> String {
     match ability {
         BASIC => "basic".to_string(),
         EVADE => "dash".to_string(),
+        SKILL1 => "skill1".to_string(),
+        SKILL2 => "skill2".to_string(),
+        ULTIMATE => "ultimate".to_string(),
         DEFENSIVE => "block".to_string(),
         _ => "basic".to_string(),
     }
@@ -188,6 +191,9 @@ pub fn ability_to_state(ability: u32) -> CombatState {
     match ability {
         BASIC => CombatState::Basic,
         EVADE => CombatState::Evade,
+        SKILL1 => CombatState::Skill1,
+        SKILL2 => CombatState::Skill2,
+        ULTIMATE => CombatState::Ultimate,
         DEFENSIVE => CombatState::Defensive,
         _ => CombatState::Basic,
     }

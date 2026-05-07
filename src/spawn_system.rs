@@ -172,15 +172,15 @@ impl Default for SpawnManager {
         Self {
             rounds: VecDeque::from([
                 RoundData {
+                    amount: 1,
+                    spawned: false,
+                },
+                RoundData {
                     amount: 2,
                     spawned: false,
                 },
                 RoundData {
                     amount: 4,
-                    spawned: false,
-                },
-                RoundData {
-                    amount: 7,
                     spawned: false,
                 },
             ]),

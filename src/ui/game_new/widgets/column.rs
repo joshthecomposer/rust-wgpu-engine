@@ -356,9 +356,9 @@ impl Widget for Column {
 
         if self.rect.contains(ctx.mouse_pos()) {
             if ctx.is_click_start() {
-                if let Some(id) = &self.style.id {
-                    println!("[Column] Clicked. ID: {}", id);
-                }
+                // if let Some(id) = &self.style.id {
+                //      println!("[Column] Clicked. ID: {}", id);
+                // }
                 return true;
             }
         }

@@ -111,6 +111,7 @@ pub fn player_state_orchestrator(
                 | AnimationType::OSBasic2
                 | AnimationType::OSBasic3
                 | AnimationType::Roll
+                | AnimationType::Spin2Win
         )
     {
         cmds.next_anim(player_id, AnimationType::Stagger, None);

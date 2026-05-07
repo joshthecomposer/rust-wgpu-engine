@@ -64,7 +64,15 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                 };
 
                 let Some(helper) = em.weapon_helper.get_mut(id) else {
-                    eprintln!("Tried to find weapon from id {} but failed", id);
+                    eprintln!(
+                        "Tried to find weapon action helper from id {} but failed",
+                        id
+                    );
+                    continue;
+                };
+
+                let Some(abilities) = em.weapon_abilities.get(id) else {
+                    eprintln!("Tried to find abilities from id {} but failed", id);
                     continue;
                 };
 
@@ -75,6 +83,27 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                         cano_anim_name
                     }
                     "dash" => helper.dash.clone(),
+                    "skill1" => {
+                        let aid = abilities.q;
+                        let conf = em.abilities_config.get(aid).unwrap();
+                        let cano_anim_name = &conf.animation;
+
+                        cano_anim_name.to_string()
+                    }
+                    "skill2" => {
+                        let aid = abilities.e;
+                        let conf = em.abilities_config.get(aid).unwrap();
+                        let cano_anim_name = &conf.animation;
+
+                        cano_anim_name.to_string()
+                    }
+                    "ultimate" => {
+                        let aid = abilities.r;
+                        let conf = em.abilities_config.get(aid).unwrap();
+                        let cano_anim_name = &conf.animation;
+
+                        cano_anim_name.to_string()
+                    }
                     "block" => helper.block.clone(),
                     _ => panic!("{}", action),
                 };
