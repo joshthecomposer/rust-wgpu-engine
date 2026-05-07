@@ -14,7 +14,7 @@ use crate::{
     entity_manager::EntityManager,
     enums_types::CameraState,
     physics::PhysicsState,
-    util::constants::{BASIC, DEFENSIVE, EVADE, GROUP_TERRAIN},
+    util::constants::{BASIC, DEFENSIVE, EVADE, GROUP_TERRAIN, SKILL1, SKILL2, ULTIMATE},
 };
 
 pub struct InputState {
@@ -154,6 +154,17 @@ impl InputState {
             return Some(DEFENSIVE);
         }
 
+        if self.just_pressed(KeyCode::KeyQ) {
+            return Some(SKILL1);
+        }
+
+        if self.just_pressed(KeyCode::KeyE) {
+            return Some(SKILL2);
+        }
+
+        if self.just_pressed(KeyCode::KeyR) {
+            return Some(ULTIMATE);
+        }
         None
     }
 }
