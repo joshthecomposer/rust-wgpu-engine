@@ -44,7 +44,6 @@
           "name": "Idle",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null
         }
       ],
@@ -228,7 +227,6 @@
           "continuous_sounds": [
             "MooseHuff"
           ],
-          "hurtbox_activation": [],
           "hold_frame": null
         }
       ],
@@ -345,7 +343,6 @@
             ]
           },
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "reset_on_change": false
         },
@@ -353,7 +350,6 @@
           "name": "Idle",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "reset_on_change": false
         },
@@ -361,54 +357,38 @@
           "name": "Death",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null
         },
         {
           "name": "Slash",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [
-            10,
-            16
-          ],
+          "hurtbox_activation": [[10,16]],
           "hold_frame": null
         },
         {
           "name": "Slash2",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [
-            6,
-            13
-          ],
+          "hurtbox_activation": [[6,13]],
           "hold_frame": null
         },
         {
           "name": "DashF",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [
-            6,
-            12
-          ],
           "hold_frame": null
         },
         {
           "name": "Block",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [
-            6,
-            12
-          ],
           "hold_frame": 6
         },
         {
           "name": "Flinch",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null
         }
       ],
@@ -470,7 +450,6 @@
           "name": "Idle",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null
         }
       ],
@@ -533,7 +512,6 @@
             ]
           },
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "reset_on_change": false,
           "do_root_motion": true
@@ -542,7 +520,6 @@
           "name": "Idle",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "reset_on_change": false
         },
@@ -550,17 +527,13 @@
           "name": "Death",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null
         },
         {
           "name": "Slash",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [
-            14,
-            22
-          ],
+          "hurtbox_activation": [[14,22]],
           "hold_frame": null
         }
       ],
@@ -598,7 +571,6 @@
           "name": "Idle",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "reset_on_change": false
         },
@@ -611,7 +583,6 @@
             ]
           },
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "reset_on_change": false
         },
@@ -622,7 +593,7 @@
           },
           "continuous_sounds": [],
           "hold_frame": null,
-          "hurtbox_activation": [12, 15],
+          "hurtbox_activation": [[12, 15]],
           "interrupt_frame": 18,
           "reset_on_change": true,
           "do_root_motion": true,
@@ -635,7 +606,7 @@
           },
           "continuous_sounds": [],
           "hold_frame": null,
-          "hurtbox_activation": [11, 15],
+          "hurtbox_activation": [[11, 15]],
           "interrupt_frame": 18,
           "reset_on_change": true,
           "do_root_motion": true,
@@ -646,9 +617,8 @@
           "one_shots": {
             "Footstep": []
           },
-          "continuous_sounds": [],
           "hold_frame": null,
-          "hurtbox_activation": [17, 20],
+          "hurtbox_activation": [[17, 20]],
           "interrupt_frame": 38,
           "reset_on_change": true,
           "do_root_motion": true,
@@ -659,8 +629,6 @@
           "one_shots": {
             "Footstep": []
           },
-          "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "interrupt_frame": 15
         },
@@ -669,8 +637,6 @@
           "one_shots": {
             "Footstep": []
           },
-          "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": 5,
           "interrupt_frame": 10,
           "reset_on_change": true
@@ -680,8 +646,6 @@
           "one_shots": {
             "Footstep": []
           },
-          "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "interrupt_frame": null,
           "reset_on_change": true
@@ -689,8 +653,7 @@
         {
           "name": "OSBasic1",
           "one_shots": {},
-          "continuous_sounds": [],
-          "hurtbox_activation": [8, 15],
+          "hurtbox_activation": [[8, 15]],
           "hold_frame": null,
           "interrupt_frame": 16,
           "reset_on_change": true,
@@ -699,8 +662,7 @@
         {
           "name": "OSBasic2",
           "one_shots": {},
-          "continuous_sounds": [],
-          "hurtbox_activation": [8, 15],
+          "hurtbox_activation": [[8, 15]],
           "hold_frame": null,
           "interrupt_frame": 17,
           "reset_on_change": true,
@@ -709,8 +671,7 @@
         {
           "name": "OSBasic3",
           "one_shots": {},
-          "continuous_sounds": [],
-          "hurtbox_activation": [12, 19],
+          "hurtbox_activation": [[12, 19]],
           "hold_frame": null,
           "interrupt_frame": 17,
           "reset_on_change": true,
@@ -719,8 +680,6 @@
         {
           "name": "Roll",
           "one_shots": {},
-          "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "interrupt_frame": 20,
           "reset_on_change": true,
@@ -730,7 +689,6 @@
           "name": "Stagger",
           "one_shots": {},
           "continuous_sounds": [],
-          "hurtbox_activation": [],
           "hold_frame": null,
           "interrupt_frame": 20,
           "reset_on_change": true,
@@ -739,8 +697,7 @@
         {
           "name": "Spin2Win",
           "one_shots": {},
-          "continuous_sounds": [],
-          "hurtbox_activation": [1, 17],
+          "hurtbox_tick": 0.25,
           "hold_frame": null,
           "interrupt_frame": 20,
           "reset_on_change": true,
@@ -749,8 +706,7 @@
         {
           "name": "Stabby",
           "one_shots": {},
-          "continuous_sounds": [],
-          "hurtbox_activation": [],
+          "hurtbox_activation": [[13, 16], [22, 24], [30, 32]],
           "hold_frame": null,
           "interrupt_frame": 31,
           "reset_on_change": true,

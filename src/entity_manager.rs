@@ -591,12 +591,19 @@ impl EntityManager {
                         });
                     }
 
-                    if !prop.hurtbox_activation.is_empty() {
-                        anim.hurtbox_activation = Some(FrameActivation {
-                            segment_range: prop.hurtbox_activation[0]..=prop.hurtbox_activation[1],
-                            triggered: false.into(),
-                        });
+                    if let Some(range_list) = &prop.hurtbox_activation {
+                        let mut list = vec![];
+
+                        for r in range_list {
+                            list.push(FrameActivation {
+                                segment_range: r[0]..=r[1],
+                                triggered: false.into(),
+                            });
+                        }
+
+                        anim.hurtbox_activation = Some(list);
                     }
+
                     anim.hold_frame = prop.hold_frame;
                     anim.interrupt_frame = prop.interrupt_frame;
                     anim.reset_on_change = prop.reset_on_change;
@@ -1740,7 +1747,8 @@ impl EntityManager {
                                 name: AnimationType::Idle,
                                 one_shots: HashMap::new(),
                                 continuous_sounds: vec![],
-                                hurtbox_activation: vec![],
+                                hurtbox_activation: None,
+                                hurtbox_tick: None,
                                 hold_frame: None,
                                 interrupt_frame: None,
                                 reset_on_change: true,

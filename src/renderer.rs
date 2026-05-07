@@ -3151,13 +3151,15 @@ impl Renderer {
                         }
                     }
 
-                    if let Some(fa) = &animation.hurtbox_activation {
-                        if fa.segment_range.contains(&animation.current_segment.get()) {
-                            if !fa.triggered.get() {
-                                fa.triggered.set(true);
+                    if let Some(active_range_list) = &animation.hurtbox_activation {
+                        for fa in active_range_list {
+                            if fa.segment_range.contains(&animation.current_segment.get()) {
+                                if !fa.triggered.get() {
+                                    fa.triggered.set(true);
+                                }
+                            } else {
+                                fa.triggered.set(false);
                             }
-                        } else {
-                            fa.triggered.set(false);
                         }
                     }
                 }
@@ -3262,13 +3264,15 @@ impl Renderer {
                     }
                 }
 
-                if let Some(fa) = &animation.hurtbox_activation {
-                    if fa.segment_range.contains(&animation.current_segment.get()) {
-                        if !fa.triggered.get() {
-                            fa.triggered.set(true);
+                if let Some(active_range_list) = &animation.hurtbox_activation {
+                    for fa in active_range_list {
+                        if fa.segment_range.contains(&animation.current_segment.get()) {
+                            if !fa.triggered.get() {
+                                fa.triggered.set(true);
+                            }
+                        } else {
+                            fa.triggered.set(false);
                         }
-                    } else {
-                        fa.triggered.set(false);
                     }
                 }
             }

@@ -444,6 +444,12 @@ pub struct FrameActivation {
 }
 
 #[derive(Clone, Debug)]
+pub struct DamageTick {
+    pub tick_ttl: f32,
+    pub tick_accumulator: f32,
+}
+
+#[derive(Clone, Debug)]
 pub struct Knockback {
     pub ttl: f32, // time remaining seconds
     pub flinch: bool,

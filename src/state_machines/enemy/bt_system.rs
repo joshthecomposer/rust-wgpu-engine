@@ -44,15 +44,12 @@ pub fn update(em: &mut EntityManager) {
 
             ctx.is_in_aggro_range = true;
 
-            ctx.player_is_attacking = if let Some(hba) = &p_anim.hurtbox_activation {
-                if p_anim.current_segment.get() <= *hba.segment_range.end() {
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
+            ctx.player_is_attacking = p_anim.hurtbox_activation.as_ref().is_some_and(|hba| {
+                let current_segment = p_anim.current_segment.get();
+
+                hba.iter()
+                    .any(|fa| fa.segment_range.contains(&current_segment))
+            });
         }
 
         bt.update(&mut ctx);

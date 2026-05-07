@@ -19,7 +19,7 @@ mod sparse_set;
 mod terrain;
 mod ui;
 // mod deprecated;
-mod combat_system;
+mod damage_resolution_system;
 mod game;
 mod items;
 mod particles;

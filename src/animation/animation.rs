@@ -22,7 +22,7 @@ pub struct Animation {
     pub current_segment: std::cell::Cell<u32>,
     pub one_shots: Vec<OneShot>,
     pub continuous_sounds: Vec<ContinuousSound>,
-    pub hurtbox_activation: Option<FrameActivation>,
+    pub hurtbox_activation: Option<Vec<FrameActivation>>,
     pub hold_frame: Option<u32>,
     pub do_hold: bool,
 

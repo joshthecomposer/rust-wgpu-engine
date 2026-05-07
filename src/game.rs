@@ -35,7 +35,7 @@ use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::ui::portrait_renderer::PortraitRenderer;
 use crate::world::World;
-use crate::{combat_system, items, movement_system, physics};
+use crate::{damage_resolution_system, items, movement_system, physics};
 use crate::{projectile_system, toast};
 
 #[cfg(target_arch = "wasm32")]
@@ -329,7 +329,7 @@ impl Game {
                     &mut self.physics,
                 );
 
-                combat_system::update(
+                damage_resolution_system::update(
                     &mut self.world.ecs,
                     self.time.fixed_dt,
                     &mut self.physics,

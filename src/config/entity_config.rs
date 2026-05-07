@@ -38,9 +38,12 @@ pub struct ItemBoneNames {
 pub struct AnimationPropHelper {
     pub name: AnimationType,
     pub one_shots: HashMap<SoundType, Vec<u32>>,
+    #[serde(default)]
     pub continuous_sounds: Vec<SoundType>,
     #[serde(default)]
-    pub hurtbox_activation: Vec<u32>,
+    pub hurtbox_activation: Option<Vec<Vec<u32>>>,
+    #[serde(default)]
+    pub hurtbox_tick: Option<f32>,
     #[serde(default)]
     pub hold_frame: Option<u32>,
     #[serde(default)]

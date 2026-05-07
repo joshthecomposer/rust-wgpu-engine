@@ -64,7 +64,7 @@ fn resolve_melee_hits_for_source(
     let active = animator
         .get_next_animation()
         .and_then(|anim| anim.hurtbox_activation.as_ref())
-        .map_or(false, |ha| ha.triggered.get());
+        .is_some_and(|ha_list| ha_list.iter().any(|fa| fa.triggered.get()));
 
     if !active {
         hitset.clear();
