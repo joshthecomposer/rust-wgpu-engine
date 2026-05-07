@@ -97,27 +97,27 @@ fn try_consume_buffered_combat_action(
             true
         }
         EVADE => {
-            cmds.next_anim(player_id, AnimationType::Roll, Some(weap_id));
+            cmds.next_anim_from_lookup(player_id, "dash".to_string(), Some(weap_id));
             ctrl.combat_state = Some(CombatState::Evade);
             true
         }
         SKILL1 => {
-            cmds.next_anim(player_id, AnimationType::Spin2Win, Some(weap_id));
+            cmds.next_anim_from_lookup(player_id, "skill1".to_string(), Some(weap_id));
             ctrl.combat_state = Some(CombatState::Skill1);
             true
         }
         SKILL2 => {
-            cmds.next_anim(player_id, AnimationType::Spin2Win, Some(weap_id));
+            cmds.next_anim_from_lookup(player_id, "skill2".to_string(), Some(weap_id));
             ctrl.combat_state = Some(CombatState::Skill2);
             true
         }
         ULTIMATE => {
-            cmds.next_anim(player_id, AnimationType::Spin2Win, Some(weap_id));
+            cmds.next_anim_from_lookup(player_id, "ultimate".to_string(), Some(weap_id));
             ctrl.combat_state = Some(CombatState::Ultimate);
             true
         }
         DEFENSIVE => {
-            cmds.next_anim(player_id, AnimationType::Block, Some(weap_id));
+            cmds.next_anim_from_lookup(player_id, "block".to_string(), Some(weap_id));
             ctrl.combat_state = Some(CombatState::Defensive);
             true
         }
