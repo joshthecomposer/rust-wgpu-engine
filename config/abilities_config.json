@@ -87,6 +87,14 @@
       "description": "Spinny winny",
       "icon": "resources/ui/icons/fire_ring.png",
       "animation": "Spin2Win"
-  }
+    },
+    {
+      "id": 37,
+      "name": "Stabby",
+      "cooldown": 5.0,
+      "description": "Stabby Wabby",
+      "icon": "resources/ui/icons/fire_ring.png",
+      "animation": "Stabby"
+    }
   ]
 }

@@ -1,13 +1,13 @@
 {
   "sounds": {
-    "Music": "event:/music",
-    "Footstep": "event:/footstep",
+    "Whee": "event:/whee",
     "Bloop": "event:/bloop",
+    "Jump": "event:/jump",
+    "Music": "event:/music",
     "MooseHuff": "event:/moose3D",
     "Land": "event:/land",
-    "StopRunning": "event:/stop_running",
-    "Jump": "event:/jump",
-    "Whee": "event:/whee"
+    "Footstep": "event:/footstep",
+    "StopRunning": "event:/stop_running"
   },
   "master_volume": 1.0,
   "bgm": 1.0,

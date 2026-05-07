@@ -1,18 +1,14 @@
 use glam::{vec3, Vec3};
 
 use crate::{
+    abilities::{AbilitiesConfig, WeaponAbilities},
     animation::animator::Animator,
-    command_buffer::{
-        CommandBuffer, ImpulseKind, LocoCmd, LocoIntent, LocoSpace, PartCmd, PartKind, SoundCmd,
-        SoundKind,
-    },
-    entity_manager::EntityManager,
+    command_buffer::{CommandBuffer, LocoCmd, LocoIntent, LocoSpace, PartCmd, PartKind},
     enums_types::{
         AnimationType, CombatState, ControlState, GroundedState, LocoState, PlayerController,
-        SoundType, ANIMATION_EPSILON,
     },
     input::InputState,
-    state_machines::player::{combat::combat_state_machine, orchestrator::ability_just_pressed},
+    state_machines::player::orchestrator::ability_just_pressed,
     util::constants::{BASIC, DEFENSIVE, EVADE, SKILL1, SKILL2, ULTIMATE},
 };
 
@@ -22,6 +18,8 @@ pub fn locomotion_state_machine(
     cmds: &mut CommandBuffer,
     player_id: usize,
     weap_id: Option<usize>,
+    mut weapon_abilities: Option<&mut WeaponAbilities>,
+    abilities_config: &AbilitiesConfig,
     animator: &Animator,
     dt: f32,
     gs: &GroundedState,
@@ -45,17 +43,43 @@ pub fn locomotion_state_machine(
             }
             LocoState::Idle => {
                 // Go to combat?
-                if let (Some(ability), Some(weap_id)) = (ability_just_pressed(input), weap_id) {
-                    transition_to_combat(player_id, ctrl, cmds, ability, weap_id);
-                    break 'a;
+                if let (Some(ability), Some(weap_id), Some(weapon_abilities)) = (
+                    ability_just_pressed(input),
+                    weap_id,
+                    weapon_abilities.as_deref_mut(),
+                ) {
+                    if transition_to_combat(
+                        player_id,
+                        ctrl,
+                        cmds,
+                        ability,
+                        weap_id,
+                        weapon_abilities,
+                        abilities_config,
+                    ) {
+                        break 'a;
+                    }
                 }
 
                 check_new_loco(intent, input, ctrl, cmds, player_id, animator);
             }
             LocoState::Running => {
-                if let (Some(ability), Some(weap_id)) = (ability_just_pressed(input), weap_id) {
-                    transition_to_combat(player_id, ctrl, cmds, ability, weap_id);
-                    break 'a;
+                if let (Some(ability), Some(weap_id), Some(weapon_abilities)) = (
+                    ability_just_pressed(input),
+                    weap_id,
+                    weapon_abilities.as_deref_mut(),
+                ) {
+                    if transition_to_combat(
+                        player_id,
+                        ctrl,
+                        cmds,
+                        ability,
+                        weap_id,
+                        weapon_abilities,
+                        abilities_config,
+                    ) {
+                        break 'a;
+                    }
                 }
 
                 check_new_loco(intent, input, ctrl, cmds, player_id, animator);
@@ -187,6 +211,33 @@ pub fn ability_to_anim_lookup(ability: u32) -> String {
     }
 }
 
+pub fn ability_to_slot(ability: u32) -> Option<usize> {
+    match ability {
+        SKILL1 => Some(2),
+        SKILL2 => Some(3),
+        ULTIMATE => Some(5),
+        _ => None,
+    }
+}
+
+pub fn ability_is_ready(ability: u32, weapon_abilities: Option<&WeaponAbilities>) -> bool {
+    match ability_to_slot(ability) {
+        Some(slot) => weapon_abilities.is_some_and(|abilities| abilities.is_ready(slot)),
+        None => true,
+    }
+}
+
+pub fn try_trigger_ability_cooldown(
+    ability: u32,
+    weapon_abilities: &mut WeaponAbilities,
+    abilities_config: &AbilitiesConfig,
+) -> bool {
+    match ability_to_slot(ability) {
+        Some(slot) => weapon_abilities.trigger(slot, abilities_config).is_some(),
+        None => true,
+    }
+}
+
 pub fn ability_to_state(ability: u32) -> CombatState {
     match ability {
         BASIC => CombatState::Basic,
@@ -205,10 +256,17 @@ fn transition_to_combat(
     cmds: &mut CommandBuffer,
     ability: u32,
     weap_id: usize,
-) {
+    weapon_abilities: &mut WeaponAbilities,
+    abilities_config: &AbilitiesConfig,
+) -> bool {
+    if !try_trigger_ability_cooldown(ability, weapon_abilities, abilities_config) {
+        return false;
+    }
+
     ctrl.control_state = ControlState::Combat;
     cmds.next_anim_from_lookup(player_id, ability_to_anim_lookup(ability), Some(weap_id));
     ctrl.combat_state = Some(ability_to_state(ability));
+    true
 }
 
 pub fn anim_for_loco_state(ls: &LocoState) -> AnimationType {

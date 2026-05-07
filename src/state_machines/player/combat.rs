@@ -1,17 +1,15 @@
-use std::time::{Instant, SystemTime};
-
-use glam::{vec3, Vec3};
-use winit::keyboard::KeyCode;
-
 use crate::{
+    abilities::{AbilitiesConfig, WeaponAbilities},
     animation::{animation::Animation, animator::Animator},
-    command_buffer::{CommandBuffer, ImpulseKind, LocoIntent, LocoSpace, PartCmd, PartKind},
+    command_buffer::{CommandBuffer, LocoIntent, LocoSpace},
     enums_types::{
         AnimationType, BufferedAction, CombatState, ControlState, LocoState, PlayerController,
         ANIMATION_EPSILON,
     },
     input::InputState,
-    state_machines::player::orchestrator::ability_just_pressed,
+    state_machines::player::loco::{
+        ability_to_anim_lookup, ability_to_state, try_trigger_ability_cooldown,
+    },
     util::constants::{BASIC, DEFENSIVE, EVADE, SKILL1, SKILL2, ULTIMATE},
 };
 
@@ -20,6 +18,8 @@ pub fn combat_state_machine(
     cmds: &mut CommandBuffer,
     player_id: usize,
     weap_id: usize,
+    weapon_abilities: &mut WeaponAbilities,
+    abilities_config: &AbilitiesConfig,
     input: &InputState,
     animator: &mut Animator,
     dt: f32,
@@ -46,7 +46,15 @@ pub fn combat_state_machine(
     }
 
     if anim.can_interrupt() {
-        if try_consume_buffered_combat_action(ctrl, cmds, player_id, weap_id, action) {
+        if try_consume_buffered_combat_action(
+            ctrl,
+            cmds,
+            player_id,
+            weap_id,
+            weapon_abilities,
+            abilities_config,
+            action,
+        ) {
             return;
         }
 
@@ -84,6 +92,8 @@ fn try_consume_buffered_combat_action(
     cmds: &mut CommandBuffer,
     player_id: usize,
     weap_id: usize,
+    weapon_abilities: &mut WeaponAbilities,
+    abilities_config: &AbilitiesConfig,
     action: Option<BufferedAction>,
 ) -> bool {
     let Some(buf) = action else {
@@ -91,37 +101,25 @@ fn try_consume_buffered_combat_action(
     };
 
     match buf.action {
-        BASIC => {
-            cmds.next_anim_from_lookup(player_id, "basic".to_string(), Some(weap_id));
-            ctrl.combat_state = Some(CombatState::Basic);
+        BASIC | EVADE | SKILL1 | SKILL2 | ULTIMATE | DEFENSIVE => {
+            if !try_trigger_ability_cooldown(buf.action, weapon_abilities, abilities_config) {
+                ctrl.queued_action = None;
+                return false;
+            }
+
+            cmds.next_anim_from_lookup(
+                player_id,
+                ability_to_anim_lookup(buf.action),
+                Some(weap_id),
+            );
+            ctrl.combat_state = Some(ability_to_state(buf.action));
+            ctrl.queued_action = None;
             true
         }
-        EVADE => {
-            cmds.next_anim_from_lookup(player_id, "dash".to_string(), Some(weap_id));
-            ctrl.combat_state = Some(CombatState::Evade);
-            true
+        _ => {
+            ctrl.queued_action = None;
+            false
         }
-        SKILL1 => {
-            cmds.next_anim_from_lookup(player_id, "skill1".to_string(), Some(weap_id));
-            ctrl.combat_state = Some(CombatState::Skill1);
-            true
-        }
-        SKILL2 => {
-            cmds.next_anim_from_lookup(player_id, "skill2".to_string(), Some(weap_id));
-            ctrl.combat_state = Some(CombatState::Skill2);
-            true
-        }
-        ULTIMATE => {
-            cmds.next_anim_from_lookup(player_id, "ultimate".to_string(), Some(weap_id));
-            ctrl.combat_state = Some(CombatState::Ultimate);
-            true
-        }
-        DEFENSIVE => {
-            cmds.next_anim_from_lookup(player_id, "block".to_string(), Some(weap_id));
-            ctrl.combat_state = Some(CombatState::Defensive);
-            true
-        }
-        _ => false,
     }
 }
 

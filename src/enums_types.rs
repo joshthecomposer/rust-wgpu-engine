@@ -278,6 +278,7 @@ pub enum AnimationType {
     Roll,
     Stagger,
     Spin2Win,
+    Stabby,
 }
 
 impl Display for AnimationType {
@@ -303,6 +304,7 @@ impl Display for AnimationType {
             AnimationType::Roll => write!(f, "Roll"),
             AnimationType::Stagger => write!(f, "Stagger"),
             AnimationType::Spin2Win => write!(f, "Spin2Win"),
+            AnimationType::Stabby => write!(f, "Stabby"),
         }
     }
 }
@@ -330,6 +332,7 @@ impl AnimationType {
             "Roll" => Some(AnimationType::Roll),
             "Stagger" => Some(AnimationType::Stagger),
             "Spin2Win" => Some(AnimationType::Spin2Win),
+            "Stabby" => Some(AnimationType::Stabby),
             _ => panic!("Invalid AnimationType passed in. {}", input),
         }
     }

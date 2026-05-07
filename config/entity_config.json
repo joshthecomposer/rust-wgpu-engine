@@ -745,6 +745,16 @@
           "interrupt_frame": 20,
           "reset_on_change": true,
           "do_root_motion": false
+        },
+        {
+          "name": "Stabby",
+          "one_shots": {},
+          "continuous_sounds": [],
+          "hurtbox_activation": [],
+          "hold_frame": null,
+          "interrupt_frame": 31,
+          "reset_on_change": true,
+          "do_root_motion": true
         }
       ],
       "item_bones": {

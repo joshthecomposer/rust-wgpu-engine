@@ -1,16 +1,11 @@
-use std::time::Instant;
-
 use crate::{
-    animation::{animation::Animation, animator::Animator},
-    command_buffer::{CommandBuffer, LocoIntent, PartCmd, PartKind, SoundCmd, SoundKind},
+    command_buffer::{CommandBuffer, PartCmd, PartKind, SoundCmd, SoundKind},
     entity_manager::EntityManager,
-    enums_types::{
-        AnimationType, BufferedAction, CombatState, ControlState, LifeState, LocoState, SoundType,
-    },
+    enums_types::{AnimationType, BufferedAction, ControlState, LifeState, SoundType},
     input::InputState,
     state_machines::player::{
         combat::combat_state_machine,
-        loco::{self, locomotion_state_machine},
+        loco::{ability_is_ready, locomotion_state_machine},
     },
     util::constants::{BASIC, DEFENSIVE, EVADE, SKILL1, SKILL2, ULTIMATE},
 };
@@ -39,11 +34,17 @@ pub fn player_state_orchestrator(
         return;
     };
 
+    let weap_id = em.active_items.get(player_id).and_then(|w| w.right_hand);
+
     if let Some(buffered_action) = input.collect_combat_input() {
-        ctrl.queued_action = Some(BufferedAction {
-            action: buffered_action,
-            ttl: 0.21,
-        });
+        let weapon_abilities = weap_id.and_then(|id| em.weapon_abilities.get(id));
+
+        if ability_is_ready(buffered_action, weapon_abilities) {
+            ctrl.queued_action = Some(BufferedAction {
+                action: buffered_action,
+                ttl: 0.21,
+            });
+        }
     };
 
     if let Some(buf) = &mut ctrl.queued_action {
@@ -112,13 +113,12 @@ pub fn player_state_orchestrator(
                 | AnimationType::OSBasic3
                 | AnimationType::Roll
                 | AnimationType::Spin2Win
+                | AnimationType::Stabby
         )
     {
         cmds.next_anim(player_id, AnimationType::Stagger, None);
         return;
     }
-
-    let weap_id = em.active_items.get(player_id).and_then(|w| w.right_hand);
 
     let Some(gs) = em.grounded_states.get(player_id) else {
         eprintln!("We need a grounded state for player to work right");
@@ -130,11 +130,39 @@ pub fn player_state_orchestrator(
 
     match ctrl.control_state {
         ControlState::Player => {
-            locomotion_state_machine(ctrl, input, cmds, player_id, weap_id, animator, dt, gs, pos);
+            let weapon_abilities = weap_id.and_then(|id| em.weapon_abilities.get_mut(id));
+
+            locomotion_state_machine(
+                ctrl,
+                input,
+                cmds,
+                player_id,
+                weap_id,
+                weapon_abilities,
+                &em.abilities_config,
+                animator,
+                dt,
+                gs,
+                pos,
+            );
         }
         ControlState::Combat => {
             if let Some(weap_id) = weap_id {
-                combat_state_machine(ctrl, cmds, player_id, weap_id, input, animator, dt);
+                let Some(weapon_abilities) = em.weapon_abilities.get_mut(weap_id) else {
+                    return;
+                };
+
+                combat_state_machine(
+                    ctrl,
+                    cmds,
+                    player_id,
+                    weap_id,
+                    weapon_abilities,
+                    &em.abilities_config,
+                    input,
+                    animator,
+                    dt,
+                );
             }
         }
         _ => (),
