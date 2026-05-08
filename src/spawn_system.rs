@@ -18,6 +18,7 @@ use crate::{
 pub struct RoundData {
     amount: u32,
     spawned: bool,
+    weapons: Option<Vec<String>>,
 }
 
 pub struct SpawnManager {
@@ -47,7 +48,7 @@ impl SpawnManager {
         }
 
         if !curr.spawned && self.next_round_accumulator >= self.next_round_ttl {
-            Self::spawn_enemies(curr.amount, em, ps);
+            Self::spawn_enemies(&curr, em, ps);
             curr.spawned = true;
             self.next_round_accumulator = 0.0;
             return;
@@ -59,15 +60,19 @@ impl SpawnManager {
         }
     }
 
-    fn spawn_enemies(amount: u32, em: &mut EntityManager, ps: &mut PhysicsState) {
+    fn spawn_enemies(round_data: &RoundData, em: &mut EntityManager, ps: &mut PhysicsState) {
         let enemy_weapon_types: Vec<String> =
             em.weapon_anim_map.weapon_types.keys().cloned().collect();
 
-        for _ in 0..amount {
+        for i in 0..round_data.amount as usize {
             match Self::find_spawn_point(em, ps) {
                 Some(point) => {
-                    let weapon_type =
-                        &enemy_weapon_types[em.rng.random_range(0..enemy_weapon_types.len())];
+                    let weapon_type = if let Some(ref ws) = round_data.weapons {
+                        &ws[i]
+                    } else {
+                        &enemy_weapon_types[em.rng.random_range(0..enemy_weapon_types.len())]
+                            .to_string()
+                    };
 
                     let instance = EntityInstance {
                         entity_type: "Peasant1".to_string(),
@@ -174,14 +179,22 @@ impl Default for SpawnManager {
                 RoundData {
                     amount: 1,
                     spawned: false,
+                    weapons: Some(vec!["DoubleAxe".to_string()]),
                 },
                 RoundData {
                     amount: 2,
                     spawned: false,
+                    weapons: Some(vec!["OrcSword".to_string(), "DoubleAxe".to_string()]),
                 },
                 RoundData {
                     amount: 4,
                     spawned: false,
+                    weapons: Some(vec![
+                        "OrcSword".to_string(),
+                        "OrcSword".to_string(),
+                        "DoubleAxe".to_string(),
+                        "FireStaff".to_string(),
+                    ]),
                 },
             ]),
             next_round_ttl: 5.0,
