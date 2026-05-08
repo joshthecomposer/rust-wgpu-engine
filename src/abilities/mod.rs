@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use crate::config::Config;
+use crate::enums_types::{DamagePayload, StatusEffectHelper};
 
 /// Unique identifier for an ability.
 pub type AbilityId = usize;
@@ -29,6 +30,8 @@ pub struct AbilityDefinition {
     pub icon: String,
     // this is the same animation name that is stored in the animator
     pub animation: String,
+    #[serde(default)]
+    pub payload: Option<DamagePayload>,
 }
 
 /// All ability definitions (loaded from abilities_config.json).

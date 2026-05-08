@@ -3,7 +3,7 @@ use glam::{vec3, Vec3};
 use crate::{
     command_buffer::{CommandBuffer, PartCmd, PartKind},
     entity_manager::EntityManager,
-    enums_types::{Knockback, LifeState},
+    enums_types::{DamagePayload, DamageSource, Knockback, LifeState, StatusEffect},
     physics::{self, PhysicsState},
 };
 
@@ -340,7 +340,10 @@ fn resolve_damage_volume_hits(
 ) {
     let dv = em.damage_volumes.get_mut(dv_id).unwrap();
 
-    let source_id = dv.source_id.unwrap();
+    let Some(source_id) = dv.source.entity_id() else {
+        eprintln!("No entity id on damage source, world versions are not allowed yet");
+        return;
+    };
 
     let source_faction = match em.factions.get(source_id) {
         Some(f) => f.as_str(),
@@ -415,7 +418,28 @@ fn resolve_damage_volume_hits(
         if let Some(ph) = em.physics_handles.get(victim_id) {
             let health = em.healths.get_mut(victim_id).unwrap();
 
-            *health -= dv.damage_scalar;
+            *health -= dv.damage_payload.damage;
+
+            for effect in &dv.damage_payload.status_effects {
+                if em.status_effects.get(victim_id).is_none() {
+                    em.status_effects.insert(victim_id, Vec::new());
+                }
+
+                let effects = em.status_effects.get_mut(victim_id).unwrap();
+
+                if effects.iter().any(|active| active.kind == effect.kind) {
+                    continue;
+                }
+
+                effects.push(StatusEffect {
+                    kind: effect.kind.clone(),
+                    source: dv.source.clone(),
+                    remaining: effect.remaining,
+                    tick_accumulator: 0.0,
+                    stacks: 1,
+                    behaviors: effect.behaviors.clone(),
+                });
+            }
 
             let t = em.transforms.get(victim_id).unwrap();
 

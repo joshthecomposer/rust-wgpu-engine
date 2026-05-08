@@ -94,7 +94,24 @@
       "cooldown": 5.0,
       "description": "Stabby Wabby",
       "icon": "resources/ui/icons/fire_ring.png",
-      "animation": "Stabby"
+      "animation": "Stabby",
+      "payload": {
+        "damage": 1.0,
+        "status_effects": [
+          {
+            "kind": "Bleed",
+            "remaining": 4.0,
+            "behaviors": [
+              {
+                "PeriodicDamage": {
+                  "damage_per_tick": 0.5,
+                  "tick_interval": 1.0
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

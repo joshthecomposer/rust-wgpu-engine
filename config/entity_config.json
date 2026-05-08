@@ -710,7 +710,9 @@
             "ticker": {
               "tick_ttl": 0.25
             },
-            "damage_scalar": 3.0,
+            "damage_payload": {
+              "damage": 1.0
+            },
             "offset": [0.0, 0.8, 0.0] 
           }
         },

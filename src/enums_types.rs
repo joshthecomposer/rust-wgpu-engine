@@ -534,17 +534,29 @@ pub struct GroundedState {
     pub ray_length_airborne: f32,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct DamageVolume {
     pub shape: HitboxShape,
     pub ticker: DamageTick,
-    pub damage_scalar: f32,
+    pub damage_payload: DamagePayload,
     pub offset: Vec3,
 
-    #[serde(default)]
-    pub source_id: Option<usize>,
-    #[serde(default)]
-    pub source_anim: Option<AnimationType>,
+    pub source: DamageSource,
+    pub source_anim: AnimationType,
+}
+
+impl DamageVolume {
+    pub fn was_spawned_by(&self, source_id: usize, anim_type: AnimationType) -> bool {
+        self.source.entity_id() == Some(source_id) && self.source_anim == anim_type
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DamageVolumeHelper {
+    pub shape: HitboxShape,
+    pub ticker: DamageTick,
+    pub damage_payload: DamagePayload,
+    pub offset: Vec3,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -552,4 +564,77 @@ pub struct DamageTick {
     pub tick_ttl: f32,
     #[serde(default)]
     pub tick_accumulator: f32,
+}
+
+pub struct StatusEffect {
+    pub kind: StatusEffectKind,
+    pub source: DamageSource,
+    pub remaining: f32,
+    pub tick_accumulator: f32,
+    pub stacks: u32,
+    pub behaviors: Vec<StatusEffectBehavior>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct StatusEffectHelper {
+    pub kind: StatusEffectKind,
+    pub remaining: f32,
+    pub behaviors: Vec<StatusEffectBehavior>,
+}
+
+#[derive(Clone, Debug)]
+pub enum DamageSource {
+    Entity(usize),
+    World,
+}
+
+impl DamageSource {
+    pub fn entity_id(&self) -> Option<usize> {
+        match self {
+            DamageSource::Entity(id) => Some(*id),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub enum StatusEffectKind {
+    Bleed,
+    Burn,
+    Slow,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum StatusEffectBehavior {
+    PeriodicDamage {
+        damage_per_tick: f32,
+        tick_interval: f32,
+    },
+    StatModifier {
+        stat: StatKind,
+        op: Operation,
+        amount: f32,
+    },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum StatKind {
+    MovementSpeed,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum Operation {
+    Add,
+    Multiply,
+    Override,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DamagePayload {
+    pub damage: f32,
+
+    #[serde(default)]
+    pub status_effects: Vec<StatusEffectHelper>,
+    // TODO: Knockback
+    // pub knockback
 }

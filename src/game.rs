@@ -37,6 +37,7 @@ use crate::ui::portrait_renderer::PortraitRenderer;
 use crate::world::World;
 use crate::{
     damage_resolution_system, damage_volume_spawn_system, items, movement_system, physics,
+    status_effect_system,
 };
 use crate::{projectile_system, toast};
 
@@ -339,6 +340,12 @@ impl Game {
                     &mut self.world.ecs,
                     self.time.fixed_dt,
                     &mut self.physics,
+                    &mut self.command_buffer,
+                );
+
+                status_effect_system::update(
+                    &mut self.world.ecs,
+                    self.time.fixed_dt,
                     &mut self.command_buffer,
                 );
 

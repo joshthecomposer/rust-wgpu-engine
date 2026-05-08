@@ -250,7 +250,7 @@ pub fn push_damage_volume_kinematics(em: &mut EntityManager, ps: &mut PhysicsSta
             continue;
         };
 
-        let Some(source_id) = volume.source_id else {
+        let Some(source_id) = volume.source.entity_id() else {
             continue;
         };
 

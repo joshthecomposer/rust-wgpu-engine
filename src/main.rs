@@ -37,6 +37,7 @@ mod world;
 
 mod damage_volume_spawn_system;
 mod projectile_system;
+mod status_effect_system;
 
 #[cfg(not(target_arch = "wasm32"))]
 use config::{game_config::GameConfig, Config};

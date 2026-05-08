@@ -35,9 +35,10 @@ use crate::{
     },
     debug::gizmos::{Cuboid, Cylinder, Dimension, Pill, Sphere},
     enums_types::{
-        ActiveItem, AnimationType, ControlState, DamageVolume, EnemyController, FrameActivation,
-        GroundedState, HitboxShape, JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle,
-        PlayerController, Rotator, Transform, VisualEffect,
+        ActiveItem, AnimationType, ControlState, DamageSource, DamageVolume, DamageVolumeHelper,
+        EnemyController, FrameActivation, GroundedState, HitboxShape, JumpHeight, Knockback,
+        LifeState, LocoState, PhysicsHandle, PlayerController, Rotator, StatusEffect, Transform,
+        VisualEffect,
     },
     input::InputState,
     physics::PhysicsState,
@@ -112,6 +113,7 @@ pub struct EntityManager {
     pub behavior_trees: SparseSet<BehaviorTree>,
     pub projectile_controllers: SparseSet<ProjectileController>,
     pub damage_volumes: SparseSet<DamageVolume>,
+    pub status_effects: SparseSet<Vec<StatusEffect>>,
 
     // Everything below here feels like a different thing than the ECS. resources?
 
@@ -137,7 +139,7 @@ pub struct EntityManager {
     pub weapon_anim_map: WeaponAnimMapHelper,
 
     pub current_round_enemies: Vec<usize>,
-    pub animation_to_damage_volume: HashMap<AnimationType, DamageVolume>,
+    pub animation_to_damage_volume: HashMap<AnimationType, DamageVolumeHelper>,
 }
 
 impl EntityManager {
@@ -208,6 +210,7 @@ impl EntityManager {
             behavior_trees: SparseSet::with_capacity(max_entities),
             projectile_controllers: SparseSet::with_capacity(max_entities),
             damage_volumes: SparseSet::with_capacity(max_entities),
+            status_effects: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json")
@@ -390,14 +393,20 @@ impl EntityManager {
         let volume_id = self.next_entity_id;
         self.next_entity_id += 1;
 
-        let mut volume = self
+        let volume_conf = self
             .animation_to_damage_volume
             .get_mut(anim)
             .cloned()
             .unwrap();
 
-        volume.source_id = Some(source_id);
-        volume.source_anim = Some(*anim);
+        let volume = DamageVolume {
+            source_anim: *anim,
+            source: DamageSource::Entity(source_id),
+            shape: volume_conf.shape,
+            ticker: volume_conf.ticker,
+            offset: volume_conf.offset,
+            damage_payload: volume_conf.damage_payload,
+        };
 
         let source_transform = self.transforms.get(source_id).unwrap();
         let source_position = source_transform.position;
@@ -1402,6 +1411,7 @@ impl EntityManager {
                 .retain(|enemy_id| *enemy_id != id);
 
             self.damage_volumes.remove(id);
+            self.status_effects.remove(id);
         }
 
         self.entity_trashcan.clear();

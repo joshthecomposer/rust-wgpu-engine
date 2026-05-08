@@ -51,6 +51,8 @@ impl AbilityEditor {
                             description: self.staged_description.clone(),
                             icon: self.staged_icon.clone(),
                             animation: "".to_string(),
+
+                            payload: None,
                         };
 
                         em.abilities_config.abilities.push(new_ability);
