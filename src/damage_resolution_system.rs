@@ -3,7 +3,9 @@ use glam::{vec3, Vec3};
 use crate::{
     command_buffer::{CommandBuffer, PartCmd, PartKind},
     entity_manager::EntityManager,
-    enums_types::{DamagePayload, DamageSource, Knockback, LifeState, StatusEffect},
+    enums_types::{
+        DamagePayload, DamageSource, Knockback, LifeState, StatusEffect, StatusEffectHelper,
+    },
     physics::{self, PhysicsState},
 };
 
@@ -61,11 +63,6 @@ fn resolve_melee_hits_for_source(
         None => return,
     };
 
-    let hitset = match em.hitsets.get_mut(active_weapon_id) {
-        Some(h) => h,
-        None => return,
-    };
-
     let animator = match em.animators.get(source_id) {
         Some(a) => a,
         None => return,
@@ -77,7 +74,9 @@ fn resolve_melee_hits_for_source(
         .is_some_and(|ha_list| ha_list.iter().any(|fa| fa.triggered.get()));
 
     if !active {
-        hitset.clear();
+        if let Some(hitset) = em.hitsets.get_mut(active_weapon_id) {
+            hitset.clear();
+        }
         return;
     }
 
@@ -92,13 +91,15 @@ fn resolve_melee_hits_for_source(
     };
 
     let source_faction = match em.factions.get(source_id) {
-        Some(f) => f.as_str(),
+        Some(f) => f.clone(),
         None => return,
     };
 
-    if !matches!(source_faction, "Player" | "Enemy") {
+    if !matches!(source_faction.as_str(), "Player" | "Enemy") {
         return;
     }
+
+    let payload = payload_for_source_animation(em, source_id, 1.0);
 
     for (c1, c2, i) in ps.narrow_phase.intersection_pairs_with(rh_w_col_handle) {
         if !i {
@@ -123,93 +124,52 @@ fn resolve_melee_hits_for_source(
             continue;
         }
 
-        let Some(victim_faction) = em.factions.get(victim_id).map(|f| f.as_str()) else {
+        let Some(victim_faction) = em.factions.get(victim_id).cloned() else {
             continue;
         };
 
-        if !matches!(victim_faction, "Player" | "Enemy") {
+        if !matches!(victim_faction.as_str(), "Player" | "Enemy") {
             continue;
         }
 
-        match (source_faction, victim_faction) {
+        match (source_faction.as_str(), victim_faction.as_str()) {
             ("Player", "Player") => continue,
             ("Enemy", "Enemy") => continue,
             _ => (),
         }
 
-        if !hitset.insert(other) {
+        let did_insert = match em.hitsets.get_mut(active_weapon_id) {
+            Some(hitset) => hitset.insert(other),
+            None => return,
+        };
+
+        if !did_insert {
             continue;
         }
 
-        if let Some(ph) = em.physics_handles.get(victim_id) {
-            if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
-                let health = em.healths.get_mut(victim_id).unwrap();
+        let Some(rb_handle) = em.physics_handles.get(victim_id).map(|ph| ph.rigid_body) else {
+            continue;
+        };
 
-                *health -= 1.0;
+        apply_damage_payload(
+            em,
+            cmds,
+            DamageSource::Entity(source_id),
+            victim_id,
+            victim_faction.as_str(),
+            &payload,
+        );
 
-                let kb = Knockback {
-                    ttl: 0.35,
-                    flinch: false,
-                    did_particles: false,
-                };
+        if let Some(rb) = ps.rigid_body_set.get_mut(rb_handle) {
+            let kb = Knockback {
+                ttl: 0.35,
+                flinch: false,
+                did_particles: false,
+            };
+            let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
 
-                let t = em.transforms.get(victim_id).unwrap();
-
-                let entity_world =
-                    glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
-
-                let skellington = em.skellingtons.get(victim_id).unwrap();
-
-                let mut stack = Vec::new();
-
-                for bone in &skellington.children {
-                    stack.push(bone);
-                }
-
-                while let Some(bone) = stack.pop() {
-                    let bone_world = entity_world * bone.global_transform;
-                    let pos = bone_world.w_axis.truncate();
-
-                    cmds.particles.push(PartCmd {
-                        name: "DamageBlood".to_string(),
-                        kind: PartKind::WorldOrigin(pos),
-                        direction: Vec3::Y,
-                    });
-
-                    for child in &bone.children {
-                        stack.push(child);
-                    }
-                }
-
-                match victim_faction {
-                    "Player" => {
-                        let target_ctrl = em.player_controllers.get_mut(victim_id).unwrap();
-                        target_ctrl.took_damage = true;
-                        if *health <= 0.0 {
-                            if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead)
-                            {
-                                target_ctrl.life_state = LifeState::Dying
-                            }
-                        }
-                    }
-                    "Enemy" => {
-                        let target_ctrl = em.enemy_controllers.get_mut(victim_id).unwrap();
-                        target_ctrl.took_damage = true;
-                        if *health <= 0.0 {
-                            if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead)
-                            {
-                                target_ctrl.life_state = LifeState::Dying
-                            }
-                        }
-                    }
-                    _ => (),
-                }
-
-                let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
-
-                physics::apply_delta_v(rb, dir, 2.0);
-                em.knockbacks.insert(victim_id, kb);
-            }
+            physics::apply_delta_v(rb, dir, 2.0);
+            em.knockbacks.insert(victim_id, kb);
         }
     }
 }
@@ -222,13 +182,18 @@ fn resolve_projectile_hits_for_source(
     cmds: &mut CommandBuffer,
 ) {
     let source_faction = match em.factions.get(source_id) {
-        Some(f) => f.as_str(),
+        Some(f) => f.clone(),
         None => return,
     };
 
-    if !matches!(source_faction, "Player" | "Enemy") {
+    if !matches!(source_faction.as_str(), "Player" | "Enemy") {
         return;
     }
+
+    let payload = DamagePayload {
+        damage: 3.0,
+        status_effects: vec![],
+    };
 
     let proj_col_handle = match em.physics_handles.get(proj_id) {
         Some(ph) => ph.collider,
@@ -259,75 +224,32 @@ fn resolve_projectile_hits_for_source(
             continue;
         }
 
-        let Some(victim_faction) = em.factions.get(victim_id).map(|f| f.as_str()) else {
+        let Some(victim_faction) = em.factions.get(victim_id).cloned() else {
             continue;
         };
 
-        if !matches!(victim_faction, "Player" | "Enemy") {
+        if !matches!(victim_faction.as_str(), "Player" | "Enemy") {
             continue;
         }
 
-        match (source_faction, victim_faction) {
+        match (source_faction.as_str(), victim_faction.as_str()) {
             ("Player", "Player") => continue,
             ("Enemy", "Enemy") => continue,
             _ => (),
         }
 
-        if let Some(ph) = em.physics_handles.get(victim_id) {
-            let health = em.healths.get_mut(victim_id).unwrap();
-
-            *health -= 3.0;
-
-            let t = em.transforms.get(victim_id).unwrap();
-
-            let entity_world =
-                glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
-
-            let skellington = em.skellingtons.get(victim_id).unwrap();
-
-            let mut stack = Vec::new();
-
-            for bone in &skellington.children {
-                stack.push(bone);
-            }
-
-            while let Some(bone) = stack.pop() {
-                let bone_world = entity_world * bone.global_transform;
-                let pos = bone_world.w_axis.truncate();
-
-                cmds.particles.push(PartCmd {
-                    name: "DamageBlood".to_string(),
-                    kind: PartKind::WorldOrigin(pos),
-                    direction: Vec3::Y,
-                });
-
-                for child in &bone.children {
-                    stack.push(child);
-                }
-            }
-
-            match victim_faction {
-                "Player" => {
-                    let target_ctrl = em.player_controllers.get_mut(victim_id).unwrap();
-                    target_ctrl.took_damage = true;
-                    if *health <= 0.0 {
-                        if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead) {
-                            target_ctrl.life_state = LifeState::Dying
-                        }
-                    }
-                }
-                "Enemy" => {
-                    let target_ctrl = em.enemy_controllers.get_mut(victim_id).unwrap();
-                    target_ctrl.took_damage = true;
-                    if *health <= 0.0 {
-                        if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead) {
-                            target_ctrl.life_state = LifeState::Dying
-                        }
-                    }
-                }
-                _ => (),
-            }
+        if em.physics_handles.get(victim_id).is_none() {
+            continue;
         }
+
+        apply_damage_payload(
+            em,
+            cmds,
+            DamageSource::Entity(source_id),
+            victim_id,
+            victim_faction.as_str(),
+            &payload,
+        );
     }
 }
 
@@ -338,19 +260,30 @@ fn resolve_damage_volume_hits(
     cmds: &mut CommandBuffer,
     dt: f32,
 ) {
-    let dv = em.damage_volumes.get_mut(dv_id).unwrap();
+    let (source, payload) = {
+        let dv = em.damage_volumes.get_mut(dv_id).unwrap();
 
-    let Some(source_id) = dv.source.entity_id() else {
+        dv.ticker.tick_accumulator += dt;
+
+        if dv.ticker.tick_accumulator < dv.ticker.tick_ttl {
+            return;
+        }
+
+        dv.ticker.tick_accumulator -= dv.ticker.tick_ttl;
+        (dv.source.clone(), dv.damage_payload.clone())
+    };
+
+    let Some(source_id) = source.entity_id() else {
         eprintln!("No entity id on damage source, world versions are not allowed yet");
         return;
     };
 
     let source_faction = match em.factions.get(source_id) {
-        Some(f) => f.as_str(),
+        Some(f) => f.clone(),
         None => return,
     };
 
-    if !matches!(source_faction, "Player" | "Enemy") {
+    if !matches!(source_faction.as_str(), "Player" | "Enemy") {
         return;
     }
 
@@ -362,18 +295,9 @@ fn resolve_damage_volume_hits(
         }
     };
 
-    let hitset = match em.hitsets.get_mut(dv_id) {
-        Some(h) => h,
-        None => return,
-    };
-
-    dv.ticker.tick_accumulator += dt;
-
-    if dv.ticker.tick_accumulator < dv.ticker.tick_ttl {
+    let Some(hitset) = em.hitsets.get_mut(dv_id) else {
         return;
-    }
-
-    dv.ticker.tick_accumulator -= dv.ticker.tick_ttl;
+    };
     hitset.clear();
 
     for (c1, c2, i) in ps.narrow_phase.intersection_pairs_with(dv_col_handle) {
@@ -397,99 +321,173 @@ fn resolve_damage_volume_hits(
             continue;
         }
 
-        let Some(victim_faction) = em.factions.get(victim_id).map(|f| f.as_str()) else {
+        let Some(victim_faction) = em.factions.get(victim_id).cloned() else {
             continue;
         };
 
-        if !matches!(victim_faction, "Player" | "Enemy") {
+        if !matches!(victim_faction.as_str(), "Player" | "Enemy") {
             continue;
         }
 
-        match (source_faction, victim_faction) {
+        match (source_faction.as_str(), victim_faction.as_str()) {
             ("Player", "Player") => continue,
             ("Enemy", "Enemy") => continue,
             _ => (),
         }
 
-        if !hitset.insert(other) {
+        let did_insert = match em.hitsets.get_mut(dv_id) {
+            Some(hitset) => hitset.insert(other),
+            None => return,
+        };
+
+        if !did_insert {
             continue;
         }
 
-        if let Some(ph) = em.physics_handles.get(victim_id) {
-            let health = em.healths.get_mut(victim_id).unwrap();
-
-            *health -= dv.damage_payload.damage;
-
-            for effect in &dv.damage_payload.status_effects {
-                if em.status_effects.get(victim_id).is_none() {
-                    em.status_effects.insert(victim_id, Vec::new());
-                }
-
-                let effects = em.status_effects.get_mut(victim_id).unwrap();
-
-                if effects.iter().any(|active| active.kind == effect.kind) {
-                    continue;
-                }
-
-                effects.push(StatusEffect {
-                    kind: effect.kind.clone(),
-                    source: dv.source.clone(),
-                    remaining: effect.remaining,
-                    tick_accumulator: 0.0,
-                    stacks: 1,
-                    behaviors: effect.behaviors.clone(),
-                });
-            }
-
-            let t = em.transforms.get(victim_id).unwrap();
-
-            let entity_world =
-                glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
-
-            let skellington = em.skellingtons.get(victim_id).unwrap();
-
-            let mut stack = Vec::new();
-
-            for bone in &skellington.children {
-                stack.push(bone);
-            }
-
-            while let Some(bone) = stack.pop() {
-                let bone_world = entity_world * bone.global_transform;
-                let pos = bone_world.w_axis.truncate();
-
-                cmds.particles.push(PartCmd {
-                    name: "DamageBlood".to_string(),
-                    kind: PartKind::WorldOrigin(pos),
-                    direction: Vec3::Y,
-                });
-
-                for child in &bone.children {
-                    stack.push(child);
-                }
-            }
-
-            match victim_faction {
-                "Player" => {
-                    let target_ctrl = em.player_controllers.get_mut(victim_id).unwrap();
-                    target_ctrl.took_damage = true;
-                    if *health <= 0.0 {
-                        if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead) {
-                            target_ctrl.life_state = LifeState::Dying
-                        }
-                    }
-                }
-                "Enemy" => {
-                    let target_ctrl = em.enemy_controllers.get_mut(victim_id).unwrap();
-                    target_ctrl.took_damage = true;
-                    if *health <= 0.0 {
-                        if !matches!(target_ctrl.life_state, LifeState::Dying | LifeState::Dead) {
-                            target_ctrl.life_state = LifeState::Dying
-                        }
-                    }
-                }
-                _ => (),
-            }
+        if em.physics_handles.get(victim_id).is_none() {
+            continue;
         }
+
+        apply_damage_payload(
+            em,
+            cmds,
+            source.clone(),
+            victim_id,
+            victim_faction.as_str(),
+            &payload,
+        );
+    }
+}
+
+fn payload_for_source_animation(
+    em: &EntityManager,
+    source_id: usize,
+    fallback_damage: f32,
+) -> DamagePayload {
+    let Some(animator) = em.animators.get(source_id) else {
+        return basic_payload(fallback_damage);
+    };
+
+    let anim_name = animator.next_animation.to_string();
+
+    em.abilities_config
+        .abilities
+        .iter()
+        .find(|ability| ability.animation == anim_name)
+        .and_then(|ability| ability.payload.clone())
+        .unwrap_or_else(|| basic_payload(fallback_damage))
+}
+
+fn basic_payload(damage: f32) -> DamagePayload {
+    DamagePayload {
+        damage,
+        status_effects: vec![],
+    }
+}
+
+fn apply_damage_payload(
+    em: &mut EntityManager,
+    cmds: &mut CommandBuffer,
+    source: DamageSource,
+    victim_id: usize,
+    victim_faction: &str,
+    payload: &DamagePayload,
+) {
+    let Some(health_after_damage) = apply_health_damage(em, victim_id, payload.damage) else {
+        return;
+    };
+
+    for effect in &payload.status_effects {
+        insert_status_effect_if_missing(em, victim_id, source.clone(), effect);
+    }
+
+    spawn_damage_particles(em, cmds, victim_id);
+    mark_victim_damaged(em, victim_id, victim_faction, health_after_damage);
+}
+
+fn apply_health_damage(em: &mut EntityManager, victim_id: usize, damage: f32) -> Option<f32> {
+    let health = em.healths.get_mut(victim_id)?;
+    *health -= damage;
+    Some(*health)
+}
+
+fn insert_status_effect_if_missing(
+    em: &mut EntityManager,
+    victim_id: usize,
+    source: DamageSource,
+    effect: &StatusEffectHelper,
+) {
+    if em.status_effects.get(victim_id).is_none() {
+        em.status_effects.insert(victim_id, Vec::new());
+    }
+
+    let effects = em.status_effects.get_mut(victim_id).unwrap();
+
+    if effects.iter().any(|active| active.kind == effect.kind) {
+        return;
+    }
+
+    effects.push(StatusEffect {
+        kind: effect.kind.clone(),
+        source,
+        remaining: effect.remaining,
+        tick_accumulator: 0.0,
+        stacks: 1,
+        behaviors: effect.behaviors.clone(),
+    });
+}
+
+fn spawn_damage_particles(em: &EntityManager, cmds: &mut CommandBuffer, victim_id: usize) {
+    let Some(t) = em.transforms.get(victim_id) else {
+        return;
+    };
+
+    let Some(skellington) = em.skellingtons.get(victim_id) else {
+        return;
+    };
+
+    let entity_world = glam::Mat4::from_scale_rotation_translation(t.scale, t.rotation, t.position);
+    let mut stack = Vec::new();
+
+    for bone in &skellington.children {
+        stack.push(bone);
+    }
+
+    while let Some(bone) = stack.pop() {
+        let bone_world = entity_world * bone.global_transform;
+        let pos = bone_world.w_axis.truncate();
+
+        cmds.particles.push(PartCmd {
+            name: "DamageBlood".to_string(),
+            kind: PartKind::WorldOrigin(pos),
+            direction: Vec3::Y,
+        });
+
+        for child in &bone.children {
+            stack.push(child);
+        }
+    }
+}
+
+fn mark_victim_damaged(
+    em: &mut EntityManager,
+    victim_id: usize,
+    victim_faction: &str,
+    health_after_damage: f32,
+) {
+    match victim_faction {
+        "Player" => {
+            let Some(target_ctrl) = em.player_controllers.get_mut(victim_id) else {
+                return;
+            };
+            target_ctrl.took_damage = true;
+        }
+        "Enemy" => {
+            let Some(target_ctrl) = em.enemy_controllers.get_mut(victim_id) else {
+                return;
+            };
+            target_ctrl.took_damage = true;
+        }
+        _ => (),
     }
 }

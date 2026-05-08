@@ -31,6 +31,7 @@ pub fn update(em: &mut EntityManager, dt: f32, _cmds: &mut CommandBuffer) {
                             let health = em.healths.get_mut(id).unwrap();
 
                             *health -= *damage_per_tick;
+                            println!("STATUS EFFECTTTTTT {}", health);
                         }
                     }
                     StatusEffectBehavior::StatModifier { stat, op, amount } => (),

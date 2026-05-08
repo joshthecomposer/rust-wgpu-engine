@@ -41,6 +41,12 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
         let skellington = em.skellingtons.get(eid).unwrap();
         let trans = em.transforms.get(eid).unwrap();
 
+        let health = em.healths.get(eid).unwrap();
+
+        if *health <= 0.0 && !matches!(ctrl.life_state, LifeState::Dying | LifeState::Dead) {
+            ctrl.life_state = LifeState::Dying;
+        }
+
         match ctrl.life_state {
             LifeState::Alive => {}
             LifeState::Dying => {

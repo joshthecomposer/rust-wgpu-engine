@@ -57,6 +57,12 @@ pub fn player_state_orchestrator(
     let skellington = em.skellingtons.get(player_id).unwrap();
     let trans = em.transforms.get(player_id).unwrap();
 
+    let health = em.healths.get(player_id).unwrap();
+
+    if *health <= 0.0 && !matches!(ctrl.life_state, LifeState::Dying | LifeState::Dead) {
+        ctrl.life_state = LifeState::Dying;
+    }
+
     match ctrl.life_state {
         LifeState::Alive => {}
         LifeState::Dying => {
