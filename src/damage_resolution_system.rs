@@ -412,12 +412,10 @@ fn resolve_damage_volume_hits(
             continue;
         }
 
-        println!("hit entity {}", victim_id);
-
         if let Some(ph) = em.physics_handles.get(victim_id) {
             let health = em.healths.get_mut(victim_id).unwrap();
 
-            *health -= 2.0;
+            *health -= dv.damage_scalar;
 
             let t = em.transforms.get(victim_id).unwrap();
 
