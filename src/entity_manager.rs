@@ -431,6 +431,7 @@ impl EntityManager {
         // physics
 
         self.damage_volumes.insert(volume_id, volume);
+        self.hitsets.insert(volume_id, HashSet::new());
     }
 
     pub fn create_sphere_projectile_from_weapon(
