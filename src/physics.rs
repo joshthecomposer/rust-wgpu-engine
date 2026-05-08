@@ -238,6 +238,54 @@ pub fn push_weapon_kinematics_from_bones(em: &mut EntityManager, ps: &mut Physic
     }
 }
 
+pub fn push_damage_volume_kinematics(em: &mut EntityManager, ps: &mut PhysicsState) {
+    let volume_ids = em
+        .damage_volumes
+        .iter()
+        .map(|entry| entry.key())
+        .collect::<Vec<_>>();
+
+    for volume_id in volume_ids {
+        let Some(volume) = em.damage_volumes.get(volume_id) else {
+            continue;
+        };
+
+        let Some(source_id) = volume.source_id else {
+            continue;
+        };
+
+        let Some(source_t) = em.transforms.get(source_id).cloned() else {
+            em.entity_trashcan.push(volume_id);
+            continue;
+        };
+
+        let Some(ph) = em.physics_handles.get(volume_id) else {
+            continue;
+        };
+
+        let pos = source_t.position;
+        let rot = source_t.rotation;
+
+        if let Some(t) = em.transforms.get_mut(volume_id) {
+            t.position = pos;
+            t.rotation = rot;
+        }
+
+        if let Some(rb) = ps.rigid_body_set.get_mut(ph.rigid_body) {
+            if rb.is_kinematic() {
+                let iso = rapier3d::na::Isometry3::from_parts(
+                    rapier3d::na::Translation3::new(pos.x, pos.y, pos.z),
+                    rapier3d::na::UnitQuaternion::from_quaternion(rapier3d::na::Quaternion::new(
+                        rot.w, rot.x, rot.y, rot.z,
+                    )),
+                );
+
+                rb.set_next_kinematic_position(iso);
+            }
+        }
+    }
+}
+
 pub fn push_static_kinematics(em: &EntityManager, ps: &mut PhysicsState) {
     for id in em.selected.iter() {
         if let Some(ph) = em.physics_handles.get(*id) {

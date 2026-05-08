@@ -15,6 +15,7 @@ pub struct CommandBuffer {
     pub loco: Vec<LocoCmd>,
     pub particles: Vec<PartCmd>,
     pub combat: Vec<CombCmd>,
+    pub ecs: Vec<EcsCmd>,
 }
 
 impl CommandBuffer {
@@ -132,6 +133,13 @@ impl CommandBuffer {
             source: None,
             kind: ImpulseKind::World,
             op: PhysOp::SetRbType(rbt),
+        });
+    }
+
+    pub fn spawn_damage_volume(&mut self, source_id: usize, anim: AnimationType) {
+        self.ecs.push(EcsCmd {
+            entity_id: source_id,
+            action: EcsAction::SpawnDamageVolume(anim),
         });
     }
 }
@@ -311,4 +319,18 @@ pub enum SoundKind {
 pub struct CombCmd {
     pub entity_id: usize,
     pub requested_state: CombatState,
+}
+
+// ==================================================================================
+// ECS
+// ==================================================================================
+#[derive(Clone, Debug)]
+pub struct EcsCmd {
+    pub entity_id: usize,
+    pub action: EcsAction,
+}
+
+#[derive(Clone, Debug)]
+pub enum EcsAction {
+    SpawnDamageVolume(AnimationType),
 }

@@ -697,11 +697,22 @@
         {
           "name": "Spin2Win",
           "one_shots": {},
-          "hurtbox_tick": 0.25,
           "hold_frame": null,
           "interrupt_frame": 20,
           "reset_on_change": true,
-          "do_root_motion": false
+          "do_root_motion": false,
+          "damage_volume": {
+            "shape": {
+              "shape": "Cylinder",
+              "r": 2.0,
+              "h": 0.8
+            },
+            "ticker": {
+              "tick_ttl": 0.25
+            },
+            "damage_scalar": 1.0,
+            "offset": [0.0, 0.8, 0.0] 
+          }
         },
         {
           "name": "Stabby",

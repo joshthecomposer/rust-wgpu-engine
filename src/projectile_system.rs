@@ -3,6 +3,7 @@ use glam::vec3;
 use crate::{
     command_buffer::{CommandBuffer, SoundCmd, SoundKind},
     entity_manager::EntityManager,
+    enums_types::AnimationType,
     physics::PhysicsState,
 };
 
@@ -17,6 +18,10 @@ impl ProjectileController {
 }
 
 pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, ps: &mut PhysicsState) {
+    spawn_projectiles(em, cmds, ps);
+}
+
+fn spawn_projectiles(em: &mut EntityManager, cmds: &mut CommandBuffer, ps: &mut PhysicsState) {
     // get active item ids, we don't care about anyone else in these cases.
     let ids = em
         .active_items

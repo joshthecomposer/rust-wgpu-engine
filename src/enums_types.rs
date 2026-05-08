@@ -444,12 +444,6 @@ pub struct FrameActivation {
 }
 
 #[derive(Clone, Debug)]
-pub struct DamageTick {
-    pub tick_ttl: f32,
-    pub tick_accumulator: f32,
-}
-
-#[derive(Clone, Debug)]
 pub struct Knockback {
     pub ttl: f32, // time remaining seconds
     pub flinch: bool,
@@ -538,4 +532,24 @@ pub struct GroundedState {
     pub just_landed: bool,
     pub ray_length_grounded: f32,
     pub ray_length_airborne: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DamageVolume {
+    pub shape: HitboxShape,
+    pub ticker: DamageTick,
+    pub damage_scalar: f32,
+    pub offset: Vec3,
+
+    #[serde(default)]
+    pub source_id: Option<usize>,
+    #[serde(default)]
+    pub source_anim: Option<AnimationType>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DamageTick {
+    pub tick_ttl: f32,
+    #[serde(default)]
+    pub tick_accumulator: f32,
 }

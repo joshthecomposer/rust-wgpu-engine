@@ -35,6 +35,7 @@ mod web_game;
 mod command_buffer;
 mod world;
 
+mod damage_volume_spawn_system;
 mod projectile_system;
 
 #[cfg(not(target_arch = "wasm32"))]

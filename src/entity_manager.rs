@@ -23,7 +23,7 @@ use crate::{
         skellington::Bone,
     },
     assets,
-    command_buffer::{CommandBuffer, ImpulseKind},
+    command_buffer::{CommandBuffer, EcsAction, ImpulseKind},
     config::{
         entity_config::{
             AnimationPropHelper, EntityConfig, EntityTypeHelper, ItemBones, UiEntityTypeHelper,
@@ -35,9 +35,9 @@ use crate::{
     },
     debug::gizmos::{Cuboid, Cylinder, Dimension, Pill, Sphere},
     enums_types::{
-        ActiveItem, AnimationType, ControlState, EnemyController, FrameActivation, GroundedState,
-        HitboxShape, JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController,
-        Rotator, Transform, VisualEffect,
+        ActiveItem, AnimationType, ControlState, DamageVolume, EnemyController, FrameActivation,
+        GroundedState, HitboxShape, JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle,
+        PlayerController, Rotator, Transform, VisualEffect,
     },
     input::InputState,
     physics::PhysicsState,
@@ -69,8 +69,9 @@ pub struct EntityManager {
     pub inventories: SparseSet<Vec<usize>>,
     pub active_items: SparseSet<ActiveItem>,
 
-    // This is for a weapon to "know" that it is in an inventory, it's a little messy but we just
-    // have to be careful to remove them properly.
+    // This is for a weapon to "know" that it is in an inventory.
+    // LHS: weapon_id, RHS: player_id
+    // LHS: damage_volume_id, RHS: player_id
     pub owners: SparseSet<usize>,
     pub is_equipped: SparseSet<bool>,
     // sockets for items to attach to, parent to a bone instead of the parent of the bone
@@ -110,6 +111,9 @@ pub struct EntityManager {
     pub weapon_helper: SparseSet<WeaponActionsHelper>,
     pub behavior_trees: SparseSet<BehaviorTree>,
     pub projectile_controllers: SparseSet<ProjectileController>,
+    pub damage_volumes: SparseSet<DamageVolume>,
+
+    // Everything below here feels like a different thing than the ECS. resources?
 
     // Projectile stuff
     // Source id is the ID of the character who originally spawned this projectile (such as a
@@ -133,6 +137,7 @@ pub struct EntityManager {
     pub weapon_anim_map: WeaponAnimMapHelper,
 
     pub current_round_enemies: Vec<usize>,
+    pub animation_to_damage_volume: HashMap<AnimationType, DamageVolume>,
 }
 
 impl EntityManager {
@@ -202,6 +207,7 @@ impl EntityManager {
             weapon_helper: SparseSet::with_capacity(max_entities),
             behavior_trees: SparseSet::with_capacity(max_entities),
             projectile_controllers: SparseSet::with_capacity(max_entities),
+            damage_volumes: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json")
@@ -217,6 +223,7 @@ impl EntityManager {
             serializable_world_data: wd,
             weapon_anim_map,
             current_round_enemies: Vec::new(),
+            animation_to_damage_volume: HashMap::new(),
         }
     }
 
@@ -347,7 +354,7 @@ impl EntityManager {
 
         match archetype.hitbox {
             HitboxShape::Cylinder { r, h } => {
-                self.create_cylinder_hitbox(r, h, position, scale, parent_id);
+                self.create_cylinder_hitbox_no_physics(r, h, position, scale, parent_id);
                 self.dimensions
                     .insert(parent_id, Dimension::Cylinder { r, h });
             }
@@ -371,6 +378,59 @@ impl EntityManager {
         );
 
         self.next_entity_id += 1;
+    }
+
+    // source_id is the character that spawned it
+    pub fn create_damage_volume(
+        &mut self,
+        source_id: usize,
+        anim: &AnimationType,
+        ps: &mut PhysicsState,
+    ) {
+        let volume_id = self.next_entity_id;
+        self.next_entity_id += 1;
+
+        let mut volume = self
+            .animation_to_damage_volume
+            .get_mut(anim)
+            .cloned()
+            .unwrap();
+
+        volume.source_id = Some(source_id);
+        volume.source_anim = Some(*anim);
+
+        let source_transform = self.transforms.get(source_id).unwrap();
+        let source_position = source_transform.position;
+        let source_rotation = -source_transform.rotation;
+
+        self.transforms.insert(
+            volume_id,
+            Transform {
+                position: source_position,
+                rotation: source_rotation,
+                scale: Vec3::ONE,
+            },
+        );
+
+        match volume.shape {
+            HitboxShape::Cylinder { r, h } => {
+                self.create_cylinder_hitbox(
+                    r,
+                    h,
+                    source_position,
+                    Vec3::ONE,
+                    source_rotation,
+                    volume_id,
+                    volume.offset,
+                    ps,
+                );
+            }
+            _ => eprint!("invalid shape passed for hitbox"),
+        }
+
+        // physics
+
+        self.damage_volumes.insert(volume_id, volume);
     }
 
     pub fn create_sphere_projectile_from_weapon(
@@ -610,6 +670,11 @@ impl EntityManager {
                     anim.do_root_motion = prop.do_root_motion;
                     anim.projectile_frame = prop.projectile_frame;
                 }
+
+                if let Some(dv) = &prop.damage_volume {
+                    self.animation_to_damage_volume
+                        .insert(prop.name, dv.clone());
+                }
             }
 
             let model = self
@@ -674,13 +739,14 @@ impl EntityManager {
 
         match archetype.hitbox {
             HitboxShape::Cylinder { r, h } => {
-                self.create_cylinder_hitbox(r, h, position, scale, parent_id);
-                self.create_physics_for_cylinder(
+                self.create_cylinder_hitbox(
+                    r,
+                    h,
                     position,
-                    rotation,
                     scale,
-                    HitboxShape::Cylinder { r, h },
+                    rotation,
                     parent_id,
+                    Vec3::ZERO,
                     ps,
                 );
             }
@@ -837,7 +903,7 @@ impl EntityManager {
         self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
-    pub fn create_cylinder_hitbox(
+    pub fn create_cylinder_hitbox_no_physics(
         &mut self,
         r: f32,
         h: f32,
@@ -866,6 +932,83 @@ impl EntityManager {
                 scale,
             },
         );
+    }
+
+    pub fn create_cylinder_hitbox(
+        &mut self,
+        r: f32,
+        h: f32,
+        position: Vec3,
+        _scale: Vec3,
+        rotation: Quat,
+        parent_id: usize,
+        offset: Vec3,
+        ps: &mut PhysicsState,
+    ) {
+        let cyl_pos = position;
+
+        // === PHYSICS ===
+        let iso: Isometry<f32> = (cyl_pos, rotation).into();
+
+        let body = RigidBodyBuilder::kinematic_position_based()
+            .ccd_enabled(false)
+            .position(iso)
+            .enabled_rotations(true, true, true)
+            .build();
+
+        let builder = ColliderBuilder::cylinder(h * 0.5, r)
+            .sensor(true)
+            .active_collision_types(ActiveCollisionTypes::all())
+            .translation(offset.into())
+            .restitution(0.0)
+            .restitution_combine_rule(CoefficientCombineRule::Min)
+            .friction(2.0)
+            .collision_groups(InteractionGroups::new(GROUP_PLAYER.into(), u32::MAX.into()))
+            .friction_combine_rule(CoefficientCombineRule::Max);
+
+        let collider = builder.build();
+
+        let body_handle = ps.rigid_body_set.insert(body);
+
+        let collider_handle =
+            ps.collider_set
+                .insert_with_parent(collider, body_handle, &mut ps.rigid_body_set);
+
+        let physics_handle = {
+            let body = ps.rigid_body_set.get_mut(body_handle).unwrap();
+
+            PhysicsHandle {
+                rigid_body: body_handle,
+                collider: collider_handle,
+                og_rb_type: body.body_type(),
+            }
+        };
+
+        self.physics_handles.insert(parent_id, physics_handle);
+
+        let cyl = Cylinder { r, h };
+
+        let collider_model = cyl.create_model(10);
+
+        self.collider_transforms.insert(
+            parent_id,
+            Transform {
+                position,
+                rotation,
+                scale: Vec3::ONE,
+            },
+        );
+        self.prev_collider_transforms.insert(
+            parent_id,
+            Transform {
+                position,
+                rotation,
+                scale: Vec3::ONE,
+            },
+        );
+        self.collider_gizmos.insert(parent_id, collider_model);
+
+        self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
     pub fn create_sphere_hitbox(
@@ -1078,55 +1221,27 @@ impl EntityManager {
         self.collider_to_entity.insert(collider_handle, parent_id);
     }
 
-    pub fn create_physics_for_cylinder(
-        &mut self,
-        position: Vec3,
-        rotation: Quat,
-        _scale: Vec3,
-        shape: HitboxShape,
-        parent_id: usize,
-        ps: &mut PhysicsState,
-    ) {
-        match shape {
-            HitboxShape::Cylinder { r, h } => {
-                let iso: Isometry<f32> = (position, rotation).into();
-
-                let body = RigidBodyBuilder::fixed().position(iso).build();
-
-                let collider = ColliderBuilder::cylinder(h * 0.5, r)
-                    .active_collision_types(ActiveCollisionTypes::all())
-                    .build();
-
-                let body_handle = ps.rigid_body_set.insert(body);
-                let collider_handle = ps.collider_set.insert_with_parent(
-                    collider,
-                    body_handle,
-                    &mut ps.rigid_body_set,
-                );
-
-                self.physics_handles.insert(
-                    parent_id,
-                    PhysicsHandle {
-                        rigid_body: body_handle,
-                        collider: collider_handle,
-
-                        og_rb_type: RigidBodyType::Fixed,
-                    },
-                );
-
-                self.collider_to_entity.insert(collider_handle, parent_id);
-            }
-            _ => panic!("You n'wah!!!"),
-        }
-    }
-
     pub fn update(
         &mut self,
         sm: &mut SoundManager,
         ps: &mut PhysicsState,
         input: &mut InputState,
         dt: f32,
+        cmds: &mut CommandBuffer,
     ) {
+        // ==========================
+        // evaluate commands
+        // ==========================
+        let ecscmds = std::mem::take(&mut cmds.ecs);
+
+        for c in ecscmds {
+            match c.action {
+                EcsAction::SpawnDamageVolume(anim) => {
+                    self.create_damage_volume(c.entity_id, &anim, ps);
+                }
+            }
+        }
+
         self.tick_weapon_cooldowns(dt);
 
         for o in self.cleanup_timer.iter_mut() {
@@ -1284,6 +1399,8 @@ impl EntityManager {
 
             self.current_round_enemies
                 .retain(|enemy_id| *enemy_id != id);
+
+            self.damage_volumes.remove(id);
         }
 
         self.entity_trashcan.clear();
@@ -1748,12 +1865,12 @@ impl EntityManager {
                                 one_shots: HashMap::new(),
                                 continuous_sounds: vec![],
                                 hurtbox_activation: None,
-                                hurtbox_tick: None,
                                 hold_frame: None,
                                 interrupt_frame: None,
                                 reset_on_change: true,
                                 do_root_motion: false,
                                 projectile_frame: None,
+                                damage_volume: None,
                             }),
                             _ => {}
                         },

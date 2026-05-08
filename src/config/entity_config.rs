@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::{config::Config, enums_types::DamageVolume};
 use std::collections::HashMap;
 
 use glam::{Quat, Vec3};
@@ -43,8 +43,6 @@ pub struct AnimationPropHelper {
     #[serde(default)]
     pub hurtbox_activation: Option<Vec<Vec<u32>>>,
     #[serde(default)]
-    pub hurtbox_tick: Option<f32>,
-    #[serde(default)]
     pub hold_frame: Option<u32>,
     #[serde(default)]
     pub interrupt_frame: Option<u32>,
@@ -54,6 +52,7 @@ pub struct AnimationPropHelper {
     pub do_root_motion: bool,
     #[serde(default)]
     pub projectile_frame: Option<u32>,
+    pub damage_volume: Option<DamageVolume>,
 }
 
 fn default_true() -> bool {
