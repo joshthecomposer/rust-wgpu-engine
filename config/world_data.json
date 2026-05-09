@@ -563,8 +563,8 @@
         }
       ],
       "base_speed": 5.0,
-      "health": 100000.0,
-      "max_health": 100000.0,
+      "health": 20.0,
+      "max_health": 20.0,
       "mana": 100.0,
       "max_mana": 100.0,
       "level": 1,
