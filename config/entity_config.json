@@ -712,7 +712,7 @@
             },
             "damage_payload": {
               "damage": 1.0,
-              "knockback_power": 5.0
+              "knockback_power": 6.0
             },
             "offset": [0.0, 0.8, 0.0] 
           }

@@ -883,8 +883,16 @@ impl Renderer {
         particles_shader.activate();
         particles_shader.set_int("texture1", 0);
 
+        let debug_depth_quad = Shader::new_with_profile(
+            "resources/shaders/debug_depth_quad.glsl",
+            ShaderProfile::GlslEs300,
+        );
+        debug_depth_quad.activate();
+        debug_depth_quad.set_int("depth_map", 0);
+
         shaders.insert(ShaderType::Skybox, skybox_shader);
         shaders.insert(ShaderType::Depth, depth_shader);
+        shaders.insert(ShaderType::DebugShadowMap, debug_depth_quad);
         shaders.insert(ShaderType::StaticModel, static_model_shader);
         shaders.insert(ShaderType::AnimatedModel, animated_model_shader);
         shaders.insert(ShaderType::Particles, particles_shader);
@@ -1600,7 +1608,7 @@ impl Renderer {
             defaults,
 
             cubemap_texture,
-            shadow_debug: false,
+            shadow_debug: config.shadow_debug,
             render_gizmos,
 
             hdr_color,
@@ -1811,7 +1819,7 @@ impl Renderer {
             defaults,
             depth_map: shadow_map.depth_map,
             cubemap_texture: skybox_resources.cubemap_texture,
-            shadow_debug: false,
+            shadow_debug: config.shadow_debug,
             render_gizmos: config.render_gizmos,
             hdr_color,
             hdr_bright,
@@ -2032,6 +2040,11 @@ impl Renderer {
         }
         self.shadow_end();
 
+        if self.shadow_debug {
+            self.render_shadow_debug(fb_width, fb_height);
+            return;
+        }
+
         if self.hdr_color == 0 {
             unsafe {
                 gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
@@ -2233,6 +2246,7 @@ impl Renderer {
         self.shadow_end();
 
         if self.shadow_debug {
+            self.render_shadow_debug(fb_width, fb_height);
             return;
         }
 
@@ -3438,6 +3452,29 @@ impl Renderer {
             gl_call!(gl::DrawArrays(gl::TRIANGLES, 0, 6));
             gl_call!(gl::BindVertexArray(0));
         }
+    }
+
+    fn render_shadow_debug(&mut self, fb_width: u32, fb_height: u32) {
+        unsafe {
+            gl_call!(gl::BindFramebuffer(gl::FRAMEBUFFER, 0));
+            gl_call!(gl::Viewport(0, 0, fb_width as i32, fb_height as i32));
+            gl_call!(gl::Disable(gl::DEPTH_TEST));
+            gl_call!(gl::Disable(CULL_FACE));
+            gl_call!(gl::Disable(gl::BLEND));
+            gl_call!(gl::Disable(gl::SCISSOR_TEST));
+            gl_call!(gl::Clear(gl::COLOR_BUFFER_BIT));
+        }
+
+        let debug_shader = self.shaders.get_mut(&ShaderType::DebugShadowMap).unwrap();
+        debug_shader.activate();
+        debug_shader.set_int("depth_map", 0);
+
+        unsafe {
+            gl_call!(gl::ActiveTexture(gl::TEXTURE0));
+            gl_call!(gl::BindTexture(gl::TEXTURE_2D, self.depth_map));
+        }
+
+        self.render_quad();
     }
 
     pub fn render_transform_from_args(

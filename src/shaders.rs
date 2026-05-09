@@ -333,6 +333,9 @@ fn shader_source_path(file_path: &str, profile: ShaderProfile) -> &str {
         (ShaderProfile::GlslEs300, "resources/shaders/depth_shader.glsl") => {
             "resources/shaders/depth_shader_es300.glsl"
         }
+        (ShaderProfile::GlslEs300, "resources/shaders/debug_depth_quad.glsl") => {
+            "resources/shaders/debug_depth_quad_es300.glsl"
+        }
         (ShaderProfile::GlslEs300, "resources/shaders/skybox.glsl") => {
             "resources/shaders/skybox_es300.glsl"
         }

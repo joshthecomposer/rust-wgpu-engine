@@ -129,7 +129,10 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
             let vx = world_delta.x / dt;
             let vz = world_delta.z / dt;
 
-            cmds.set_linvel(id, ImpulseKind::Action, Vec3::new(vx, 0.0, vz));
+            // During knockback, don't override physics velocity with root-motion.
+            if !em.knockbacks.contains(id) {
+                cmds.set_linvel(id, ImpulseKind::Action, Vec3::new(vx, 0.0, vz));
+            }
         }
     }
 }

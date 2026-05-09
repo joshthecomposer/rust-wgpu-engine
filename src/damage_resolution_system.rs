@@ -1,7 +1,7 @@
 use glam::{vec3, Vec3};
 
 use crate::{
-    command_buffer::{CommandBuffer, PartCmd, PartKind},
+    command_buffer::{CommandBuffer, ImpulseKind, PartCmd, PartKind},
     entity_manager::EntityManager,
     enums_types::{
         DamagePayload, DamageSource, Knockback, LifeState, StatusEffect, StatusEffectHelper,
@@ -9,7 +9,7 @@ use crate::{
     physics::{self, PhysicsState},
 };
 
-pub fn update(em: &mut EntityManager, _dt: f32, ps: &mut PhysicsState, cmds: &mut CommandBuffer) {
+pub fn update(em: &mut EntityManager, _dt: f32, ps: &PhysicsState, cmds: &mut CommandBuffer) {
     if let Some(pid) = em.get_player_id() {
         resolve_melee_hits_for_source(pid, em, ps, cmds);
     } else {
@@ -44,7 +44,7 @@ pub fn update(em: &mut EntityManager, _dt: f32, ps: &mut PhysicsState, cmds: &mu
 fn resolve_melee_hits_for_source(
     source_id: usize,
     em: &mut EntityManager,
-    ps: &mut PhysicsState,
+    ps: &PhysicsState,
     cmds: &mut CommandBuffer,
 ) {
     let source_pill_handle = match em.physics_handles.get(source_id) {
@@ -158,19 +158,8 @@ fn resolve_melee_hits_for_source(
             victim_id,
             victim_faction.as_str(),
             &payload,
+            ps,
         );
-
-        if let Some(rb) = ps.rigid_body_set.get_mut(rb_handle) {
-            let kb = Knockback {
-                ttl: 0.35,
-                flinch: false,
-                did_particles: false,
-            };
-            let dir = vec3(yaw.sin(), 1.0, yaw.cos()).normalize();
-
-            physics::apply_delta_v(rb, dir, 2.0);
-            em.knockbacks.insert(victim_id, kb);
-        }
     }
 }
 
@@ -178,7 +167,7 @@ fn resolve_projectile_hits_for_source(
     proj_id: usize,
     source_id: usize,
     em: &mut EntityManager,
-    ps: &mut PhysicsState,
+    ps: &PhysicsState,
     cmds: &mut CommandBuffer,
 ) {
     let source_faction = match em.factions.get(source_id) {
@@ -193,6 +182,7 @@ fn resolve_projectile_hits_for_source(
     let payload = DamagePayload {
         damage: 3.0,
         status_effects: vec![],
+        knockback_power: None,
     };
 
     let proj_col_handle = match em.physics_handles.get(proj_id) {
@@ -249,6 +239,7 @@ fn resolve_projectile_hits_for_source(
             victim_id,
             victim_faction.as_str(),
             &payload,
+            ps,
         );
     }
 }
@@ -256,7 +247,7 @@ fn resolve_projectile_hits_for_source(
 fn resolve_damage_volume_hits(
     dv_id: usize,
     em: &mut EntityManager,
-    ps: &mut PhysicsState,
+    ps: &PhysicsState,
     cmds: &mut CommandBuffer,
     dt: f32,
 ) {
@@ -355,6 +346,7 @@ fn resolve_damage_volume_hits(
             victim_id,
             victim_faction.as_str(),
             &payload,
+            ps,
         );
     }
 }
@@ -382,6 +374,7 @@ fn basic_payload(damage: f32) -> DamagePayload {
     DamagePayload {
         damage,
         status_effects: vec![],
+        knockback_power: None,
     }
 }
 
@@ -392,6 +385,7 @@ fn apply_damage_payload(
     victim_id: usize,
     victim_faction: &str,
     payload: &DamagePayload,
+    ps: &PhysicsState,
 ) {
     let Some(health_after_damage) = apply_health_damage(em, victim_id, payload.damage) else {
         return;
@@ -403,6 +397,62 @@ fn apply_damage_payload(
 
     spawn_damage_particles(em, cmds, victim_id);
     mark_victim_damaged(em, victim_id, victim_faction, health_after_damage);
+    if let Some(kb) = payload.knockback_power {
+        match source {
+            DamageSource::Entity(source_id) => {
+                apply_knockback(em, cmds, source_id, victim_id, kb, ps);
+            }
+            _ => (),
+        }
+    }
+}
+
+fn apply_knockback(
+    em: &mut EntityManager,
+    cmds: &mut CommandBuffer,
+    source_id: usize,
+    victim_id: usize,
+    kb: f32,
+    ps: &PhysicsState,
+) {
+    let source_pos = em.transforms.get(source_id).unwrap().position;
+    let victim_pos = em.transforms.get(victim_id).unwrap().position;
+
+    let rb_handle = em.physics_handles.get(victim_id).unwrap().rigid_body;
+
+    let dir = (victim_pos - source_pos).with_y(1.0).normalize_or_zero();
+    if dir == Vec3::ZERO {
+        return;
+    }
+
+    let rb = ps.rigid_body_set.get(rb_handle).unwrap();
+    let v = rb.linvel();
+
+    let desired_speed = kb / 0.7;
+
+    let delta_v = Vec3::new(
+        dir.x * desired_speed - v.x,
+        0.0,
+        dir.z * desired_speed - v.z,
+    );
+
+    let impulse = delta_v * rb.mass();
+
+    em.knockbacks.insert(
+        victim_id,
+        Knockback {
+            ttl: 0.7,
+            flinch: false,
+            did_particles: false,
+        },
+    );
+
+    cmds.impulse(
+        victim_id,
+        Some(source_id),
+        ImpulseKind::HitReaction,
+        impulse,
+    );
 }
 
 fn apply_health_damage(em: &mut EntityManager, victim_id: usize, damage: f32) -> Option<f32> {

@@ -35,8 +35,11 @@ pub fn update(
         };
 
         if lc.allow_trans {
-            let linvel = resolve_translation(intent_dir, speed, current_vel);
-            cmds.set_linvel(e, ImpulseKind::Locomotion, linvel);
+            // During knockback, ignore locomotion steering so hit reaction can play out.
+            if !em.knockbacks.contains(e) {
+                let linvel = resolve_translation(intent_dir, speed, current_vel);
+                cmds.set_linvel(e, ImpulseKind::Locomotion, linvel);
+            }
         }
 
         if lc.allow_rot {

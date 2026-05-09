@@ -177,7 +177,9 @@ impl ImpulseKind {
     pub fn cancels(self, other: Self) -> bool {
         matches!(
             (self, other),
-            (ImpulseKind::Action, ImpulseKind::HitReaction) | (ImpulseKind::World, _)
+            (ImpulseKind::HitReaction, ImpulseKind::Action)
+                | (ImpulseKind::HitReaction, ImpulseKind::Locomotion)
+                | (ImpulseKind::World, _)
         )
     }
 }

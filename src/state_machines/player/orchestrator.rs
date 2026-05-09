@@ -108,23 +108,23 @@ pub fn player_state_orchestrator(
         }
     }
 
-    if ctrl.took_damage
-        && !matches!(
-            anim_name,
-            AnimationType::Basic1
-                | AnimationType::Basic2
-                | AnimationType::Basic3
-                | AnimationType::OSBasic1
-                | AnimationType::OSBasic2
-                | AnimationType::OSBasic3
-                | AnimationType::Roll
-                | AnimationType::Spin2Win
-                | AnimationType::Stabby
-        )
-    {
-        cmds.next_anim(player_id, AnimationType::Stagger, None);
-        return;
-    }
+    //    if ctrl.took_damage
+    //        && !matches!(
+    //            anim_name,
+    //            AnimationType::Basic1
+    //                | AnimationType::Basic2
+    //                | AnimationType::Basic3
+    //                | AnimationType::OSBasic1
+    //                | AnimationType::OSBasic2
+    //                | AnimationType::OSBasic3
+    //                | AnimationType::Roll
+    //                | AnimationType::Spin2Win
+    //                | AnimationType::Stabby
+    //        )
+    //    {
+    //        cmds.next_anim(player_id, AnimationType::Stagger, None);
+    //        return;
+    //    }
 
     let Some(gs) = em.grounded_states.get(player_id) else {
         eprintln!("We need a grounded state for player to work right");

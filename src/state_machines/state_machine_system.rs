@@ -9,6 +9,24 @@ use crate::{
 };
 
 pub fn update(em: &mut EntityManager, input: &InputState, cmds: &mut CommandBuffer, dt: f32) {
+    // Tick and expire knockbacks (used to gate locomotion/root-motion writes).
+    if em.knockbacks.len() > 0 {
+        let expired: Vec<usize> = em
+            .knockbacks
+            .iter_mut()
+            .filter_map(|entry| {
+                let id = entry.key();
+                let kb = entry.value_mut();
+                kb.ttl -= dt;
+                (kb.ttl <= 0.0).then_some(id)
+            })
+            .collect();
+
+        for id in expired {
+            em.knockbacks.remove(id);
+        }
+    }
+
     for entry in em.enemy_controllers.iter_mut() {
         let ctrl = entry.value_mut();
 
