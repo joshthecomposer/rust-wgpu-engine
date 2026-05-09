@@ -635,7 +635,6 @@ pub struct DamagePayload {
 
     #[serde(default)]
     pub status_effects: Vec<StatusEffectHelper>,
-    /// Approximate desired slide distance in world units (converted to impulse from victim mass).
     #[serde(default)]
     pub knockback_power: Option<f32>,
 }
