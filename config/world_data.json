@@ -443,44 +443,44 @@
       "pickup_range": null
     },
     {
-      "entity_type": "OrcSword",
-      "faction": "Item",
+      "entity_type": "GoldGrass01",
+      "faction": "World",
       "position": [
-        34.294277,
-        0.47600362,
-        46.766815
+        0.752,
+        0.5058342,
+        2.696
       ],
       "rotation": [
-        0.38911134,
-        -0.39240953,
-        -0.5968616,
-        0.5816901
+        0.0,
+        0.0,
+        0.0,
+        1.0
       ],
       "weapons": null,
       "base_speed": null,
-      "health": null,
-      "max_health": null,
-      "mana": null,
-      "max_mana": null,
-      "level": null,
+      "health": 100.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
       "name": null,
-      "jump_height": null,
-      "cleanup_timer": 65.016075,
+      "jump_height": 1.0,
+      "cleanup_timer": null,
       "pickup_range": null
     },
     {
       "entity_type": "FireStaff",
       "faction": "Item",
       "position": [
-        -5.9908566,
-        -0.021175198,
-        -3.072244
+        -5.9693303,
+        -0.02796714,
+        -3.0825882
       ],
       "rotation": [
-        0.55925894,
-        -0.49502134,
-        0.251451,
-        0.61559373
+        0.5609309,
+        -0.49732426,
+        0.2452614,
+        0.61471295
       ],
       "weapons": null,
       "base_speed": null,
@@ -498,15 +498,15 @@
       "entity_type": "OrcSword",
       "faction": "Item",
       "position": [
-        -6.3869433,
-        -0.06517912,
-        -2.752461
+        -7.2637925,
+        -0.61063945,
+        -2.3866165
       ],
       "rotation": [
-        0.2139684,
-        0.06150175,
-        0.56779957,
-        0.7924889
+        0.06890343,
+        0.01931217,
+        -0.17569208,
+        0.98184097
       ],
       "weapons": null,
       "base_speed": null,
@@ -524,15 +524,15 @@
       "entity_type": "Peasant1",
       "faction": "Player",
       "position": [
-        34.446873,
-        0.4697467,
-        45.49362
+        34.217186,
+        0.48629808,
+        44.182167
       ],
       "rotation": [
         0.0,
-        -0.9988484,
+        0.50151074,
         0.0,
-        0.04797817
+        0.8651514
       ],
       "weapons": [
         {
@@ -574,12 +574,168 @@
       "pickup_range": 3.0
     },
     {
+      "entity_type": "RedGrass01",
+      "faction": "World",
+      "position": [
+        0.427,
+        0.49849033,
+        2.809
+      ],
+      "rotation": [
+        0.0,
+        0.6147489,
+        0.0,
+        0.7887229
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
+      "name": null,
+      "jump_height": 1.0,
+      "cleanup_timer": null,
+      "pickup_range": null
+    },
+    {
+      "entity_type": "RedGrass01",
+      "faction": "World",
+      "position": [
+        1.0265508,
+        0.49849033,
+        3.209144
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
+      "name": null,
+      "jump_height": 1.0,
+      "cleanup_timer": null,
+      "pickup_range": null
+    },
+    {
+      "entity_type": "RedGrass01",
+      "faction": "World",
+      "position": [
+        1.0265508,
+        0.49,
+        4.209
+      ],
+      "rotation": [
+        0.0,
+        0.5124023,
+        0.0,
+        0.8587456
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
+      "name": null,
+      "jump_height": 1.0,
+      "cleanup_timer": null,
+      "pickup_range": null
+    },
+    {
       "entity_type": "Wheat",
       "faction": "World",
       "position": [
-        -0.02073574,
-        0.52304184,
-        1.9500892
+        -0.18775296,
+        0.38555074,
+        3.738
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
+      "name": null,
+      "jump_height": 1.0,
+      "cleanup_timer": null,
+      "pickup_range": null
+    },
+    {
+      "entity_type": "Wheat",
+      "faction": "World",
+      "position": [
+        2.3308802,
+        0.4950981,
+        2.6136065
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
+      "name": null,
+      "jump_height": 1.0,
+      "cleanup_timer": null,
+      "pickup_range": null
+    },
+    {
+      "entity_type": "RedGrass01",
+      "faction": "World",
+      "position": [
+        1.081,
+        0.497244,
+        2.933
+      ],
+      "rotation": [
+        0.0,
+        0.2722956,
+        0.0,
+        0.9622137
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
+      "name": null,
+      "jump_height": 1.0,
+      "cleanup_timer": null,
+      "pickup_range": null
+    },
+    {
+      "entity_type": "GoldGrass01",
+      "faction": "World",
+      "position": [
+        0.95069957,
+        0.48454428,
+        3.72503
       ],
       "rotation": [
         0.0,

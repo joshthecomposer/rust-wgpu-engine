@@ -3097,93 +3097,87 @@ impl Renderer {
 
         shader.activate();
 
-        for &is_alpha_pass in &[false, true] {
-            shader.set_bool("alpha_test_pass", is_alpha_pass);
+        shader.set_mat4("projection", camera.projection);
+        shader.set_mat4("view", camera.view);
+        shader.set_mat4("light_space_mat", camera.light_space);
+        shader.set_dir_light("dir_light", &light_manager.dir_light);
+        shader.set_float("bias_scalar", light_manager.bias_scalar);
+        shader.set_vec3("view_position", camera.position);
+        shader.set_int("skybox", 10);
 
-            // Hoist stuff
-            shader.set_mat4("projection", camera.projection);
-            shader.set_mat4("view", camera.view);
-            shader.set_mat4("light_space_mat", camera.light_space);
-            shader.set_dir_light("dir_light", &light_manager.dir_light);
-            shader.set_float("bias_scalar", light_manager.bias_scalar);
-            shader.set_vec3("view_position", camera.position);
-            shader.set_int("skybox", 10);
-
-            for id in ids.iter() {
-                let is_selected = em.selected.contains(&id);
-                if em.is_equipped.get(*id).is_none() && em.owners.get(*id).is_some() {
-                    continue;
-                }
-                shader.set_bool("selection_fresnel", is_selected);
-
-                let model = match em.models.get(*id) {
-                    Some(m) => m,
-                    None => continue,
-                };
-                let trans = Self::render_transform(em, *id, alpha);
-
-                let m_mat = Mat4::from_scale_rotation_translation(
-                    trans.scale,
-                    trans.rotation,
-                    trans.position,
-                );
-                shader.set_mat4("model", m_mat);
-
-                if is_animated {
-                    let animator = em.animators.get(*id).unwrap();
-                    let animation = animator.get_current_animation().unwrap();
-
-                    shader.set_mat4_array("bone_transforms", &animation.current_pose);
-
-                    let cam_pos = camera.position;
-                    let d2 = (trans.position - cam_pos).length_squared();
-                    let do_particles = d2 < (40.0 * 40.0);
-
-                    if do_particles {
-                        for os in animation.one_shots.iter() {
-                            if animation.current_segment.get() == os.segment {
-                                if !os.triggered.get() {
-                                    sound_manager
-                                        .play_sound_3d(os.sound_type.clone(), &trans.position);
-                                    particles.spawn_oneshot_emitter(
-                                        "DesertStep",
-                                        trans.position,
-                                        None,
-                                    );
-                                    os.triggered.set(true);
-                                }
-                            } else {
-                                os.triggered.set(false);
-                            }
-                        }
-                    }
-
-                    for cs in animation.continuous_sounds.iter() {
-                        if !cs.playing.get() {
-                            sound_manager.play_sound_3d(cs.sound_type.clone(), &trans.position);
-                            cs.playing.set(true);
-                        }
-                    }
-
-                    if let Some(active_range_list) = &animation.hurtbox_activation {
-                        for fa in active_range_list {
-                            if fa.segment_range.contains(&animation.current_segment.get()) {
-                                if !fa.triggered.get() {
-                                    fa.triggered.set(true);
-                                }
-                            } else {
-                                fa.triggered.set(false);
-                            }
-                        }
-                    }
-                }
-
-                unsafe {
-                    Self::draw_model(model, shader);
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
-                }
-                shader.set_bool("selection_fresnel", false);
+        for id in ids.iter() {
+            let is_selected = em.selected.contains(&id);
+            if em.is_equipped.get(*id).is_none() && em.owners.get(*id).is_some() {
+                continue;
             }
+            shader.set_bool("selection_fresnel", is_selected);
+
+            let model = match em.models.get(*id) {
+                Some(m) => m,
+                None => continue,
+            };
+            let trans = Self::render_transform(em, *id, alpha);
+
+            let m_mat = Mat4::from_scale_rotation_translation(
+                trans.scale,
+                trans.rotation,
+                trans.position,
+            );
+            shader.set_mat4("model", m_mat);
+
+            if is_animated {
+                let animator = em.animators.get(*id).unwrap();
+                let animation = animator.get_current_animation().unwrap();
+
+                shader.set_mat4_array("bone_transforms", &animation.current_pose);
+
+                let cam_pos = camera.position;
+                let d2 = (trans.position - cam_pos).length_squared();
+                let do_particles = d2 < (40.0 * 40.0);
+
+                if do_particles {
+                    for os in animation.one_shots.iter() {
+                        if animation.current_segment.get() == os.segment {
+                            if !os.triggered.get() {
+                                sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position);
+                                particles.spawn_oneshot_emitter(
+                                    "DesertStep",
+                                    trans.position,
+                                    None,
+                                );
+                                os.triggered.set(true);
+                            }
+                        } else {
+                            os.triggered.set(false);
+                        }
+                    }
+                }
+
+                for cs in animation.continuous_sounds.iter() {
+                    if !cs.playing.get() {
+                        sound_manager.play_sound_3d(cs.sound_type.clone(), &trans.position);
+                        cs.playing.set(true);
+                    }
+                }
+
+                if let Some(active_range_list) = &animation.hurtbox_activation {
+                    for fa in active_range_list {
+                        if fa.segment_range.contains(&animation.current_segment.get()) {
+                            if !fa.triggered.get() {
+                                fa.triggered.set(true);
+                            }
+                        } else {
+                            fa.triggered.set(false);
+                        }
+                    }
+                }
+            }
+
+            unsafe {
+                Self::draw_model(model, shader);
+                gl_call!(gl::BindTexture(gl::TEXTURE_2D, 0));
+            }
+            shader.set_bool("selection_fresnel", false);
         }
 
         unsafe {
@@ -3228,7 +3222,6 @@ impl Renderer {
         };
 
         shader.activate();
-        shader.set_bool("alpha_test_pass", false);
         shader.set_bool("hdr_render_target", self.hdr_color != 0);
         shader.set_mat4("projection", camera.projection);
         shader.set_mat4("view", camera.view);

@@ -235,7 +235,6 @@ mod native {
             shader.set_int("skybox", 10);
             shader.set_bool("selection_fresnel", false);
             shader.set_bool("do_reg_fresnel", false);
-            shader.set_bool("alpha_test_pass", false);
             shader.set_bool("flash_white", false);
 
             let m_mat =

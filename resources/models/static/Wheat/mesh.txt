@@ -1,4 +1,4 @@
-TEXTURE_DIFFUSE: t_paintpoly_flowersandclutter_albedo_alpha.png
+TEXTURE_DIFFUSE: t_paintpoly_flowersandclutter_albedo_WHEAT_BARE_alpha.png
 MESH_NAME: model_wheat
 VERTEX_COUNT: 399
 VERT:

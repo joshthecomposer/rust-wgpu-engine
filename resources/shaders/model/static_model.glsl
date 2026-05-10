@@ -69,7 +69,6 @@ uniform samplerCube skybox;
 
 uniform float bias_scalar;
 uniform vec3 view_position;
-uniform bool alpha_test_pass;
 uniform bool selection_fresnel;
 uniform bool do_reg_fresnel;
 uniform float elapsed;
@@ -109,6 +108,7 @@ float ShadowCalculation(float dot_light_normal) {
 
 vec4 calculate_directional_light() {
     vec3 lightColor = dir_light.diffuse;
+    const float ALPHA_MASK_CUTOFF = 0.5;
 
     // ----- DIFFUSE/ALBEDO SOURCE -----
     // If using base_color: take RGBA from uniform.
@@ -118,14 +118,18 @@ vec4 calculate_directional_light() {
     if (use_base_color) {
         tex_color = base_color.rgb;
         alpha     = base_color.a;
+        if (alpha < ALPHA_MASK_CUTOFF)
+            discard;
     } else {
         float view_dist = length(view_position - FragPos);
         float lod = clamp((view_dist - 5.0) / 5.0, 0.0, 30.0);
         vec4 tex_sample = textureLod(material.Diffuse, TexCoords, lod);
+        if (tex_sample.a < ALPHA_MASK_CUTOFF)
+            discard;
 
-        // keep “transparent becomes white” safety
-        vec3 safe_color = mix(vec3(1.0), tex_sample.rgb, tex_sample.a);
-        tex_color = safe_color;
+        // Raw albedo after mask: mixing toward white for low alpha causes a bright
+        // fringe on alpha-tested edges (mip bleeding + threshold).
+        tex_color = tex_sample.rgb;
         alpha     = tex_sample.a;
     }
     // ----------------------------------
@@ -133,9 +137,6 @@ vec4 calculate_directional_light() {
     // Specular & Emissive remain texture-based (unchanged)
     vec3 spec_color  = texture(material.Specular,  TexCoords).rgb;
     vec3 emiss_color = texture(material.Emissive, TexCoords).rgb;
-
-    if (alpha_test_pass && alpha < 0.5)
-        discard;
 
     if (flash_white) {
         float t = mod(elapsed, 0.15);

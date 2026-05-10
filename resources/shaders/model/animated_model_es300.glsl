@@ -97,7 +97,6 @@ uniform DirLight dir_light;
 uniform samplerCube skybox;
 uniform float bias_scalar;
 uniform vec3 view_position;
-uniform bool alpha_test_pass;
 uniform bool selection_fresnel;
 uniform bool do_reg_fresnel;
 uniform float elapsed;
@@ -142,16 +141,20 @@ float ShadowCalculation(float dot_light_normal) {
 
 vec4 calculate_directional_light() {
     vec3 lightColor = dir_light.diffuse;
+    const float ALPHA_MASK_CUTOFF = 0.5;
     vec3 tex_color;
     float alpha;
 
     if (use_base_color) {
         tex_color = base_color.rgb;
         alpha = base_color.a;
+        if (alpha < ALPHA_MASK_CUTOFF)
+            discard;
     } else {
         vec4 tex_sample = texture(material.Diffuse, TexCoords);
-        vec3 safe_color = mix(vec3(1.0), tex_sample.rgb, tex_sample.a);
-        tex_color = safe_color;
+        if (tex_sample.a < ALPHA_MASK_CUTOFF)
+            discard;
+        tex_color = tex_sample.rgb;
         alpha = tex_sample.a;
     }
 
