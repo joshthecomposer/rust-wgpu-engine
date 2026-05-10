@@ -179,7 +179,7 @@ impl Default for SpawnManager {
                 RoundData {
                     amount: 1,
                     spawned: false,
-                    weapons: Some(vec!["DoubleAxe".to_string()]),
+                    weapons: Some(vec!["OrcSword".to_string()]),
                 },
                 RoundData {
                     amount: 2,

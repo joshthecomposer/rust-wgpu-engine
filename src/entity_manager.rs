@@ -35,10 +35,10 @@ use crate::{
     },
     debug::gizmos::{Cuboid, Cylinder, Dimension, Pill, Sphere},
     enums_types::{
-        ActiveItem, AnimationType, ControlState, DamageSource, DamageVolume, DamageVolumeHelper,
-        EnemyController, FrameActivation, GroundedState, HitboxShape, JumpHeight, Knockback,
-        LifeState, LocoState, PhysicsHandle, PlayerController, Rotator, StatusEffect, Transform,
-        VisualEffect,
+        ActiveItem, AnimationType, ControlState, Counter, DamageSource, DamageVolume,
+        DamageVolumeHelper, EnemyController, FrameActivation, GroundedState, HitboxShape,
+        JumpHeight, Knockback, LifeState, LocoState, PhysicsHandle, PlayerController, Rotator,
+        StatusEffect, Transform, VisualEffect,
     },
     input::InputState,
     physics::PhysicsState,
@@ -122,7 +122,7 @@ pub struct EntityManager {
     // wizard casting a fireball, etc.)
     pub source_ids: SparseSet<usize>,
     // how long the projectile lasts before dying.
-    pub lifetimes: SparseSet<f32>,
+    pub lifetimes: SparseSet<Counter>,
 
     /// Abilities assigned to weapon entities.
     pub weapon_abilities: SparseSet<WeaponAbilities>,
@@ -458,7 +458,13 @@ impl EntityManager {
         };
 
         self.source_ids.insert(projectile_id, source_id);
-        self.lifetimes.insert(projectile_id, 10.0);
+        self.lifetimes.insert(
+            projectile_id,
+            Counter {
+                ttl: 0.5,
+                accumulator: 0.0,
+            },
+        );
 
         let mut instance =
             EntityInstance::new("SphereProjectile".to_string(), *origin, Quat::IDENTITY);

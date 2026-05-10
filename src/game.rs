@@ -330,6 +330,7 @@ impl Game {
                     &mut self.world.ecs,
                     &mut self.command_buffer,
                     &mut self.physics,
+                    self.time.fixed_dt,
                 );
 
                 damage_volume_spawn_system::update(&mut self.world.ecs, &mut self.physics);

@@ -134,8 +134,8 @@ vec4 calculate_directional_light() {
     vec3 spec_color  = texture(material.Specular,  TexCoords).rgb;
     vec3 emiss_color = texture(material.Emissive, TexCoords).rgb;
 
-    // if (alpha_test_pass && alpha < 0.5)
-    //     discard;
+    if (alpha_test_pass && alpha < 0.5)
+        discard;
 
     if (flash_white) {
         float t = mod(elapsed, 0.15);

@@ -446,15 +446,15 @@
       "entity_type": "OrcSword",
       "faction": "Item",
       "position": [
-        34.29426,
-        0.47600022,
-        46.766823
+        34.294277,
+        0.47600362,
+        46.766815
       ],
       "rotation": [
-        0.3891236,
-        -0.3923935,
-        -0.59684914,
-        0.5817054
+        0.38911134,
+        -0.39240953,
+        -0.5968616,
+        0.5816901
       ],
       "weapons": null,
       "base_speed": null,
@@ -465,22 +465,22 @@
       "level": null,
       "name": null,
       "jump_height": null,
-      "cleanup_timer": 43.76617,
+      "cleanup_timer": 65.016075,
       "pickup_range": null
     },
     {
       "entity_type": "FireStaff",
       "faction": "Item",
       "position": [
-        -5.987297,
-        -0.023997553,
-        -3.0675683
+        -5.9908566,
+        -0.021175198,
+        -3.072244
       ],
       "rotation": [
-        0.55754995,
-        -0.4981519,
-        0.25376776,
-        0.6136648
+        0.55925894,
+        -0.49502134,
+        0.251451,
+        0.61559373
       ],
       "weapons": null,
       "base_speed": null,
@@ -498,15 +498,15 @@
       "entity_type": "OrcSword",
       "faction": "Item",
       "position": [
-        -6.3891764,
-        -0.064032406,
-        -2.761028
+        -6.3869433,
+        -0.06517912,
+        -2.752461
       ],
       "rotation": [
-        0.21751136,
-        0.06351213,
-        0.5674248,
-        0.79163384
+        0.2139684,
+        0.06150175,
+        0.56779957,
+        0.7924889
       ],
       "weapons": null,
       "base_speed": null,
@@ -524,15 +524,15 @@
       "entity_type": "Peasant1",
       "faction": "Player",
       "position": [
-        34.459,
-        0.46534705,
-        45.620197
+        34.446873,
+        0.4697467,
+        45.49362
       ],
       "rotation": [
         0.0,
-        -0.83869934,
+        -0.9988484,
         0.0,
-        0.54459465
+        0.04797817
       ],
       "weapons": [
         {
@@ -572,6 +572,32 @@
       "jump_height": 1.0,
       "cleanup_timer": null,
       "pickup_range": 3.0
+    },
+    {
+      "entity_type": "Wheat",
+      "faction": "World",
+      "position": [
+        -0.02073574,
+        0.52304184,
+        1.9500892
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "weapons": null,
+      "base_speed": null,
+      "health": 100.0,
+      "max_health": 100.0,
+      "mana": 100.0,
+      "max_mana": 100.0,
+      "level": 1,
+      "name": null,
+      "jump_height": 1.0,
+      "cleanup_timer": null,
+      "pickup_range": null
     }
   ]
 }

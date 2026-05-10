@@ -17,7 +17,8 @@ impl ProjectileController {
     }
 }
 
-pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, ps: &mut PhysicsState) {
+pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, ps: &mut PhysicsState, dt: f32) {
+    tick_projectiles(em, dt);
     spawn_projectiles(em, cmds, ps);
 }
 
@@ -72,5 +73,20 @@ fn spawn_projectiles(em: &mut EntityManager, cmds: &mut CommandBuffer, ps: &mut 
         );
 
         cmds.sound3d_continuous(crate::enums_types::SoundType::Whee, sphere_id);
+    }
+}
+
+fn tick_projectiles(em: &mut EntityManager, dt: f32) {
+    let ids = em.get_ids_for_faction("Projectile");
+
+    for id in ids {
+        if let Some(lt) = em.lifetimes.get_mut(id) {
+            if lt.accumulator >= lt.ttl {
+                em.entity_trashcan.push(id);
+                continue;
+            }
+
+            lt.accumulator += dt;
+        }
     }
 }

@@ -638,3 +638,9 @@ pub struct DamagePayload {
     #[serde(default)]
     pub knockback_power: Option<f32>,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct Counter {
+    pub ttl: f32,
+    pub accumulator: f32,
+}
