@@ -6,6 +6,7 @@ use crate::{
     command_buffer::{CommandBuffer, LocoCmd, LocoIntent, LocoSpace, PartCmd, PartKind},
     enums_types::{
         AnimationType, CombatState, ControlState, GroundedState, LocoState, PlayerController,
+        SoundType,
     },
     input::InputState,
     state_machines::player::orchestrator::ability_just_pressed,
@@ -124,7 +125,7 @@ pub fn locomotion_state_machine(
                         direction: vec3(0.0, 1.0, 0.0),
                         kind: PartKind::WorldOrigin(pos),
                     });
-                    cmds.sound3d(pos);
+                    cmds.sound3d(SoundType::Land, pos);
                     break 'a;
                 }
 

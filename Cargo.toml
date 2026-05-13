@@ -5,8 +5,7 @@ edition = "2021"
 
 [dependencies]
 gl = "0.14.0"
-glam = { version = "0.29.2", features = ["serde"] }
-image = { version = "0.25.5", features = ["serde"] }
+glam = { version = "0.29.2", features = ["serde", "bytemuck"] }
 rusttype = "0.9.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -18,12 +17,20 @@ winit = "0.30.12"
 rand = "0.9.0"
 rand_chacha = "0.9.0"
 rapier3d = { version = "0.26.1", features = [ "simd-stable", "serde-serialize" ] }
+wgpu = "29.0.3"
+pollster = "0.4"
+bytemuck = { version = "=1.25.0", features = [ "derive" ] }
+
+[dependencies.image]
+version = "0.25.10"
+default-features = false
+features = ["png", "serde", "jpeg"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 glutin = "0.32.3"
 glutin-winit = "0.5.0"
 imgui-winit-support = { version = "0.13.0", optional = true }
-imgui-opengl-renderer = { version = "0.13.0", optional = true }
+imgui-wgpu = { version = "0.28.0", optional = true }
 imgui = { version = "0.12.0", optional = true }
 libc = { version = "0.2.171", optional = true }
 rapier3d = { version = "0.26.1", features = [ "parallel" ] }
@@ -31,6 +38,8 @@ rapier3d = { version = "0.26.1", features = [ "parallel" ] }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3.4", features = ["wasm_js"] }
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = [
     "Document",
@@ -42,6 +51,7 @@ web-sys = { version = "0.3", features = [
     "WheelEvent",
     "EventTarget",
     "CssStyleDeclaration",
+    "Performance",
     "Window",
     "WebGl2RenderingContext",
     "WebGlBuffer",
@@ -75,11 +85,8 @@ opt-level = 3
 default = ["native", "native_audio", "editor_ui"]
 native = []
 native_audio = ["dep:libc"]
-editor_ui = ["dep:imgui", "dep:imgui-winit-support", "dep:imgui-opengl-renderer"]
+editor_ui = ["dep:imgui", "dep:imgui-winit-support", "dep:imgui-wgpu"]
 web = []
 web_audio = []
 gl_debug = []
 track_draw_calls = []
-
-[patch.crates-io]
-imgui-opengl-renderer = { git = "https://github.com/joshthecomposer/rust-imgui-opengl-renderer.git", package = "imgui-opengl-renderer", branch = "master" }

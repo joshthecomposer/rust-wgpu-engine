@@ -8,6 +8,42 @@ use crate::{
     physics::PhysicsState,
 };
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct CameraUniform {
+    pub view_proj: [[f32; 4]; 4],
+    pub inv_proj: [[f32; 4]; 4],
+    pub light_view_proj: [[f32; 4]; 4],
+}
+
+impl CameraUniform {
+    pub fn new() -> Self {
+        Self {
+            view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            inv_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            light_view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SkyCameraUniform {
+    pub view_rot: [[f32; 4]; 4],
+    pub proj: [[f32; 4]; 4],
+}
+impl SkyCameraUniform {
+    pub fn from_camera(camera: &Camera) -> Self {
+        // strip translation from view so the box stays at the origin in view space.
+        let mut view_rot = camera.view;
+        view_rot.w_axis = glam::Vec4::new(0.0, 0.0, 0.0, 1.0);
+        Self {
+            view_rot: view_rot.to_cols_array_2d(),
+            proj: camera.projection.to_cols_array_2d(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct CamMoveBasis {
     pub fwd_flat: glam::Vec3,
@@ -55,6 +91,8 @@ pub struct Camera {
     pub prev_forward: Vec3,
     pub prev_up: Vec3,
     pub prev_target: Vec3,
+
+    pub uniform: CameraUniform,
 }
 
 impl Camera {
@@ -98,6 +136,8 @@ impl Camera {
             prev_forward: vec3(0.0, 0.0, -1.0),
             prev_up: vec3(0.0, 1.0, 0.0),
             prev_target: vec3(0.0, 0.0, 0.0),
+
+            uniform: CameraUniform::new(),
         }
     }
 
@@ -160,7 +200,7 @@ impl Camera {
 
         self.process_key_event(dt, input);
 
-        self.projection = glam::Mat4::perspective_rh_gl(self.fovy, aspect, self.z_near, self.z_far);
+        self.projection = glam::Mat4::perspective_rh(self.fovy, aspect, self.z_near, self.z_far);
 
         match self.move_state {
             CameraState::Free | CameraState::Locked | CameraState::Gallery => {
@@ -177,10 +217,22 @@ impl Camera {
                 self.view = glam::Mat4::look_at_rh(pos, target, up);
             }
         }
+
+        self.update_uniform();
     }
 
     pub fn get_view_matrix(&mut self) {
         self.view = Mat4::look_at_rh(self.position, self.target, self.up);
+    }
+
+    // for wgpu uniform
+    pub fn build_view_projection_matrix(&self) -> glam::Mat4 {
+        self.projection * self.view
+    }
+
+    pub fn update_uniform(&mut self) {
+        self.uniform.view_proj = self.build_view_projection_matrix().to_cols_array_2d();
+        self.uniform.inv_proj = self.projection.inverse().to_cols_array_2d();
     }
 
     // Call this when switching camera modes to reset the "first mouse" delta.

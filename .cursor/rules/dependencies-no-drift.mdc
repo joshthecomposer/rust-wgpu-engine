@@ -1,9 +1,0 @@
----
-description: No dependency additions/updates unless explicitly requested
-alwaysApply: true
----
-
-# Dependencies: no drift
-
-- Do not add, remove, or update dependencies (Cargo crates, build tools, tooling) unless the user explicitly requests it.
-- Do not suggest "try upgrading everything" as a default troubleshooting step.

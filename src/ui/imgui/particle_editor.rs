@@ -13,7 +13,6 @@ use crate::{
     lights::Lights,
     particles::ParticleSystem,
     physics::PhysicsState,
-    renderer::Renderer,
     sound::sound_manager::SoundManager,
     ui::message_queue::{MessageQueue, UiMessage},
 };
@@ -39,7 +38,6 @@ impl ParticleEditor {
         ui: &mut Ui,
         _em: &mut EntityManager,
         _ps: &mut PhysicsState,
-        _rdr: &mut Renderer,
         _lm: &mut Lights,
         _sm: &mut SoundManager,
         input: &mut InputState,

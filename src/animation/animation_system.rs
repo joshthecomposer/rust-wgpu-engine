@@ -1,7 +1,7 @@
 use glam::{Quat, Vec3};
 
 use crate::{
-    command_buffer::{AnimOp, CombCmd, CommandBuffer, ImpulseKind},
+    command_buffer::{AnimOp, CombCmd, CommandBuffer, ImpulseKind, PartCmd, PartKind},
     entity_manager::EntityManager,
     enums_types::AnimationType,
 };
@@ -119,6 +119,38 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
         let skellington = entry.value_mut();
 
         animator.update(skellington, dt);
+
+        let anim = animator.get_next_animation().unwrap();
+
+        if let Some(active_range_list) = &anim.hurtbox_activation {
+            for fa in active_range_list {
+                if fa.segment_range.contains(&anim.current_segment.get()) {
+                    if !fa.triggered.get() {
+                        fa.triggered.set(true);
+                    }
+                } else {
+                    fa.triggered.set(false);
+                }
+            }
+        }
+
+        for os in anim.one_shots.iter() {
+            if anim.current_segment.get() == os.segment {
+                if !os.triggered.get() {
+                    let trans = em.transforms.get(id).unwrap();
+                    os.triggered.set(true);
+                    cmds.sound3d(os.sound_type.clone(), trans.position);
+                    // TODO: have the needed particle defined in the entity config
+                    cmds.particles.push(PartCmd {
+                        name: "DesertStep".to_string(),
+                        kind: PartKind::EntityOrigin(id),
+                        direction: glam::Vec3::ONE,
+                    });
+                }
+            } else {
+                os.triggered.set(false);
+            }
+        }
 
         let local_delta = animator.root_motion_state.frame_root_delta;
 

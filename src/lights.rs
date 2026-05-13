@@ -181,7 +181,7 @@ impl DirLight {
             direction,
             view_pos,
 
-            ambient: Vec3::splat(0.15),
+            ambient: Vec3::splat(0.13),
             diffuse: WHITE,
             specular: WHITE,
 
@@ -203,6 +203,8 @@ pub struct Lights {
     pub bounds: f32,
 
     pub bias_scalar: f32,
+
+    pub dir_light_uniform: DirLightUniform,
 }
 
 impl Lights {
@@ -221,6 +223,7 @@ impl Lights {
             bounds: 17.5,
 
             bias_scalar: 0.002,
+            dir_light_uniform: DirLightUniform::new(),
         }
     }
 
@@ -239,6 +242,38 @@ impl Lights {
             if let Some(velocity) = self.velocities.get(i.key()) {
                 i.value.position += velocity;
             }
+        }
+
+        self.update_uniforms();
+    }
+
+    pub fn update_uniforms(&mut self) {
+        self.dir_light_uniform.direction = self.dir_light.direction.extend(1.0);
+        self.dir_light_uniform.view_pos = self.dir_light.view_pos.extend(1.0);
+        self.dir_light_uniform.ambient = self.dir_light.ambient.extend(1.0);
+        self.dir_light_uniform.diffuse = self.dir_light.diffuse.extend(1.0);
+        self.dir_light_uniform.specular = self.dir_light.specular.extend(1.0);
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct DirLightUniform {
+    direction: glam::Vec4,
+    view_pos: glam::Vec4,
+    ambient: glam::Vec4,
+    diffuse: glam::Vec4,
+    specular: glam::Vec4,
+}
+
+impl DirLightUniform {
+    pub fn new() -> Self {
+        Self {
+            direction: glam::Vec4::ZERO,
+            view_pos: glam::Vec4::ZERO,
+            ambient: glam::Vec4::ZERO,
+            diffuse: glam::Vec4::ZERO,
+            specular: glam::Vec4::ZERO,
         }
     }
 }

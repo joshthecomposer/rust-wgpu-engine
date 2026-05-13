@@ -14,58 +14,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::state_machines::enemy::enemy_behavior_tree::ActionKind;
 
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub enum VaoType {
-    Cube,
-    Skybox,
-    DebugLight,
-    GroundPlane,
-    BaseQuad,
-}
-
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub enum VboType {
-    Cube,
-    Skybox,
-    DebugLight,
-    GroundPlane,
-    BaseQuad,
-}
-
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub enum EboType {
-    Cube,
-    Skybox,
-    DebugLight,
-}
-
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub enum FboType {
-    DepthMap,
-    HDR,
-    HdrMsaa,
-}
-
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub enum ShaderType {
-    Skybox,
-    DebugLight,
-    Depth,
-    GroundPlane,
-    DebugShadowMap,
-    Model,
-    Text,
-    Gizmo,
-    Particles,
-    HDR,
-    Blur,
-    StaticModel,
-    AnimatedModel,
-    Fxaa,
-    BloomUpsample,
-    BloomDownsample,
-}
-
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum FxaaLevels {
     Off,
@@ -74,9 +22,9 @@ pub enum FxaaLevels {
     High,
 }
 
-/// A struct to carry some rotation state for blending between rotations smoothly
-/// different than the Transform which just holds the current true simulation state
-/// which might be blended between cur_rot and next_rot
+// A struct to carry some rotation state for blending between rotations smoothly
+// different than the Transform which just holds the current true simulation state
+// which might be blended between cur_rot and next_rot
 #[derive(Debug)]
 pub struct Rotator {
     pub cur_rot: Quat,
@@ -92,36 +40,59 @@ pub struct Transform {
     pub scale: Vec3,
 }
 
-#[derive(Clone, Debug)]
-pub enum CellType {
-    Grass,
-    Tree,
-    Path,
+impl Transform {
+    // Builds a model matrix from a transform for an instance
+    pub fn to_instance_uniform(&self) -> InstanceUniform {
+        InstanceUniform {
+            model: (glam::Mat4::from_translation(self.position)
+                * glam::Mat4::from_quat(self.rotation)
+                * glam::Mat4::from_scale(self.scale))
+            .to_cols_array_2d(),
+        }
+    }
+
+    pub fn interpolated(prev: &Transform, curr: &Transform, alpha: f32) -> Self {
+        Self {
+            position: prev.position.lerp(curr.position, alpha),
+            rotation: prev.rotation.slerp(curr.rotation, alpha),
+            scale: prev.scale.lerp(curr.scale, alpha),
+        }
+    }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum TextureType {
-    Diffuse,
-    Specular,
-    Emissive,
-    NormalMap,
-    Roughness,
-    Metalness,
-    Displacement,
-    Opacity,
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct InstanceUniform {
+    model: [[f32; 4]; 4],
 }
 
-impl Display for TextureType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            TextureType::Diffuse => write!(f, "Diffuse"),
-            TextureType::Specular => write!(f, "Specular"),
-            TextureType::Emissive => write!(f, "Emissive"),
-            TextureType::NormalMap => write!(f, "Normal Map"),
-            TextureType::Roughness => write!(f, "Roughness"),
-            TextureType::Metalness => write!(f, "Metalness"),
-            TextureType::Displacement => write!(f, "Displacement"),
-            TextureType::Opacity => write!(f, "Opacity"),
+impl InstanceUniform {
+    pub fn desc() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 5,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
+                    shader_location: 6,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    shader_location: 7,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 12]>() as wgpu::BufferAddress,
+                    shader_location: 8,
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+            ],
         }
     }
 }
@@ -132,17 +103,6 @@ pub enum CameraState {
     Third,
     Locked,
     Gallery,
-}
-
-#[derive(Clone, Debug)]
-pub struct Size3 {
-    pub w: f32,
-    pub h: f32,
-    pub d: f32,
-}
-
-pub struct Parent {
-    pub parent_id: usize,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -643,4 +603,12 @@ pub struct DamagePayload {
 pub struct Counter {
     pub ttl: f32,
     pub accumulator: f32,
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum CursorMode {
+    Normal,
+    Hidden,
+    #[allow(dead_code)]
+    Disabled,
 }

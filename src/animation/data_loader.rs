@@ -7,7 +7,6 @@ use crate::{
     animation::{
         animation::Animation,
         animator::Animator,
-        model::{Model, Vertex},
         skellington::{Bone, BoneJoinInfo, BoneTransformTrack},
     },
     assets,

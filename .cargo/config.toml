@@ -3,6 +3,7 @@
 # Note: avoid aliasing `web` because it shadows the external `cargo-web` subcommand used in CI.
 web-dev = "run --bin serve-web"
 desktop = "run --bin learn-opengl-rs"
+rwd = "run --profile rwd --bin learn-opengl-rs"
 
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]

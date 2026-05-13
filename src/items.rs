@@ -40,7 +40,7 @@ fn orphaned_items_pass(em: &mut EntityManager, ps: &mut PhysicsState) {
             if wrb.body_type() != RigidBodyType::Dynamic {
                 wrb.set_body_type(RigidBodyType::Dynamic, true);
                 wrb.set_gravity_scale(1.0, true);
-                wrb.enable_ccd(true);
+                wrb.enable_ccd(false);
                 wrb.wake_up(true);
 
                 col.set_sensor(false);

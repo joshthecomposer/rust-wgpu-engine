@@ -1,6 +1,6 @@
 use crate::{
     camera::Camera, entity_manager::EntityManager, lights::Lights, particles::ParticleSystem,
-    spawn_system::SpawnManager,
+    spawn_system::SpawnManager, wgpu_backend::render_context::RenderContext,
 };
 
 pub struct World {
@@ -12,12 +12,12 @@ pub struct World {
 }
 
 impl World {
-    pub fn new() -> Self {
-        let ecs = EntityManager::new(10_000);
+    pub fn new(rdr_ctx: &RenderContext) -> Self {
+        let ecs = EntityManager::new(10_000, rdr_ctx);
         let camera = Camera::new();
         let lights = Lights::new(50);
         let particles = ParticleSystem::new("config/emitter_data.json");
-        let spawn_manager = SpawnManager::default();
+        let spawn_manager = SpawnManager::new("config/round_data.json");
 
         Self {
             ecs,

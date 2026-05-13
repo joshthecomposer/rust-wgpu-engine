@@ -1,12 +1,8 @@
-use std::ffi::CString;
-
-use glutin::prelude::GlDisplay;
-
 use imgui::Key;
+use imgui_wgpu::{RenderData, RendererConfig};
 use winit::{
     event::{ElementState, Ime, MouseButton, MouseScrollDelta, WindowEvent},
     keyboard::{KeyCode, PhysicalKey},
-    window::Window,
 };
 
 use crate::{
@@ -18,8 +14,6 @@ use crate::{
     lights::Lights,
     particles::ParticleSystem,
     physics::PhysicsState,
-    platform::Platform,
-    renderer::Renderer,
     sound::sound_manager::SoundManager,
     ui::{
         imgui::{
@@ -33,7 +27,7 @@ use crate::{
 
 pub struct ImguiManager {
     pub imgui: imgui::Context,
-    pub renderer: imgui_opengl_renderer::Renderer,
+    pub renderer: imgui_wgpu::Renderer,
     pub entity_editor: EntityEditor,
     pub particle_editor: ParticleEditor,
     pub ability_editor: AbilityEditor,
@@ -41,15 +35,33 @@ pub struct ImguiManager {
     pub _player_data: PlayerData,
 }
 
+pub struct PreparedImguiRender<'a> {
+    renderer: &'a imgui_wgpu::Renderer,
+    draw_data: &'a imgui::DrawData,
+    render_data: RenderData,
+}
+
+impl PreparedImguiRender<'_> {
+    pub fn render(&self, rpass: &mut wgpu::RenderPass<'_>) -> imgui_wgpu::RendererResult<()> {
+        self.renderer
+            .split_render(self.draw_data, &self.render_data, rpass)
+    }
+}
+
 impl ImguiManager {
-    pub fn new(platform: &Platform) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        texture_format: wgpu::TextureFormat,
+    ) -> Self {
         let mut imgui = imgui::Context::create();
         imgui.set_ini_filename(None);
 
-        let renderer = imgui_opengl_renderer::Renderer::new(&mut imgui, |s| {
-            let c_str = CString::new(s).unwrap();
-            platform.display.get_proc_address(&c_str) as *const _
-        });
+        let renderer_config = RendererConfig {
+            texture_format,
+            ..RendererConfig::new()
+        };
+        let renderer = imgui_wgpu::Renderer::new(&mut imgui, device, queue, renderer_config);
 
         Self {
             imgui,
@@ -170,14 +182,12 @@ impl ImguiManager {
         }
     }
 
-    pub fn draw(
+    pub fn prepare_render(
         &mut self,
-        _window: &mut Window,
         width: f32,
         height: f32,
         delta: f32,
         lm: &mut Lights,
-        rdr: &mut Renderer,
         sm: &mut SoundManager,
         camera: &Camera,
         em: &mut EntityManager,
@@ -185,7 +195,9 @@ impl ImguiManager {
         input: &mut InputState,
         particles: &mut ParticleSystem,
         message_queue: &mut MessageQueue,
-    ) {
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Option<PreparedImguiRender<'_>> {
         {
             let io = self.imgui.io_mut();
             io.display_size = [width, height];
@@ -198,12 +210,11 @@ impl ImguiManager {
             // BUILD WINDOWS
             if camera.move_state == CameraState::Locked {
                 self.entity_editor
-                    .draw(ui, em, ps, rdr, lm, sm, input, &[width, height]);
+                    .draw(ui, em, ps, lm, sm, input, &[width, height]);
                 self.particle_editor.draw(
                     ui,
                     em,
                     ps,
-                    rdr,
                     lm,
                     sm,
                     input,
@@ -222,7 +233,14 @@ impl ImguiManager {
         let draw_data = self.imgui.render();
 
         if draw_data.total_vtx_count > 0 {
-            self.renderer.render(&mut self.imgui);
+            let render_data = self.renderer.prepare(draw_data, None, queue, device);
+            Some(PreparedImguiRender {
+                renderer: &self.renderer,
+                draw_data,
+                render_data,
+            })
+        } else {
+            None
         }
     }
 }

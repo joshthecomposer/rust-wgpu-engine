@@ -4,7 +4,6 @@
 debug_output.txt
 debug_out/
 config/player_data.json
-config/game_config.json
 Cargo.lock
 dist.zip
 

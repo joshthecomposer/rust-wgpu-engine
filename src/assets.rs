@@ -133,3 +133,91 @@ const DEFAULT_GAME_CONFIG_JSON: &str = r#"{
   "spawn_system_enabled": true,
   "webgl_compatibility_mode": true
 }"#;
+
+pub fn load_binary(file_name: &str) -> Vec<u8> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        // For wasm builds, use the same asset mechanism as `read_bytes`/`load_image`.
+        read_bytes(file_name).unwrap_or_else(|_| {
+            panic!("Could not find embedded browser asset at path: {file_name}")
+        })
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+        let requested = std::path::Path::new(file_name);
+        let is_absolute_or_prefixed = requested.is_absolute()
+            || file_name.starts_with("resources/")
+            || file_name.starts_with("resources\\");
+        let rel = if is_absolute_or_prefixed {
+            requested.to_path_buf()
+        } else {
+            std::path::PathBuf::from("resources").join(requested)
+        };
+
+        candidates.push(rel.clone());
+
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                candidates.push(dir.join(&rel));
+            }
+        }
+
+        candidates.push(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(&rel));
+
+        candidates.push(std::path::Path::new(env!("OUT_DIR")).join(&rel));
+
+        for path in candidates {
+            if let Ok(bytes) = std::fs::read(&path) {
+                return bytes;
+            }
+        }
+
+        panic!(
+            "Could not find resource '{file_name}'. Looked in typical runtime locations \
+             (cwd/resources, exe_dir/resources, manifest_dir/resources, OUT_DIR/resources)."
+        )
+    }
+}
+
+/// Like `load_binary`, but returns `None` instead of panicking when missing.
+pub fn try_load_binary(file_name: &str) -> Option<Vec<u8>> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        read_bytes(file_name).ok()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let requested = std::path::Path::new(file_name);
+        let is_absolute_or_prefixed = requested.is_absolute()
+            || file_name.starts_with("resources/")
+            || file_name.starts_with("resources\\");
+        let rel = if is_absolute_or_prefixed {
+            requested.to_path_buf()
+        } else {
+            std::path::PathBuf::from("resources").join(requested)
+        };
+
+        let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+        candidates.push(rel.clone());
+
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                candidates.push(dir.join(&rel));
+            }
+        }
+
+        candidates.push(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(&rel));
+        candidates.push(std::path::Path::new(env!("OUT_DIR")).join(&rel));
+
+        for path in candidates {
+            if let Ok(bytes) = std::fs::read(&path) {
+                return Some(bytes);
+            }
+        }
+
+        None
+    }
+}
