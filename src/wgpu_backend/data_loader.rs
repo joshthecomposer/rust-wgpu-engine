@@ -1,7 +1,7 @@
-#![allow(clippy::useless_vec)]
 use core::f32;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use std::{path::Path, str::Lines};
+use wgpu::util::DeviceExt;
 
 use crate::{
     animation::{
@@ -9,10 +9,13 @@ use crate::{
         animator::Animator,
         skellington::{Bone, BoneJoinInfo, BoneTransformTrack},
     },
-    assets,
+    assets::{self, try_load_binary},
     enums_types::{AnimationType, TextureProfile, TextureType},
-    renderer::Renderer,
     util::constants::MAX_BONE_INFLUENCE,
+    wgpu_backend::{
+        material::Material, model::Model, render_context::RenderContext, texture::Texture,
+        vertex::Vertex,
+    },
 };
 
 pub fn import_bone_data(
@@ -286,21 +289,23 @@ pub fn import_bone_data(
     (bone, animator, animation, rh_bone_id)
 }
 
-pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
-    let data = assets::read_text(file_path).unwrap();
+pub fn import_model_data(file_path: &str, animation: &Animation, rdr_ctx: &RenderContext) -> Model {
+    let data = assets::read_text(file_path).unwrap_or_else(|error| {
+        panic!("Failed to read model file '{file_path}': {error}");
+    });
     let mut lines = data.lines().peekable();
 
-    let mut model = Model::new();
+    let mut model: Option<Model> = None;
+    let mut texture: Option<Texture> = None;
+
+    let mut vertices = vec![];
+    let mut indices = vec![];
 
     let directory = Path::new(file_path).parent().unwrap().to_str().unwrap();
     println!("Directory of Model is: {}", &directory);
     println!("=============================================================");
 
-    model.directory = directory.to_string();
-    model.full_path = file_path.to_string();
-
-    let mut use_color_for_texture = false; // header toggle (if present)
-    let mut saw_any_color = false; // infer from data
+    let full_path = file_path;
 
     let mut texture_prof = TextureProfile::BroadDefault;
 
@@ -322,132 +327,180 @@ pub fn import_model_data(file_path: &str, animation: &Animation) -> Model {
             }
             "MEME" => {}
             "VERT:" => {
-                let position = parse_vec3(lines.next().unwrap());
+                let position = {
+                    let mut parts = lines.next().unwrap().split_whitespace();
+                    [
+                        parts.next().unwrap().parse::<f32>().unwrap(),
+                        parts.next().unwrap().parse::<f32>().unwrap(),
+                        parts.next().unwrap().parse::<f32>().unwrap(),
+                    ]
+                };
 
-                let normal = parse_vec3(lines.next().unwrap());
-                let uv = parse_vec2(lines.next().unwrap());
+                let normal = {
+                    let mut parts = lines.next().unwrap().split_whitespace();
+                    [
+                        parts.next().unwrap().parse::<f32>().unwrap(),
+                        parts.next().unwrap().parse::<f32>().unwrap(),
+                        parts.next().unwrap().parse::<f32>().unwrap(),
+                    ]
+                };
 
-                let mut base_color = glam::Vec4::splat(1.0);
-
-                if let Some(peek) = lines.peek() {
-                    if peek.trim_start().starts_with("COLOR:") {
-                        let color_line = lines.next().unwrap(); // consume it
-                        let col_str = color_line.trim_start_matches("COLOR:").trim();
-                        let parsed = parse_vec4(col_str);
-                        base_color = parsed;
-
-                        // mark that we saw color data
-                        saw_any_color = true;
-
-                        // If you want presence of COLOR to auto-enable usage:
-                        // (remove this if you only want to respect the header directive)
-                        use_color_for_texture = true;
-                    }
-                }
+                let uv = {
+                    let mut parts = lines.next().unwrap().split_whitespace();
+                    [
+                        parts.next().unwrap().parse::<f32>().unwrap(),
+                        parts.next().unwrap().parse::<f32>().unwrap(),
+                    ]
+                };
 
                 let mut vertex = Vertex {
                     position,
                     normal,
                     uv,
-                    base_color,
                     bone_ids: [-1; MAX_BONE_INFLUENCE],
                     bone_weights: [0.0; MAX_BONE_INFLUENCE],
                 };
 
                 let weight_parts: Vec<&str> = lines.next().unwrap().split_whitespace().collect();
 
-                if !weight_parts.first().unwrap().eq(&"None") {
-                    for (i, pair) in weight_parts.chunks(2).enumerate() {
-                        let bone_name = pair[0];
-                        let weight: f32 = pair[1].parse().unwrap_or(0.0);
+                if let Some(first) = weight_parts.first() {
+                    if *first != "None" {
+                        for (i, pair) in weight_parts.chunks(2).enumerate() {
+                            // Some exporters can emit a trailing bone name without a weight.
+                            // Ignore malformed pairs instead of panicking.
+                            let Some(bone_name) = pair.get(0).copied() else {
+                                continue;
+                            };
+                            let Some(weight_str) = pair.get(1).copied() else {
+                                continue;
+                            };
+                            let weight: f32 = weight_str.parse().unwrap_or(0.0);
 
-                        let mut bone_id: i32 = -1;
+                            let mut bone_id: i32 = -1;
 
-                        for (j, info) in animation.model_animation_join.iter().enumerate() {
-                            if info.name == bone_name {
-                                bone_id = j as i32;
+                            for (j, info) in animation.model_animation_join.iter().enumerate() {
+                                if info.name == bone_name {
+                                    bone_id = j as i32;
+                                }
                             }
+
+                            vertex.bone_ids[i] = bone_id;
+                            vertex.bone_weights[i] = weight;
                         }
-
-                        vertex.bone_ids[i] = bone_id;
-                        vertex.bone_weights[i] = weight;
-
-                        // let total_weight = vertex.bone_weights.iter().sum::<f32>();
-                        // if total_weight > 0.0 {
-                        //     for w in vertex.bone_weights.iter_mut() {
-                        //         *w /= total_weight;
-                        //     }
-                        // }
-                    }
-                    let sum: f32 = vertex.bone_weights.iter().sum();
-                    if sum > 0.0 {
-                        for w in vertex.bone_weights.iter_mut() {
-                            *w /= sum;
+                        let sum: f32 = vertex.bone_weights.iter().sum();
+                        if sum > 0.0 {
+                            for w in vertex.bone_weights.iter_mut() {
+                                *w /= sum;
+                            }
                         }
                     }
                 }
 
-                model.vertices.push(vertex);
+                vertices.push(vertex);
             }
             "INDEX_COUNT:" => {
                 let index_count: u32 = parts[1].parse().unwrap();
-                let indices: Vec<u32> = lines
+                indices = lines
                     .next()
                     .unwrap()
                     .split_whitespace()
                     .map(|n| n.parse().unwrap())
-                    .collect();
+                    .collect::<Vec<u32>>();
 
                 dbg!(indices.len());
                 dbg!(index_count);
                 assert!(index_count == indices.len() as u32);
-                model.indices = indices;
             }
             "TEXTURE_DIFFUSE:" => {
-                let path = parts[1].to_string();
-                Renderer::upload_model_texture(
-                    &mut model,
-                    path,
-                    TextureType::Diffuse,
-                    texture_prof.clone(),
-                );
-            }
-            "TEXTURE_SPECULAR:" => {
-                let path = parts[1].to_string();
-                Renderer::upload_model_texture(
-                    &mut model,
-                    path,
-                    TextureType::Specular,
-                    texture_prof.clone(),
-                );
-            }
-            "TEXTURE_EMISSIVE:" => {
-                let path = parts[1].to_string();
-                Renderer::upload_model_texture(
-                    &mut model,
-                    path,
-                    TextureType::Emissive,
-                    texture_prof.clone(),
-                );
-            }
-            "TEXTURE_OPACITY:" => {
-                let path = parts[1].to_string();
-                Renderer::upload_model_texture(
-                    &mut model,
-                    path,
-                    TextureType::Opacity,
-                    texture_prof.clone(),
-                );
+                let raw = parts[1];
+                // If the texture path is just a filename (e.g. "diff.png"), resolve it relative
+                // to the model file directory. If it already contains separators, treat it as a
+                // path the asset loader can handle.
+                let path = if raw.contains('/') || raw.contains('\\') {
+                    raw.replace('\\', "/")
+                } else {
+                    format!("{}/{}", directory.replace('\\', "/"), raw)
+                };
+
+                match try_load_binary(&path) {
+                    Some(data) => {
+                        texture = Some(Texture::from_bytes(rdr_ctx, &data, file_path));
+                    }
+                    None => {
+                        eprintln!(
+                            "WARN: missing diffuse texture '{path}' for model '{file_path}'; using fallback texture"
+                        );
+                        texture = Some(Texture::from_solid_rgba8_srgb(
+                            rdr_ctx.device,
+                            rdr_ctx.queue,
+                            [198, 198, 198, 255],
+                            None,
+                        ));
+                    }
+                }
             }
             _ => {}
         }
     }
 
-    model.color_for_texture = use_color_for_texture || saw_any_color;
+    let vertex_buffer = rdr_ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("{:?} Vertex Buffer", file_path)),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
 
-    Renderer::upload_model_mesh(&mut model);
+    let index_buffer = rdr_ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("{:?} Index Buffer", file_path)),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
 
-    model
+    let diffuse_texture = texture.unwrap_or_else(|| {
+        eprintln!(
+            "WARN: model '{file_path}' did not specify TEXTURE_DIFFUSE; using fallback texture"
+        );
+        Texture::from_solid_rgba8_srgb(rdr_ctx.device, rdr_ctx.queue, [198, 198, 198, 255], None)
+    });
+
+    let bind_group = rdr_ctx
+        .device
+        .create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: rdr_ctx.layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+            ],
+            label: None,
+        });
+
+    model = Some(Model {
+        vertex_buffer,
+        index_buffer,
+
+        vertices,
+        indices: indices.clone(),
+
+        num_elements: indices.len() as u32,
+
+        material: Material {
+            diffuse_texture: diffuse_texture,
+            bind_group,
+        },
+        directory: directory.to_string(),
+        full_path: full_path.to_string(),
+    });
+
+    model.unwrap()
 }
 
 fn parse_bone_offset(lines: &mut Lines<'_>) -> Mat4 {
@@ -472,9 +525,9 @@ fn parse_vec4(input: &str) -> Vec4 {
 fn parse_vec3(input: &str) -> Vec3 {
     let parts: Vec<&str> = input.split_whitespace().collect();
     Vec3::new(
-        parts[0].parse().unwrap(),
+        parts[0].parse::<f32>().unwrap(),
         parts[1].parse::<f32>().unwrap(),
-        parts[2].parse().unwrap(),
+        parts[2].parse::<f32>().unwrap(),
     )
 }
 

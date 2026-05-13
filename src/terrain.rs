@@ -7,12 +7,19 @@ use nalgebra::Point3;
 use rapier3d::prelude::{
     ColliderBuilder, ColliderSet, InteractionGroups, RigidBodyHandle, RigidBodySet,
 };
+use wgpu::util::DeviceExt;
 
 use crate::{
-    animation::model::{Model, Vertex},
+    assets::load_binary,
     enums_types::{TextureProfile, TextureType},
-    renderer::Renderer,
     util::constants::{GROUP_TERRAIN, MAX_BONE_INFLUENCE},
+    wgpu_backend::{
+        material::Material,
+        model::Model,
+        render_context::RenderContext,
+        texture::{self, Texture},
+        vertex::Vertex,
+    },
 };
 
 pub struct Terrain {
@@ -147,42 +154,84 @@ impl Terrain {
         (heights, nrows, ncols)
     }
 
-    pub fn into_opengl_model(&mut self) -> Model {
-        let mut model = Model::new();
+    pub fn into_model(&mut self, rdr_ctx: &RenderContext) -> Model {
+        let mut vertices = vec![];
 
         for (i, v) in self.vertices.iter().enumerate() {
             let n = self.normals[i];
 
             let tile_scale = 25.0;
 
-            let uv = vec2(
+            let uv = [
                 ((v[0] + self.width as f32 / 2.0) / self.width as f32) * tile_scale,
                 ((v[2] + self.height as f32 / 2.0) / self.height as f32) * tile_scale,
-            );
+            ];
 
-            model.vertices.push(Vertex {
-                position: vec3(v[0], v[1], v[2]),
-                normal: vec3(n[0], n[1], n[2]),
+            vertices.push(Vertex {
+                position: *v,
+                normal: n,
                 uv,
-                base_color: Vec4::splat(1.0),
 
                 bone_ids: [-1; MAX_BONE_INFLUENCE],
                 bone_weights: [0.0; MAX_BONE_INFLUENCE],
             });
         }
 
-        model.directory = "resources/models/static/terrain".to_string();
-        Renderer::upload_model_texture(
-            &mut model,
-            "ai_slop/dark_dirt_pixelated.png".to_string(),
-            TextureType::Diffuse,
-            TextureProfile::BroadDefault,
-        );
+        let vertex_buffer = rdr_ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(&"Terrain Vertex Buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
-        model.indices = self.indices.clone();
-        Renderer::upload_model_mesh(&mut model);
+        let index_buffer = rdr_ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Terrain Index Buffer"),
+                contents: bytemuck::cast_slice(&self.indices),
+                usage: wgpu::BufferUsages::INDEX,
+            });
 
-        model
+        let directory = "resources/models/static/terrain".to_string();
+        let file_name = directory.clone() + "/" + "ai_slop/dark_dirt_pixelated.png";
+
+        let data = load_binary(&file_name);
+
+        let texture = Texture::from_bytes(&rdr_ctx, &data, "terrain");
+
+        let diffuse_bind_group = rdr_ctx
+            .device
+            .create_bind_group(&wgpu::BindGroupDescriptor {
+                layout: &rdr_ctx.layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&texture.view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                    },
+                ],
+                label: Some("diffuse_bind_group"),
+            });
+
+        Model {
+            vertex_buffer,
+            index_buffer,
+
+            vertices,
+            indices: self.indices.clone(),
+
+            num_elements: self.indices.len() as u32,
+            directory: directory.clone(),
+            full_path: directory.clone(),
+            material: Material {
+                diffuse_texture: texture,
+                bind_group: diffuse_bind_group,
+            },
+        }
     }
 
     // pub fn get_height_at(&self, x: f32, z: f32) -> f32 {

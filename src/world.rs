@@ -1,29 +1,29 @@
 use crate::{
     camera::Camera, entity_manager::EntityManager, lights::Lights, particles::ParticleSystem,
-    spawn_system::SpawnManager,
+    spawn_system::SpawnManager, wgpu_backend::render_context::RenderContext,
 };
 
 pub struct World {
     pub ecs: EntityManager,
     pub camera: Camera,
     pub lights: Lights,
-    pub particles: ParticleSystem,
+    //pub particles: ParticleSystem,
     pub spawn_manager: SpawnManager,
 }
 
 impl World {
-    pub fn new() -> Self {
-        let ecs = EntityManager::new(10_000);
+    pub fn new(rdr_ctx: &RenderContext) -> Self {
+        let ecs = EntityManager::new(10_000, rdr_ctx);
         let camera = Camera::new();
         let lights = Lights::new(50);
-        let particles = ParticleSystem::new("config/emitter_data.json");
+        //let particles = ParticleSystem::new("config/emitter_data.json");
         let spawn_manager = SpawnManager::default();
 
         Self {
             ecs,
             camera,
             lights,
-            particles,
+            //particles,
             spawn_manager,
         }
     }

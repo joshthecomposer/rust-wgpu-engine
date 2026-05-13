@@ -172,7 +172,6 @@ impl ImguiManager {
 
     pub fn draw(
         &mut self,
-        _window: &mut Window,
         width: f32,
         height: f32,
         delta: f32,

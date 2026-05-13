@@ -8,6 +8,20 @@ use crate::{
     physics::PhysicsState,
 };
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct CameraUniform {
+    pub view_proj: [[f32; 4]; 4],
+}
+
+impl CameraUniform {
+    pub fn new() -> Self {
+        Self {
+            view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct CamMoveBasis {
     pub fwd_flat: glam::Vec3,
@@ -55,6 +69,8 @@ pub struct Camera {
     pub prev_forward: Vec3,
     pub prev_up: Vec3,
     pub prev_target: Vec3,
+
+    pub uniform: CameraUniform,
 }
 
 impl Camera {
@@ -98,6 +114,8 @@ impl Camera {
             prev_forward: vec3(0.0, 0.0, -1.0),
             prev_up: vec3(0.0, 1.0, 0.0),
             prev_target: vec3(0.0, 0.0, 0.0),
+
+            uniform: CameraUniform::new(),
         }
     }
 
@@ -177,10 +195,21 @@ impl Camera {
                 self.view = glam::Mat4::look_at_rh(pos, target, up);
             }
         }
+
+        self.update_uniform();
     }
 
     pub fn get_view_matrix(&mut self) {
         self.view = Mat4::look_at_rh(self.position, self.target, self.up);
+    }
+
+    // for wgpu uniform
+    pub fn build_view_projection_matrix(&self) -> glam::Mat4 {
+        self.projection * self.view
+    }
+
+    pub fn update_uniform(&mut self) {
+        self.uniform.view_proj = self.build_view_projection_matrix().to_cols_array_2d();
     }
 
     // Call this when switching camera modes to reset the "first mouse" delta.

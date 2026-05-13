@@ -23,7 +23,7 @@ use crate::{
     lights::Lights,
     particles::ParticleSystem,
     physics::PhysicsState,
-    platform::{GlCapabilities, Platform},
+    platform::Platform,
     shaders::{Shader, ShaderProfile},
     sound::sound_manager::SoundManager,
     util::constants::{
@@ -109,10 +109,9 @@ struct RenderTargetPolicy {
 }
 
 impl RenderTargetPolicy {
-    fn for_capabilities(capabilities: &GlCapabilities, config: &GameConfig) -> Self {
-        let compatibility_mode = config.webgl_compatibility_mode || capabilities.is_gles_like;
-        let force_ldr =
-            config.webgl_compatibility_mode || !capabilities.supports_float_color_buffer;
+    fn for_capabilities(config: &GameConfig) -> Self {
+        let compatibility_mode = config.webgl_compatibility_mode;
+        let force_ldr = true;
 
         if force_ldr {
             return Self {
@@ -128,7 +127,7 @@ impl RenderTargetPolicy {
         }
 
         let hdr_enabled = true;
-        let mrt_enabled = capabilities.supports_mrt;
+        let mrt_enabled = true;
         let bloom_enabled = hdr_enabled && mrt_enabled;
 
         Self {
@@ -137,7 +136,7 @@ impl RenderTargetPolicy {
             depth_format: RenderTargetDepthFormat::DepthComponent24,
             hdr_enabled,
             bloom_enabled,
-            msaa_enabled: config.msaa_level != 1 && capabilities.supports_msaa_float_renderbuffer,
+            msaa_enabled: config.msaa_level != 1,
             fxaa_enabled: config.msaa_level < 2 && config.fxaa_level != FxaaLevels::Off,
             mrt_enabled,
         }
@@ -245,7 +244,6 @@ impl UiTextureDescriptor {
 }
 
 pub struct Renderer {
-    pub capabilities: GlCapabilities,
     pub shaders: HashMap<ShaderType, Shader>,
     pub vaos: HashMap<VaoType, u32>,
     pub fbos: HashMap<FboType, u32>,
@@ -283,12 +281,8 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    fn hdr_float_texel_format(capabilities: &GlCapabilities) -> (i32, u32, u32) {
-        if capabilities.is_gles_like {
-            (gl::RGBA16F as i32, gl::RGBA, gl::HALF_FLOAT)
-        } else {
-            (gl::RGBA16F as i32, gl::RGBA, gl::FLOAT)
-        }
+    fn hdr_float_texel_format() -> (i32, u32, u32) {
+        (gl::RGBA16F as i32, gl::RGBA, gl::FLOAT)
     }
 
     fn framebuffer_status_label(status: u32) -> &'static str {
@@ -327,7 +321,6 @@ impl Renderer {
         width: u32,
         height: u32,
         policy: RenderTargetPolicy,
-        capabilities: &GlCapabilities,
     ) -> HdrFramebuffer {
         assert!(policy.hdr_enabled);
         assert!(matches!(
@@ -340,7 +333,7 @@ impl Renderer {
         ));
 
         let mrt = policy.mrt_enabled;
-        let (internal_fmt, data_fmt, pixel_ty) = Self::hdr_float_texel_format(capabilities);
+        let (internal_fmt, data_fmt, pixel_ty) = Self::hdr_float_texel_format();
 
         let mut fbo = 0;
         let mut depth = 0;
@@ -659,7 +652,6 @@ impl Renderer {
         width: u32,
         height: u32,
         policy: RenderTargetPolicy,
-        capabilities: &GlCapabilities,
     ) -> BloomPingpongFramebuffers {
         assert!(policy.bloom_enabled);
         assert!(matches!(
@@ -667,7 +659,7 @@ impl Renderer {
             RenderTargetColorFormat::Rgba16F
         ));
 
-        let (internal_fmt, data_fmt, pixel_ty) = Self::hdr_float_texel_format(capabilities);
+        let (internal_fmt, data_fmt, pixel_ty) = Self::hdr_float_texel_format();
 
         let mut fbos = [0u32; 2];
         let mut textures = [0u32; 2];
@@ -829,10 +821,7 @@ impl Renderer {
         Some(fbo)
     }
 
-    fn create_compatibility_shaders(
-        capabilities: &GlCapabilities,
-        policy: &RenderTargetPolicy,
-    ) -> HashMap<ShaderType, Shader> {
+    fn create_compatibility_shaders(policy: &RenderTargetPolicy) -> HashMap<ShaderType, Shader> {
         let mut shaders = HashMap::new();
 
         let skybox_shader =
@@ -855,10 +844,10 @@ impl Renderer {
         static_model_shader.set_int("material.Opacity", 4);
         static_model_shader.set_int("shadow_map", 7);
         static_model_shader.set_int("skybox", 10);
-        static_model_shader.set_bool(
-            "shadow_border_fallback",
-            !capabilities.supports_clamp_to_border,
-        );
+        //static_model_shader.set_bool(
+        //    "shadow_border_fallback",
+        //    !capabilities.supports_clamp_to_border,
+        //);
         static_model_shader.set_bool("use_shadows", true);
 
         let animated_model_shader = Shader::new_with_profile(
@@ -872,10 +861,10 @@ impl Renderer {
         animated_model_shader.set_int("material.Opacity", 4);
         animated_model_shader.set_int("shadow_map", 7);
         animated_model_shader.set_int("skybox", 10);
-        animated_model_shader.set_bool(
-            "shadow_border_fallback",
-            !capabilities.supports_clamp_to_border,
-        );
+        //animated_model_shader.set_bool(
+        //    "shadow_border_fallback",
+        //    !capabilities.supports_clamp_to_border,
+        //);
         animated_model_shader.set_bool("use_shadows", true);
 
         let particles_shader =
@@ -1028,7 +1017,7 @@ impl Renderer {
         }
     }
 
-    fn create_compatibility_shadow_map(capabilities: &GlCapabilities) -> ShadowMapResources {
+    fn create_compatibility_shadow_map() -> ShadowMapResources {
         let mut fbo = 0;
         let mut depth_map = 0;
 
@@ -1152,10 +1141,10 @@ impl Renderer {
         static_model_shader.set_int("material.Opacity", 4);
         static_model_shader.set_int("shadow_map", 7);
         static_model_shader.set_int("skybox", 10);
-        static_model_shader.set_bool(
-            "shadow_border_fallback",
-            !platform.capabilities.supports_clamp_to_border,
-        );
+        //static_model_shader.set_bool(
+        //    "shadow_border_fallback",
+        //    !platform.capabilities.supports_clamp_to_border,
+        //);
 
         // Animated model shader
         let animated_model_shader = Shader::new("resources/shaders/model/animated_model.glsl");
@@ -1166,10 +1155,10 @@ impl Renderer {
         animated_model_shader.set_int("material.Opacity", 4);
         animated_model_shader.set_int("shadow_map", 7);
         animated_model_shader.set_int("skybox", 10);
-        animated_model_shader.set_bool(
-            "shadow_border_fallback",
-            !platform.capabilities.supports_clamp_to_border,
-        );
+        //animated_model_shader.set_bool(
+        //    "shadow_border_fallback",
+        //    !platform.capabilities.supports_clamp_to_border,
+        //);
 
         let gizmo_shader = Shader::new("resources/shaders/gizmo.glsl");
         let particle_shader = Shader::new("resources/shaders/particles.glsl");
@@ -1194,12 +1183,7 @@ impl Renderer {
         let width = platform.fb_width;
         let height = platform.fb_height;
 
-        let hdr_framebuffer = Self::create_hdr_framebuffer(
-            width,
-            height,
-            render_target_policy,
-            &platform.capabilities,
-        );
+        let hdr_framebuffer = Self::create_hdr_framebuffer(width, height, render_target_policy);
         fbos.insert(FboType::HDR, hdr_framebuffer.fbo);
         let hdr_color = hdr_framebuffer.color;
         let hdr_bright = hdr_framebuffer.bright;
@@ -1208,12 +1192,8 @@ impl Renderer {
         // Pingpong FBOs for bloom
         // =============================================================
 
-        let bloom_pingpong = Self::create_bloom_pingpong_framebuffers(
-            width,
-            height,
-            render_target_policy,
-            &platform.capabilities,
-        );
+        let bloom_pingpong =
+            Self::create_bloom_pingpong_framebuffers(width, height, render_target_policy);
         let pingpong_fbos = bloom_pingpong.fbos;
         let pingpong_tex = bloom_pingpong.textures;
 
@@ -1600,7 +1580,6 @@ impl Renderer {
         };
 
         let mut renderer = Self {
-            capabilities: platform.capabilities.clone(),
             shaders,
             vaos,
             fbos,
@@ -1644,10 +1623,9 @@ impl Renderer {
         config: &GameConfig,
         render_target_policy: RenderTargetPolicy,
     ) -> Self {
-        let shaders =
-            Self::create_compatibility_shaders(&platform.capabilities, &render_target_policy);
+        let shaders = Self::create_compatibility_shaders(&render_target_policy);
         let skybox_resources = Self::create_compatibility_skybox_resources();
-        let shadow_map = Self::create_compatibility_shadow_map(&platform.capabilities);
+        let shadow_map = Self::create_compatibility_shadow_map();
 
         let mut vaos = HashMap::new();
         vaos.insert(VaoType::Skybox, skybox_resources.vao);
@@ -1725,24 +1703,15 @@ impl Renderer {
         }
 
         if render_target_policy.hdr_enabled {
-            let hdr_framebuffer = Self::create_hdr_framebuffer(
-                width,
-                height,
-                render_target_policy,
-                &platform.capabilities,
-            );
+            let hdr_framebuffer = Self::create_hdr_framebuffer(width, height, render_target_policy);
             fbos.insert(FboType::HDR, hdr_framebuffer.fbo);
             hdr_color = hdr_framebuffer.color;
             hdr_bright = hdr_framebuffer.bright;
             hdr_depth = hdr_framebuffer.depth;
 
             if render_target_policy.bloom_enabled {
-                let bloom_pingpong = Self::create_bloom_pingpong_framebuffers(
-                    width,
-                    height,
-                    render_target_policy,
-                    &platform.capabilities,
-                );
+                let bloom_pingpong =
+                    Self::create_bloom_pingpong_framebuffers(width, height, render_target_policy);
                 pingpong_fbos = bloom_pingpong.fbos;
                 pingpong_tex = bloom_pingpong.textures;
             }
@@ -1812,7 +1781,6 @@ impl Renderer {
         }
 
         let mut renderer = Self {
-            capabilities: platform.capabilities.clone(),
             shaders,
             vaos,
             fbos,
@@ -1853,12 +1821,7 @@ impl Renderer {
     }
 
     /// Reallocate attachment storage for WebGL compatibility HDR/LDR scene targets after canvas resize.
-    pub fn resize_webgl_compatibility_framebuffers(
-        &mut self,
-        capabilities: &GlCapabilities,
-        width: u32,
-        height: u32,
-    ) {
+    pub fn resize_webgl_compatibility_framebuffers(&mut self, width: u32, height: u32) {
         if self.hdr_color == 0 || width == 0 || height == 0 {
             return;
         }
@@ -1867,7 +1830,7 @@ impl Renderer {
         let h = height as i32;
 
         let (internal_fmt, data_fmt, pixel_ty) = if self.do_hdr {
-            Self::hdr_float_texel_format(capabilities)
+            Self::hdr_float_texel_format()
         } else {
             (gl::RGBA8 as i32, gl::RGBA, gl::UNSIGNED_BYTE)
         };
@@ -2468,7 +2431,7 @@ impl Renderer {
             shader.set_mat4("model", m_mat);
             shader.set_mat4("projection", camera.projection);
             shader.set_mat4("view", camera.view);
-            Self::draw_model(model, shader);
+            //Self::draw_model(model, shader);
         }
 
         unsafe {
@@ -2477,7 +2440,7 @@ impl Renderer {
     }
 
     fn supports_gizmo_wireframe(&self) -> bool {
-        !self.capabilities.is_gles_like
+        true
     }
 
     fn make_solid_texture(r: u8, g: u8, b: u8, a: u8) -> u32 {
@@ -2956,32 +2919,7 @@ impl Renderer {
                     path: file_name,
                 };
 
-                match texture_type {
-                    TextureType::Diffuse => {
-                        model.textures[1] = Some(texture);
-                    }
-                    TextureType::Specular => {
-                        model.textures[2] = Some(texture);
-                    }
-                    TextureType::Emissive => {
-                        model.textures[3] = Some(texture);
-                    }
-                    TextureType::NormalMap => {
-                        model.textures[4] = Some(texture);
-                    }
-                    TextureType::Roughness => {
-                        model.textures[5] = Some(texture);
-                    }
-                    TextureType::Metalness => {
-                        model.textures[6] = Some(texture);
-                    }
-                    TextureType::Displacement => {
-                        model.textures[7] = Some(texture);
-                    }
-                    TextureType::Opacity => {
-                        model.textures[8] = Some(texture);
-                    }
-                }
+                model.texture = Some(texture);
             }
         }
     }
@@ -2992,32 +2930,11 @@ impl Renderer {
             shader.set_bool("has_opacity_texture", false);
         } else {
             shader.set_bool("use_base_color", false);
-            if let Some(diff) = model.get_tex(1) {
+            if let Some(diff) = &model.texture {
                 unsafe {
                     gl_call!(gl::ActiveTexture(gl::TEXTURE1));
                     gl_call!(gl::BindTexture(gl::TEXTURE_2D, diff.id));
                 }
-            }
-            if let Some(spec) = model.get_tex(2) {
-                unsafe {
-                    gl_call!(gl::ActiveTexture(gl::TEXTURE2));
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, spec.id));
-                }
-            }
-            if let Some(emis) = model.get_tex(3) {
-                unsafe {
-                    gl_call!(gl::ActiveTexture(gl::TEXTURE3));
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, emis.id));
-                }
-            }
-            if let Some(opac) = model.get_tex(8) {
-                shader.set_bool("has_opacity_texture", true);
-                unsafe {
-                    gl_call!(gl::ActiveTexture(gl::TEXTURE4));
-                    gl_call!(gl::BindTexture(gl::TEXTURE_2D, opac.id));
-                }
-            } else {
-                shader.set_bool("has_opacity_texture", false);
             }
         }
 
@@ -3118,11 +3035,8 @@ impl Renderer {
             };
             let trans = Self::render_transform(em, *id, alpha);
 
-            let m_mat = Mat4::from_scale_rotation_translation(
-                trans.scale,
-                trans.rotation,
-                trans.position,
-            );
+            let m_mat =
+                Mat4::from_scale_rotation_translation(trans.scale, trans.rotation, trans.position);
             shader.set_mat4("model", m_mat);
 
             if is_animated {
@@ -3140,11 +3054,7 @@ impl Renderer {
                         if animation.current_segment.get() == os.segment {
                             if !os.triggered.get() {
                                 sound_manager.play_sound_3d(os.sound_type.clone(), &trans.position);
-                                particles.spawn_oneshot_emitter(
-                                    "DesertStep",
-                                    trans.position,
-                                    None,
-                                );
+                                particles.spawn_oneshot_emitter("DesertStep", trans.position, None);
                                 os.triggered.set(true);
                             }
                         } else {

@@ -1,4 +1,3 @@
-#![allow(unused_must_use)]
 use core::f32;
 use std::{
     collections::{HashMap, HashSet},
@@ -19,7 +18,6 @@ use crate::{
         self,
         animation::Animation,
         animator::{Animator, RootMotionState},
-        model::Model,
         skellington::Bone,
     },
     assets,
@@ -33,7 +31,7 @@ use crate::{
         world_data::{EntityInstance, WorldData},
         Config,
     },
-    debug::gizmos::{Cuboid, Cylinder, Dimension, Pill, Sphere},
+    debug::gizmos::{Cuboid, Cylinder, Dimension, GizmoMesh, Pill, Sphere},
     enums_types::{
         ActiveItem, AnimationType, ControlState, Counter, DamageSource, DamageVolume,
         DamageVolumeHelper, EnemyController, FrameActivation, GroundedState, HitboxShape,
@@ -48,6 +46,7 @@ use crate::{
     state_machines::enemy::enemy_behavior_tree::{self, BehaviorTree},
     terrain::{self, Terrain},
     util::constants::{GRAVITY, GROUP_PLAYER},
+    wgpu_backend::{data_loader, model::Model, render_context::RenderContext},
 };
 
 pub struct EntityManager {
@@ -57,7 +56,7 @@ pub struct EntityManager {
     // This is pretty much exclusively for weapons that need an additional 90° orientation for instance
     pub local_corrections: SparseSet<Transform>,
     // The model for rendering the colldier. Otherwwise this is just managed in rapier3d
-    pub collider_gizmos: SparseSet<Model>,
+    pub collider_gizmos: SparseSet<GizmoMesh>,
     pub collider_transforms: SparseSet<Transform>,
     pub prev_collider_transforms: SparseSet<Transform>,
     pub collider_to_entity: HashMap<ColliderHandle, usize>,
@@ -127,7 +126,9 @@ pub struct EntityManager {
     /// Abilities assigned to weapon entities.
     pub weapon_abilities: SparseSet<WeaponAbilities>,
 
+    // we pull from these to spawn entities.
     pub entity_type_register: HashMap<String, EntityTypeHelper>,
+    pub entity_model_pool: HashMap<String, Model>,
     pub faction_register: HashSet<String>,
 
     /// Ability definitions (loaded from config).
@@ -143,7 +144,7 @@ pub struct EntityManager {
 }
 
 impl EntityManager {
-    pub fn new(max_entities: usize) -> Self {
+    pub fn new(max_entities: usize, rdr_ctx: &RenderContext) -> Self {
         let wd = WorldData::load_from_file("config/world_data.json");
 
         let mut weapon_anim_map =
@@ -213,8 +214,13 @@ impl EntityManager {
             status_effects: SparseSet::with_capacity(max_entities),
 
             // TODO: Probably just return the entity_types here instead of accessing them like this
+            entity_model_pool: Self::populate_entity_model_pool(
+                "config/entity_config.json",
+                rdr_ctx,
+            ),
             entity_type_register: EntityConfig::load_from_file("config/entity_config.json")
                 .entity_types,
+
             faction_register: FactionsConfig::load_from_file("config/factions_config.json")
                 .factions,
             abilities_config: AbilitiesConfig::load_or_create_default(
@@ -230,7 +236,39 @@ impl EntityManager {
         }
     }
 
-    pub fn populate_entity_data(&mut self, ps: &mut PhysicsState) {
+    pub fn populate_entity_model_pool(
+        file_name: &str,
+        rdr_ctx: &RenderContext,
+    ) -> HashMap<String, Model> {
+        let mut register = HashMap::new();
+
+        let data = EntityConfig::load_from_file(file_name).entity_types;
+
+        for (k, v) in data.iter() {
+            // Some entity types are meshless (gizmo-only) and intentionally have an empty mesh path.
+            if v.mesh_path.is_empty() {
+                continue;
+            }
+
+            let model = if let Some(_) = &v.bone_path {
+                let b = if let Some(b) = &v.item_bones {
+                    Some(b.rh.as_str())
+                } else {
+                    None
+                };
+
+                data_loader::import_model_data(&v.mesh_path, &Animation::default(), rdr_ctx)
+            } else {
+                data_loader::import_model_data(&v.mesh_path, &Animation::default(), rdr_ctx)
+            };
+
+            register.insert(k.to_string(), model);
+        }
+
+        register
+    }
+
+    pub fn populate_entity_data(&mut self, ps: &mut PhysicsState, rdr_ctx: &RenderContext) {
         let data = self.serializable_world_data.clone();
 
         for instance in data.entities.iter() {
@@ -250,7 +288,7 @@ impl EntityManager {
             }
         }
 
-        load_terrain(self, ps);
+        load_terrain(self, ps, rdr_ctx);
     }
 
     pub fn create_weapon(&mut self, instance: &EntityInstance, ps: &mut PhysicsState) -> usize {
@@ -593,7 +631,7 @@ impl EntityManager {
         };
         self.transforms.insert(parent_id, transform.clone());
 
-        // CHECK FOR BONES
+        // CHECK FORBONES
         let model = if let (Some(bone_path), Some(anim_props)) =
             (&archetype.bone_path, &archetype.animation_properties)
         {
@@ -622,7 +660,7 @@ impl EntityManager {
                 };
 
                 let (skell, mut animator, animation, rh_bone_id) =
-                    animation::data_loader::import_bone_data(bone_path, false, b);
+                    data_loader::import_bone_data(bone_path, false, b);
 
                 if let Some(_) = &archetype.item_bones {
                     if rh_bone_id.is_some() {
@@ -694,13 +732,12 @@ impl EntityManager {
             }
 
             let model = self
-                .models
+                .entity_model_pool
                 .iter()
-                .find(|m| m.value().full_path == *archetype.mesh_path)
-                .map(|m| m.value().clone())
-                .unwrap_or_else(|| {
-                    animation::data_loader::import_model_data(&archetype.mesh_path, &animation)
-                });
+                .find(|m| *m.0 == instance.entity_type)
+                .unwrap()
+                .1
+                .clone();
 
             let rotator = Rotator {
                 cur_rot: instance.rotation,
@@ -719,16 +756,12 @@ impl EntityManager {
             model
         } else {
             let model = self
-                .models
+                .entity_model_pool
                 .iter()
-                .find(|m| m.value().full_path == *archetype.mesh_path)
-                .map(|m| m.value().clone())
-                .unwrap_or_else(|| {
-                    animation::data_loader::import_model_data(
-                        &archetype.mesh_path,
-                        &Animation::default(),
-                    )
-                });
+                .find(|m| *m.0 == instance.entity_type)
+                .unwrap()
+                .1
+                .clone();
 
             self.models.insert(parent_id, model.clone());
 
@@ -1102,8 +1135,8 @@ impl EntityManager {
         let mut max = Vec3::splat(f32::MIN);
 
         for v in model.vertices.iter() {
-            min = min.min(v.position);
-            max = max.max(v.position);
+            min = min.min(v.position.into());
+            max = max.max(v.position.into());
         }
 
         let size = max - min;
@@ -1969,7 +2002,11 @@ pub fn glam_to_nalgebra_quat(q: Quat) -> UnitQuaternion<f32> {
     UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(q.w, q.x, q.y, q.z))
 }
 
-pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut PhysicsState) {
+pub fn load_terrain(
+    entity_manager: &mut EntityManager,
+    physics_state: &mut PhysicsState,
+    rdr_ctx: &RenderContext,
+) {
     //let path = "resources/textures/brushes/301B1.png";
     //let path = "resources/textures/brushes/testing.png";
     //let path = "resources/textures/brushes/mountain.png";
@@ -1986,7 +2023,7 @@ pub fn load_terrain(entity_manager: &mut EntityManager, physics_state: &mut Phys
     //let mut terrain = Terrain::from_height_map("resources/textures/brushes/big_spot.jpeg");
     //let mut terrain = Terrain::from_height_map("resources/textures/brushes/2000.png");
 
-    let model = terrain.into_opengl_model();
+    let model = terrain.into_model(rdr_ctx);
 
     let terrain_trans = Transform {
         position: Vec3::splat(0.0),

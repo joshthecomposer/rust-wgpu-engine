@@ -8,12 +8,12 @@ mod config;
 mod debug;
 mod entity_manager;
 mod enums_types;
-mod grid;
+//mod grid;
 mod input;
 mod lights;
 mod macros;
 mod movement_system;
-mod renderer;
+//mod renderer;
 mod sound;
 mod sparse_set;
 mod terrain;
@@ -38,6 +38,10 @@ mod world;
 mod damage_volume_spawn_system;
 mod projectile_system;
 mod status_effect_system;
+mod wgpu_backend;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::Arc;
 
 #[cfg(not(target_arch = "wasm32"))]
 use config::{game_config::GameConfig, Config};
@@ -56,21 +60,26 @@ use winit::window::WindowId;
 #[cfg(not(target_arch = "wasm32"))]
 use winit::{application::ApplicationHandler, event::DeviceEvent};
 
+use winit::dpi::LogicalSize;
+use winit::event_loop::EventLoop;
+use winit::window::Window;
+
 #[cfg(not(target_arch = "wasm32"))]
 struct App {
-    game: Game,
-    window_id: WindowId,
+    game: Option<Game>,
+    window: Option<Arc<Window>>,
     start: std::time::Instant,
+    config: Option<GameConfig>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl App {
-    fn new(game: Game) -> Self {
-        let window_id = game.platform.window.id();
+    fn new(config: GameConfig) -> Self {
         Self {
-            game,
-            window_id,
+            game: None,
+            window: None,
             start: std::time::Instant::now(),
+            config: Some(config),
         }
     }
 }
@@ -83,35 +92,56 @@ impl ApplicationHandler for App {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        if window_id != self.window_id {
-            return;
-        }
-
         match &event {
             WindowEvent::CloseRequested => {
                 event_loop.exit(); // TODO: Put this in the message queue like it was in glfw
             }
+            WindowEvent::RedrawRequested => {
+                if self.window.as_ref().is_some_and(|w| w.id() == window_id) {
+                    if let Some(game) = &mut self.game {
+                        let now = self.start.elapsed().as_secs_f32();
+                        game.tick(now);
+                    }
+                }
+            }
             _ => {
-                self.game.handle_window_event(&event);
+                if let Some(game) = &mut self.game {
+                    game.handle_window_event(&event);
+                }
             }
         }
     }
 
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        // This runs every time winit is about to sleep
-        let now = self.start.elapsed().as_secs_f32();
-        self.game.tick(now);
-
-        if self.game.should_quit {
-            event_loop.exit();
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.window.is_some() {
             return;
         }
 
-        // Continuous redraw
-        self.game.platform.window.request_redraw();
-    }
+        let config = self
+            .config
+            .take()
+            .expect("App::resumed called after game was already initialized");
 
-    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {}
+        let window_attrs = Window::default_attributes()
+            .with_title("best dang game")
+            .with_inner_size(LogicalSize::new(
+                config.win_width as u32,
+                config.win_height as u32,
+            ))
+            .with_resizable(true);
+
+        let window = Arc::new(event_loop.create_window(window_attrs).unwrap());
+
+        self.window = Some(Arc::clone(&window));
+
+        let platform = Platform {
+            fb_width: config.win_width as u32,
+            fb_height: config.win_height as u32,
+            window: Some(Arc::clone(&window)),
+        };
+        let game = Game::new(platform, config);
+        self.game = Some(game);
+    }
 
     fn device_event(
         &mut self,
@@ -123,8 +153,10 @@ impl ApplicationHandler for App {
             // delta: (dx, dy) in f64
             let (dx, dy) = delta;
             // only process camera input when not paused AND cursor is locked
-            if !self.game.paused && !self.game.cursor_unlocked() {
-                self.game.world.camera.process_mouse_input(dx, dy);
+            if let Some(game) = &mut self.game {
+                if !game.paused {
+                    game.world.camera.process_mouse_input(dx, dy);
+                }
             }
         }
     }
@@ -133,16 +165,9 @@ impl ApplicationHandler for App {
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
     let config = GameConfig::load_or_create_default("config/game_config.json");
+    let mut app = App::new(config);
 
-    let (platform, event_loop) = Platform::new(
-        &config.game_title,
-        config.win_width as u32,
-        config.win_height as u32,
-        config.vsync,
-    );
-    platform.window.focus_window();
-    let game = Game::new(platform, config);
-    let mut app = App::new(game);
+    let event_loop = EventLoop::new().unwrap();
 
     event_loop.run_app(&mut app).expect("event loop error");
 }

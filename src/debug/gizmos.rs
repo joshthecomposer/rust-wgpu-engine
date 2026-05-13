@@ -1,14 +1,18 @@
 use glam::Vec3;
 use serde::Deserialize;
 
-use crate::animation::model::{Model, Vertex};
-use crate::renderer::Renderer;
+use crate::wgpu_backend::{model::Model, vertex::Vertex};
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum Dimension {
     Cuboid { w: f32, h: f32, d: f32 },
     Cylinder { r: f32, h: f32 },
     Pill { r: f32, h: f32 },
+}
+
+pub struct GizmoMesh {
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u32>,
 }
 
 pub struct Cuboid {
@@ -18,9 +22,7 @@ pub struct Cuboid {
 }
 
 impl Cuboid {
-    pub fn create_model(&self) -> Model {
-        let mut cuboid = Model::new();
-
+    pub fn create_model(&self) -> GizmoMesh {
         let max_x = self.w / 2.0;
         let min_x = -max_x;
 
@@ -39,35 +41,35 @@ impl Cuboid {
 
         let vertices = vec![
             // Right (+X)
-            Vertex::new(Vec3::new(max_x, min_y, min_z), px),
-            Vertex::new(Vec3::new(max_x, max_y, min_z), px),
-            Vertex::new(Vec3::new(max_x, max_y, max_z), px),
-            Vertex::new(Vec3::new(max_x, min_y, max_z), px),
+            Vertex::boneless(Vec3::new(max_x, min_y, min_z), px),
+            Vertex::boneless(Vec3::new(max_x, max_y, min_z), px),
+            Vertex::boneless(Vec3::new(max_x, max_y, max_z), px),
+            Vertex::boneless(Vec3::new(max_x, min_y, max_z), px),
             // Left (-X)
-            Vertex::new(Vec3::new(min_x, min_y, max_z), nx),
-            Vertex::new(Vec3::new(min_x, max_y, max_z), nx),
-            Vertex::new(Vec3::new(min_x, max_y, min_z), nx),
-            Vertex::new(Vec3::new(min_x, min_y, min_z), nx),
+            Vertex::boneless(Vec3::new(min_x, min_y, max_z), nx),
+            Vertex::boneless(Vec3::new(min_x, max_y, max_z), nx),
+            Vertex::boneless(Vec3::new(min_x, max_y, min_z), nx),
+            Vertex::boneless(Vec3::new(min_x, min_y, min_z), nx),
             // Top (+Y)
-            Vertex::new(Vec3::new(min_x, max_y, min_z), py),
-            Vertex::new(Vec3::new(min_x, max_y, max_z), py),
-            Vertex::new(Vec3::new(max_x, max_y, max_z), py),
-            Vertex::new(Vec3::new(max_x, max_y, min_z), py),
+            Vertex::boneless(Vec3::new(min_x, max_y, min_z), py),
+            Vertex::boneless(Vec3::new(min_x, max_y, max_z), py),
+            Vertex::boneless(Vec3::new(max_x, max_y, max_z), py),
+            Vertex::boneless(Vec3::new(max_x, max_y, min_z), py),
             // Bottom (-Y)
-            Vertex::new(Vec3::new(min_x, min_y, max_z), ny),
-            Vertex::new(Vec3::new(min_x, min_y, min_z), ny),
-            Vertex::new(Vec3::new(max_x, min_y, min_z), ny),
-            Vertex::new(Vec3::new(max_x, min_y, max_z), ny),
+            Vertex::boneless(Vec3::new(min_x, min_y, max_z), ny),
+            Vertex::boneless(Vec3::new(min_x, min_y, min_z), ny),
+            Vertex::boneless(Vec3::new(max_x, min_y, min_z), ny),
+            Vertex::boneless(Vec3::new(max_x, min_y, max_z), ny),
             // Front (+Z)
-            Vertex::new(Vec3::new(max_x, min_y, max_z), pz),
-            Vertex::new(Vec3::new(max_x, max_y, max_z), pz),
-            Vertex::new(Vec3::new(min_x, max_y, max_z), pz),
-            Vertex::new(Vec3::new(min_x, min_y, max_z), pz),
+            Vertex::boneless(Vec3::new(max_x, min_y, max_z), pz),
+            Vertex::boneless(Vec3::new(max_x, max_y, max_z), pz),
+            Vertex::boneless(Vec3::new(min_x, max_y, max_z), pz),
+            Vertex::boneless(Vec3::new(min_x, min_y, max_z), pz),
             // Back (-Z)
-            Vertex::new(Vec3::new(min_x, min_y, min_z), nz),
-            Vertex::new(Vec3::new(min_x, max_y, min_z), nz),
-            Vertex::new(Vec3::new(max_x, max_y, min_z), nz),
-            Vertex::new(Vec3::new(max_x, min_y, min_z), nz),
+            Vertex::boneless(Vec3::new(min_x, min_y, min_z), nz),
+            Vertex::boneless(Vec3::new(min_x, max_y, min_z), nz),
+            Vertex::boneless(Vec3::new(max_x, max_y, min_z), nz),
+            Vertex::boneless(Vec3::new(max_x, min_y, min_z), nz),
         ];
 
         let indices = vec![
@@ -79,11 +81,7 @@ impl Cuboid {
             20, 21, 22, 20, 22, 23, // Back
         ];
 
-        cuboid.vertices = vertices;
-        cuboid.indices = indices;
-        Renderer::upload_model_mesh(&mut cuboid);
-
-        cuboid
+        GizmoMesh { vertices, indices }
     }
 }
 
@@ -94,8 +92,7 @@ pub struct Cylinder {
 }
 
 impl Cylinder {
-    pub fn create_model(&self, segments: u32) -> Model {
-        let mut model = Model::new();
+    pub fn create_model(&self, segments: u32) -> GizmoMesh {
         let mut vertices = vec![];
         let mut indices = vec![];
 
@@ -103,7 +100,7 @@ impl Cylinder {
 
         // bottom center vertex
         let bottom_center_index = vertices.len() as u32;
-        vertices.push(Vertex::new(Vec3::new(0.0, 0.0, 0.0), Vec3::NEG_Y));
+        vertices.push(Vertex::boneless(Vec3::new(0.0, 0.0, 0.0), Vec3::NEG_Y));
 
         // Bottom Ring
         for i in 0..segments {
@@ -111,7 +108,7 @@ impl Cylinder {
             let x = self.r * theta.cos();
             let z = self.r * theta.sin();
 
-            vertices.push(Vertex::new(Vec3::new(x, 0.0, z), Vec3::NEG_Y));
+            vertices.push(Vertex::boneless(Vec3::new(x, 0.0, z), Vec3::NEG_Y));
         }
 
         // Bottom cap indices (triangle fan)
@@ -124,7 +121,7 @@ impl Cylinder {
 
         // top center vertex
         let top_center_vertex = vertices.len() as u32;
-        vertices.push(Vertex::new(Vec3::new(0.0, self.h, 0.0), Vec3::Y));
+        vertices.push(Vertex::boneless(Vec3::new(0.0, self.h, 0.0), Vec3::Y));
 
         // top ring
         let top_ring_start = vertices.len() as u32;
@@ -133,7 +130,7 @@ impl Cylinder {
             let x = self.r * theta.cos();
             let z = self.r * theta.sin();
 
-            vertices.push(Vertex::new(Vec3::new(x, self.h, z), Vec3::Y));
+            vertices.push(Vertex::boneless(Vec3::new(x, self.h, z), Vec3::Y));
         }
 
         // top cap indices ( triangle fan )
@@ -153,9 +150,9 @@ impl Cylinder {
             let normal = Vec3::new(x, 0.0, z).normalize();
 
             // bottom vertex of the side
-            vertices.push(Vertex::new(Vec3::new(x, 0.0, z), normal));
+            vertices.push(Vertex::boneless(Vec3::new(x, 0.0, z), normal));
             // top vertex of the side
-            vertices.push(Vertex::new(Vec3::new(x, self.h, z), normal));
+            vertices.push(Vertex::boneless(Vec3::new(x, self.h, z), normal));
         }
 
         // side indices (split the quads into two triangles)
@@ -178,12 +175,7 @@ impl Cylinder {
             indices.push(bottom_next);
             indices.push(top_next);
         }
-
-        model.vertices = vertices;
-        model.indices = indices;
-        Renderer::upload_model_mesh(&mut model);
-
-        model
+        GizmoMesh { vertices, indices }
     }
 }
 
@@ -192,8 +184,7 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn create_model(&self, segments: u32, rings: u32, offset: f32) -> Model {
-        let mut model = Model::new();
+    pub fn create_model(&self, segments: u32, rings: u32, offset: f32) -> GizmoMesh {
         let mut vertices: Vec<Vertex> = Vec::new();
         let mut indices: Vec<u32> = Vec::new();
 
@@ -224,7 +215,7 @@ impl Sphere {
                 // Equivalent to (x,y,z).normalize() because it's on radius r.
                 let normal = Vec3::new(x, y, z).normalize();
 
-                vertices.push(Vertex::new(pos, normal));
+                vertices.push(Vertex::boneless(pos, normal));
             }
         }
 
@@ -239,11 +230,7 @@ impl Sphere {
                 indices.extend_from_slice(&[i0, i1, i2, i1, i3, i2]);
             }
         }
-
-        model.vertices = vertices;
-        model.indices = indices;
-        Renderer::upload_model_mesh(&mut model);
-        model
+        GizmoMesh { vertices, indices }
     }
 }
 
@@ -254,8 +241,7 @@ pub struct Pill {
 }
 
 impl Pill {
-    pub fn create_model(&self, segments: u32, rings: u32, offset: f32) -> Model {
-        let mut model = Model::new();
+    pub fn create_model(&self, segments: u32, rings: u32, offset: f32) -> GizmoMesh {
         let mut vertices = vec![];
         let mut indices = vec![];
 
@@ -278,19 +264,19 @@ impl Pill {
 
             let base = vertices.len() as u32;
 
-            vertices.push(Vertex::new(
+            vertices.push(Vertex::boneless(
                 Vec3::new(x0, cylinder_bottom + offset, z0),
                 normal0,
             ));
-            vertices.push(Vertex::new(
+            vertices.push(Vertex::boneless(
                 Vec3::new(x0, cylinder_top + offset, z0),
                 normal0,
             ));
-            vertices.push(Vertex::new(
+            vertices.push(Vertex::boneless(
                 Vec3::new(x1, cylinder_top + offset, z1),
                 normal1,
             ));
-            vertices.push(Vertex::new(
+            vertices.push(Vertex::boneless(
                 Vec3::new(x1, cylinder_bottom + offset, z1),
                 normal1,
             ));
@@ -321,7 +307,7 @@ impl Pill {
                     let z = r * theta.sin();
                     let normal = Vec3::new(x, hemisphere_sign * y, z).normalize();
 
-                    vertices.push(Vertex::new(
+                    vertices.push(Vertex::boneless(
                         Vec3::new(x, y_offset + hemisphere_sign * y + offset, z),
                         normal,
                     ));
@@ -362,9 +348,6 @@ impl Pill {
             }
         }
 
-        model.vertices = vertices;
-        model.indices = indices;
-        Renderer::upload_model_mesh(&mut model);
-        model
+        GizmoMesh { vertices, indices }
     }
 }

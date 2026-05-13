@@ -44,7 +44,7 @@ pub struct Model {
 
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
-    pub textures: [Option<Texture>; 9],
+    pub texture: Option<Texture>,
 
     pub directory: String,
     pub full_path: String,
@@ -61,7 +61,7 @@ impl Model {
 
             vertices: vec![],
             indices: vec![],
-            textures: [None, None, None, None, None, None, None, None, None],
+            texture: None,
 
             directory: String::new(),
             full_path: String::new(),
@@ -69,24 +69,4 @@ impl Model {
             color_for_texture: false,
         }
     }
-
-    /// Get a texture by index (0 = Diffuse, 1 = Specular, etc.)
-    pub fn get_tex(&self, index: usize) -> Option<&Texture> {
-        if index < self.textures.len() {
-            self.textures[index].as_ref()
-        } else {
-            None
-        }
-    }
-
-    // Convenience: get by "type" using a fixed mapping
-    // pub fn get_tex_by_type(&self, tex_type: &str) -> Option<&Texture> {
-    //     match tex_type {
-    //         "Diffuse" => self.textures[0].as_ref(),
-    //         "Specular" => self.textures[1].as_ref(),
-    //         "Emissive" => self.textures[2].as_ref(),
-    //         "Opacity" => self.textures[3].as_ref(),
-    //         _ => None,
-    //     }
-    // }
 }
