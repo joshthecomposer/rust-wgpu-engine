@@ -9,7 +9,7 @@ A 3D game engine built in Rust with OpenGL.
    - Select "Desktop development with C++" workload
 
 ### Running
-Run `cargo run` from the root directory.
+Run `cargo desktop` from the root directory.
 
 ---
 ## Exporting Models with Blender
