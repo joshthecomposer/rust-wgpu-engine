@@ -13,7 +13,7 @@ pub fn update(em: &mut EntityManager, _dt: f32, ps: &PhysicsState, cmds: &mut Co
     if let Some(pid) = em.get_player_id() {
         resolve_melee_hits_for_source(pid, em, ps, cmds);
     } else {
-        eprintln!("There is no player");
+        //eprintln!("There is no player");
     }
 
     for eid in em.get_ids_for_faction("Enemy") {

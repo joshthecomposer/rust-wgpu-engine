@@ -7,9 +7,10 @@ use crate::{
     camera::{Camera, CameraUniform},
     entity_manager::EntityManager,
     enums_types::InstanceUniform,
+    util::constants::MAX_BONES,
     wgpu_backend::{
-        bind_group_layout_type::BindGroupLayoutType, model::Model, pipeline_type::PipelineType,
-        texture, vertex::Vertex,
+        bind_group_layout_type::BindGroupLayoutType, bone_uniforms::BoneUniforms, model::Model,
+        pipeline_type::PipelineType, texture, vertex::Vertex,
     },
 };
 
@@ -25,6 +26,7 @@ pub struct Renderer {
     pub camera_buffer: wgpu::Buffer,
 
     pub instance_buffer: wgpu::Buffer,
+    pub bones_buffer: wgpu::Buffer,
     pub depth_texture: texture::Texture,
 }
 
@@ -190,7 +192,7 @@ impl Renderer {
         bind_groups.insert(BindGroupLayoutType::Camera, camera_bind_group);
 
         // ==============================================
-        // Pipelines
+        // STATIC MODEL PIPELINE
         // ==============================================
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Static Model Shader"),
@@ -209,55 +211,163 @@ impl Renderer {
                 immediate_size: 0,
             });
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Main render pipeline"),
-            layout: Some(&render_pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("vs_main"),
-                buffers: &[Vertex::desc(), InstanceUniform::desc()],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
+        pipelines.insert(
+            PipelineType::Model,
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Static Model Pipeline"),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"),
+                    buffers: &[Vertex::desc(), InstanceUniform::desc()],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some("fs_main"),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: config.format,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
+
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(wgpu::CompareFunction::Less),
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    // bitwise NOT 0 (all flags)
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                multiview_mask: None,
+                cache: None,
             }),
+        );
 
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
+        // ==============================================
+        // ANIMATED MODEL PIPELINE
+        // ==============================================
 
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: wgpu::TextureFormat::Depth32Float,
-                depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::Less),
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            }),
-
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                // bitwise NOT 0 (all flags)
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview_mask: None,
-            cache: None,
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Animated Model Shader"),
+            source: wgpu::ShaderSource::Wgsl(
+                include_str!("../../resources/shaders/model/animated_model.wgsl").into(),
+            ),
         });
 
-        pipelines.insert(PipelineType::Model, render_pipeline);
+        let bone_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bone_uniform_buffer"),
+            size: std::mem::size_of::<BoneUniforms>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let bones_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("bones_bind_group_layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        let bones_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bones_bind_group"),
+            layout: &bones_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: bone_buffer.as_entire_binding(),
+            }],
+        });
+
+        layouts.insert(BindGroupLayoutType::Bones, bones_bind_group_layout.clone());
+        bind_groups.insert(BindGroupLayoutType::Bones, bones_bind_group);
+
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Animated Model Pipeline Layout"),
+                bind_group_layouts: &[
+                    Some(&texture_bind_group_layout),
+                    Some(&camera_bind_group_layout),
+                    Some(&bones_bind_group_layout),
+                ],
+                immediate_size: 0,
+            });
+
+        pipelines.insert(
+            PipelineType::AnimatedModel,
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Animated Model Pipeline"),
+                layout: Some(&render_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"),
+                    buffers: &[Vertex::desc(), InstanceUniform::desc()],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some("fs_main"),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: config.format,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
+
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(wgpu::CompareFunction::Less),
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    // bitwise NOT 0 (all flags)
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                multiview_mask: None,
+                cache: None,
+            }),
+        );
 
         // ==============================================
         // Instance Buffer
@@ -281,6 +391,7 @@ impl Renderer {
             camera_buffer,
             instance_buffer,
             depth_texture,
+            bones_buffer: bone_buffer,
         }
     }
 
@@ -321,6 +432,9 @@ impl Renderer {
                 label: Some("Render encoder"),
             });
 
+        // ==============================================
+        // Static Model Pass
+        // ==============================================
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("render pass"),
@@ -358,46 +472,168 @@ impl Renderer {
             render_pass.set_pipeline(pipeline);
             render_pass.set_bind_group(1, cam_bg, &[]);
 
-            let ids = em.get_ids_for_type("Mountain1");
+            let ids_by_type = em.get_modeled_static_ids_by_type();
 
-            let mut instances = vec![];
-            let mut batch_model: Option<&Model> = None;
+            let instance_stride = std::mem::size_of::<InstanceUniform>() as wgpu::BufferAddress;
+            let mut instance_offset: wgpu::BufferAddress = 0;
 
-            for id in ids.iter() {
-                let id = *id;
-                let transform = em.transforms.get(id).unwrap();
-                let model = em.models.get(id).unwrap();
-
-                if batch_model.is_none() {
-                    batch_model = Some(model);
+            for ids in ids_by_type.values() {
+                let mut instances = vec![];
+                let mut batch_model: Option<&Model> = None;
+                if ids.is_empty() {
+                    continue;
                 }
 
-                instances.push(transform.to_instance_uniform());
-            }
+                for id in ids {
+                    let id = *id;
 
-            if let Some(model) = batch_model {
-                if !instances.is_empty() {
-                    let instance_bytes = bytemuck::cast_slice(&instances);
-                    self.queue
-                        .write_buffer(&self.instance_buffer, 0, instance_bytes);
+                    let (Some(transform), Some(model)) = (em.transforms.get(id), em.models.get(id))
+                    else {
+                        continue;
+                    };
+
+                    if batch_model.is_none() {
+                        batch_model = Some(model);
+                    }
+
+                    instances.push(transform.to_instance_uniform());
+                }
+
+                if let Some(model) = batch_model {
+                    if !instances.is_empty() {
+                        let instance_bytes = bytemuck::cast_slice(&instances);
+                        let batch_bytes = instance_bytes.len() as wgpu::BufferAddress;
+
+                        debug_assert!(
+                            instance_offset + batch_bytes <= self.instance_buffer.size(),
+                            "instance_buffer too small for this frame"
+                        );
+
+                        self.queue.write_buffer(
+                            &self.instance_buffer,
+                            instance_offset,
+                            instance_bytes,
+                        );
+
+                        render_pass.set_bind_group(0, &model.material.bind_group, &[]);
+                        render_pass.set_vertex_buffer(0, model.vertex_buffer.slice(..));
+                        render_pass.set_vertex_buffer(
+                            1,
+                            self.instance_buffer
+                                .slice(instance_offset..instance_offset + batch_bytes),
+                        );
+
+                        render_pass.set_index_buffer(
+                            model.index_buffer.slice(..),
+                            wgpu::IndexFormat::Uint32,
+                        );
+
+                        let n = instances.len() as u32;
+
+                        render_pass.draw_indexed(0..model.num_elements, 0, 0..n);
+
+                        instance_offset += instances.len() as wgpu::BufferAddress * instance_stride;
+                    }
+                }
+            }
+        }
+
+        // ==============================================
+        // Animated Model Pass
+        // ==============================================
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("render pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            });
+
+            let pipeline = self.pipelines.get(&PipelineType::AnimatedModel).unwrap();
+            let cam_bg = self.bind_groups.get(&BindGroupLayoutType::Camera).unwrap();
+
+            render_pass.set_pipeline(pipeline);
+            render_pass.set_bind_group(1, cam_bg, &[]);
+
+            let ids_by_type = em.get_animated_ids_by_type();
+
+            for ids in ids_by_type.values() {
+                if ids.is_empty() {
+                    continue;
+                }
+
+                for id in ids {
+                    let id = *id;
+
+                    let (Some(transform), Some(model), Some(animator)) = (
+                        em.transforms.get(id),
+                        em.models.get(id),
+                        em.animators.get(id),
+                    ) else {
+                        continue;
+                    };
+
+                    let animation = animator.get_current_animation().unwrap();
+                    let pose = &animation.current_pose;
+
+                    let n = pose.len().min(MAX_BONES as usize);
+
+                    let mut bones = BoneUniforms {
+                        matrices: [glam::Mat4::IDENTITY; MAX_BONES as usize],
+                    };
+
+                    bones.matrices[..n].copy_from_slice(&pose[..n]);
+
+                    let bytes = bytemuck::cast_slice(bytemuck::bytes_of(&bones));
+
+                    self.queue.write_buffer(
+                        &self.instance_buffer,
+                        0,
+                        bytemuck::bytes_of(&transform.to_instance_uniform()),
+                    );
+
+                    self.queue.write_buffer(&self.bones_buffer, 0, bytes);
 
                     render_pass.set_bind_group(0, &model.material.bind_group, &[]);
+                    render_pass.set_bind_group(
+                        2,
+                        self.bind_groups.get(&BindGroupLayoutType::Bones).unwrap(),
+                        &[],
+                    );
                     render_pass.set_vertex_buffer(0, model.vertex_buffer.slice(..));
                     render_pass.set_vertex_buffer(
                         1,
                         self.instance_buffer
-                            .slice(0..instance_bytes.len() as wgpu::BufferAddress),
+                            .slice(0..size_of::<InstanceUniform>() as u64),
                     );
 
                     render_pass
                         .set_index_buffer(model.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
-                    let n = instances.len() as u32;
-
-                    render_pass.draw_indexed(0..model.num_elements, 0, 0..n);
+                    render_pass.draw_indexed(0..model.num_elements, 0, 0..1);
                 }
             }
         }
+
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
     }
