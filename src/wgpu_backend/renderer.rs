@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    mem::size_of,
-    num::NonZeroU64,
-    sync::Arc,
-};
+use std::{collections::HashMap, mem::size_of, num::NonZeroU64, sync::Arc};
 use winit::window::Window;
 
 use wgpu::{util::DeviceExt, RenderPipeline};
@@ -22,6 +17,8 @@ use crate::{
 /// Max skinned meshes drawn per frame; sizes instance + bones ring uploads.
 /// Each slot uses disjoint buffer ranges so queued `write_buffer`s are valid before draws run.
 const MAX_ANIMATED_DRAWS: u64 = 256;
+
+const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 pub struct Renderer {
     pub surface: wgpu::Surface<'static>,
@@ -205,84 +202,44 @@ impl Renderer {
         // ==============================================
         // STATIC MODEL PIPELINE
         // ==============================================
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader = wgpu::ShaderModuleDescriptor {
             label: Some("Static Model Shader"),
             source: wgpu::ShaderSource::Wgsl(
                 include_str!("../../resources/shaders/model/static_model.wgsl").into(),
             ),
-        });
+        };
 
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Model Pipeline Layout"),
-                bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
-                    Some(&camera_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Model Pipeline Layout"),
+            bind_group_layouts: &[
+                Some(&texture_bind_group_layout),
+                Some(&camera_bind_group_layout),
+            ],
+            immediate_size: 0,
+        });
 
         pipelines.insert(
             PipelineType::Model,
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Static Model Pipeline"),
-                layout: Some(&render_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vs_main"),
-                    buffers: &[Vertex::desc(), InstanceUniform::desc()],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: Some("fs_main"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: config.format,
-                        blend: Some(wgpu::BlendState::REPLACE),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                }),
-
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: Some(wgpu::Face::Back),
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    unclipped_depth: false,
-                    conservative: false,
-                },
-
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth32Float,
-                    depth_write_enabled: Some(true),
-                    depth_compare: Some(wgpu::CompareFunction::Less),
-                    stencil: wgpu::StencilState::default(),
-                    bias: wgpu::DepthBiasState::default(),
-                }),
-
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    // bitwise NOT 0 (all flags)
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-                multiview_mask: None,
-                cache: None,
-            }),
+            create_render_pipeline(
+                &device,
+                &layout,
+                config.format,
+                Some(DEPTH_FORMAT),
+                &[Vertex::desc(), InstanceUniform::desc()],
+                shader,
+            ),
         );
 
         // ==============================================
         // ANIMATED MODEL PIPELINE
         // ==============================================
 
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader = wgpu::ShaderModuleDescriptor {
             label: Some("Animated Model Shader"),
             source: wgpu::ShaderSource::Wgsl(
                 include_str!("../../resources/shaders/model/animated_model.wgsl").into(),
             ),
-        });
+        };
 
         let bone_uniform_size = NonZeroU64::new(size_of::<BoneUniforms>() as u64)
             .expect("BoneUniforms must be non-empty");
@@ -325,66 +282,26 @@ impl Renderer {
         layouts.insert(BindGroupLayoutType::Bones, bones_bind_group_layout.clone());
         bind_groups.insert(BindGroupLayoutType::Bones, bones_bind_group);
 
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Animated Model Pipeline Layout"),
-                bind_group_layouts: &[
-                    Some(&texture_bind_group_layout),
-                    Some(&camera_bind_group_layout),
-                    Some(&bones_bind_group_layout),
-                ],
-                immediate_size: 0,
-            });
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Animated Model Pipeline Layout"),
+            bind_group_layouts: &[
+                Some(&texture_bind_group_layout),
+                Some(&camera_bind_group_layout),
+                Some(&bones_bind_group_layout),
+            ],
+            immediate_size: 0,
+        });
 
         pipelines.insert(
             PipelineType::AnimatedModel,
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Animated Model Pipeline"),
-                layout: Some(&render_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vs_main"),
-                    buffers: &[Vertex::desc(), InstanceUniform::desc()],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: Some("fs_main"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: config.format,
-                        blend: Some(wgpu::BlendState::REPLACE),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                }),
-
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: Some(wgpu::Face::Back),
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    unclipped_depth: false,
-                    conservative: false,
-                },
-
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth32Float,
-                    depth_write_enabled: Some(true),
-                    depth_compare: Some(wgpu::CompareFunction::Less),
-                    stencil: wgpu::StencilState::default(),
-                    bias: wgpu::DepthBiasState::default(),
-                }),
-
-                multisample: wgpu::MultisampleState {
-                    count: 1,
-                    // bitwise NOT 0 (all flags)
-                    mask: !0,
-                    alpha_to_coverage_enabled: false,
-                },
-                multiview_mask: None,
-                cache: None,
-            }),
+            create_render_pipeline(
+                &device,
+                &layout,
+                config.format,
+                Some(DEPTH_FORMAT),
+                &[Vertex::desc(), InstanceUniform::desc()],
+                shader,
+            ),
         );
 
         // ==============================================
@@ -652,14 +569,11 @@ impl Renderer {
                         bytemuck::bytes_of(&transform.to_instance_uniform()),
                     );
 
-                    self.queue.write_buffer(&self.bones_buffer, bone_byte_off, bone_bytes);
+                    self.queue
+                        .write_buffer(&self.bones_buffer, bone_byte_off, bone_bytes);
 
                     render_pass.set_bind_group(0, &model.material.bind_group, &[]);
-                    render_pass.set_bind_group(
-                        2,
-                        bones_bg,
-                        &[bone_byte_off as u32],
-                    );
+                    render_pass.set_bind_group(2, bones_bg, &[bone_byte_off as u32]);
                     render_pass.set_vertex_buffer(0, model.vertex_buffer.slice(..));
                     render_pass.set_vertex_buffer(
                         1,
@@ -680,4 +594,65 @@ impl Renderer {
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
     }
+}
+
+fn create_render_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    color_format: wgpu::TextureFormat,
+    depth_format: Option<wgpu::TextureFormat>,
+    vertex_layouts: &[wgpu::VertexBufferLayout],
+    shader: wgpu::ShaderModuleDescriptor,
+) -> wgpu::RenderPipeline {
+    let shader = device.create_shader_module(shader);
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("Render Pipeline"),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: Some("vs_main"),
+            buffers: vertex_layouts,
+            compilation_options: Default::default(),
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: Some("fs_main"),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: color_format,
+                blend: Some(wgpu::BlendState {
+                    alpha: wgpu::BlendComponent::REPLACE,
+                    color: wgpu::BlendComponent::REPLACE,
+                }),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+            compilation_options: Default::default(),
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: Some(wgpu::Face::Back),
+            // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+            polygon_mode: wgpu::PolygonMode::Fill,
+            // Requires Features::DEPTH_CLIP_CONTROL
+            unclipped_depth: false,
+            // Requires Features::CONSERVATIVE_RASTERIZATION
+            conservative: false,
+        },
+        depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
+            format,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState {
+            count: 1,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+        multiview_mask: None,
+        cache: None,
+    })
 }
