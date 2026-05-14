@@ -9,7 +9,7 @@ use crate::{
     enums_types::InstanceUniform,
     wgpu_backend::{
         bind_group_layout_type::BindGroupLayoutType, model::Model, pipeline_type::PipelineType,
-        vertex::Vertex,
+        texture, vertex::Vertex,
     },
 };
 
@@ -25,6 +25,7 @@ pub struct Renderer {
     pub camera_buffer: wgpu::Buffer,
 
     pub instance_buffer: wgpu::Buffer,
+    pub depth_texture: texture::Texture,
 }
 
 impl Renderer {
@@ -143,6 +144,12 @@ impl Renderer {
         );
 
         // =============================================
+        // Depth Texture Bind Group
+        // =============================================
+        let depth_texture =
+            texture::Texture::create_depth_texture(&device, &config, "depth_texture");
+
+        // =============================================
         // Camera Bind Group
         // =============================================
 
@@ -232,7 +239,14 @@ impl Renderer {
                 conservative: false,
             },
 
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+
             multisample: wgpu::MultisampleState {
                 count: 1,
                 // bitwise NOT 0 (all flags)
@@ -266,6 +280,7 @@ impl Renderer {
             bind_groups,
             camera_buffer,
             instance_buffer,
+            depth_texture,
         }
     }
 
@@ -323,7 +338,14 @@ impl Renderer {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
 
                 occlusion_query_set: None,
                 timestamp_writes: None,
