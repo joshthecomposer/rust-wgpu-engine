@@ -1,5 +1,3 @@
-# Spaghetti Engine
-
 A 3D game engine built in Rust with OpenGL.
 
 ## Windows Setup
