@@ -14,6 +14,6 @@
   "msaa_level": 16,
   "fxaa_level": "Off",
   "font_family": "Weiholmir",
-  "spawn_system_enabled": false,
+  "spawn_system_enabled": true,
   "webgl_compatibility_mode": false
 }

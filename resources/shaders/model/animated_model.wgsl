@@ -6,12 +6,8 @@ struct CameraUniform {
 @group(1) @binding(0)
 var<uniform> camera: CameraUniform;
 
-struct BoneUniforms {
-	matrices: array<mat4x4<f32>, MAX_BONES>,
-}
 @group(2) @binding(0)
-var<uniform> bones: BoneUniforms;
-
+var<uniform> bone_matrices: array<mat4x4<f32>, MAX_BONES>;
 
 struct VertexInput {
 	@location(0) position: vec3<f32>,
@@ -33,34 +29,35 @@ struct InstanceInput {
 	@location(8) mm3: vec4<f32>,
 }
 
+// Skinning parity with resources/shaders/model/animated_model.glsl (vertex shader):
+// for each influence: skip bone_ids == -1, reject bad indices, accumulate bone * pos * weight.
+// (wgpu Vertex layout maps bone_ids→@location(3), weights→@location(4) — not the legacy GLSL uv/base_color layout.)
 fn skin_position(model: VertexInput) -> vec4<f32> {
 	var sum = vec4<f32>(0.0, 0.0, 0.0, 0.0);
-	var any_bone = false;
 
 	for (var i: u32 = 0u; i < 4u; i = i + 1u) {
-		let w = model.bone_weights[i];
-		if (w <= 0.0) {
-			continue;
-		}
-
 		let bid = model.bone_ids[i];
 		if (bid < 0) {
 			continue;
 		}
 
 		let bi = u32(bid);
-
 		if (bi >= MAX_BONES) {
 			return vec4<f32>(model.position, 1.0);
 		}
 
-		let bone_m = bones.matrices[bi];
-		sum = sum + bone_m * vec4<f32>(model.position, 1.0) * w;
+		let w = model.bone_weights[i];
+		if (w <= 0.0) {
+			continue;
+		}
 
-		any_bone = true;
+		let bone_m = bone_matrices[bi];
+		sum = sum + bone_m * vec4<f32>(model.position, 1.0) * w;
 	}
 
-	if (!any_bone) {
+	// GLSL leaves totalPosition at 0 when no influence ran (broken); bind pose avoids collapsed verts.
+	let sum_len_sq = dot(sum.xyz, sum.xyz) + sum.w * sum.w;
+	if (sum_len_sq <= 1e-20) {
 		return vec4<f32>(model.position, 1.0);
 	}
 

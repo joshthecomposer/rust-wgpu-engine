@@ -250,14 +250,19 @@ impl EntityManager {
                 continue;
             }
 
-            let model = if let Some(_) = &v.bone_path {
-                let b = if let Some(b) = &v.item_bones {
-                    Some(b.rh.as_str())
-                } else {
-                    None
-                };
-
-                data_loader::import_model_data(&v.mesh_path, &Animation::default(), rdr_ctx)
+            // Skinned meshes need `model_animation_join` (bone name ↔ index map) while parsing VERT
+            // weights. Passing `Animation::default()` leaves the map empty ⇒ every vertex keeps
+            // bone_id -1 and the shader never applies bone matrices (T-pose).
+            let model = if let Some(bone_path) = v.bone_path.as_ref().filter(|p| !p.is_empty()) {
+                let wb = v.item_bones.as_ref().map(|b| b.rh.as_str());
+                let (_, animator, _, _) =
+                    data_loader::import_bone_data(bone_path, false, wb);
+                let skin_anim = animator
+                    .animations
+                    .values()
+                    .next()
+                    .expect("bone_path set but skeleton file contained no ANIMATION clips");
+                data_loader::import_model_data(&v.mesh_path, skin_anim, rdr_ctx)
             } else {
                 data_loader::import_model_data(&v.mesh_path, &Animation::default(), rdr_ctx)
             };
@@ -1537,6 +1542,12 @@ impl EntityManager {
         for entry in self.entity_types.iter() {
             let id = entry.key();
             let ty = &entry.value;
+
+            // Skinned entities are drawn only in the animated pass; drawing them again as
+            // "static" instanced batches causes duplicate geometry → z-fighting / flashing.
+            if self.skellingtons.get(id).is_some() {
+                continue;
+            }
 
             map.entry(ty.clone()).or_default().push(id);
         }

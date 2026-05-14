@@ -1,4 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    mem::size_of,
+    num::NonZeroU64,
+    sync::Arc,
+};
 use winit::window::Window;
 
 use wgpu::{util::DeviceExt, RenderPipeline};
@@ -14,6 +19,10 @@ use crate::{
     },
 };
 
+/// Max skinned meshes drawn per frame; sizes instance + bones ring uploads.
+/// Each slot uses disjoint buffer ranges so queued `write_buffer`s are valid before draws run.
+const MAX_ANIMATED_DRAWS: u64 = 256;
+
 pub struct Renderer {
     pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
@@ -26,6 +35,8 @@ pub struct Renderer {
     pub camera_buffer: wgpu::Buffer,
 
     pub instance_buffer: wgpu::Buffer,
+    /// One `InstanceUniform` per skinned draw; never overlaps static instancing uploads.
+    pub animated_instance_buffer: wgpu::Buffer,
     pub bones_buffer: wgpu::Buffer,
     pub depth_texture: texture::Texture,
 }
@@ -273,9 +284,12 @@ impl Renderer {
             ),
         });
 
+        let bone_uniform_size = NonZeroU64::new(size_of::<BoneUniforms>() as u64)
+            .expect("BoneUniforms must be non-empty");
+        let bone_buffer_size = bone_uniform_size.get() * MAX_ANIMATED_DRAWS;
         let bone_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("bone_uniform_buffer"),
-            size: std::mem::size_of::<BoneUniforms>() as u64,
+            size: bone_buffer_size,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -288,8 +302,8 @@ impl Renderer {
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                        has_dynamic_offset: true,
+                        min_binding_size: Some(bone_uniform_size),
                     },
                     count: None,
                 }],
@@ -300,7 +314,11 @@ impl Renderer {
             layout: &bones_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: bone_buffer.as_entire_binding(),
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &bone_buffer,
+                    offset: 0,
+                    size: Some(bone_uniform_size),
+                }),
             }],
         });
 
@@ -380,6 +398,14 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
+        let anim_stride = size_of::<InstanceUniform>() as u64;
+        let animated_instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("animated_instance_buffer"),
+            size: anim_stride * MAX_ANIMATED_DRAWS,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::VERTEX,
+            mapped_at_creation: false,
+        });
+
         Self {
             surface,
             device,
@@ -390,6 +416,7 @@ impl Renderer {
             bind_groups,
             camera_buffer,
             instance_buffer,
+            animated_instance_buffer,
             depth_texture,
             bones_buffer: bone_buffer,
         }
@@ -576,6 +603,12 @@ impl Renderer {
 
             let ids_by_type = em.get_animated_ids_by_type();
 
+            let anim_stride_u64 = size_of::<InstanceUniform>() as u64;
+            let bone_stride = size_of::<BoneUniforms>() as wgpu::BufferAddress;
+            let bones_bg = self.bind_groups.get(&BindGroupLayoutType::Bones).unwrap();
+
+            let mut animated_slot: u64 = 0;
+
             for ids in ids_by_type.values() {
                 if ids.is_empty() {
                     continue;
@@ -592,6 +625,11 @@ impl Renderer {
                         continue;
                     };
 
+                    debug_assert!(
+                        animated_slot < MAX_ANIMATED_DRAWS,
+                        "animated draw count exceeds MAX_ANIMATED_DRAWS ({MAX_ANIMATED_DRAWS}); raise constant or batch"
+                    );
+
                     let animation = animator.get_current_animation().unwrap();
                     let pose = &animation.current_pose;
 
@@ -603,33 +641,38 @@ impl Renderer {
 
                     bones.matrices[..n].copy_from_slice(&pose[..n]);
 
-                    let bytes = bytemuck::cast_slice(bytemuck::bytes_of(&bones));
+                    let bone_bytes = bytemuck::bytes_of(&bones);
+
+                    let inst_byte_off = animated_slot * anim_stride_u64;
+                    let bone_byte_off = animated_slot as wgpu::BufferAddress * bone_stride;
 
                     self.queue.write_buffer(
-                        &self.instance_buffer,
-                        0,
+                        &self.animated_instance_buffer,
+                        inst_byte_off,
                         bytemuck::bytes_of(&transform.to_instance_uniform()),
                     );
 
-                    self.queue.write_buffer(&self.bones_buffer, 0, bytes);
+                    self.queue.write_buffer(&self.bones_buffer, bone_byte_off, bone_bytes);
 
                     render_pass.set_bind_group(0, &model.material.bind_group, &[]);
                     render_pass.set_bind_group(
                         2,
-                        self.bind_groups.get(&BindGroupLayoutType::Bones).unwrap(),
-                        &[],
+                        bones_bg,
+                        &[bone_byte_off as u32],
                     );
                     render_pass.set_vertex_buffer(0, model.vertex_buffer.slice(..));
                     render_pass.set_vertex_buffer(
                         1,
-                        self.instance_buffer
-                            .slice(0..size_of::<InstanceUniform>() as u64),
+                        self.animated_instance_buffer
+                            .slice(inst_byte_off..inst_byte_off + anim_stride_u64),
                     );
 
                     render_pass
                         .set_index_buffer(model.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
                     render_pass.draw_indexed(0..model.num_elements, 0, 0..1);
+
+                    animated_slot += 1;
                 }
             }
         }
