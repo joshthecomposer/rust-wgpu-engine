@@ -397,10 +397,6 @@ impl SoundManager {
         for (eid, sounds) in self.active_3d_sounds.iter() {
             let trans = em.transforms.get(*eid).unwrap();
 
-            // Prefer the rigid body's authoritative linear velocity. Sound updates run at render
-            // rate while transforms only advance on physics ticks, so a position finite-difference
-            // would alternate between zero (stationary frames) and inflated spikes (frames where
-            // the physics tick happened) and break Doppler.
             let velocity = match em
                 .physics_handles
                 .get(*eid)

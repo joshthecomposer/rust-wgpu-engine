@@ -1466,7 +1466,7 @@ impl EntityManager {
         ))
     }
 
-    /// Returns the entity ID of the player, if one exists.
+    // Returns the entity ID of the player, if one exists.
     pub fn get_player_id(&self) -> Option<usize> {
         self.factions
             .iter()
@@ -1474,7 +1474,7 @@ impl EntityManager {
             .map(|f| f.key())
     }
 
-    /// Player's primary (right-hand) weapon entity, if equipped and configured with [`WeaponAbilities`].
+    // Player's primary (right-hand) weapon entity, if equipped and configured with [`WeaponAbilities`].
     pub fn player_main_hand_weapon(&self) -> Option<usize> {
         let pid = self.get_player_id()?;
         let wid = self.active_items.get(pid)?.right_hand?;

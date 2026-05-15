@@ -1,11 +1,7 @@
-//! Build `dist/` (same as `scripts/build_web.{ps1,sh}`), write `dist.zip` for itch.io,
-//! then serve with `python -m http.server`.
-
 use std::env;
 use std::path::Path;
 use std::process::Command;
 
-/// itch upload: zip *contents* of dist so extract shows `index.html` at top level.
 const DIST_ZIP_PY: &str = r#"
 import os, zipfile
 root = os.environ["LEARN_OPENGL_WEB_ROOT"]

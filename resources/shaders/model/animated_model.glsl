@@ -66,14 +66,14 @@ layout (location = 1) out vec4 BrightColor;
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 TexCoords;
-in vec4 base_color;          // RGBA in the same color space as your textures
+in vec4 base_color;
 in vec4 FragPosLightSpace;
 
 uniform bool has_opacity_texture;
 uniform sampler2D shadow_map;
 uniform bool shadow_border_fallback;
 
-uniform bool use_base_color;      // set true to use a flat color
+uniform bool use_base_color;
 
 struct Material {
     sampler2D Diffuse;
@@ -138,9 +138,6 @@ vec4 calculate_directional_light() {
     vec3 lightColor = dir_light.diffuse;
     const float ALPHA_MASK_CUTOFF = 0.5;
 
-    // ----- DIFFUSE/ALBEDO SOURCE -----
-    // If using base_color: take RGBA from uniform.
-    // Else: sample the Diffuse texture with LOD logic.
     vec3 tex_color;
     float alpha;
     if (use_base_color) {
@@ -160,7 +157,6 @@ vec4 calculate_directional_light() {
     }
     // ----------------------------------
 
-    // Specular & Emissive remain texture-based (unchanged)
     vec3 spec_color  = texture(material.Specular,  TexCoords).rgb;
     vec3 emiss_color = texture(material.Emissive, TexCoords).rgb;
 
@@ -173,7 +169,6 @@ vec4 calculate_directional_light() {
         }
     }
 
-    // Lighting
 	vec3 flat_ambient = vec3(dir_light.ambient);
 	vec3 envAmbient = texture(skybox, normalize(Normal)).rgb;
 	vec3 ambient = mix(flat_ambient, envAmbient, 0.02);

@@ -1,5 +1,3 @@
-//! wasm32 + `web_audio`: call `window.LearnOpenglFmod` from [`web/game_fmod_bridge.js`](../../../web/game_fmod_bridge.js).
-
 use js_sys::{Array, Reflect};
 use wasm_bindgen::{JsCast, JsValue};
 
@@ -23,10 +21,7 @@ pub fn bridge_is_ready() -> bool {
         return false;
     }
     let f: &js_sys::Function = m.unchecked_ref();
-    f.call0(&b)
-        .ok()
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false)
+    f.call0(&b).ok().and_then(|v| v.as_bool()).unwrap_or(false)
 }
 
 pub fn call_bridge(method: &str, args: &[JsValue]) {

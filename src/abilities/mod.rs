@@ -1,24 +1,13 @@
-//! Weapon ability system - defines abilities and weapon ability pools.
-//!
-//! Each weapon type (sword, axe, etc.) has:
-//! - Fixed M1/M2 basic attacks (same for all weapons of that type)
-//! - Fixed Shift dodge ability
-//! - Random Q/E skills from a pool
-//! - Random R ultimate from a pool
-
 use rand::prelude::{IndexedRandom, SliceRandom};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
 
 use crate::config::Config;
-use crate::enums_types::{DamagePayload, StatusEffectHelper};
+use crate::enums_types::DamagePayload;
 
-/// Unique identifier for an ability.
 pub type AbilityId = usize;
 
-/// Definition of a single ability (loaded from config).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbilityDefinition {
     pub id: AbilityId,
@@ -34,7 +23,6 @@ pub struct AbilityDefinition {
     pub payload: Option<DamagePayload>,
 }
 
-/// All ability definitions (loaded from abilities_config.json).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AbilitiesConfig {
     pub abilities: Vec<AbilityDefinition>,
@@ -43,8 +31,6 @@ pub struct AbilitiesConfig {
 impl Config for AbilitiesConfig {}
 
 impl AbilitiesConfig {
-    /// Get an ability definition by ID.
-    // TODO: THis shouldn't be a string ID
     pub fn get(&self, id: AbilityId) -> Option<&AbilityDefinition> {
         self.abilities.iter().find(|a| a.id == id)
     }
@@ -63,14 +49,12 @@ impl AbilitiesConfig {
     }
 }
 
-/// Weapon type definition with fixed abilities and pools.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WeaponTypeAbilities {
     pub skill_pool: Vec<AbilityId>,    // Q and E picked from here
     pub ultimate_pool: Vec<AbilityId>, // R picked from here
 }
 
-/// Configuration mapping weapon types to ability pools.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WeaponPoolsConfig {
     pub weapon_types: HashMap<String, WeaponTypeAbilities>,
@@ -78,7 +62,6 @@ pub struct WeaponPoolsConfig {
 
 impl Config for WeaponPoolsConfig {}
 
-/// Runtime abilities assigned to a specific weapon instance.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WeaponAbilities {
     pub q: AbilityId,
@@ -90,12 +73,10 @@ pub struct WeaponAbilities {
 }
 
 impl WeaponAbilities {
-    /// Get cooldown for a slot (index 0-5: M1, M2, Q, E, Shift, R).
     pub fn get_cooldown(&self, slot_index: usize) -> f32 {
         self.cooldowns.get(slot_index).copied().unwrap_or(0.0)
     }
 
-    /// Get cooldown progress (0.0 = ready, 1.0 = just triggered) for UI display.
     pub fn get_cooldown_progress(
         &self,
         slot_index: usize,

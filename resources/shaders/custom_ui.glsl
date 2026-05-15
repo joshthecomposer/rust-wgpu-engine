@@ -3,7 +3,7 @@
 layout (location = 0) in vec2 a_position;
 layout (location = 1) in vec4 a_color;
 layout (location = 2) in vec2 a_uv;
-layout (location = 3) in vec4 a_rect_bounds;   // x, y, width, height
+layout (location = 3) in vec4 a_rect_bounds;
 layout (location = 4) in float a_border_radius;
 
 out vec4 v_color;
@@ -14,7 +14,6 @@ out float v_border_radius;
 uniform vec2 u_screen_size;
 
 void main() {
-    // convert from screen coordinates (0,0 top-left) to NDC (-1,-1 bottom-left)
     vec2 ndc = (a_position / u_screen_size) * 2.0 - 1.0;
     ndc.y = -ndc.y; // flip Y so 0 is at top
     
@@ -39,7 +38,6 @@ uniform bool u_is_alpha_mask;
 uniform vec2 u_screen_size;
 
 void main() {
-    // SDF-based rounded rectangle
     if (v_border_radius > 0.0) {
         vec2 pixel_pos = vec2(gl_FragCoord.x, u_screen_size.y - gl_FragCoord.y);
         vec2 rect_center = v_rect_bounds.xy + v_rect_bounds.zw * 0.5;
