@@ -7,6 +7,7 @@ use crate::{
     camera::{Camera, CameraUniform, SkyCameraUniform},
     entity_manager::EntityManager,
     enums_types::InstanceUniform,
+    lights::{DirLight, DirLightUniform, Lights},
     util::constants::{FACES_CUBEMAP, MAX_BONES, SKYBOX_INDICES, SKYBOX_VERTICES},
     wgpu_backend::{
         bone_uniforms::BoneUniforms,
@@ -14,7 +15,7 @@ use crate::{
         model::{DrawModel, Model},
         pipelines::{
             animated_model::{self, AnimatedModelResources},
-            shared::{self, CameraBinding, SharedLayouts},
+            shared::{self, CameraBinding, DirLightBinding, SharedLayouts},
             skybox::{self, SkyboxResources},
             static_model::{self, StaticModelResources},
         },
@@ -35,13 +36,18 @@ pub struct Renderer {
     pub alignment: usize,
     pub shared_layouts: SharedLayouts,
     pub camera: CameraBinding,
+    pub dir_light: DirLightBinding,
     pub skybox: SkyboxResources,
     pub static_model: StaticModelResources,
     pub animated_model: AnimatedModelResources,
 }
 
 impl Renderer {
-    pub async fn new(window: Arc<Window>, camera_uniform: CameraUniform) -> Self {
+    pub async fn new(
+        window: Arc<Window>,
+        camera_uniform: CameraUniform,
+        dir_light_uniform: DirLightUniform,
+    ) -> Self {
         let inner = window.inner_size();
 
         let width = inner.width.max(1);
@@ -122,6 +128,8 @@ impl Renderer {
 
         let shared_layouts = shared::build_layouts(&device);
         let camera = shared::build_camera_binding(&device, &shared_layouts.camera, camera_uniform);
+        let dir_light =
+            shared::build_dir_light_binding(&device, &shared_layouts.dir_light, dir_light_uniform);
 
         let skybox = skybox::build(&device, &queue, config.format, DEPTH_FORMAT);
         let static_model =
@@ -143,15 +151,28 @@ impl Renderer {
             alignment,
             shared_layouts,
             camera,
+            dir_light,
             skybox,
             static_model,
             animated_model,
         }
     }
 
-    pub fn render_world(&mut self, aspect: f32, camera: &Camera, em: &EntityManager, alpha: f32) {
+    pub fn render_world(
+        &mut self,
+        camera: &Camera,
+        em: &EntityManager,
+        alpha: f32,
+        lights: &Lights,
+    ) {
         self.queue
             .write_buffer(&self.camera.buffer, 0, bytemuck::bytes_of(&camera.uniform));
+
+        self.queue.write_buffer(
+            &self.dir_light.buffer,
+            0,
+            bytemuck::bytes_of(&lights.dir_light_uniform),
+        );
 
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
@@ -224,10 +245,12 @@ impl Renderer {
             // BIND CAMERA
             rp.set_bind_group(1, &self.camera.bind_group, &[]);
 
-            // STATIC PASS
+            // STATIC MODEL PASS
+            rp.set_bind_group(2, &self.dir_light.bind_group, &[]);
             self.static_model.draw_all(&mut rp, &self.queue, em, alpha);
 
-            // ANIMATED PASS
+            // ANIMATED MODEL PASS
+            rp.set_bind_group(3, &self.dir_light.bind_group, &[]);
             self.animated_model
                 .draw_all(&mut rp, &self.queue, em, self.alignment, alpha);
         }

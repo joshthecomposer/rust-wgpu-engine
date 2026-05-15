@@ -3,6 +3,7 @@ use std::{mem::size_of, num::NonZeroU64};
 use crate::{
     entity_manager::EntityManager,
     enums_types::{InstanceUniform, Transform},
+    lights::DirLightUniform,
     wgpu_backend::{
         bone_uniforms::BoneUniforms,
         model::DrawModel,
@@ -127,6 +128,7 @@ pub fn build(
     let shader = wgpu::ShaderModuleDescriptor {
         label: Some("Animated Model Shader"),
         source: wgpu::ShaderSource::Wgsl(
+            // TODO: This is bad
             include_str!("../../../resources/shaders/model/animated_model.wgsl").into(),
         ),
     };
@@ -137,6 +139,7 @@ pub fn build(
             Some(&shared.texture),
             Some(&shared.camera),
             Some(&bones_layout),
+            Some(&shared.dir_light),
         ],
         immediate_size: 0,
     });

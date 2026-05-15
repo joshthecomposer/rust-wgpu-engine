@@ -21,6 +21,7 @@ use crate::config::sound_config::SoundConfig;
 use crate::config::Config;
 use crate::enums_types::{CameraState, ShaderType, SoundType};
 use crate::input::{self, InputState};
+use crate::lights::DirLightUniform;
 use crate::physics::PhysicsState;
 use crate::platform::Platform;
 use crate::sound::sound_manager::SoundManager;
@@ -88,7 +89,11 @@ impl Game {
                 .as_ref()
                 .expect("missing window in Platform"),
         );
-        let renderer = pollster::block_on(Renderer::new(window, CameraUniform::new()));
+        let renderer = pollster::block_on(Renderer::new(
+            window,
+            CameraUniform::new(),
+            DirLightUniform::new(),
+        ));
 
         let rdr_ctx = RenderContext {
             device: &renderer.device,
@@ -816,7 +821,11 @@ impl Game {
 
         let aspect = self.platform.fb_width as f32 / self.platform.fb_height as f32;
 
-        self.renderer
-            .render_world(aspect, &self.world.camera, &self.world.ecs, self.time.alpha);
+        self.renderer.render_world(
+            &self.world.camera,
+            &self.world.ecs,
+            self.time.alpha,
+            &self.world.lights,
+        );
     }
 }

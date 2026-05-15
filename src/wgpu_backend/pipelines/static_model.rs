@@ -95,7 +95,11 @@ pub fn build(
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Static Model Pipeline Layout"),
-        bind_group_layouts: &[Some(&shared.texture), Some(&shared.camera)],
+        bind_group_layouts: &[
+            Some(&shared.texture),
+            Some(&shared.camera),
+            Some(&shared.dir_light),
+        ],
         immediate_size: 0,
     });
 
