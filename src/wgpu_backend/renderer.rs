@@ -14,7 +14,12 @@ use crate::{
         cube_texture::CubeTexture,
         model::{DrawModel, Model},
         pipeline_type::PipelineType,
-        pipelines::{animated_model, shared, skybox, static_model},
+        pipelines::{
+            animated_model::{self, AnimatedModelResources},
+            shared::{self, CameraBinding, SharedLayouts},
+            skybox::{self, SkyboxResources},
+            static_model::{self, StaticModelResources},
+        },
         texture,
         vertex::Vertex,
         BindGroups, Layouts, Pipelines,
@@ -32,24 +37,13 @@ pub struct Renderer {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
-
-    pub pipelines: Pipelines,
-    pub layouts: Layouts,
-    pub bind_groups: BindGroups,
-    pub camera_buffer: wgpu::Buffer,
-
-    pub instance_buffer: wgpu::Buffer,
-    pub animated_instance_buffer: wgpu::Buffer,
-    pub bones_buffer: wgpu::Buffer,
     pub depth_texture: texture::Texture,
-    pub sky_cube: CubeTexture,
-
-    pub sky_camera_buffer: wgpu::Buffer,
-    pub sky_vertex_buffer: wgpu::Buffer,
-    pub sky_index_buffer: wgpu::Buffer,
-    pub sky_index_count: u32,
-
     pub alignment: usize,
+    pub shared_layouts: SharedLayouts,
+    pub camera: CameraBinding,
+    pub skybox: SkyboxResources,
+    pub static_model: StaticModelResources,
+    pub animated_model: AnimatedModelResources,
 }
 
 impl Renderer {
@@ -135,7 +129,7 @@ impl Renderer {
         let shared_layouts = shared::build_layouts(&device);
         let camera = shared::build_camera_binding(&device, &shared_layouts.camera, camera_uniform);
 
-        let sky = skybox::build(&device, &queue, config.format, DEPTH_FORMAT);
+        let skybox = skybox::build(&device, &queue, config.format, DEPTH_FORMAT);
         let static_model =
             static_model::build(&device, &shared_layouts, config.format, DEPTH_FORMAT);
         let depth_texture =
@@ -151,41 +145,19 @@ impl Renderer {
             device,
             queue,
             config,
-            layouts: Layouts {
-                texture: shared_layouts.texture,
-                camera: shared_layouts.camera,
-                sky_cam: sky.layout,
-                skybox: sky.env_layout,
-                bones: animated_model.bones_layout,
-            },
-            bind_groups: BindGroups {
-                camera: camera.bind_group,
-                sky_cam: sky.camera_bind_group,
-                skybox: sky.env_bind_group,
-                bones: animated_model.bones_bind_group,
-            },
-            pipelines: Pipelines {
-                skybox: sky.pipeline,
-                model: static_model.pipeline,
-                animated_model: animated_model.pipeline,
-            },
-            camera_buffer: camera.buffer,
-            instance_buffer: static_model.instance_buffer,
-            animated_instance_buffer: animated_model.instance_buffer,
             depth_texture,
-            sky_cube: sky.cube,
-            bones_buffer: animated_model.bones_buffer,
             alignment,
-            sky_camera_buffer: sky.camera_buffer,
-            sky_vertex_buffer: sky.vertex_buffer,
-            sky_index_buffer: sky.index_buffer,
-            sky_index_count: sky.index_count,
+            shared_layouts,
+            camera,
+            skybox,
+            static_model,
+            animated_model,
         }
     }
 
     pub fn render_world(&mut self, aspect: f32, camera: &Camera, em: &EntityManager) {
         self.queue
-            .write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&camera.uniform));
+            .write_buffer(&self.camera.buffer, 0, bytemuck::bytes_of(&camera.uniform));
 
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
@@ -219,57 +191,18 @@ impl Renderer {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render encoder"),
             });
-        // ==============================================
-        // SKYBOX RENDER PASS
-        // ==============================================
+
+        self.skybox.render_pass(
+            &mut encoder,
+            &self.queue,
+            &view,
+            &self.depth_texture.view,
+            camera,
+        );
+
+        // SCENE RENDER PASS
         {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("render pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    depth_slice: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 1.0,
-                            g: 0.0,
-                            b: 1.0,
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-
-                occlusion_query_set: None,
-                timestamp_writes: None,
-                multiview_mask: None,
-            });
-
-            let sky_uniform = SkyCameraUniform::from_camera(camera);
-            self.queue
-                .write_buffer(&self.sky_camera_buffer, 0, bytemuck::bytes_of(&sky_uniform));
-            render_pass.set_pipeline(&self.pipelines.skybox);
-            render_pass.set_bind_group(0, &self.bind_groups.sky_cam, &[]);
-            render_pass.set_bind_group(1, &self.bind_groups.skybox, &[]);
-            render_pass.set_vertex_buffer(0, self.sky_vertex_buffer.slice(..));
-            render_pass
-                .set_index_buffer(self.sky_index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            render_pass.draw_indexed(0..self.sky_index_count, 0, 0..1);
-        }
-
-        // ==============================================
-        // MAIN RENDER PASS | MODEL RENDER PASS
-        // ==============================================
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("render pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -294,125 +227,15 @@ impl Renderer {
                 multiview_mask: None,
             });
 
-            // CAMERA
-
-            render_pass.set_bind_group(1, &self.bind_groups.camera, &[]);
+            // BIND CAMERA
+            rp.set_bind_group(1, &self.camera.bind_group, &[]);
 
             // STATIC PASS
-
-            let instance_stride = std::mem::size_of::<InstanceUniform>() as wgpu::BufferAddress;
-
-            let mut instance_byte_offset: wgpu::BufferAddress = 0;
-
-            render_pass.set_pipeline(&self.pipelines.model);
-
-            let ids_by_type = em.get_modeled_static_ids_by_type();
-
-            for ids in ids_by_type.values() {
-                if ids.is_empty() {
-                    continue;
-                }
-
-                let mut instances = Vec::new();
-
-                let mut batch_model: Option<&Model> = None;
-
-                for &id in ids.iter() {
-                    let (Some(transform), Some(model)) = (em.transforms.get(id), em.models.get(id))
-                    else {
-                        continue;
-                    };
-                    if batch_model.is_none() {
-                        batch_model = Some(model);
-                    }
-                    instances.push(transform.to_instance_uniform());
-                }
-
-                let Some(model) = batch_model else { continue };
-
-                if instances.is_empty() {
-                    continue;
-                }
-
-                let instance_bytes = bytemuck::cast_slice(&instances);
-
-                let batch_bytes = instance_bytes.len() as wgpu::BufferAddress;
-
-                debug_assert!(
-                    instance_byte_offset + batch_bytes <= self.instance_buffer.size(),
-                    "instance_buffer too small"
-                );
-
-                self.queue.write_buffer(
-                    &self.instance_buffer,
-                    instance_byte_offset,
-                    instance_bytes,
-                );
-
-                render_pass.set_vertex_buffer(
-                    1,
-                    self.instance_buffer
-                        .slice(instance_byte_offset..instance_byte_offset + batch_bytes),
-                );
-
-                render_pass.draw_model_instanced(model, 0..instances.len() as u32);
-
-                instance_byte_offset += instances.len() as wgpu::BufferAddress * instance_stride;
-            }
+            self.static_model.draw_all(&mut rp, &self.queue, em);
 
             // ANIMATED PASS
-            render_pass.set_pipeline(&self.pipelines.animated_model);
-            instance_byte_offset = 0;
-
-            let mut bones_byte_offset: wgpu::BufferAddress = 0;
-
-            let bone_stride = (size_of::<BoneUniforms>() as wgpu::BufferAddress)
-                .next_multiple_of(self.alignment as wgpu::BufferAddress);
-
-            let ids_by_type = em.get_animated_ids_by_type();
-
-            for ids in ids_by_type.values() {
-                for id in ids {
-                    let model = em.models.get(*id).unwrap();
-                    let animator = em.animators.get(*id).unwrap();
-                    let anim = animator.get_current_animation().unwrap();
-
-                    let transform = em.transforms.get(*id).unwrap();
-
-                    let instance = transform.to_instance_uniform();
-
-                    self.queue.write_buffer(
-                        &self.animated_instance_buffer,
-                        instance_byte_offset,
-                        bytemuck::cast_slice(&[instance]),
-                    );
-
-                    self.queue.write_buffer(
-                        &self.bones_buffer,
-                        bones_byte_offset,
-                        bytemuck::cast_slice(&anim.current_pose),
-                    );
-
-                    render_pass.set_vertex_buffer(
-                        1,
-                        self.animated_instance_buffer
-                            .slice(instance_byte_offset..instance_byte_offset + instance_stride),
-                    );
-
-                    let bones_dynamic_offset: wgpu::DynamicOffset = bones_byte_offset
-                        .try_into()
-                        .expect("bones slab offset fits u32");
-
-                    render_pass.draw_model_animated(
-                        model,
-                        &self.bind_groups.bones,
-                        bones_dynamic_offset,
-                    );
-
-                    instance_byte_offset += instance_stride;
-                    bones_byte_offset += bone_stride;
-                }
-            }
+            self.animated_model
+                .draw_all(&mut rp, &self.queue, em, self.alignment);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));

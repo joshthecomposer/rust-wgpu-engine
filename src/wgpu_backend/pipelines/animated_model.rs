@@ -1,9 +1,11 @@
 use std::{mem::size_of, num::NonZeroU64};
 
 use crate::{
+    entity_manager::EntityManager,
     enums_types::InstanceUniform,
     wgpu_backend::{
         bone_uniforms::BoneUniforms,
+        model::DrawModel,
         pipelines::{create_render_pipeline, shared::SharedLayouts},
         vertex::Vertex,
     },
@@ -17,6 +19,64 @@ pub struct AnimatedModelResources {
     pub bones_layout: wgpu::BindGroupLayout,
     pub bones_buffer: wgpu::Buffer,
     pub bones_bind_group: wgpu::BindGroup,
+}
+
+impl AnimatedModelResources {
+    pub fn draw_all(
+        &self,
+        rp: &mut wgpu::RenderPass,
+        queue: &wgpu::Queue,
+        em: &EntityManager,
+        alignment: usize,
+    ) {
+        let instance_stride = std::mem::size_of::<InstanceUniform>() as wgpu::BufferAddress;
+        let bone_stride = (size_of::<BoneUniforms>() as wgpu::BufferAddress)
+            .next_multiple_of(alignment as wgpu::BufferAddress);
+
+        let mut instance_byte_offset: wgpu::BufferAddress = 0;
+        let mut bones_byte_offset: wgpu::BufferAddress = 0;
+
+        rp.set_pipeline(&self.pipeline);
+
+        for ids in em.get_animated_ids_by_type().values() {
+            for id in ids {
+                let model = em.models.get(*id).unwrap();
+                let animator = em.animators.get(*id).unwrap();
+                let anim = animator.get_current_animation().unwrap();
+
+                let transform = em.transforms.get(*id).unwrap();
+
+                let instance = transform.to_instance_uniform();
+
+                queue.write_buffer(
+                    &self.instance_buffer,
+                    instance_byte_offset,
+                    bytemuck::cast_slice(&[instance]),
+                );
+
+                queue.write_buffer(
+                    &self.bones_buffer,
+                    bones_byte_offset,
+                    bytemuck::cast_slice(&anim.current_pose),
+                );
+
+                rp.set_vertex_buffer(
+                    1,
+                    self.instance_buffer
+                        .slice(instance_byte_offset..instance_byte_offset + instance_stride),
+                );
+
+                let bones_dynamic_offset: wgpu::DynamicOffset = bones_byte_offset
+                    .try_into()
+                    .expect("bones slab offset fits u32");
+
+                rp.draw_model_animated(model, &self.bones_bind_group, bones_dynamic_offset);
+
+                instance_byte_offset += instance_stride;
+                bones_byte_offset += bone_stride;
+            }
+        }
+    }
 }
 
 pub fn build(

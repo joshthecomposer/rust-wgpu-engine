@@ -3,7 +3,7 @@ use std::{num::NonZeroU64, path::Path};
 use wgpu::util::DeviceExt;
 
 use crate::{
-    camera::SkyCameraUniform,
+    camera::{Camera, SkyCameraUniform},
     util::constants::{FACES_CUBEMAP, SKYBOX_INDICES, SKYBOX_VERTICES},
     wgpu_backend::{cube_texture::CubeTexture, pipelines::create_render_pipeline},
 };
@@ -19,6 +19,57 @@ pub struct SkyboxResources {
     pub index_count: u32,
     pub cube: CubeTexture,
     pub pipeline: wgpu::RenderPipeline,
+}
+
+impl SkyboxResources {
+    pub fn render_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        queue: &wgpu::Queue,
+        color_view: &wgpu::TextureView,
+        depth_view: &wgpu::TextureView,
+        camera: &Camera,
+    ) {
+        let sky_uniform = SkyCameraUniform::from_camera(camera);
+        queue.write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&sky_uniform));
+
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("render pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: color_view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 1.0,
+                        g: 0.0,
+                        b: 1.0,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+
+            occlusion_query_set: None,
+            timestamp_writes: None,
+            multiview_mask: None,
+        });
+
+        render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.env_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.draw_indexed(0..self.index_count, 0, 0..1);
+    }
 }
 
 pub fn build(
@@ -214,3 +265,5 @@ fn load_skybox_ldr_separated_faces(device: &wgpu::Device, queue: &wgpu::Queue) -
     }
     cube
 }
+
+pub fn render_pass() {}

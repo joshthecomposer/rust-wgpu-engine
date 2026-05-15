@@ -94,7 +94,7 @@ impl Game {
         let rdr_ctx = RenderContext {
             device: &renderer.device,
             queue: &renderer.queue,
-            layout: &renderer.layouts.texture,
+            layout: &renderer.shared_layouts.texture,
         };
 
         let mut world = World::new(&rdr_ctx);
@@ -723,7 +723,7 @@ impl Game {
                     let rdr = RenderContext {
                         device: &self.renderer.device,
                         queue: &self.renderer.queue,
-                        layout: &self.renderer.layouts.texture,
+                        layout: &self.renderer.shared_layouts.texture,
                     };
 
                     let mut world = World::new(&rdr);
