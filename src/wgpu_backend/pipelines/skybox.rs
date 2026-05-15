@@ -1,0 +1,216 @@
+use std::{num::NonZeroU64, path::Path};
+
+use wgpu::util::DeviceExt;
+
+use crate::{
+    camera::SkyCameraUniform,
+    util::constants::{FACES_CUBEMAP, SKYBOX_INDICES, SKYBOX_VERTICES},
+    wgpu_backend::{cube_texture::CubeTexture, pipelines::create_render_pipeline},
+};
+
+pub struct SkyboxResources {
+    pub layout: wgpu::BindGroupLayout,
+    pub env_layout: wgpu::BindGroupLayout,
+    pub camera_buffer: wgpu::Buffer,
+    pub camera_bind_group: wgpu::BindGroup,
+    pub env_bind_group: wgpu::BindGroup,
+    pub vertex_buffer: wgpu::Buffer,
+    pub index_buffer: wgpu::Buffer,
+    pub index_count: u32,
+    pub cube: CubeTexture,
+    pub pipeline: wgpu::RenderPipeline,
+}
+
+pub fn build(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    color_format: wgpu::TextureFormat,
+    depth_format: wgpu::TextureFormat,
+) -> SkyboxResources {
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("sky_cam_bind_group_layout"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: Some(
+                    NonZeroU64::new(size_of::<SkyCameraUniform>() as u64).unwrap(),
+                ),
+            },
+            count: None,
+        }],
+    });
+
+    let camera_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("sky_camera_buffer"),
+        size: size_of::<SkyCameraUniform>() as u64,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+
+    let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("sky_cam_bind_group"),
+        layout: &layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: camera_buffer.as_entire_binding(),
+        }],
+    });
+
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("skybox_vertices"),
+        contents: bytemuck::cast_slice(&SKYBOX_VERTICES),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("skybox_indices"),
+        contents: bytemuck::cast_slice(&SKYBOX_INDICES),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+
+    let cube = load_skybox_ldr_separated_faces(device, queue);
+
+    let env_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("skybox bind group layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::Cube,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
+    });
+
+    let env_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("skybox bind group"),
+        layout: &env_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(cube.view()),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(cube.sampler()),
+            },
+        ],
+    });
+
+    let position_layout = wgpu::VertexBufferLayout {
+        array_stride: size_of::<[f32; 3]>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &[wgpu::VertexAttribute {
+            offset: 0,
+            shader_location: 0,
+            format: wgpu::VertexFormat::Float32x3,
+        }],
+    };
+
+    let shader = wgpu::ShaderModuleDescriptor {
+        label: Some("Skybox shader"),
+        source: wgpu::ShaderSource::Wgsl(
+            // TODO: Handle this properly
+            include_str!("../../../resources/shaders/skybox.wgsl").into(),
+        ),
+    };
+
+    let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("Skybox Pipeline Layout"),
+        bind_group_layouts: &[Some(&layout), Some(&env_layout)],
+        immediate_size: 0,
+    });
+
+    let pipeline = create_render_pipeline(
+        &device,
+        &pipeline_layout,
+        color_format,
+        Some(depth_format),
+        &[position_layout],
+        shader,
+        Some("Skybox Pipeline"),
+        Some(wgpu::CompareFunction::LessEqual),
+        None,
+    );
+
+    SkyboxResources {
+        layout,
+        env_layout,
+        camera_buffer,
+        camera_bind_group,
+        env_bind_group,
+        vertex_buffer,
+        index_buffer,
+        index_count: SKYBOX_INDICES.len() as u32,
+        cube,
+        pipeline,
+    }
+}
+
+fn load_skybox_ldr_separated_faces(device: &wgpu::Device, queue: &wgpu::Queue) -> CubeTexture {
+    let face_px = Path::new(FACES_CUBEMAP[0]);
+    let first_bytes = std::fs::read(face_px).unwrap();
+
+    let first = image::load_from_memory(&first_bytes).unwrap().to_rgba8();
+
+    let (cube_w, cube_h) = first.dimensions();
+
+    let sky_fmt = wgpu::TextureFormat::Rgba8UnormSrgb;
+    let cube = CubeTexture::create_2d(
+        device,
+        cube_w,
+        cube_h,
+        sky_fmt,
+        1,
+        wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+        wgpu::FilterMode::Linear,
+        Some("Skybox cube"),
+    );
+
+    for (layer, path) in FACES_CUBEMAP.iter().enumerate() {
+        let path = Path::new(path);
+        let bytes = std::fs::read(path).unwrap();
+
+        let rgba = image::load_from_memory(&bytes).unwrap().to_rgba8();
+
+        let dst_origin = wgpu::Origin3d {
+            x: 0,
+            y: 0,
+            z: layer as u32,
+        };
+
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: cube.texture(),
+                mip_level: 0,
+                origin: dst_origin,
+                aspect: wgpu::TextureAspect::All,
+            },
+            rgba.as_raw(),
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * cube_w),
+                rows_per_image: Some(cube_h),
+            },
+            wgpu::Extent3d {
+                width: cube_w,
+                height: cube_h,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+    cube
+}

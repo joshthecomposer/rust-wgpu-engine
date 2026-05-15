@@ -1,36 +1,29 @@
 mod abilities;
+mod animation;
 mod assets;
 mod camera;
-mod shaders;
-// mod game_state;
-mod animation;
 mod config;
+mod damage_resolution_system;
 mod debug;
 mod entity_manager;
 mod enums_types;
-//mod grid;
+mod game;
 mod input;
+mod items;
 mod lights;
 mod macros;
 mod movement_system;
-//mod renderer;
-mod sound;
-mod sparse_set;
-mod terrain;
-mod ui;
-// mod deprecated;
-mod damage_resolution_system;
-mod game;
-mod items;
-mod particles;
+//mod particles;
 mod physics;
 mod platform;
+mod sound;
+mod sparse_set;
 mod spawn_system;
 mod state_machines;
+mod terrain;
 mod time;
+mod ui;
 mod util;
-#[cfg(target_arch = "wasm32")]
-mod web_game;
 
 mod command_buffer;
 mod world;
@@ -40,31 +33,22 @@ mod projectile_system;
 mod status_effect_system;
 mod wgpu_backend;
 
-#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 
-#[cfg(not(target_arch = "wasm32"))]
 use config::{game_config::GameConfig, Config};
-#[cfg(not(target_arch = "wasm32"))]
 use game::Game;
 
-#[cfg(not(target_arch = "wasm32"))]
 use crate::platform::Platform;
 
-#[cfg(not(target_arch = "wasm32"))]
 use winit::event::WindowEvent;
-#[cfg(not(target_arch = "wasm32"))]
 use winit::event_loop::ActiveEventLoop;
-#[cfg(not(target_arch = "wasm32"))]
 use winit::window::WindowId;
-#[cfg(not(target_arch = "wasm32"))]
 use winit::{application::ApplicationHandler, event::DeviceEvent};
 
 use winit::dpi::LogicalSize;
 use winit::event_loop::EventLoop;
 use winit::window::Window;
 
-#[cfg(not(target_arch = "wasm32"))]
 struct App {
     game: Option<Game>,
     window: Option<Arc<Window>>,
@@ -72,7 +56,6 @@ struct App {
     config: Option<GameConfig>,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl App {
     fn new(config: GameConfig) -> Self {
         Self {
@@ -84,7 +67,6 @@ impl App {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl ApplicationHandler for App {
     fn window_event(
         &mut self,

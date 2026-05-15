@@ -22,6 +22,24 @@ impl CameraUniform {
     }
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SkyCameraUniform {
+    pub view_rot: [[f32; 4]; 4],
+    pub proj: [[f32; 4]; 4],
+}
+impl SkyCameraUniform {
+    pub fn from_camera(camera: &Camera) -> Self {
+        // Same idea as GL: strip translation from view so the box stays at the origin in view space.
+        let mut view_rot = camera.view;
+        view_rot.w_axis = glam::Vec4::new(0.0, 0.0, 0.0, 1.0);
+        Self {
+            view_rot: view_rot.to_cols_array_2d(),
+            proj: camera.projection.to_cols_array_2d(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct CamMoveBasis {
     pub fwd_flat: glam::Vec3,

@@ -3,4 +3,6 @@ pub enum BindGroupLayoutType {
     Texture,
     Camera,
     Bones,
+    Skybox,
+    SkyCam,
 }

@@ -1,6 +1,6 @@
 use crate::{
-    camera::Camera, entity_manager::EntityManager, lights::Lights, particles::ParticleSystem,
-    spawn_system::SpawnManager, wgpu_backend::render_context::RenderContext,
+    camera::Camera, entity_manager::EntityManager, lights::Lights, spawn_system::SpawnManager,
+    wgpu_backend::render_context::RenderContext,
 };
 
 pub struct World {

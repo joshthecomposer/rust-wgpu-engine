@@ -2,4 +2,5 @@
 pub enum PipelineType {
     Model,
     AnimatedModel,
+    Skybox,
 }

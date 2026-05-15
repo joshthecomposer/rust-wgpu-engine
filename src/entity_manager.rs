@@ -255,8 +255,7 @@ impl EntityManager {
             // bone_id -1 and the shader never applies bone matrices (T-pose).
             let model = if let Some(bone_path) = v.bone_path.as_ref().filter(|p| !p.is_empty()) {
                 let wb = v.item_bones.as_ref().map(|b| b.rh.as_str());
-                let (_, animator, _, _) =
-                    data_loader::import_bone_data(bone_path, false, wb);
+                let (_, animator, _, _) = data_loader::import_bone_data(bone_path, false, wb);
                 let skin_anim = animator
                     .animations
                     .values()

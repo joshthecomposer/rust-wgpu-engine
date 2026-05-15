@@ -23,7 +23,6 @@ use crate::enums_types::{CameraState, ShaderType, SoundType};
 use crate::input::{self, InputState};
 use crate::physics::PhysicsState;
 use crate::platform::Platform;
-use crate::shaders::ShaderProfile;
 use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
@@ -95,7 +94,7 @@ impl Game {
         let rdr_ctx = RenderContext {
             device: &renderer.device,
             queue: &renderer.queue,
-            layout: &renderer.layouts.get(&BindGroupLayoutType::Texture).unwrap(),
+            layout: &renderer.layouts.texture,
         };
 
         let mut world = World::new(&rdr_ctx);
@@ -113,11 +112,11 @@ impl Game {
         //    false => None,
         //};
 
-        let ui_shader_profile = if webgl_compatibility_mode {
-            ShaderProfile::GlslEs300
-        } else {
-            ShaderProfile::DesktopCore
-        };
+        //let ui_shader_profile = if webgl_compatibility_mode {
+        //    ShaderProfile::GlslEs300
+        //} else {
+        //    ShaderProfile::DesktopCore
+        //};
 
         //let mut custom_ui_renderer = UiRenderer::new_with_profile(ui_shader_profile);
         //let mut font_system = FontSystem::new();
@@ -724,11 +723,7 @@ impl Game {
                     let rdr = RenderContext {
                         device: &self.renderer.device,
                         queue: &self.renderer.queue,
-                        layout: &self
-                            .renderer
-                            .layouts
-                            .get(&BindGroupLayoutType::Texture)
-                            .unwrap(),
+                        layout: &self.renderer.layouts.texture,
                     };
 
                     let mut world = World::new(&rdr);
