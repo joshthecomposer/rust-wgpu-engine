@@ -2,7 +2,7 @@ use std::mem::size_of;
 
 use crate::{
     entity_manager::EntityManager,
-    enums_types::InstanceUniform,
+    enums_types::{InstanceUniform, Transform},
     wgpu_backend::{
         model::{DrawModel, Model},
         pipelines::{create_render_pipeline, shared::SharedLayouts},
@@ -18,7 +18,13 @@ pub struct StaticModelResources {
 }
 
 impl StaticModelResources {
-    pub fn draw_all(&self, rp: &mut wgpu::RenderPass, queue: &wgpu::Queue, em: &EntityManager) {
+    pub fn draw_all(
+        &self,
+        rp: &mut wgpu::RenderPass,
+        queue: &wgpu::Queue,
+        em: &EntityManager,
+        alpha: f32,
+    ) {
         let stride = std::mem::size_of::<InstanceUniform>() as wgpu::BufferAddress;
         let mut offset: wgpu::BufferAddress = 0;
 
@@ -33,8 +39,11 @@ impl StaticModelResources {
             let mut batch_model: Option<&Model> = None;
 
             for &id in ids.iter() {
-                let (Some(transform), Some(model)) = (em.transforms.get(id), em.models.get(id))
-                else {
+                let (Some(curr), Some(prev), Some(model)) = (
+                    em.transforms.get(id),
+                    em.prev_transforms.get(id),
+                    em.models.get(id),
+                ) else {
                     continue;
                 };
 
@@ -42,7 +51,7 @@ impl StaticModelResources {
                     batch_model = Some(model);
                 }
 
-                instances.push(transform.to_instance_uniform());
+                instances.push(Transform::interpolated(prev, curr, alpha).to_instance_uniform());
             }
 
             let Some(model) = batch_model else { continue };

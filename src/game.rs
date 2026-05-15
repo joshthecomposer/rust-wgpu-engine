@@ -818,6 +818,6 @@ impl Game {
         let aspect = self.platform.fb_width as f32 / self.platform.fb_height as f32;
 
         self.renderer
-            .render_world(aspect, &self.world.camera, &self.world.ecs);
+            .render_world(aspect, &self.world.camera, &self.world.ecs, self.time.alpha);
     }
 }

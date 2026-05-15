@@ -2,7 +2,7 @@ use std::{mem::size_of, num::NonZeroU64};
 
 use crate::{
     entity_manager::EntityManager,
-    enums_types::InstanceUniform,
+    enums_types::{InstanceUniform, Transform},
     wgpu_backend::{
         bone_uniforms::BoneUniforms,
         model::DrawModel,
@@ -28,6 +28,7 @@ impl AnimatedModelResources {
         queue: &wgpu::Queue,
         em: &EntityManager,
         alignment: usize,
+        alpha: f32,
     ) {
         let instance_stride = std::mem::size_of::<InstanceUniform>() as wgpu::BufferAddress;
         let bone_stride = (size_of::<BoneUniforms>() as wgpu::BufferAddress)
@@ -43,10 +44,10 @@ impl AnimatedModelResources {
                 let model = em.models.get(*id).unwrap();
                 let animator = em.animators.get(*id).unwrap();
                 let anim = animator.get_current_animation().unwrap();
+                let curr = em.transforms.get(*id).unwrap();
+                let prev = em.prev_transforms.get(*id).unwrap();
 
-                let transform = em.transforms.get(*id).unwrap();
-
-                let instance = transform.to_instance_uniform();
+                let instance = Transform::interpolated(prev, curr, alpha).to_instance_uniform();
 
                 queue.write_buffer(
                     &self.instance_buffer,

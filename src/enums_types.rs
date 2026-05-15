@@ -93,12 +93,20 @@ pub struct Transform {
 }
 
 impl Transform {
-    /// Builds a model matrix from a transform for an instance
+    // Builds a model matrix from a transform for an instance
     pub fn to_instance_uniform(&self) -> InstanceUniform {
         InstanceUniform {
             model: (glam::Mat4::from_translation(self.position)
                 * glam::Mat4::from_quat(self.rotation))
             .to_cols_array_2d(),
+        }
+    }
+
+    pub fn interpolated(prev: &Transform, curr: &Transform, alpha: f32) -> Self {
+        Self {
+            position: prev.position.lerp(curr.position, alpha),
+            rotation: prev.rotation.slerp(curr.rotation, alpha),
+            scale: prev.scale.lerp(curr.scale, alpha),
         }
     }
 }

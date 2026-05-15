@@ -155,7 +155,7 @@ impl Renderer {
         }
     }
 
-    pub fn render_world(&mut self, aspect: f32, camera: &Camera, em: &EntityManager) {
+    pub fn render_world(&mut self, aspect: f32, camera: &Camera, em: &EntityManager, alpha: f32) {
         self.queue
             .write_buffer(&self.camera.buffer, 0, bytemuck::bytes_of(&camera.uniform));
 
@@ -231,11 +231,11 @@ impl Renderer {
             rp.set_bind_group(1, &self.camera.bind_group, &[]);
 
             // STATIC PASS
-            self.static_model.draw_all(&mut rp, &self.queue, em);
+            self.static_model.draw_all(&mut rp, &self.queue, em, alpha);
 
             // ANIMATED PASS
             self.animated_model
-                .draw_all(&mut rp, &self.queue, em, self.alignment);
+                .draw_all(&mut rp, &self.queue, em, self.alignment, alpha);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
