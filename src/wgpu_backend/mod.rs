@@ -1,10 +1,8 @@
-pub mod bind_group_layout_type;
 pub mod bone_uniforms;
 pub mod cube_texture;
 pub mod data_loader;
 pub mod material;
 pub mod model;
-pub mod pipeline_type;
 pub mod pipelines;
 pub mod render_context;
 pub mod renderer;

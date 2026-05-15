@@ -32,7 +32,6 @@ use crate::time::Time;
 //use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
 //use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
-use crate::wgpu_backend::bind_group_layout_type::BindGroupLayoutType;
 use crate::wgpu_backend::render_context::RenderContext;
 //use crate::ui::portrait_renderer::PortraitRenderer;
 use crate::wgpu_backend::renderer::Renderer;

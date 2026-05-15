@@ -9,11 +9,9 @@ use crate::{
     enums_types::InstanceUniform,
     util::constants::{FACES_CUBEMAP, MAX_BONES, SKYBOX_INDICES, SKYBOX_VERTICES},
     wgpu_backend::{
-        bind_group_layout_type::BindGroupLayoutType,
         bone_uniforms::BoneUniforms,
         cube_texture::CubeTexture,
         model::{DrawModel, Model},
-        pipeline_type::PipelineType,
         pipelines::{
             animated_model::{self, AnimatedModelResources},
             shared::{self, CameraBinding, SharedLayouts},
@@ -25,10 +23,6 @@ use crate::{
         BindGroups, Layouts, Pipelines,
     },
 };
-
-/// Max skinned meshes drawn per frame; sizes instance + bones ring uploads.
-/// Each slot uses disjoint buffer ranges so queued `write_buffer`s are valid before draws run.
-const MAX_ANIMATED_DRAWS: u64 = 256;
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
