@@ -19,7 +19,7 @@ use crate::command_buffer::CommandBuffer;
 use crate::config::game_config::GameConfig;
 use crate::config::sound_config::SoundConfig;
 use crate::config::Config;
-use crate::enums_types::{CameraState, ShaderType, SoundType};
+use crate::enums_types::{CameraState, CursorMode, ShaderType, SoundType};
 use crate::input::{self, InputState};
 use crate::lights::DirLightUniform;
 use crate::physics::PhysicsState;
@@ -57,7 +57,7 @@ pub struct Game {
     sound: SoundManager,
     pub input: InputState,
     pub paused: bool,
-    //cursor_mode: CursorMode,
+    cursor_mode: CursorMode,
     message_queue: MessageQueue,
     //pause_menu: PauseMenuView,
     //game_hud: GameHudView,
@@ -152,7 +152,7 @@ impl Game {
             sound,
             input: InputState::new(),
             paused: false,
-            //cursor_mode: CursorMode::Hidden,
+            cursor_mode: CursorMode::Hidden,
             message_queue: MessageQueue::new(),
             //pause_menu,
             //game_hud,
@@ -279,11 +279,13 @@ impl Game {
         self.time.begin_frame(now_seconds);
 
         // Mouse lock / cursor mode
-        //let hardware_mode = if self.paused || self.world.camera.move_state == CameraState::Locked {
-        //    CursorMode::Normal
-        //} else {
-        //    self.cursor_mode
-        //};
+        let hardware_mode = if self.paused || self.world.camera.move_state == CameraState::Locked {
+            CursorMode::Normal
+        } else {
+            self.cursor_mode
+        };
+
+        self.platform.set_winit_cursor_mode(hardware_mode);
 
         let mut stepped = false;
 
@@ -549,12 +551,12 @@ impl Game {
                     }
 
                     // Tab toggles cursor unlock (for hovering over abilities)
-                    //if keycode == KeyCode::Tab && *state == ElementState::Pressed {
-                    //    self.cursor_mode = match self.cursor_mode {
-                    //        CursorMode::Normal => CursorMode::Hidden,
-                    //        _ => CursorMode::Normal,
-                    //    };
-                    //}
+                    if keycode == KeyCode::Tab && *state == ElementState::Pressed {
+                        self.cursor_mode = match self.cursor_mode {
+                            CursorMode::Normal => CursorMode::Hidden,
+                            _ => CursorMode::Normal,
+                        };
+                    }
                 }
             }
 

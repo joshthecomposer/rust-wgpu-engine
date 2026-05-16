@@ -33,6 +33,7 @@ struct FragmentOut {
 	@location(1) bright: vec4<f32>,
 }
 
+// TODO: Write to the brightness output??????
 @fragment
 fn fs_main(in: VertexOutput) -> FragmentOut {
 	var out: FragmentOut;

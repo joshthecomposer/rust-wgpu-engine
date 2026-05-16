@@ -700,3 +700,11 @@ pub struct Counter {
     pub ttl: f32,
     pub accumulator: f32,
 }
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum CursorMode {
+    Normal,
+    Hidden,
+    #[allow(dead_code)]
+    Disabled,
+}
