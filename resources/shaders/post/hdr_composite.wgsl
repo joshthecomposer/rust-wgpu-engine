@@ -30,7 +30,7 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
 }
 
 const FOG_COLOR: vec3<f32> = vec3<f32>(0.05, 0.05, 0.06);
-const FOG_START: f32 = 10.0;
+const FOG_START: f32 = 5.0;
 const FOG_END:   f32 = 85.0;
 const FOG_STRENGTH: f32 = 0.95;
 
