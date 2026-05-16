@@ -28,8 +28,15 @@ fn vs_main(@location(0) position: vec3<f32>) -> VertexOutput {
     return out;
 }
 
+struct FragmentOut {
+	@location(0) color: vec4<f32>,
+	@location(1) bright: vec4<f32>,
+}
+
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let c = textureSample(env_map, env_sampler, normalize(in.tex_coords));
-    return c;
+fn fs_main(in: VertexOutput) -> FragmentOut {
+	var out: FragmentOut;
+	out.color = textureSample(env_map, env_sampler, normalize(in.tex_coords));
+	out.bright = vec4<f32>(0.0);
+    return out;
 }

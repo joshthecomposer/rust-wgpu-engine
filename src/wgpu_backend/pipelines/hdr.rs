@@ -28,8 +28,10 @@ impl HdrCompositeParams {
 }
 
 pub struct HdrResources {
-    pub scene_color: texture::Texture, // Rgba16Float
+    pub scene_color: texture::Texture,  // Rgba16Float
+    pub scene_bright: texture::Texture, // Rgba16Float
     pub scene_format: wgpu::TextureFormat,
+    pub bright_format: wgpu::TextureFormat,
 
     pub width: u32,
     pub height: u32,
@@ -45,6 +47,10 @@ pub struct HdrResources {
 impl HdrResources {
     pub fn scene_view(&self) -> &wgpu::TextureView {
         &self.scene_color.view
+    }
+
+    pub fn bright_view(&self) -> &wgpu::TextureView {
+        &self.scene_bright.view
     }
 
     pub fn composite_pass(&self, encoder: &mut wgpu::CommandEncoder, output: &wgpu::TextureView) {
@@ -80,9 +86,9 @@ fn scene_hdr_format() -> wgpu::TextureFormat {
 
 fn create_scene_hdr_texture(
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
     width: u32,
     height: u32,
+    label: Option<&str>,
 ) -> texture::Texture {
     let format = scene_hdr_format();
     let size = wgpu::Extent3d {
@@ -91,7 +97,7 @@ fn create_scene_hdr_texture(
         depth_or_array_layers: 1,
     };
     let tex = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("hdr_scene_color"),
+        label,
         size,
         mip_level_count: 1,
         sample_count: 1,
@@ -102,7 +108,7 @@ fn create_scene_hdr_texture(
     });
     let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
     let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        label: Some("hdr_scene_sampler"),
+        label,
         address_mode_u: wgpu::AddressMode::ClampToEdge,
         address_mode_v: wgpu::AddressMode::ClampToEdge,
         address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -118,6 +124,7 @@ fn create_scene_hdr_texture(
         sampler,
     }
 }
+
 pub fn build(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -128,7 +135,10 @@ pub fn build(
     depth_view: &wgpu::TextureView,
 ) -> HdrResources {
     let scene_format = scene_hdr_format();
-    let scene_color = create_scene_hdr_texture(device, queue, width, height);
+    let scene_color = create_scene_hdr_texture(device, width, height, Some("hdr_scene_color"));
+    let scene_bright = create_scene_hdr_texture(device, width, height, Some("hdr_scene_bright"));
+    let bright_format = scene_hdr_format();
+
     let ub_size = std::mem::size_of::<HdrCompositeParams>() as u64;
 
     let composite_uniforms = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -244,7 +254,9 @@ pub fn build(
     });
     HdrResources {
         scene_color,
+        scene_bright,
         scene_format,
+        bright_format,
         width,
         height,
         composite_layout,

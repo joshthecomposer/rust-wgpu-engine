@@ -5,7 +5,10 @@ use crate::{
     enums_types::{InstanceUniform, Transform},
     wgpu_backend::{
         model::{DrawModel, Model},
-        pipelines::{create_render_pipeline, shared::SharedLayouts},
+        pipelines::{
+            create_render_pipeline,
+            shared::{self, SharedLayouts},
+        },
         vertex::Vertex,
     },
 };
@@ -103,10 +106,12 @@ pub fn build(
         immediate_size: 0,
     });
 
+    let scene_targets = shared::scene_color_targets();
+
     let pipeline = create_render_pipeline(
         device,
         &pipeline_layout,
-        color_format,
+        &scene_targets,
         Some(depth_format),
         &[Vertex::desc(), InstanceUniform::desc()],
         shader,

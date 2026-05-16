@@ -121,3 +121,18 @@ pub fn build_dir_light_binding(
 
     DirLightBinding { buffer, bind_group }
 }
+
+pub fn scene_color_targets() -> [Option<wgpu::ColorTargetState>; 2] {
+    [
+        Some(wgpu::ColorTargetState {
+            format: wgpu::TextureFormat::Rgba16Float, // HDR FORMAT
+            blend: Some(wgpu::BlendState::REPLACE),
+            write_mask: wgpu::ColorWrites::ALL,
+        }),
+        Some(wgpu::ColorTargetState {
+            format: wgpu::TextureFormat::Rgba16Float, // BRIGHTNESS FORMAT
+            blend: Some(wgpu::BlendState::REPLACE),
+            write_mask: wgpu::ColorWrites::ALL,
+        }),
+    ]
+}

@@ -66,6 +66,11 @@ fn vs_main(
 	return out;
 }
 
+struct FragmentOut {
+	@location(0) color: vec4<f32>,
+	@location(1) bright: vec4<f32>,
+}
+
 
 fn calculate_directional_light(in: VertexOutput) -> vec4<f32> {
 	let light_color = dir_light.diffuse;
@@ -97,7 +102,27 @@ fn calculate_directional_light(in: VertexOutput) -> vec4<f32> {
 
 }
 
+fn extract_bright(color: vec3<f32>, threshold: f32, knee: f32) -> vec3<f32> {
+	let luma = dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+
+	let soft = luma - threshold + knee;
+	let clamped_soft = clamp(soft, 0.0, 2.0 * knee);
+	let curve = (clamped_soft * clamped_soft) / (4.0 * knee + 1e-5);
+
+	let contribution = max(curve, luma - threshold);
+
+	let scale = contribution / max(luma, 1e-5);
+	return color * scale;
+}
+
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-	return calculate_directional_light(in);
+fn fs_main(in: VertexOutput) -> FragmentOut {
+	let lit = calculate_directional_light(in);
+
+	var out: FragmentOut;
+
+	out.color = lit;
+
+	out.bright = vec4<f32>(extract_bright(lit.rgb, 1.0, 0.5), lit.a);
+	return out;
 }

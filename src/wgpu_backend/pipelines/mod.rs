@@ -1,4 +1,5 @@
 pub mod animated_model;
+pub mod bloom;
 pub mod hdr;
 pub mod linear_fog;
 pub mod shared;
@@ -8,7 +9,7 @@ pub mod static_model;
 fn create_render_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
-    color_format: wgpu::TextureFormat,
+    color_targets: &[Option<wgpu::ColorTargetState>],
     depth_format: Option<wgpu::TextureFormat>,
     vertex_layouts: &[wgpu::VertexBufferLayout],
     shader: wgpu::ShaderModuleDescriptor,
@@ -30,14 +31,7 @@ fn create_render_pipeline(
         fragment: Some(wgpu::FragmentState {
             module: &shader,
             entry_point: Some("fs_main"),
-            targets: &[Some(wgpu::ColorTargetState {
-                format: color_format,
-                blend: Some(wgpu::BlendState {
-                    alpha: wgpu::BlendComponent::REPLACE,
-                    color: wgpu::BlendComponent::REPLACE,
-                }),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
+            targets: color_targets,
             compilation_options: Default::default(),
         }),
         primitive: wgpu::PrimitiveState {

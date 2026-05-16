@@ -5,7 +5,10 @@ use wgpu::util::DeviceExt;
 use crate::{
     camera::{Camera, SkyCameraUniform},
     util::constants::{FACES_CUBEMAP, SKYBOX_INDICES, SKYBOX_VERTICES},
-    wgpu_backend::{cube_texture::CubeTexture, pipelines::create_render_pipeline},
+    wgpu_backend::{
+        cube_texture::CubeTexture,
+        pipelines::{create_render_pipeline, shared},
+    },
 };
 
 pub struct SkyboxResources {
@@ -27,6 +30,7 @@ impl SkyboxResources {
         encoder: &mut wgpu::CommandEncoder,
         queue: &wgpu::Queue,
         color_view: &wgpu::TextureView,
+        bright_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
         camera: &Camera,
     ) {
@@ -35,20 +39,36 @@ impl SkyboxResources {
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("render pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: color_view,
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 1.0,
-                        g: 0.0,
-                        b: 1.0,
-                        a: 1.0,
-                    }),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
+            color_attachments: &[
+                Some(wgpu::RenderPassColorAttachment {
+                    view: color_view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 1.0,
+                            g: 0.0,
+                            b: 1.0,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                }),
+                Some(wgpu::RenderPassColorAttachment {
+                    view: bright_view,
+                    resolve_target: None,
+                    depth_slice: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 1.0,
+                            g: 0.0,
+                            b: 1.0,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                }),
+            ],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: depth_view,
                 depth_ops: Some(wgpu::Operations {
@@ -185,10 +205,12 @@ pub fn build(
         immediate_size: 0,
     });
 
+    let scene_targets = shared::scene_color_targets();
+
     let pipeline = create_render_pipeline(
         &device,
         &pipeline_layout,
-        color_format,
+        &scene_targets,
         Some(depth_format),
         &[position_layout],
         shader,
