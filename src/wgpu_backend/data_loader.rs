@@ -433,7 +433,7 @@ pub fn import_model_data(file_path: &str, animation: &Animation, rdr_ctx: &Rende
                         texture = Some(Texture::from_solid_rgba8_srgb(
                             rdr_ctx.device,
                             rdr_ctx.queue,
-                            [198, 198, 198, 255],
+                            [255, 0, 255, 255],
                             None,
                         ));
                     }
@@ -463,7 +463,7 @@ pub fn import_model_data(file_path: &str, animation: &Animation, rdr_ctx: &Rende
         eprintln!(
             "WARN: model '{file_path}' did not specify TEXTURE_DIFFUSE; using fallback texture"
         );
-        Texture::from_solid_rgba8_srgb(rdr_ctx.device, rdr_ctx.queue, [198, 198, 198, 255], None)
+        Texture::from_solid_rgba8_srgb(rdr_ctx.device, rdr_ctx.queue, [255, 0, 255, 255], None)
     });
 
     let bind_group = rdr_ctx

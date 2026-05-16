@@ -265,5 +265,3 @@ fn load_skybox_ldr_separated_faces(device: &wgpu::Device, queue: &wgpu::Queue) -
     }
     cube
 }
-
-pub fn render_pass() {}

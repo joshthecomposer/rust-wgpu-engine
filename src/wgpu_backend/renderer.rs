@@ -15,6 +15,7 @@ use crate::{
         model::{DrawModel, Model},
         pipelines::{
             animated_model::{self, AnimatedModelResources},
+            hdr::{self, HdrCompositeParams, HdrResources},
             shared::{self, CameraBinding, DirLightBinding, SharedLayouts},
             skybox::{self, SkyboxResources},
             static_model::{self, StaticModelResources},
@@ -40,6 +41,7 @@ pub struct Renderer {
     pub skybox: SkyboxResources,
     pub static_model: StaticModelResources,
     pub animated_model: AnimatedModelResources,
+    pub hdr: HdrResources,
 }
 
 impl Renderer {
@@ -126,19 +128,32 @@ impl Renderer {
 
         surface.configure(&device, &config);
 
+        let depth_texture =
+            texture::Texture::create_depth_texture(&device, &config, "depth_texture");
+
+        let hdr = hdr::build(
+            &device,
+            &queue,
+            config.width,
+            config.height,
+            config.format,
+            HdrCompositeParams::new(),
+            &depth_texture.view,
+        );
+
+        let scene_hdr_format = hdr.scene_format;
+
         let shared_layouts = shared::build_layouts(&device);
         let camera = shared::build_camera_binding(&device, &shared_layouts.camera, camera_uniform);
         let dir_light =
             shared::build_dir_light_binding(&device, &shared_layouts.dir_light, dir_light_uniform);
 
-        let skybox = skybox::build(&device, &queue, config.format, DEPTH_FORMAT);
+        let skybox = skybox::build(&device, &queue, scene_hdr_format, DEPTH_FORMAT);
         let static_model =
-            static_model::build(&device, &shared_layouts, config.format, DEPTH_FORMAT);
-        let depth_texture =
-            texture::Texture::create_depth_texture(&device, &config, "depth_texture");
+            static_model::build(&device, &shared_layouts, scene_hdr_format, DEPTH_FORMAT);
 
         let animated_model =
-            animated_model::build(&device, &shared_layouts, config.format, DEPTH_FORMAT);
+            animated_model::build(&device, &shared_layouts, scene_hdr_format, DEPTH_FORMAT);
 
         let alignment = device.limits().min_uniform_buffer_offset_alignment as usize;
 
@@ -155,6 +170,7 @@ impl Renderer {
             skybox,
             static_model,
             animated_model,
+            hdr,
         }
     }
 
@@ -197,7 +213,7 @@ impl Renderer {
             }
         };
 
-        let view = output
+        let surface_view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
@@ -207,10 +223,13 @@ impl Renderer {
                 label: Some("Render encoder"),
             });
 
+        let hdr_view = self.hdr.scene_view();
+
+        // write to hdr view
         self.skybox.render_pass(
             &mut encoder,
             &self.queue,
-            &view,
+            &hdr_view,
             &self.depth_texture.view,
             camera,
         );
@@ -220,7 +239,7 @@ impl Renderer {
             let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("render pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
+                    view: &hdr_view,
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
@@ -246,14 +265,30 @@ impl Renderer {
             rp.set_bind_group(1, &self.camera.bind_group, &[]);
 
             // STATIC MODEL PASS
+            // write to hdr view
             rp.set_bind_group(2, &self.dir_light.bind_group, &[]);
             self.static_model.draw_all(&mut rp, &self.queue, em, alpha);
 
             // ANIMATED MODEL PASS
+            // write to hdr view
             rp.set_bind_group(3, &self.dir_light.bind_group, &[]);
             self.animated_model
                 .draw_all(&mut rp, &self.queue, em, self.alignment, alpha);
         }
+
+        self.hdr.write_params(
+            &self.queue,
+            HdrCompositeParams {
+                exposure: 1.0,
+                hdr_enabled: 1,
+                _pad0: 0,
+                _pad1: 0,
+                inv_proj: camera.uniform.inv_proj,
+            },
+        );
+
+        // write hdr view to main surface_view
+        self.hdr.composite_pass(&mut encoder, &surface_view);
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();

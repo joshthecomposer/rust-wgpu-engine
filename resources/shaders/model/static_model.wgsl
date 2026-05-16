@@ -93,7 +93,7 @@ fn calculate_directional_light(in: VertexOutput) -> vec4<f32> {
 
 	// do shadows here
 
-	return vec4<f32>(diffuse.rgb * tex_sample.rgb, tex_sample.a);
+	return vec4<f32>((flat_ambient.rgb + diffuse.rgb) * tex_sample.rgb, tex_sample.a);
 
 }
 

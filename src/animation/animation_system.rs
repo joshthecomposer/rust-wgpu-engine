@@ -120,6 +120,20 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
 
         animator.update(skellington, dt);
 
+        let anim = animator.get_next_animation().unwrap();
+
+        if let Some(active_range_list) = &anim.hurtbox_activation {
+            for fa in active_range_list {
+                if fa.segment_range.contains(&anim.current_segment.get()) {
+                    if !fa.triggered.get() {
+                        fa.triggered.set(true);
+                    }
+                } else {
+                    fa.triggered.set(false);
+                }
+            }
+        }
+
         let local_delta = animator.root_motion_state.frame_root_delta;
 
         if local_delta != Vec3::ZERO {

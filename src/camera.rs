@@ -12,12 +12,14 @@ use crate::{
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
     pub view_proj: [[f32; 4]; 4],
+    pub inv_proj: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
     pub fn new() -> Self {
         Self {
             view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            inv_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
 }
@@ -228,6 +230,7 @@ impl Camera {
 
     pub fn update_uniform(&mut self) {
         self.uniform.view_proj = self.build_view_projection_matrix().to_cols_array_2d();
+        self.uniform.inv_proj = self.projection.inverse().to_cols_array_2d();
     }
 
     // Call this when switching camera modes to reset the "first mouse" delta.
