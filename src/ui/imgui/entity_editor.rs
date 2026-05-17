@@ -10,7 +10,6 @@ use crate::{
     input::InputState,
     lights::Lights,
     physics::PhysicsState,
-    renderer::Renderer,
     sound::sound_manager::SoundManager,
 };
 
@@ -35,7 +34,6 @@ impl EntityEditor {
         ui: &mut Ui,
         em: &mut EntityManager,
         ps: &mut PhysicsState,
-        rdr: &mut Renderer,
         lm: &mut Lights,
         sm: &mut SoundManager,
         input: &mut InputState,
@@ -96,8 +94,6 @@ impl EntityEditor {
                 ui.slider("Dir Light Z", -1.0, 1.0, &mut lm.dir_light.direction.z);
                 ui.slider("Dir Light distance", 0.0, 100.0, &mut lm.dir_light.distance);
 
-                ui.checkbox("Shadow Debug", &mut rdr.shadow_debug);
-
                 ui.slider("Ortho Near", 0.0, 10.0, &mut lm.near);
                 ui.slider("Ortho Far", 0.0, 500.0, &mut lm.far);
                 ui.slider("Bounds", 0.0, 100.0, &mut lm.bounds);
@@ -126,18 +122,6 @@ impl EntityEditor {
                 if ui.slider("Volume", 0.0, 1.0, &mut sm.master_volume) {
                     sm.set_master_volume(&SoundType::Music);
                 }
-
-                // ===================== bloom stuff =====================
-
-                if Drag::new("Exposure")
-                    .speed(0.01)
-                    .build(ui, &mut rdr.exposure)
-                {};
-                if ui.checkbox("Do HDR", &mut rdr.do_hdr) {};
-                if Drag::new("Bloom Strength")
-                    .speed(0.01)
-                    .build(ui, &mut rdr.bloom_strength)
-                {};
 
                 // ===================== Entity Editing =====================
                 ui.separator();

@@ -1,8 +1,8 @@
 struct HdrCompositeParams {
     exposure: f32,
+    bloom_strength: f32,
     hdr_enabled: u32,
     _pad0: u32,
-    _pad1: u32,
 	inv_proj: mat4x4<f32>,
 }
 
@@ -10,6 +10,7 @@ struct HdrCompositeParams {
 @group(0) @binding(1) var scene_hdr_sampler: sampler;
 @group(0) @binding(2) var<uniform> params: HdrCompositeParams;
 @group(0) @binding(3) var depth_tex: texture_depth_2d;
+@group(0) @binding(4) var bloom_tex: texture_2d<f32>;
 
 struct VsOut {
     @builtin(position) clip_pos: vec4<f32>,
@@ -51,6 +52,8 @@ fn fog_factor(dist: f32) -> f32 {
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     var color = textureSample(scene_hdr, scene_hdr_sampler, in.uv).rgb;
+    let bloom = textureSample(bloom_tex, scene_hdr_sampler, in.uv).rgb;
+    color += bloom * params.bloom_strength;
 
 	let depth = textureLoad(depth_tex, vec2<i32>(in.clip_pos.xy), 0);
 

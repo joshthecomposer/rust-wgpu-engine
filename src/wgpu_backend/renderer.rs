@@ -16,6 +16,7 @@ use crate::{
         model::{DrawModel, Model},
         pipelines::{
             animated_model::{self, AnimatedModelResources},
+            bloom::{self, BloomResources},
             hdr::{self, HdrCompositeParams, HdrResources},
             particles::{self, ParticleResources},
             shared::{self, CameraBinding, DirLightBinding, SharedLayouts},
@@ -44,6 +45,7 @@ pub struct Renderer {
     pub static_model: StaticModelResources,
     pub animated_model: AnimatedModelResources,
     pub particles: ParticleResources,
+    pub bloom: BloomResources,
     pub hdr: HdrResources,
 }
 
@@ -134,7 +136,7 @@ impl Renderer {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
-        let hdr = hdr::build(
+        let mut hdr = hdr::build(
             &device,
             &queue,
             config.width,
@@ -143,6 +145,9 @@ impl Renderer {
             HdrCompositeParams::new(),
             &depth_texture.view,
         );
+
+        let bloom = bloom::build(&device, config.width, config.height, hdr.bright_view());
+        hdr.set_bloom_view(&device, bloom.output_view(), &depth_texture.view);
 
         let scene_hdr_format = hdr.scene_format;
 
@@ -183,6 +188,7 @@ impl Renderer {
             static_model,
             animated_model,
             particles,
+            bloom,
             hdr,
         }
     }
@@ -195,6 +201,27 @@ impl Renderer {
         lights: &Lights,
         particles: &mut ParticleSystem,
     ) {
+        self.render_world_with_overlay(
+            camera,
+            em,
+            alpha,
+            lights,
+            particles,
+            None::<fn(&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder, &wgpu::TextureView)>,
+        );
+    }
+
+    pub fn render_world_with_overlay<F>(
+        &mut self,
+        camera: &Camera,
+        em: &EntityManager,
+        alpha: f32,
+        lights: &Lights,
+        particles: &mut ParticleSystem,
+        render_overlay: Option<F>,
+    ) where
+        F: FnOnce(&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder, &wgpu::TextureView),
+    {
         self.queue
             .write_buffer(&self.camera.buffer, 0, bytemuck::bytes_of(&camera.uniform));
 
@@ -317,19 +344,25 @@ impl Renderer {
                 .draw_all(&mut rp, &self.queue, particles, camera);
         }
 
+        let _bloom_view = self.bloom.render(&mut encoder, &self.queue);
+
         self.hdr.write_params(
             &self.queue,
             HdrCompositeParams {
                 exposure: 1.0,
+                bloom_strength: 0.1,
                 hdr_enabled: 1,
                 _pad0: 0,
-                _pad1: 0,
                 inv_proj: camera.uniform.inv_proj,
             },
         );
 
         // write hdr view to main surface_view
         self.hdr.composite_pass(&mut encoder, &surface_view);
+
+        if let Some(render_overlay) = render_overlay {
+            render_overlay(&self.device, &self.queue, &mut encoder, &surface_view);
+        }
 
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();

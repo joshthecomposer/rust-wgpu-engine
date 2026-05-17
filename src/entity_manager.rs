@@ -503,7 +503,7 @@ impl EntityManager {
         self.lifetimes.insert(
             projectile_id,
             Counter {
-                ttl: 0.5,
+                ttl: 3.0,
                 accumulator: 0.0,
             },
         );

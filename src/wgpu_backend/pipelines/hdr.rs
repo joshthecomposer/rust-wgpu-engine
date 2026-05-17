@@ -9,9 +9,9 @@ use bytemuck::{Pod, Zeroable};
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct HdrCompositeParams {
     pub exposure: f32,
+    pub bloom_strength: f32,
     pub hdr_enabled: u32,
     pub _pad0: u32,
-    pub _pad1: u32,
     pub inv_proj: [[f32; 4]; 4],
 }
 
@@ -19,9 +19,9 @@ impl HdrCompositeParams {
     pub fn new() -> Self {
         Self {
             exposure: 1.0,
+            bloom_strength: 0.1,
             hdr_enabled: 1,
             _pad0: 0,
-            _pad1: 0,
             inv_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
@@ -77,6 +77,23 @@ impl HdrResources {
 
     pub fn write_params(&self, queue: &wgpu::Queue, params: HdrCompositeParams) {
         queue.write_buffer(&self.composite_uniforms, 0, bytemuck::bytes_of(&params));
+    }
+
+    pub fn set_bloom_view(
+        &mut self,
+        device: &wgpu::Device,
+        bloom_view: &wgpu::TextureView,
+        depth_view: &wgpu::TextureView,
+    ) {
+        self.composite_bind_group = create_composite_bind_group(
+            device,
+            &self.composite_layout,
+            &self.scene_color.view,
+            &self.scene_color.sampler,
+            &self.composite_uniforms,
+            depth_view,
+            bloom_view,
+        );
     }
 }
 
@@ -185,31 +202,28 @@ pub fn build(
                 },
                 count: None,
             },
+            wgpu::BindGroupLayoutEntry {
+                binding: 4,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
         ],
     });
 
-    let composite_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("hdr_composite_bind_group"),
-        layout: &composite_layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(&scene_color.view),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::Sampler(&scene_color.sampler),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: composite_uniforms.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 3,
-                resource: wgpu::BindingResource::TextureView(depth_view),
-            },
-        ],
-    });
+    let composite_bind_group = create_composite_bind_group(
+        device,
+        &composite_layout,
+        &scene_color.view,
+        &scene_color.sampler,
+        &composite_uniforms,
+        depth_view,
+        &scene_bright.view,
+    );
 
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("hdr_composite_shader"),
@@ -264,4 +278,41 @@ pub fn build(
         composite_pipeline,
         composite_uniforms,
     }
+}
+
+fn create_composite_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    scene_view: &wgpu::TextureView,
+    scene_sampler: &wgpu::Sampler,
+    composite_uniforms: &wgpu::Buffer,
+    depth_view: &wgpu::TextureView,
+    bloom_view: &wgpu::TextureView,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("hdr_composite_bind_group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(scene_view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(scene_sampler),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: composite_uniforms.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: wgpu::BindingResource::TextureView(depth_view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 4,
+                resource: wgpu::BindingResource::TextureView(bloom_view),
+            },
+        ],
+    })
 }

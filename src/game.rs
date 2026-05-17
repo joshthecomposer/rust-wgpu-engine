@@ -3,15 +3,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 #[cfg(not(target_arch = "wasm32"))]
-use glutin::surface::{GlSurface, SwapInterval};
-#[cfg(not(target_arch = "wasm32"))]
-use winit::dpi::LogicalSize;
-#[cfg(not(target_arch = "wasm32"))]
 use winit::event::{ElementState, KeyEvent, WindowEvent};
 #[cfg(not(target_arch = "wasm32"))]
 use winit::keyboard::{KeyCode, PhysicalKey};
-#[cfg(not(target_arch = "wasm32"))]
-use winit::window::Fullscreen;
 
 use crate::animation::animation_system;
 use crate::camera::CameraUniform;
@@ -19,7 +13,7 @@ use crate::command_buffer::CommandBuffer;
 use crate::config::game_config::GameConfig;
 use crate::config::sound_config::SoundConfig;
 use crate::config::Config;
-use crate::enums_types::{CameraState, CursorMode, ShaderType, SoundType};
+use crate::enums_types::{CameraState, CursorMode, SoundType};
 use crate::input::{self, InputState};
 use crate::lights::DirLightUniform;
 use crate::physics::PhysicsState;
@@ -31,7 +25,8 @@ use crate::time::Time;
 //use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
 //use crate::ui::game_new::views::pause_menu_view::{PauseMenuUpdateContext, PauseMenuView};
 //use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
-//use crate::ui::imgui::imgui_manager::ImguiManager;
+#[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
 use crate::wgpu_backend::render_context::RenderContext;
 //use crate::ui::portrait_renderer::PortraitRenderer;
@@ -66,8 +61,8 @@ pub struct Game {
     //custom_ui_renderer: UiRenderer,
     //font_system: FontSystem,
     pub should_quit: bool,
-    //#[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
-    //imgui_manager: Option<ImguiManager>,
+    #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+    imgui_manager: Option<ImguiManager>,
     config: GameConfig,
     config_path: String,
     sound_config: SoundConfig,
@@ -108,13 +103,16 @@ impl Game {
 
         let sound = SoundManager::new(&sound_config);
 
-        let webgl_compatibility_mode = config.webgl_compatibility_mode;
-
-        //#[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
-        //let imgui_manager = match UI_ENABLED && config.debug_mode && !webgl_compatibility_mode {
-        //    true => Some(ImguiManager::new(&platform)),
-        //    false => None,
-        //};
+        #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+        let imgui_manager =
+            match UI_ENABLED && config.debug_mode && !config.webgl_compatibility_mode {
+                true => Some(ImguiManager::new(
+                    &renderer.device,
+                    &renderer.queue,
+                    renderer.config.format,
+                )),
+                false => None,
+            };
 
         //let ui_shader_profile = if webgl_compatibility_mode {
         //    ShaderProfile::GlslEs300
@@ -161,8 +159,8 @@ impl Game {
             //custom_ui_renderer,
             //font_system,
             should_quit: false,
-            //#[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
-            //imgui_manager,
+            #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+            imgui_manager,
             config,
             config_path: "config/game_config.json".to_string(),
             sound_config,
@@ -421,37 +419,36 @@ impl Game {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
-        //#[cfg(feature = "editor_ui")]
-        //if UI_ENABLED {
-        //    if let Some(imgui_manager) = &mut self.imgui_manager {
-        //        imgui_manager.handle_imgui_event(event);
-        //    }
-        //}
+        #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+        if UI_ENABLED {
+            if let Some(imgui_manager) = &mut self.imgui_manager {
+                imgui_manager.handle_imgui_event(event);
+            }
+        }
         match event {
-            //WindowEvent::DroppedFile(path) =>
-            //{
-            //    #[cfg(feature = "editor_ui")]
-            //    if let Some(imgui_manager) = &mut self.imgui_manager {
-            //        let path = Path::new(path);
-            //        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-            //            match ext {
-            //                "txt" => {
-            //                    imgui_manager.entity_editor.new_archetype.mesh_path =
-            //                        path.to_string_lossy().into_owned();
-            //                }
-            //                "png" | "jpg" | "jpeg" => {
-            //                    imgui_manager.entity_editor.new_archetype.texture_path =
-            //                        path.to_string_lossy().into_owned();
-            //                    imgui_manager.particle_editor.staged_texture =
-            //                        path.to_string_lossy().into_owned();
-            //                    imgui_manager.ability_editor.staged_icon =
-            //                        path.to_string_lossy().into_owned();
-            //                }
-            //                _ => {}
-            //            }
-            //        }
-            //    }
-            //}
+            WindowEvent::DroppedFile(path) => {
+                #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+                if let Some(imgui_manager) = &mut self.imgui_manager {
+                    let path = Path::new(path);
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        match ext {
+                            "txt" => {
+                                imgui_manager.entity_editor.new_archetype.mesh_path =
+                                    path.to_string_lossy().into_owned();
+                            }
+                            "png" | "jpg" | "jpeg" => {
+                                imgui_manager.entity_editor.new_archetype.texture_path =
+                                    path.to_string_lossy().into_owned();
+                                imgui_manager.particle_editor.staged_texture =
+                                    path.to_string_lossy().into_owned();
+                                imgui_manager.ability_editor.staged_icon =
+                                    path.to_string_lossy().into_owned();
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
             WindowEvent::CloseRequested => {}
 
             WindowEvent::MouseWheel { delta, .. } => {
@@ -472,12 +469,13 @@ impl Game {
             }
 
             WindowEvent::MouseInput { state, button, .. } => {
-                let mut mouse_captured_by_imgui = false;
-                //#[cfg(feature = "editor_ui")]
-                //if let Some(imgui_manager) = &mut self.imgui_manager {
-                //    let io = imgui_manager.imgui.io();
-                //    mouse_captured_by_imgui = io.want_capture_mouse;
-                //}
+                #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+                let mouse_captured_by_imgui = self
+                    .imgui_manager
+                    .as_ref()
+                    .is_some_and(|imgui_manager| imgui_manager.imgui.io().want_capture_mouse);
+                #[cfg(not(all(feature = "editor_ui", not(target_arch = "wasm32"))))]
+                let mouse_captured_by_imgui = false;
 
                 if !mouse_captured_by_imgui {
                     let fb = glam::vec2(
@@ -507,13 +505,14 @@ impl Game {
             } => {
                 if let PhysicalKey::Code(code) = physical_key {
                     let keycode: KeyCode = *code;
-                    let mut keyboard_captured_by_imgui = false;
 
-                    //#[cfg(feature = "editor_ui")]
-                    //if let Some(imgui_manager) = &mut self.imgui_manager {
-                    //    let io = imgui_manager.imgui.io();
-                    //    keyboard_captured_by_imgui = io.want_capture_keyboard;
-                    //}
+                    #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+                    let keyboard_captured_by_imgui =
+                        self.imgui_manager.as_ref().is_some_and(|imgui_manager| {
+                            imgui_manager.imgui.io().want_capture_keyboard
+                        });
+                    #[cfg(not(all(feature = "editor_ui", not(target_arch = "wasm32"))))]
+                    let keyboard_captured_by_imgui = false;
 
                     if !keyboard_captured_by_imgui {
                         input::handle_keyboard_input(keycode, *state, &mut self.input);
@@ -821,7 +820,65 @@ impl Game {
     pub fn render(&mut self) {
         self.platform.window.as_ref().unwrap().request_redraw();
 
-        let aspect = self.platform.fb_width as f32 / self.platform.fb_height as f32;
+        #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+        let prepared_imgui = if let Some(imgui_manager) = &mut self.imgui_manager {
+            imgui_manager.prepare_render(
+                self.platform.fb_width as f32,
+                self.platform.fb_height as f32,
+                self.time.dt,
+                &mut self.world.lights,
+                &mut self.sound,
+                &self.world.camera,
+                &mut self.world.ecs,
+                &mut self.physics,
+                &mut self.input,
+                &mut self.world.particles,
+                &mut self.message_queue,
+                &self.renderer.device,
+                &self.renderer.queue,
+            )
+        } else {
+            None
+        };
+
+        #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
+        if let Some(prepared_imgui) = prepared_imgui {
+            self.renderer.render_world_with_overlay(
+                &self.world.camera,
+                &self.world.ecs,
+                self.time.alpha,
+                &self.world.lights,
+                &mut self.world.particles,
+                Some(
+                    |_device: &wgpu::Device,
+                     _queue: &wgpu::Queue,
+                     encoder: &mut wgpu::CommandEncoder,
+                     surface_view: &wgpu::TextureView| {
+                        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: Some("imgui overlay pass"),
+                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                view: surface_view,
+                                resolve_target: None,
+                                depth_slice: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Load,
+                                    store: wgpu::StoreOp::Store,
+                                },
+                            })],
+                            depth_stencil_attachment: None,
+                            occlusion_query_set: None,
+                            timestamp_writes: None,
+                            multiview_mask: None,
+                        });
+
+                        if let Err(err) = prepared_imgui.render(&mut rpass) {
+                            eprintln!("imgui render failed: {err}");
+                        }
+                    },
+                ),
+            );
+            return;
+        }
 
         self.renderer.render_world(
             &self.world.camera,
