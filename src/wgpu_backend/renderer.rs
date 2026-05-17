@@ -47,6 +47,9 @@ pub struct Renderer {
     pub particles: ParticleResources,
     pub bloom: BloomResources,
     pub hdr: HdrResources,
+    /// Toggle for the (still-to-be-ported) gizmo pass. Read/written by the
+    /// pause-menu UI; no draw call consumes it yet.
+    pub render_gizmos: bool,
 }
 
 impl Renderer {
@@ -190,6 +193,7 @@ impl Renderer {
             particles,
             bloom,
             hdr,
+            render_gizmos: false,
         }
     }
 

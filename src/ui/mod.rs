@@ -5,4 +5,4 @@ pub mod message_queue;
 //pub mod portrait_renderer;
 pub mod toast;
 
-//pub mod game_new;
+pub mod game_new;

@@ -22,9 +22,9 @@ use crate::sound::sound_manager::SoundManager;
 use crate::state_machines::state_machine_system;
 use crate::time::Time;
 //use crate::ui::game_new::parser::load_view_or_fallback;
-//use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
-//use crate::ui::game_new::views::pause_menu_view::{PauseMenuUpdateContext, PauseMenuView};
-//use crate::ui::game_new::{FontSystem, UiContext, UiRenderer, UiTree};
+use crate::ui::game_new::views::game_hud::{GameHudView, PlayerHudData};
+use crate::ui::game_new::views::pause_menu_view::{PauseMenuUpdateContext, PauseMenuView};
+use crate::ui::game_new::{FontSystem, UiContext, UiRenderer};
 #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
 use crate::ui::imgui::imgui_manager::ImguiManager;
 use crate::ui::message_queue::{MessageQueue, UiMessage};
@@ -54,12 +54,12 @@ pub struct Game {
     pub paused: bool,
     cursor_mode: CursorMode,
     message_queue: MessageQueue,
-    //pause_menu: PauseMenuView,
-    //game_hud: GameHudView,
+    pause_menu: PauseMenuView,
+    game_hud: GameHudView,
     //portrait_renderer: PortraitRenderer,
     //gallery_ui: Option<UiTree>,
-    //custom_ui_renderer: UiRenderer,
-    //font_system: FontSystem,
+    custom_ui_renderer: UiRenderer,
+    font_system: FontSystem,
     pub should_quit: bool,
     #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
     imgui_manager: Option<ImguiManager>,
@@ -114,20 +114,23 @@ impl Game {
                 false => None,
             };
 
-        //let ui_shader_profile = if webgl_compatibility_mode {
-        //    ShaderProfile::GlslEs300
-        //} else {
-        //    ShaderProfile::DesktopCore
-        //};
+        // Custom RON UI (wgpu backend). Pause menu, gallery UI and the
+        // portrait renderer remain commented out until they're ported off
+        // the old OpenGL pipeline.
+        let mut custom_ui_renderer = UiRenderer::new(
+            &renderer.device,
+            &renderer.queue,
+            renderer.config.format,
+        );
+        custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
-        //let mut custom_ui_renderer = UiRenderer::new_with_profile(ui_shader_profile);
-        //let mut font_system = FontSystem::new();
+        let mut font_system = FontSystem::new();
 
-        //let mut pause_menu = PauseMenuView::new(&mut font_system);
-        //pause_menu.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+        let mut pause_menu = PauseMenuView::new(&mut font_system);
+        pause_menu.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
-        //let mut game_hud = GameHudView::new(&mut font_system);
-        //game_hud.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
+        let mut game_hud = GameHudView::new(&mut font_system);
+        game_hud.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
         //let portrait_renderer = PortraitRenderer::new();
 
@@ -138,8 +141,6 @@ impl Game {
         //} else {
         //    None
         //};
-
-        //custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
         Self {
             platform,
@@ -152,12 +153,12 @@ impl Game {
             paused: false,
             cursor_mode: CursorMode::Hidden,
             message_queue: MessageQueue::new(),
-            //pause_menu,
-            //game_hud,
+            pause_menu,
+            game_hud,
             //portrait_renderer,
             //gallery_ui,
-            //custom_ui_renderer,
-            //font_system,
+            custom_ui_renderer,
+            font_system,
             should_quit: false,
             #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
             imgui_manager,
@@ -670,49 +671,45 @@ impl Game {
             .particles
             .update(self.time.dt, &mut self.command_buffer, &self.world.ecs);
 
-        // if UI_ENABLED {
-        //     // update custom GPU UI
-        //     if self.world.camera.move_state == CameraState::Gallery {
-        //         if let Some(tree) = &mut self.gallery_ui {
-        //             tree.layout(&mut self.font_system);
-        //             let mut ctx = UiContext {
-        //                 input: &self.input,
-        //                 messages: &mut self.message_queue,
-        //             };
-        //             if tree.update(&mut ctx) {
-        //                 tree.force_layout();
-        //                 tree.layout(&mut self.font_system);
-        //             }
-        //         }
-        //     } else if self.paused {
-        //         let mut pause_ctx = PauseMenuUpdateContext {
-        //             paused: &mut self.paused,
-        //             render_gizmos: &mut self.renderer.render_gizmos,
-        //             game_config: &mut self.config,
-        //             sound_config: &mut self.sound_config,
-        //             entity_manager: &self.world.ecs,
-        //             message_queue: &mut self.message_queue,
-        //             input_state: &self.input,
-        //         };
-        //         self.pause_menu
-        //             .update(&mut pause_ctx, &mut self.font_system);
-        //     } else if self.show_in_game_hud() {
-        //         let data = PlayerHudData::from_entity_manager(&self.world.ecs);
-        //         let portrait_tex = self.portrait_renderer.get_texture_id();
-        //         let mut ui_ctx = UiContext {
-        //             input: &self.input,
-        //             messages: &mut self.message_queue,
-        //         };
-        //         self.game_hud.update(
-        //             &mut self.font_system,
-        //             &mut ui_ctx,
-        //             &data,
-        //             portrait_tex,
-        //             &self.world.ecs,
-        //             self.time.dt,
-        //         );
-        //     }
-        // }
+        if UI_ENABLED {
+            // Custom GPU UI. The gallery branch stays commented out until
+            // the gallery FBO / portrait FBO are ported off OpenGL.
+            //
+            //if self.world.camera.move_state == CameraState::Gallery {
+            //    if let Some(tree) = &mut self.gallery_ui { ... }
+            //} else
+            if self.paused {
+                let mut pause_ctx = PauseMenuUpdateContext {
+                    paused: &mut self.paused,
+                    render_gizmos: &mut self.renderer.render_gizmos,
+                    game_config: &mut self.config,
+                    sound_config: &mut self.sound_config,
+                    entity_manager: &self.world.ecs,
+                    message_queue: &mut self.message_queue,
+                    input_state: &self.input,
+                };
+                self.pause_menu
+                    .update(&mut pause_ctx, &mut self.font_system);
+            } else if self.show_in_game_hud() {
+                let data = PlayerHudData::from_entity_manager(&self.world.ecs);
+                // Portrait FBO isn't ported yet; pass `0` so the HUD's
+                // TextureRect renders the fallback (1x1 white) until the
+                // portrait renderer registers a real texture id.
+                let portrait_tex: u32 = 0;
+                let mut ui_ctx = UiContext {
+                    input: &self.input,
+                    messages: &mut self.message_queue,
+                };
+                self.game_hud.update(
+                    &mut self.font_system,
+                    &mut ui_ctx,
+                    &data,
+                    portrait_tex,
+                    &self.world.ecs,
+                    self.time.dt,
+                );
+            }
+        }
 
         let msgs = self.message_queue.drain();
 
@@ -820,6 +817,22 @@ impl Game {
     pub fn render(&mut self) {
         self.platform.window.as_ref().unwrap().request_redraw();
 
+        // Build the custom UI's CPU draws and upload everything for this
+        // frame BEFORE we hand a closure to render_world_with_overlay.
+        // Doing the upload up front means the overlay closure only needs an
+        // immutable borrow of `self.custom_ui_renderer` to call `render(rpass)`.
+        self.custom_ui_renderer.begin();
+        if UI_ENABLED {
+            if self.paused {
+                self.pause_menu.tree.render(&mut self.custom_ui_renderer);
+            } else if self.show_in_game_hud() {
+                self.game_hud.tree.render(&mut self.custom_ui_renderer);
+            }
+        }
+        self.custom_ui_renderer.end(&mut self.font_system);
+        self.custom_ui_renderer
+            .prepare(&self.renderer.device, &self.renderer.queue);
+
         #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
         let prepared_imgui = if let Some(imgui_manager) = &mut self.imgui_manager {
             imgui_manager.prepare_render(
@@ -841,6 +854,8 @@ impl Game {
             None
         };
 
+        let custom_ui = &self.custom_ui_renderer;
+
         #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
         if let Some(prepared_imgui) = prepared_imgui {
             self.renderer.render_world_with_overlay(
@@ -855,7 +870,7 @@ impl Game {
                      encoder: &mut wgpu::CommandEncoder,
                      surface_view: &wgpu::TextureView| {
                         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                            label: Some("imgui overlay pass"),
+                            label: Some("ui overlay pass"),
                             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                                 view: surface_view,
                                 resolve_target: None,
@@ -871,6 +886,9 @@ impl Game {
                             multiview_mask: None,
                         });
 
+                        // Custom RON UI first, then imgui on top of it.
+                        custom_ui.render(&mut rpass);
+
                         if let Err(err) = prepared_imgui.render(&mut rpass) {
                             eprintln!("imgui render failed: {err}");
                         }
@@ -880,12 +898,38 @@ impl Game {
             return;
         }
 
-        self.renderer.render_world(
+        // No imgui — still need an overlay pass for the custom UI.
+        self.renderer.render_world_with_overlay(
             &self.world.camera,
             &self.world.ecs,
             self.time.alpha,
             &self.world.lights,
             &mut self.world.particles,
+            Some(
+                |_device: &wgpu::Device,
+                 _queue: &wgpu::Queue,
+                 encoder: &mut wgpu::CommandEncoder,
+                 surface_view: &wgpu::TextureView| {
+                    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("ui overlay pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: surface_view,
+                            resolve_target: None,
+                            depth_slice: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Load,
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        occlusion_query_set: None,
+                        timestamp_writes: None,
+                        multiview_mask: None,
+                    });
+
+                    custom_ui.render(&mut rpass);
+                },
+            ),
         );
     }
 }
