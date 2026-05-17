@@ -1,6 +1,7 @@
 pub mod bone_uniforms;
 pub mod cube_texture;
 pub mod data_loader;
+pub mod gizmo;
 pub mod material;
 pub mod model;
 pub mod pipelines;

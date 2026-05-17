@@ -1,6 +1,7 @@
 pub mod animated_model;
 pub mod bloom;
 pub mod custom_ui;
+pub mod gizmo;
 pub mod hdr;
 pub mod linear_fog;
 pub mod particles;

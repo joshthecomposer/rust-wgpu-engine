@@ -9,7 +9,7 @@
   "vsync": true,
   "debug_mode": true,
   "fps_counter": true,
-  "render_gizmos": false,
+  "render_gizmos": true,
   "shadow_debug": false,
   "msaa_level": 16,
   "fxaa_level": "Off",

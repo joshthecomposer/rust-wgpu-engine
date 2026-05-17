@@ -84,11 +84,12 @@ impl Game {
                 .as_ref()
                 .expect("missing window in Platform"),
         );
-        let renderer = pollster::block_on(Renderer::new(
+        let mut renderer = pollster::block_on(Renderer::new(
             window,
             CameraUniform::new(),
             DirLightUniform::new(),
         ));
+        renderer.render_gizmos = config.render_gizmos;
 
         let rdr_ctx = RenderContext {
             device: &renderer.device,

@@ -13,10 +13,12 @@ use crate::{
     wgpu_backend::{
         bone_uniforms::BoneUniforms,
         cube_texture::CubeTexture,
+        gizmo::GizmoRenderer,
         model::{DrawModel, Model},
         pipelines::{
             animated_model::{self, AnimatedModelResources},
             bloom::{self, BloomResources},
+            gizmo as gizmo_pipeline,
             hdr::{self, HdrCompositeParams, HdrResources},
             particles::{self, ParticleResources},
             shared::{self, CameraBinding, DirLightBinding, SharedLayouts},
@@ -47,8 +49,9 @@ pub struct Renderer {
     pub particles: ParticleResources,
     pub bloom: BloomResources,
     pub hdr: HdrResources,
-    /// Toggle for the (still-to-be-ported) gizmo pass. Read/written by the
-    /// pause-menu UI; no draw call consumes it yet.
+    pub gizmo: GizmoRenderer,
+    /// Toggle for the gizmo pass; read/written by the pause-menu UI.
+    /// When true, `gizmo` draws collider wireframes during the scene pass.
     pub render_gizmos: bool,
 }
 
@@ -175,6 +178,17 @@ impl Renderer {
             DEPTH_FORMAT,
         );
 
+        let gizmo = GizmoRenderer::new(
+            gizmo_pipeline::build(
+                &device,
+                &shared_layouts,
+                hdr.scene_format,
+                hdr.bright_format,
+                DEPTH_FORMAT,
+            ),
+            &device,
+        );
+
         let alignment = device.limits().min_uniform_buffer_offset_alignment as usize;
 
         Self {
@@ -193,6 +207,7 @@ impl Renderer {
             particles,
             bloom,
             hdr,
+            gizmo,
             render_gizmos: false,
         }
     }
@@ -242,6 +257,13 @@ impl Renderer {
             &self.shared_layouts.texture,
             particles,
         );
+
+        // GPU buffer uploads for gizmos must also happen before begin_render_pass.
+        // The toggle is checked here so prepare work (and the per-entity instance
+        // upload) is skipped entirely when gizmo rendering is off.
+        if self.render_gizmos {
+            self.gizmo.prepare(&self.device, &self.queue, em, alpha);
+        }
 
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
@@ -346,6 +368,15 @@ impl Renderer {
             // alpha-blended on scene, additive on bright. Depth-test on, depth-write off.
             self.particles
                 .draw_all(&mut rp, &self.queue, particles, camera);
+
+            // GIZMO PASS
+            // LineList wireframes for colliders. Depth-tested against the scene,
+            // depth-write off so subsequent overlay passes are unaffected.
+            // Camera is rebound inside `render` (after `set_pipeline`) because
+            // the previous pipeline's bind-group-layout shape differs.
+            if self.render_gizmos {
+                self.gizmo.render(&mut rp, &self.camera.bind_group);
+            }
         }
 
         let _bloom_view = self.bloom.render(&mut encoder, &self.queue);
