@@ -8,6 +8,7 @@ use crate::{
     entity_manager::EntityManager,
     enums_types::InstanceUniform,
     lights::{DirLight, DirLightUniform, Lights},
+    particles::ParticleSystem,
     util::constants::{FACES_CUBEMAP, MAX_BONES, SKYBOX_INDICES, SKYBOX_VERTICES},
     wgpu_backend::{
         bone_uniforms::BoneUniforms,
@@ -16,6 +17,7 @@ use crate::{
         pipelines::{
             animated_model::{self, AnimatedModelResources},
             hdr::{self, HdrCompositeParams, HdrResources},
+            particles::{self, ParticleResources},
             shared::{self, CameraBinding, DirLightBinding, SharedLayouts},
             skybox::{self, SkyboxResources},
             static_model::{self, StaticModelResources},
@@ -41,6 +43,7 @@ pub struct Renderer {
     pub skybox: SkyboxResources,
     pub static_model: StaticModelResources,
     pub animated_model: AnimatedModelResources,
+    pub particles: ParticleResources,
     pub hdr: HdrResources,
 }
 
@@ -155,6 +158,15 @@ impl Renderer {
         let animated_model =
             animated_model::build(&device, &shared_layouts, scene_hdr_format, DEPTH_FORMAT);
 
+        let particles = particles::build(
+            &device,
+            &queue,
+            &shared_layouts,
+            hdr.scene_format,
+            hdr.bright_format,
+            DEPTH_FORMAT,
+        );
+
         let alignment = device.limits().min_uniform_buffer_offset_alignment as usize;
 
         Self {
@@ -170,6 +182,7 @@ impl Renderer {
             skybox,
             static_model,
             animated_model,
+            particles,
             hdr,
         }
     }
@@ -180,6 +193,7 @@ impl Renderer {
         em: &EntityManager,
         alpha: f32,
         lights: &Lights,
+        particles: &mut ParticleSystem,
     ) {
         self.queue
             .write_buffer(&self.camera.buffer, 0, bytemuck::bytes_of(&camera.uniform));
@@ -188,6 +202,14 @@ impl Renderer {
             &self.dir_light.buffer,
             0,
             bytemuck::bytes_of(&lights.dir_light_uniform),
+        );
+
+        // Texture uploads must happen before begin_render_pass.
+        self.particles.upload_pending_textures(
+            &self.device,
+            &self.queue,
+            &self.shared_layouts.texture,
+            particles,
         );
 
         let output = match self.surface.get_current_texture() {
@@ -288,6 +310,11 @@ impl Renderer {
             rp.set_bind_group(3, &self.dir_light.bind_group, &[]);
             self.animated_model
                 .draw_all(&mut rp, &self.queue, em, self.alignment, alpha);
+
+            // PARTICLES PASS
+            // alpha-blended on scene, additive on bright. Depth-test on, depth-write off.
+            self.particles
+                .draw_all(&mut rp, &self.queue, particles, camera);
         }
 
         self.hdr.write_params(

@@ -32,7 +32,7 @@ pub struct SkyCameraUniform {
 }
 impl SkyCameraUniform {
     pub fn from_camera(camera: &Camera) -> Self {
-        // Same idea as GL: strip translation from view so the box stays at the origin in view space.
+        // strip translation from view so the box stays at the origin in view space.
         let mut view_rot = camera.view;
         view_rot.w_axis = glam::Vec4::new(0.0, 0.0, 0.0, 1.0);
         Self {

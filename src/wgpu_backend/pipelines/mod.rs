@@ -2,6 +2,7 @@ pub mod animated_model;
 pub mod bloom;
 pub mod hdr;
 pub mod linear_fog;
+pub mod particles;
 pub mod shared;
 pub mod skybox;
 pub mod static_model;

@@ -13,7 +13,7 @@ mod items;
 mod lights;
 mod macros;
 mod movement_system;
-//mod particles;
+mod particles;
 mod physics;
 mod platform;
 mod sound;

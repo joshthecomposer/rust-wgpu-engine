@@ -667,9 +667,9 @@ impl Game {
             self.time.dt,
         );
         self.world.lights.update(&self.time.dt);
-        //self.world
-        //    .particles
-        //    .update(self.time.dt, &mut self.command_buffer, &self.world.ecs);
+        self.world
+            .particles
+            .update(self.time.dt, &mut self.command_buffer, &self.world.ecs);
 
         // if UI_ENABLED {
         //     // update custom GPU UI
@@ -723,7 +723,7 @@ impl Game {
                     self.should_quit = true;
                 }
                 UiMessage::RenderStagedEmitters { do_it } => {
-                    //self.world.particles.render_staged_emitters = *do_it;
+                    self.world.particles.render_staged_emitters = *do_it;
                 }
                 UiMessage::ReloadWorldData => {
                     let rdr = RenderContext {
@@ -828,6 +828,7 @@ impl Game {
             &self.world.ecs,
             self.time.alpha,
             &self.world.lights,
+            &mut self.world.particles,
         );
     }
 }
