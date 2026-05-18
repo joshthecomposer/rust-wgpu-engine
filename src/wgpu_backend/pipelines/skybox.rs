@@ -1,8 +1,9 @@
-use std::{num::NonZeroU64, path::Path};
+use std::num::NonZeroU64;
 
 use wgpu::util::DeviceExt;
 
 use crate::{
+    assets,
     camera::{Camera, SkyCameraUniform},
     util::constants::{FACES_CUBEMAP, SKYBOX_INDICES, SKYBOX_VERTICES},
     wgpu_backend::{
@@ -32,33 +33,48 @@ impl SkyboxResources {
         color_view: &wgpu::TextureView,
         bright_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
+        wasm_depth_proxy: Option<&wgpu::TextureView>,
         camera: &Camera,
     ) {
         let sky_uniform = SkyCameraUniform::from_camera(camera);
         queue.write_buffer(&self.camera_buffer, 0, bytemuck::bytes_of(&sky_uniform));
 
+        let hdr_att = Some(wgpu::RenderPassColorAttachment {
+            view: color_view,
+            resolve_target: None,
+            depth_slice: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                store: wgpu::StoreOp::Store,
+            },
+        });
+        let bright_att = Some(wgpu::RenderPassColorAttachment {
+            view: bright_view,
+            resolve_target: None,
+            depth_slice: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                store: wgpu::StoreOp::Store,
+            },
+        });
+
+        let mut color_attachments: Vec<Option<wgpu::RenderPassColorAttachment>> =
+            vec![hdr_att, bright_att];
+        if let Some(proxy) = wasm_depth_proxy {
+            color_attachments.push(Some(wgpu::RenderPassColorAttachment {
+                view: proxy,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
+                    store: wgpu::StoreOp::Store,
+                },
+            }));
+        }
+
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("render pass"),
-            color_attachments: &[
-                Some(wgpu::RenderPassColorAttachment {
-                    view: color_view,
-                    resolve_target: None,
-                    depth_slice: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                }),
-                Some(wgpu::RenderPassColorAttachment {
-                    view: bright_view,
-                    resolve_target: None,
-                    depth_slice: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                }),
-            ],
+            label: Some("skybox pass"),
+            color_attachments: &color_attachments,
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: depth_view,
                 depth_ops: Some(wgpu::Operations {
@@ -85,7 +101,8 @@ impl SkyboxResources {
 pub fn build(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    color_format: wgpu::TextureFormat,
+    scene_format: wgpu::TextureFormat,
+    bright_format: wgpu::TextureFormat,
     depth_format: wgpu::TextureFormat,
 ) -> SkyboxResources {
     let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -181,12 +198,14 @@ pub fn build(
         }],
     };
 
+    #[cfg(not(target_arch = "wasm32"))]
+    let sky_wgsl: &str = include_str!("../../../resources/shaders/skybox.wgsl");
+    #[cfg(target_arch = "wasm32")]
+    let sky_wgsl: &str = include_str!("../../../resources/shaders/skybox_wasm.wgsl");
+
     let shader = wgpu::ShaderModuleDescriptor {
         label: Some("Skybox shader"),
-        source: wgpu::ShaderSource::Wgsl(
-            // TODO: Handle this properly
-            include_str!("../../../resources/shaders/skybox.wgsl").into(),
-        ),
+        source: wgpu::ShaderSource::Wgsl(sky_wgsl.into()),
     };
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -195,7 +214,10 @@ pub fn build(
         immediate_size: 0,
     });
 
-    let scene_targets = shared::scene_color_targets();
+    #[cfg(not(target_arch = "wasm32"))]
+    let scene_targets = shared::scene_color_targets(scene_format, bright_format);
+    #[cfg(target_arch = "wasm32")]
+    let scene_targets = shared::scene_color_targets_wasm(scene_format, bright_format);
 
     let pipeline = create_render_pipeline(
         &device,
@@ -224,8 +246,10 @@ pub fn build(
 }
 
 fn load_skybox_ldr_separated_faces(device: &wgpu::Device, queue: &wgpu::Queue) -> CubeTexture {
-    let face_px = Path::new(FACES_CUBEMAP[0]);
-    let first_bytes = std::fs::read(face_px).unwrap();
+    // Route through `assets::read_bytes` so the same code works on native
+    // (filesystem) and wasm (browser-preloaded asset map populated by
+    // index.html before `init()`).
+    let first_bytes = assets::read_bytes(FACES_CUBEMAP[0]).unwrap();
 
     let first = image::load_from_memory(&first_bytes).unwrap().to_rgba8();
 
@@ -244,8 +268,7 @@ fn load_skybox_ldr_separated_faces(device: &wgpu::Device, queue: &wgpu::Queue) -
     );
 
     for (layer, path) in FACES_CUBEMAP.iter().enumerate() {
-        let path = Path::new(path);
-        let bytes = std::fs::read(path).unwrap();
+        let bytes = assets::read_bytes(path).unwrap();
 
         let rgba = image::load_from_memory(&bytes).unwrap().to_rgba8();
 

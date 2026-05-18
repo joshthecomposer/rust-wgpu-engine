@@ -8,7 +8,10 @@ use crate::{
     assets,
     camera::Camera,
     particles::{Emitter, ParticleSystem},
-    wgpu_backend::{pipelines::shared::SharedLayouts, texture::Texture},
+    wgpu_backend::{
+        pipelines::shared::SharedLayouts,
+        texture::Texture,
+    },
 };
 
 const MAX_PARTICLE_INSTANCES: u64 = 200_000;
@@ -273,11 +276,11 @@ pub fn build(
     bright_format: wgpu::TextureFormat,
     depth_format: wgpu::TextureFormat,
 ) -> ParticleResources {
+    let shader_source: &str = include_str!("../../../resources/shaders/particles.wgsl");
+
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Particles Shader"),
-        source: wgpu::ShaderSource::Wgsl(
-            include_str!("../../../resources/shaders/particles.wgsl").into(),
-        ),
+        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
     });
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -291,33 +294,45 @@ pub fn build(
     //   bright = One / One                  -> additive emissive accumulation
     // Built inline (not via the shared helper) because particles need
     // depth_write_enabled=false and per-target blend states.
+    //
+    // WebGL2 doesn't support DownlevelFlags::INDEPENDENT_BLEND, so on wasm we
+    // collapse both attachments to the same alpha-blend state. Overlapping
+    // particles still emit bloom (via the bright RT) but multiple particles
+    // in the same pixel won't accumulate their bright values; the latest one
+    // wins instead of summing. Acceptable tradeoff for the web build.
+    let scene_blend = wgpu::BlendState {
+        color: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::SrcAlpha,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        },
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    let bright_blend = wgpu::BlendState {
+        color: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::One,
+            operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent::REPLACE,
+    };
+    #[cfg(target_arch = "wasm32")]
+    let bright_blend = scene_blend;
+
     let particle_color_targets = [
         Some(wgpu::ColorTargetState {
             format: scene_format,
-            blend: Some(wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::SrcAlpha,
-                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                    operation: wgpu::BlendOperation::Add,
-                },
-            }),
+            blend: Some(scene_blend),
             write_mask: wgpu::ColorWrites::ALL,
         }),
         Some(wgpu::ColorTargetState {
             format: bright_format,
-            blend: Some(wgpu::BlendState {
-                color: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::One,
-                    dst_factor: wgpu::BlendFactor::One,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha: wgpu::BlendComponent::REPLACE,
-            }),
+            blend: Some(bright_blend),
             write_mask: wgpu::ColorWrites::ALL,
         }),
     ];

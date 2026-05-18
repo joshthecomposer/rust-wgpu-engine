@@ -2,9 +2,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-#[cfg(not(target_arch = "wasm32"))]
 use winit::event::{ElementState, KeyEvent, WindowEvent};
-#[cfg(not(target_arch = "wasm32"))]
 use winit::keyboard::{KeyCode, PhysicalKey};
 
 use crate::animation::animation_system;
@@ -37,9 +35,6 @@ use crate::{
     status_effect_system,
 };
 use crate::{projectile_system, toast};
-
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::JsValue;
 
 const UI_ENABLED: bool = true;
 
@@ -246,36 +241,19 @@ impl Game {
         msaa_changed || debug_mode_changed || compatibility_mode_changed
     }
 
-    pub fn tick(&mut self, now_seconds: f32) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            if self.platform.sync_canvas_buffer_to_display(1280, 720) {
-                self.renderer.resize_webgl_compatibility_framebuffers(
-                    &self.platform.capabilities,
-                    self.platform.fb_width,
-                    self.platform.fb_height,
-                );
-                self.custom_ui_renderer.set_screen_size(
-                    self.platform.fb_width as f32,
-                    self.platform.fb_height as f32,
-                );
-                if let Some(ref mut gallery) = self.gallery_ui {
-                    gallery.set_screen_size(
-                        self.platform.fb_width as f32,
-                        self.platform.fb_height as f32,
-                    );
-                }
-                self.pause_menu.set_screen_size(
-                    self.platform.fb_width as f32,
-                    self.platform.fb_height as f32,
-                );
-                self.game_hud.set_screen_size(
-                    self.platform.fb_width as f32,
-                    self.platform.fb_height as f32,
-                );
-            }
-        }
+    pub fn resize(&mut self, width: u32, height: u32) {
+        let width = width.max(1);
+        let height = height.max(1);
+        self.platform.fb_width = width;
+        self.platform.fb_height = height;
+        self.renderer.resize(width, height);
+        self.custom_ui_renderer
+            .set_screen_size(width as f32, height as f32);
+        self.pause_menu.set_screen_size(width as f32, height as f32);
+        self.game_hud.set_screen_size(width as f32, height as f32);
+    }
 
+    pub fn tick(&mut self, now_seconds: f32) {
         self.time.begin_frame(now_seconds);
 
         // Mouse lock / cursor mode
@@ -419,7 +397,6 @@ impl Game {
         self.input.update_ui();
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
         #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
         if UI_ENABLED {
@@ -563,92 +540,6 @@ impl Game {
 
             _ => {}
         }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub fn handle_web_keyboard_input(
-        &mut self,
-        keycode: winit::keyboard::KeyCode,
-        state: winit::event::ElementState,
-    ) {
-        input::handle_keyboard_input(keycode, state, &mut self.input);
-
-        if keycode == winit::keyboard::KeyCode::Escape
-            && state == winit::event::ElementState::Pressed
-        {
-            self.paused = !self.paused;
-        }
-
-        if keycode == winit::keyboard::KeyCode::KeyF && state == winit::event::ElementState::Pressed
-        {
-            let maybe_player_id = self
-                .world
-                .ecs
-                .factions
-                .iter()
-                .find(|e| *e.value() == "Player");
-
-            self.world.camera.move_state = match self.world.camera.move_state {
-                CameraState::Free => {
-                    if maybe_player_id.is_none() {
-                        CameraState::Locked
-                    } else {
-                        CameraState::Third
-                    }
-                }
-                CameraState::Third => CameraState::Locked,
-                CameraState::Locked => CameraState::Gallery,
-                CameraState::Gallery => CameraState::Free,
-            };
-        }
-
-        if keycode == winit::keyboard::KeyCode::KeyG && state == winit::event::ElementState::Pressed
-        {
-            self.world.ecs.try_pickup_weapon(&mut self.physics);
-        }
-
-        if keycode == winit::keyboard::KeyCode::Tab && state == winit::event::ElementState::Pressed
-        {
-            self.cursor_mode = match self.cursor_mode {
-                CursorMode::Normal => CursorMode::Hidden,
-                _ => CursorMode::Normal,
-            };
-        }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub fn handle_web_mouse_move(&mut self, x: f32, y: f32, dx: f64, dy: f64) {
-        let p = self.platform.canvas_css_to_framebuffer_px(x, y);
-        self.input.mouse_pos_current = p;
-        if !self.paused && !self.cursor_unlocked() {
-            self.world.camera.process_mouse_input(dx, dy);
-        }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub fn handle_web_mouse_button(
-        &mut self,
-        button: winit::event::MouseButton,
-        state: winit::event::ElementState,
-    ) {
-        let fb = glam::vec2(
-            self.platform.fb_width as f32,
-            self.platform.fb_height as f32,
-        );
-        input::handle_mouse_input(
-            button,
-            state,
-            fb,
-            &self.world.camera,
-            &mut self.world.ecs,
-            &mut self.input,
-            &mut self.physics,
-        );
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub fn handle_web_scroll(&mut self, x: f32, y: f32) {
-        self.input.scroll_delta = glam::vec2(x, y);
     }
 
     pub fn update(&mut self) {

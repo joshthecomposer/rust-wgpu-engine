@@ -5,6 +5,9 @@ use wgpu::util::DeviceExt;
 use crate::wgpu_backend::texture;
 use bytemuck::{Pod, Zeroable};
 
+#[cfg(target_arch = "wasm32")]
+use super::shared::DEPTH_PROXY_FORMAT;
+
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct HdrCompositeParams {
@@ -36,12 +39,23 @@ pub struct HdrResources {
     pub width: u32,
     pub height: u32,
 
+    /// WebGL2 fog: fragments write `frag_pos.z` here (binding 3 in composite WGSL).
+    #[cfg(target_arch = "wasm32")]
+    pub wasm_linear_depth: texture::Texture,
+
     // fullscreen composite (tonemap, gamma, fog, etc)
     pub composite_layout: wgpu::BindGroupLayout,
     pub composite_bind_group: wgpu::BindGroup,
     pub composite_pipeline: wgpu::RenderPipeline,
 
     pub composite_uniforms: wgpu::Buffer,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl HdrResources {
+    pub fn wasm_depth_proxy_view(&self) -> &wgpu::TextureView {
+        &self.wasm_linear_depth.view
+    }
 }
 
 impl HdrResources {
@@ -83,31 +97,35 @@ impl HdrResources {
         &mut self,
         device: &wgpu::Device,
         bloom_view: &wgpu::TextureView,
-        depth_view: &wgpu::TextureView,
+        depth_attachment_view: &wgpu::TextureView,
     ) {
+        #[cfg(target_arch = "wasm32")]
+        let _ = depth_attachment_view;
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let fog_depth_view = depth_attachment_view;
+        #[cfg(target_arch = "wasm32")]
+        let fog_depth_view = &self.wasm_linear_depth.view;
+
         self.composite_bind_group = create_composite_bind_group(
             device,
             &self.composite_layout,
             &self.scene_color.view,
             &self.scene_color.sampler,
             &self.composite_uniforms,
-            depth_view,
+            fog_depth_view,
             bloom_view,
         );
     }
-}
-
-fn scene_hdr_format() -> wgpu::TextureFormat {
-    wgpu::TextureFormat::Rgba16Float
 }
 
 fn create_scene_hdr_texture(
     device: &wgpu::Device,
     width: u32,
     height: u32,
+    format: wgpu::TextureFormat,
     label: Option<&str>,
 ) -> texture::Texture {
-    let format = scene_hdr_format();
     let size = wgpu::Extent3d {
         width: width.max(1),
         height: height.max(1),
@@ -144,17 +162,35 @@ fn create_scene_hdr_texture(
 
 pub fn build(
     device: &wgpu::Device,
-    queue: &wgpu::Queue,
+    _queue: &wgpu::Queue,
     width: u32,
     height: u32,
-    surface_format: wgpu::TextureFormat, // composite output = swapchain format
+    surface_format: wgpu::TextureFormat,
+    scene_format: wgpu::TextureFormat,
+    bright_format: wgpu::TextureFormat,
     initial_params: HdrCompositeParams,
     depth_view: &wgpu::TextureView,
 ) -> HdrResources {
-    let scene_format = scene_hdr_format();
-    let scene_color = create_scene_hdr_texture(device, width, height, Some("hdr_scene_color"));
-    let scene_bright = create_scene_hdr_texture(device, width, height, Some("hdr_scene_bright"));
-    let bright_format = scene_hdr_format();
+    #[cfg(target_arch = "wasm32")]
+    let _ = depth_view;
+    let scene_color = create_scene_hdr_texture(
+        device,
+        width,
+        height,
+        scene_format,
+        Some("hdr_scene_color"),
+    );
+    let scene_bright = create_scene_hdr_texture(
+        device,
+        width,
+        height,
+        bright_format,
+        Some("hdr_scene_bright"),
+    );
+
+    #[cfg(target_arch = "wasm32")]
+    let wasm_linear_depth =
+        create_scene_hdr_texture(device, width, height, DEPTH_PROXY_FORMAT, Some("wasm_depth_proxy"));
 
     let ub_size = std::mem::size_of::<HdrCompositeParams>() as u64;
 
@@ -163,57 +199,76 @@ pub fn build(
         contents: bytemuck::bytes_of(&initial_params),
         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     });
+
+    let mut layout_entries: Vec<wgpu::BindGroupLayoutEntry> = vec![
+        wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        },
+        wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+        },
+        wgpu::BindGroupLayoutEntry {
+            binding: 2,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: NonZeroU64::new(ub_size),
+            },
+            count: None,
+        },
+    ];
+
+    layout_entries.push(wgpu::BindGroupLayoutEntry {
+        binding: 3,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Texture {
+            sample_type: {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    wgpu::TextureSampleType::Depth
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    wgpu::TextureSampleType::Float { filterable: true }
+                }
+            },
+            view_dimension: wgpu::TextureViewDimension::D2,
+            multisampled: false,
+        },
+        count: None,
+    });
+
+    layout_entries.push(wgpu::BindGroupLayoutEntry {
+        binding: 4,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Texture {
+            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+            view_dimension: wgpu::TextureViewDimension::D2,
+            multisampled: false,
+        },
+        count: None,
+    });
+
     let composite_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("hdr_composite_layout"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: false,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: NonZeroU64::new(ub_size),
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 3,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Depth,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: false,
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 4,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: false,
-                },
-                count: None,
-            },
-        ],
+        entries: &layout_entries,
     });
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let fog_depth_for_bind = depth_view;
+    #[cfg(target_arch = "wasm32")]
+    let fog_depth_for_bind = &wasm_linear_depth.view;
 
     let composite_bind_group = create_composite_bind_group(
         device,
@@ -221,15 +276,19 @@ pub fn build(
         &scene_color.view,
         &scene_color.sampler,
         &composite_uniforms,
-        depth_view,
+        fog_depth_for_bind,
         &scene_bright.view,
     );
 
+    #[cfg(not(target_arch = "wasm32"))]
+    let shader_source: &str = include_str!("../../../resources/shaders/post/hdr_composite.wgsl");
+    #[cfg(target_arch = "wasm32")]
+    let shader_source: &str =
+        include_str!("../../../resources/shaders/post/hdr_composite_webgl.wgsl");
+
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("hdr_composite_shader"),
-        source: wgpu::ShaderSource::Wgsl(
-            include_str!("../../../resources/shaders/post/hdr_composite.wgsl").into(),
-        ),
+        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
     });
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -237,7 +296,7 @@ pub fn build(
         bind_group_layouts: &[Some(&composite_layout)],
         immediate_size: 0,
     });
-    // composite: no vertex buffers (fullscreen triangle in VS)
+
     let composite_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("hdr_composite_pipeline"),
         layout: Some(&pipeline_layout),
@@ -266,6 +325,7 @@ pub fn build(
         multiview_mask: None,
         cache: None,
     });
+
     HdrResources {
         scene_color,
         scene_bright,
@@ -273,6 +333,8 @@ pub fn build(
         bright_format,
         width,
         height,
+        #[cfg(target_arch = "wasm32")]
+        wasm_linear_depth,
         composite_layout,
         composite_bind_group,
         composite_pipeline,
@@ -286,7 +348,7 @@ fn create_composite_bind_group(
     scene_view: &wgpu::TextureView,
     scene_sampler: &wgpu::Sampler,
     composite_uniforms: &wgpu::Buffer,
-    depth_view: &wgpu::TextureView,
+    fog_depth_view: &wgpu::TextureView,
     bloom_view: &wgpu::TextureView,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -307,7 +369,7 @@ fn create_composite_bind_group(
             },
             wgpu::BindGroupEntry {
                 binding: 3,
-                resource: wgpu::BindingResource::TextureView(depth_view),
+                resource: wgpu::BindingResource::TextureView(fog_depth_view),
             },
             wgpu::BindGroupEntry {
                 binding: 4,

@@ -86,14 +86,20 @@ impl StaticModelResources {
 pub fn build(
     device: &wgpu::Device,
     shared: &SharedLayouts,
-    color_format: wgpu::TextureFormat,
+    scene_format: wgpu::TextureFormat,
+    bright_format: wgpu::TextureFormat,
     depth_format: wgpu::TextureFormat,
 ) -> StaticModelResources {
+    #[cfg(not(target_arch = "wasm32"))]
+    let shader_wgsl: &str =
+        include_str!("../../../resources/shaders/model/static_model.wgsl");
+    #[cfg(target_arch = "wasm32")]
+    let shader_wgsl: &str =
+        include_str!("../../../resources/shaders/model/static_model_wasm.wgsl");
+
     let shader = wgpu::ShaderModuleDescriptor {
         label: Some("Static Model Shader"),
-        source: wgpu::ShaderSource::Wgsl(
-            include_str!("../../../resources/shaders/model/static_model.wgsl").into(),
-        ),
+        source: wgpu::ShaderSource::Wgsl(shader_wgsl.into()),
     };
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -106,7 +112,10 @@ pub fn build(
         immediate_size: 0,
     });
 
-    let scene_targets = shared::scene_color_targets();
+    #[cfg(not(target_arch = "wasm32"))]
+    let scene_targets = shared::scene_color_targets(scene_format, bright_format);
+    #[cfg(target_arch = "wasm32")]
+    let scene_targets = shared::scene_color_targets_wasm(scene_format, bright_format);
 
     let pipeline = create_render_pipeline(
         device,

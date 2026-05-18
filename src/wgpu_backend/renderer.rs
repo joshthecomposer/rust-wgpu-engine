@@ -1,7 +1,7 @@
 use std::{collections::HashMap, mem::size_of, num::NonZeroU64, path::Path, sync::Arc};
 use winit::window::Window;
 
-use wgpu::{hal::dx12::PipelineLayout, util::DeviceExt, RenderPipeline};
+use wgpu::util::DeviceExt;
 
 use crate::{
     camera::{Camera, CameraUniform, SkyCameraUniform},
@@ -32,6 +32,24 @@ use crate::{
 };
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+
+#[cfg(not(target_arch = "wasm32"))]
+const SCENE_HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+#[cfg(target_arch = "wasm32")]
+const SCENE_HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+#[cfg(not(target_arch = "wasm32"))]
+const BRIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+#[cfg(target_arch = "wasm32")]
+const BRIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+/// On wasm we render to LDR Rgba8Unorm, so the tonemap step in the composite
+/// shader is bypassed; on native we keep the HDR tonemap on. Bloom stays
+/// enabled in both cases.
+#[cfg(not(target_arch = "wasm32"))]
+const HDR_ENABLED: u32 = 1;
+#[cfg(target_arch = "wasm32")]
+const HDR_ENABLED: u32 = 0;
 
 pub struct Renderer {
     pub surface: wgpu::Surface<'static>,
@@ -142,17 +160,27 @@ impl Renderer {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
+        let mut initial_hdr_params = HdrCompositeParams::new();
+        initial_hdr_params.hdr_enabled = HDR_ENABLED;
         let mut hdr = hdr::build(
             &device,
             &queue,
             config.width,
             config.height,
             config.format,
-            HdrCompositeParams::new(),
+            SCENE_HDR_FORMAT,
+            BRIGHT_FORMAT,
+            initial_hdr_params,
             &depth_texture.view,
         );
 
-        let bloom = bloom::build(&device, config.width, config.height, hdr.bright_view());
+        let bloom = bloom::build(
+            &device,
+            config.width,
+            config.height,
+            BRIGHT_FORMAT,
+            hdr.bright_view(),
+        );
         hdr.set_bloom_view(&device, bloom.output_view(), &depth_texture.view);
 
         let scene_hdr_format = hdr.scene_format;
@@ -162,12 +190,22 @@ impl Renderer {
         let dir_light =
             shared::build_dir_light_binding(&device, &shared_layouts.dir_light, dir_light_uniform);
 
-        let skybox = skybox::build(&device, &queue, scene_hdr_format, DEPTH_FORMAT);
-        let static_model =
-            static_model::build(&device, &shared_layouts, scene_hdr_format, DEPTH_FORMAT);
+        let skybox = skybox::build(&device, &queue, scene_hdr_format, BRIGHT_FORMAT, DEPTH_FORMAT);
+        let static_model = static_model::build(
+            &device,
+            &shared_layouts,
+            scene_hdr_format,
+            BRIGHT_FORMAT,
+            DEPTH_FORMAT,
+        );
 
-        let animated_model =
-            animated_model::build(&device, &shared_layouts, scene_hdr_format, DEPTH_FORMAT);
+        let animated_model = animated_model::build(
+            &device,
+            &shared_layouts,
+            scene_hdr_format,
+            BRIGHT_FORMAT,
+            DEPTH_FORMAT,
+        );
 
         let particles = particles::build(
             &device,
@@ -210,6 +248,46 @@ impl Renderer {
             gizmo,
             render_gizmos: false,
         }
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) {
+        let width = width.max(1);
+        let height = height.max(1);
+        if self.config.width == width && self.config.height == height {
+            return;
+        }
+
+        self.config.width = width;
+        self.config.height = height;
+        self.surface.configure(&self.device, &self.config);
+
+        self.depth_texture =
+            texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
+
+        let mut hdr_params = HdrCompositeParams::new();
+        hdr_params.hdr_enabled = HDR_ENABLED;
+        self.hdr = hdr::build(
+            &self.device,
+            &self.queue,
+            self.config.width,
+            self.config.height,
+            self.config.format,
+            SCENE_HDR_FORMAT,
+            BRIGHT_FORMAT,
+            hdr_params,
+            &self.depth_texture.view,
+        );
+
+        self.bloom = bloom::build(
+            &self.device,
+            self.config.width,
+            self.config.height,
+            BRIGHT_FORMAT,
+            self.hdr.bright_view(),
+        );
+
+        self.hdr
+            .set_bloom_view(&self.device, self.bloom.output_view(), &self.depth_texture.view);
     }
 
     pub fn render_world(
@@ -305,37 +383,100 @@ impl Renderer {
         self.skybox.render_pass(
             &mut encoder,
             &self.queue,
-            &hdr_view,
-            &bright_view,
+            hdr_view,
+            bright_view,
             &self.depth_texture.view,
+            #[cfg(target_arch = "wasm32")]
+            Some(self.hdr.wasm_depth_proxy_view()),
+            #[cfg(not(target_arch = "wasm32"))]
+            None::<&wgpu::TextureView>,
             camera,
         );
 
-        // SCENE RENDER PASS
+        // SCENE RENDER PASS — native: opaque + translucent in one 2-target pass.
+        #[cfg(not(target_arch = "wasm32"))]
+        let scene_color_attachments: [Option<wgpu::RenderPassColorAttachment>; 2] = [
+            Some(wgpu::RenderPassColorAttachment {
+                view: hdr_view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            }),
+            Some(wgpu::RenderPassColorAttachment {
+                view: bright_view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            }),
+        ];
+
+        // Wasm: opaque pass writes depth-proxy MRT; translucent draw uses two targets
+        // only so particle/gizmo pipelines match the pass attachment count (wgpu forbids
+        // `targets[i] == None` when attachment i exists).
+        #[cfg(target_arch = "wasm32")]
+        let wasm_opaque_attachments: [Option<wgpu::RenderPassColorAttachment>; 3] = [
+            Some(wgpu::RenderPassColorAttachment {
+                view: hdr_view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            }),
+            Some(wgpu::RenderPassColorAttachment {
+                view: bright_view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            }),
+            Some(wgpu::RenderPassColorAttachment {
+                view: self.hdr.wasm_depth_proxy_view(),
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            }),
+        ];
+
+        #[cfg(target_arch = "wasm32")]
+        let wasm_overlay_attachments: [Option<wgpu::RenderPassColorAttachment>; 2] = [
+            Some(wgpu::RenderPassColorAttachment {
+                view: hdr_view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            }),
+            Some(wgpu::RenderPassColorAttachment {
+                view: bright_view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            }),
+        ];
+
+        #[cfg(not(target_arch = "wasm32"))]
         {
             let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("render pass"),
-                color_attachments: &[
-                    Some(wgpu::RenderPassColorAttachment {
-                        view: &hdr_view,
-                        resolve_target: None,
-                        depth_slice: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    }),
-                    Some(wgpu::RenderPassColorAttachment {
-                        view: &bright_view,
-                        resolve_target: None,
-                        depth_slice: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    }),
-                ],
-
+                color_attachments: &scene_color_attachments,
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &self.depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
@@ -379,6 +520,58 @@ impl Renderer {
             }
         }
 
+        #[cfg(target_arch = "wasm32")]
+        {
+            let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("wasm scene opaque (+ depth proxy)"),
+                color_attachments: &wasm_opaque_attachments,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            });
+
+            rp.set_bind_group(1, &self.camera.bind_group, &[]);
+            rp.set_bind_group(2, &self.dir_light.bind_group, &[]);
+            self.static_model.draw_all(&mut rp, &self.queue, em, alpha);
+            rp.set_bind_group(3, &self.dir_light.bind_group, &[]);
+            self.animated_model
+                .draw_all(&mut rp, &self.queue, em, self.alignment, alpha);
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("wasm scene particles (+ gizmo)"),
+                color_attachments: &wasm_overlay_attachments,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                occlusion_query_set: None,
+                timestamp_writes: None,
+                multiview_mask: None,
+            });
+
+            rp.set_bind_group(1, &self.camera.bind_group, &[]);
+            self.particles
+                .draw_all(&mut rp, &self.queue, particles, camera);
+            if self.render_gizmos {
+                self.gizmo.render(&mut rp, &self.camera.bind_group);
+            }
+        }
+
         let _bloom_view = self.bloom.render(&mut encoder, &self.queue);
 
         self.hdr.write_params(
@@ -386,7 +579,7 @@ impl Renderer {
             HdrCompositeParams {
                 exposure: 1.0,
                 bloom_strength: 0.1,
-                hdr_enabled: 1,
+                hdr_enabled: HDR_ENABLED,
                 _pad0: 0,
                 inv_proj: camera.uniform.inv_proj,
             },

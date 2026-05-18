@@ -1,6 +1,9 @@
 use crate::{
     enums_types::InstanceUniform,
-    wgpu_backend::{pipelines::shared::SharedLayouts, vertex::Vertex},
+    wgpu_backend::{
+        pipelines::shared::SharedLayouts,
+        vertex::Vertex,
+    },
 };
 
 pub struct GizmoPipeline {
@@ -14,11 +17,11 @@ pub fn build(
     bright_format: wgpu::TextureFormat,
     depth_format: wgpu::TextureFormat,
 ) -> GizmoPipeline {
+    let gizmo_wgsl: &str = include_str!("../../../resources/shaders/gizmo.wgsl");
+
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Gizmo Shader"),
-        source: wgpu::ShaderSource::Wgsl(
-            include_str!("../../../resources/shaders/gizmo.wgsl").into(),
-        ),
+        source: wgpu::ShaderSource::Wgsl(gizmo_wgsl.into()),
     });
 
     // Single contiguous bind group: camera at slot 0. Gizmos don't use any
@@ -33,6 +36,9 @@ pub fn build(
     // Lines must not write depth so they don't occlude later draws (e.g. the
     // bloom/HDR composite path); depth_compare=Less still gives correct
     // occlusion by world geometry already in the depth buffer.
+    //
+    // Wasm: draws in a separate 2-target pass (no depth-proxy MRT) so pipelines
+    // match the opaque scene pass slice length requirements.
     let color_targets = [
         Some(wgpu::ColorTargetState {
             format: scene_format,

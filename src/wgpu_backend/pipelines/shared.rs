@@ -122,15 +122,42 @@ pub fn build_dir_light_binding(
     DirLightBinding { buffer, bind_group }
 }
 
-pub fn scene_color_targets() -> [Option<wgpu::ColorTargetState>; 2] {
+pub fn scene_color_targets(
+    scene_format: wgpu::TextureFormat,
+    bright_format: wgpu::TextureFormat,
+) -> [Option<wgpu::ColorTargetState>; 2] {
     [
         Some(wgpu::ColorTargetState {
-            format: wgpu::TextureFormat::Rgba16Float, // HDR FORMAT
+            format: scene_format,
             blend: Some(wgpu::BlendState::REPLACE),
             write_mask: wgpu::ColorWrites::ALL,
         }),
         Some(wgpu::ColorTargetState {
-            format: wgpu::TextureFormat::Rgba16Float, // BRIGHTNESS FORMAT
+            format: bright_format,
+            blend: Some(wgpu::BlendState::REPLACE),
+            write_mask: wgpu::ColorWrites::ALL,
+        }),
+    ]
+}
+
+/// Second MRT for WebGL2: stores `frag_pos.z` (same convention as the depth
+/// buffer) in **.r** so the HDR composite can fog with a normal `texture_2d`
+/// ( GLES `sampler2D` ) — sampling the real depth texture is not portable in
+/// WGSL→GLSL for this backend.
+#[cfg(target_arch = "wasm32")]
+pub const DEPTH_PROXY_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+#[cfg(target_arch = "wasm32")]
+pub fn scene_color_targets_wasm(
+    scene_format: wgpu::TextureFormat,
+    bright_format: wgpu::TextureFormat,
+) -> [Option<wgpu::ColorTargetState>; 3] {
+    let two = scene_color_targets(scene_format, bright_format);
+    [
+        two[0].clone(),
+        two[1].clone(),
+        Some(wgpu::ColorTargetState {
+            format: DEPTH_PROXY_FORMAT,
             blend: Some(wgpu::BlendState::REPLACE),
             write_mask: wgpu::ColorWrites::ALL,
         }),

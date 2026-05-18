@@ -1,7 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
-const BLOOM_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 const MAX_BLOOM_MIPS: u32 = 4;
 
 #[repr(C)]
@@ -127,6 +126,7 @@ pub fn build(
     device: &wgpu::Device,
     width: u32,
     height: u32,
+    format: wgpu::TextureFormat,
     source_view: &wgpu::TextureView,
 ) -> BloomResources {
     let base_width = (width / 2).max(1);
@@ -143,7 +143,7 @@ pub fn build(
         mip_level_count: mip_count,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: BLOOM_FORMAT,
+        format,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
     });
@@ -250,12 +250,13 @@ pub fn build(
     });
 
     let downsample_pipeline =
-        create_bloom_pipeline(device, &pipeline_layout, &shader, "fs_downsample", None);
+        create_bloom_pipeline(device, &pipeline_layout, &shader, "fs_downsample", format, None);
     let upsample_pipeline = create_bloom_pipeline(
         device,
         &pipeline_layout,
         &shader,
         "fs_upsample",
+        format,
         Some(wgpu::BlendState {
             color: wgpu::BlendComponent {
                 src_factor: wgpu::BlendFactor::One,
@@ -314,6 +315,7 @@ fn create_bloom_pipeline(
     layout: &wgpu::PipelineLayout,
     shader: &wgpu::ShaderModule,
     fragment_entry: &str,
+    format: wgpu::TextureFormat,
     blend: Option<wgpu::BlendState>,
 ) -> wgpu::RenderPipeline {
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -329,7 +331,7 @@ fn create_bloom_pipeline(
             module: shader,
             entry_point: Some(fragment_entry),
             targets: &[Some(wgpu::ColorTargetState {
-                format: BLOOM_FORMAT,
+                format,
                 blend,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
