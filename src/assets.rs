@@ -156,20 +156,16 @@ pub fn load_binary(file_name: &str) -> Vec<u8> {
             std::path::PathBuf::from("resources").join(requested)
         };
 
-        // 1) Run from repo root (common during `cargo run`).
         candidates.push(rel.clone());
 
-        // 2) Run from the built exe directory (e.g. `target/debug/`).
         if let Ok(exe) = std::env::current_exe() {
             if let Some(dir) = exe.parent() {
                 candidates.push(dir.join(&rel));
             }
         }
 
-        // 3) Absolute repo path.
         candidates.push(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(&rel));
 
-        // 4) Legacy location (only valid if some build step copies resources there).
         candidates.push(std::path::Path::new(env!("OUT_DIR")).join(&rel));
 
         for path in candidates {

@@ -110,14 +110,10 @@ impl Game {
                 false => None,
             };
 
-        // Custom RON UI (wgpu backend). Pause menu, gallery UI and the
-        // portrait renderer remain commented out until they're ported off
-        // the old OpenGL pipeline.
-        let mut custom_ui_renderer = UiRenderer::new(
-            &renderer.device,
-            &renderer.queue,
-            renderer.config.format,
-        );
+        // Custom RON UI.
+        // TODO: portrait renderer aren't ported yyet
+        let mut custom_ui_renderer =
+            UiRenderer::new(&renderer.device, &renderer.queue, renderer.config.format);
         custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
         let mut font_system = FontSystem::new();
@@ -405,7 +401,8 @@ impl Game {
             }
         }
         match event {
-            WindowEvent::DroppedFile(path) => {
+            WindowEvent::DroppedFile(path) =>
+            {
                 #[cfg(all(feature = "editor_ui", not(target_arch = "wasm32")))]
                 if let Some(imgui_manager) = &mut self.imgui_manager {
                     let path = Path::new(path);
@@ -709,10 +706,6 @@ impl Game {
     pub fn render(&mut self) {
         self.platform.window.as_ref().unwrap().request_redraw();
 
-        // Build the custom UI's CPU draws and upload everything for this
-        // frame BEFORE we hand a closure to render_world_with_overlay.
-        // Doing the upload up front means the overlay closure only needs an
-        // immutable borrow of `self.custom_ui_renderer` to call `render(rpass)`.
         self.custom_ui_renderer.begin();
         if UI_ENABLED {
             if self.paused {
@@ -790,7 +783,6 @@ impl Game {
             return;
         }
 
-        // No imgui — still need an overlay pass for the custom UI.
         self.renderer.render_world_with_overlay(
             &self.world.camera,
             &self.world.ecs,

@@ -43,9 +43,9 @@ const BRIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 #[cfg(target_arch = "wasm32")]
 const BRIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-/// On wasm we render to LDR Rgba8Unorm, so the tonemap step in the composite
-/// shader is bypassed; on native we keep the HDR tonemap on. Bloom stays
-/// enabled in both cases.
+// On wasm we render to LDR Rgba8Unorm, so the tonemap step in the composite
+// shader is bypassed; on native we keep the HDR tonemap on. Bloom stays
+// enabled in both cases.
 #[cfg(not(target_arch = "wasm32"))]
 const HDR_ENABLED: u32 = 1;
 #[cfg(target_arch = "wasm32")]
@@ -68,8 +68,6 @@ pub struct Renderer {
     pub bloom: BloomResources,
     pub hdr: HdrResources,
     pub gizmo: GizmoRenderer,
-    /// Toggle for the gizmo pass; read/written by the pause-menu UI.
-    /// When true, `gizmo` draws collider wireframes during the scene pass.
     pub render_gizmos: bool,
 }
 
@@ -190,7 +188,13 @@ impl Renderer {
         let dir_light =
             shared::build_dir_light_binding(&device, &shared_layouts.dir_light, dir_light_uniform);
 
-        let skybox = skybox::build(&device, &queue, scene_hdr_format, BRIGHT_FORMAT, DEPTH_FORMAT);
+        let skybox = skybox::build(
+            &device,
+            &queue,
+            scene_hdr_format,
+            BRIGHT_FORMAT,
+            DEPTH_FORMAT,
+        );
         let static_model = static_model::build(
             &device,
             &shared_layouts,
@@ -286,8 +290,11 @@ impl Renderer {
             self.hdr.bright_view(),
         );
 
-        self.hdr
-            .set_bloom_view(&self.device, self.bloom.output_view(), &self.depth_texture.view);
+        self.hdr.set_bloom_view(
+            &self.device,
+            self.bloom.output_view(),
+            &self.depth_texture.view,
+        );
     }
 
     pub fn render_world(
@@ -511,10 +518,7 @@ impl Renderer {
                 .draw_all(&mut rp, &self.queue, particles, camera);
 
             // GIZMO PASS
-            // LineList wireframes for colliders. Depth-tested against the scene,
-            // depth-write off so subsequent overlay passes are unaffected.
-            // Camera is rebound inside `render` (after `set_pipeline`) because
-            // the previous pipeline's bind-group-layout shape differs.
+            // LineList wireframes for colliders.
             if self.render_gizmos {
                 self.gizmo.render(&mut rp, &self.camera.bind_group);
             }

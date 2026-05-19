@@ -14,16 +14,12 @@ use crate::{
 
 const MAX_GIZMO_INSTANCES: u64 = 4_096;
 
-/// GPU residency for one entity's `GizmoMesh`. Vertices are uploaded as the
-/// shared `Vertex` layout (matching `static_model`); the index buffer holds
-/// deduplicated edges (`LineList`) derived from the source triangle indices.
 struct GpuGizmoMesh {
     vertex_buffer: wgpu::Buffer,
     line_index_buffer: wgpu::Buffer,
     line_index_count: u32,
 }
 
-/// One queued line draw recorded by `prepare`, consumed by `render`.
 struct GizmoDraw {
     entity_id: usize,
     instance_offset: wgpu::BufferAddress,
@@ -31,9 +27,9 @@ struct GizmoDraw {
 
 pub struct GizmoRenderer {
     pipeline: GizmoPipeline,
-    /// Per-entity GPU mesh, lazily uploaded on first sight.
-    /// Each entity owns a unique `GizmoMesh` (see `EntityManager::collider_gizmos`),
-    /// so caching is keyed by entity id rather than mesh contents.
+    // per-entity GPU mesh, lazily uploaded on first sight.
+    // Each entity owns a unique `GizmoMesh` (see `EntityManager::collider_gizmos`),
+    // so caching is keyed by entity id rather than mesh contents.
     mesh_cache: HashMap<usize, GpuGizmoMesh>,
     instance_buffer: wgpu::Buffer,
     draws: Vec<GizmoDraw>,
@@ -56,9 +52,9 @@ impl GizmoRenderer {
         }
     }
 
-    /// Walks every live gizmo entity, lazily uploads any missing GPU meshes,
-    /// evicts cache entries whose entities have been despawned, and packs the
-    /// per-instance model matrices into `instance_buffer`.
+    // Walks every live gizmo entity, lazily uploads any missing GPU meshes,
+    // evicts cache entries whose entities have been despawned, and packs the
+    // per-instance model matrices into instance_buffer
     pub fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -119,10 +115,7 @@ impl GizmoRenderer {
         queue.write_buffer(&self.instance_buffer, 0, bytes);
     }
 
-    /// Issues one draw per gizmo. The camera bind group is bound at slot 0
-    /// (matching `pipelines::gizmo`'s pipeline layout) *after* `set_pipeline`
-    /// because switching pipelines with differing bind-group layouts at slot 0
-    /// invalidates whatever was previously bound there.
+    // Issues one draw per gizmo.
     pub fn render(&self, rp: &mut wgpu::RenderPass, camera_bg: &wgpu::BindGroup) {
         if self.draws.is_empty() {
             return;
@@ -172,9 +165,8 @@ fn upload_gizmo_mesh(device: &wgpu::Device, mesh: &GizmoMesh) -> GpuGizmoMesh {
     }
 }
 
-/// Derive a deduplicated `LineList` index buffer from a `TriangleList` index
-/// buffer. Each triangle contributes its three edges; duplicates (shared edges
-/// between adjacent triangles) collapse into one line via the `(min,max)` key.
+// Derive a deduplicated LineList index buffer from a TriangleList index
+// buffer.
 fn derive_line_indices(triangle_indices: &[u32]) -> Vec<u32> {
     let mut seen: HashSet<(u32, u32)> = HashSet::with_capacity(triangle_indices.len());
     let mut out: Vec<u32> = Vec::with_capacity(triangle_indices.len());
