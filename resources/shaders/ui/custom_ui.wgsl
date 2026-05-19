@@ -57,10 +57,10 @@ fn sdf_keep(frag_pos: vec2<f32>, rect_bounds: vec4<f32>, border_radius: f32) -> 
 	return dist <= 0.0;
 }
 
-// Widget colors are authored in sRGB space (designers think "0.5 == mid
-// gray on screen"). The surface is an sRGB-encoded format, so the GPU
-// applies linear -> sRGB on write. To make a sRGB-authored value round-trip
-// to its intended on-screen byte, output the linear equivalent here.
+// widget colors are authored in sRGB space (mentally, designers think "0.5 == mid
+// gray on screen") The surface is an sRGB-encoded format, so the GPU
+// applies linear to sRGB on write. To make a sRGB-authored value round-trip
+// to its intended on-screen byte output the linear equivalent here.
 fn srgb_to_linear(c: vec3<f32>) -> vec3<f32> {
 	let cutoff = step(c, vec3<f32>(0.04045));
 	let lo = c / 12.92;
