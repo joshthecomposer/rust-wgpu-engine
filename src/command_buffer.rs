@@ -108,9 +108,9 @@ impl CommandBuffer {
         });
     }
 
-    pub fn sound3d(&mut self, position: Vec3) {
+    pub fn sound3d(&mut self, sound_type: SoundType, position: Vec3) {
         self.sound.push(SoundCmd {
-            kind: SoundKind::Sound3d(SoundType::Land, position),
+            kind: SoundKind::Sound3d(sound_type, position),
         });
     }
 

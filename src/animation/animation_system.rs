@@ -1,7 +1,7 @@
 use glam::{Quat, Vec3};
 
 use crate::{
-    command_buffer::{AnimOp, CombCmd, CommandBuffer, ImpulseKind},
+    command_buffer::{AnimOp, CombCmd, CommandBuffer, ImpulseKind, PartCmd, PartKind},
     entity_manager::EntityManager,
     enums_types::AnimationType,
 };
@@ -131,6 +131,24 @@ pub fn update(em: &mut EntityManager, cmds: &mut CommandBuffer, dt: f32) {
                 } else {
                     fa.triggered.set(false);
                 }
+            }
+        }
+
+        for os in anim.one_shots.iter() {
+            if anim.current_segment.get() == os.segment {
+                if !os.triggered.get() {
+                    let trans = em.transforms.get(id).unwrap();
+                    os.triggered.set(true);
+                    cmds.sound3d(os.sound_type.clone(), trans.position);
+                    // TODO: have the needed particle defined in the entity config
+                    cmds.particles.push(PartCmd {
+                        name: "DesertStep".to_string(),
+                        kind: PartKind::EntityOrigin(id),
+                        direction: glam::Vec3::ONE,
+                    });
+                }
+            } else {
+                os.triggered.set(false);
             }
         }
 
