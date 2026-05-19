@@ -90,6 +90,7 @@ pub fn build(
     scene_format: wgpu::TextureFormat,
     bright_format: wgpu::TextureFormat,
     depth_format: wgpu::TextureFormat,
+    #[cfg(target_arch = "wasm32")] depth_proxy_format: wgpu::TextureFormat,
 ) -> AnimatedModelResources {
     let bone_uniform_size =
         NonZeroU64::new(size_of::<BoneUniforms>() as u64).expect("BoneUniforms must be non-empty");
@@ -155,7 +156,8 @@ pub fn build(
     #[cfg(not(target_arch = "wasm32"))]
     let scene_targets = shared::scene_color_targets(scene_format, bright_format);
     #[cfg(target_arch = "wasm32")]
-    let scene_targets = shared::scene_color_targets_wasm(scene_format, bright_format);
+    let scene_targets =
+        shared::scene_color_targets_wasm(scene_format, bright_format, depth_proxy_format);
 
     let pipeline = create_render_pipeline(
         device,

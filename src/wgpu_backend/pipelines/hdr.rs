@@ -5,9 +5,6 @@ use wgpu::util::DeviceExt;
 use crate::wgpu_backend::texture;
 use bytemuck::{Pod, Zeroable};
 
-#[cfg(target_arch = "wasm32")]
-use super::shared::DEPTH_PROXY_FORMAT;
-
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub struct HdrCompositeParams {
@@ -42,6 +39,8 @@ pub struct HdrResources {
     /// WebGL2 fog: fragments write `frag_pos.z` here (binding 3 in composite WGSL).
     #[cfg(target_arch = "wasm32")]
     pub wasm_linear_depth: texture::Texture,
+    #[cfg(target_arch = "wasm32")]
+    pub depth_proxy_format: wgpu::TextureFormat,
 
     // fullscreen composite (tonemap, gamma, fog, etc)
     pub composite_layout: wgpu::BindGroupLayout,
@@ -125,6 +124,7 @@ fn create_scene_hdr_texture(
     height: u32,
     format: wgpu::TextureFormat,
     label: Option<&str>,
+    filter: wgpu::FilterMode,
 ) -> texture::Texture {
     let size = wgpu::Extent3d {
         width: width.max(1),
@@ -147,8 +147,8 @@ fn create_scene_hdr_texture(
         address_mode_u: wgpu::AddressMode::ClampToEdge,
         address_mode_v: wgpu::AddressMode::ClampToEdge,
         address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Linear,
-        min_filter: wgpu::FilterMode::Linear,
+        mag_filter: filter,
+        min_filter: filter,
         mipmap_filter: wgpu::MipmapFilterMode::Nearest,
         ..Default::default()
     });
@@ -170,6 +170,7 @@ pub fn build(
     bright_format: wgpu::TextureFormat,
     initial_params: HdrCompositeParams,
     depth_view: &wgpu::TextureView,
+    #[cfg(target_arch = "wasm32")] depth_proxy_format: wgpu::TextureFormat,
 ) -> HdrResources {
     #[cfg(target_arch = "wasm32")]
     let _ = depth_view;
@@ -179,6 +180,7 @@ pub fn build(
         height,
         scene_format,
         Some("hdr_scene_color"),
+        wgpu::FilterMode::Linear,
     );
     let scene_bright = create_scene_hdr_texture(
         device,
@@ -186,11 +188,18 @@ pub fn build(
         height,
         bright_format,
         Some("hdr_scene_bright"),
+        wgpu::FilterMode::Linear,
     );
 
     #[cfg(target_arch = "wasm32")]
-    let wasm_linear_depth =
-        create_scene_hdr_texture(device, width, height, DEPTH_PROXY_FORMAT, Some("wasm_depth_proxy"));
+    let wasm_linear_depth = create_scene_hdr_texture(
+        device,
+        width,
+        height,
+        depth_proxy_format,
+        Some("wasm_depth_proxy"),
+        wgpu::FilterMode::Nearest,
+    );
 
     let ub_size = std::mem::size_of::<HdrCompositeParams>() as u64;
 
@@ -335,6 +344,8 @@ pub fn build(
         height,
         #[cfg(target_arch = "wasm32")]
         wasm_linear_depth,
+        #[cfg(target_arch = "wasm32")]
+        depth_proxy_format,
         composite_layout,
         composite_bind_group,
         composite_pipeline,

@@ -158,6 +158,9 @@ impl Renderer {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
+        #[cfg(target_arch = "wasm32")]
+        let depth_proxy_format = shared::select_depth_proxy_format(&adapter);
+
         let mut initial_hdr_params = HdrCompositeParams::new();
         initial_hdr_params.hdr_enabled = HDR_ENABLED;
         let mut hdr = hdr::build(
@@ -170,6 +173,8 @@ impl Renderer {
             BRIGHT_FORMAT,
             initial_hdr_params,
             &depth_texture.view,
+            #[cfg(target_arch = "wasm32")]
+            depth_proxy_format,
         );
 
         let bloom = bloom::build(
@@ -194,6 +199,8 @@ impl Renderer {
             scene_hdr_format,
             BRIGHT_FORMAT,
             DEPTH_FORMAT,
+            #[cfg(target_arch = "wasm32")]
+            depth_proxy_format,
         );
         let static_model = static_model::build(
             &device,
@@ -201,6 +208,8 @@ impl Renderer {
             scene_hdr_format,
             BRIGHT_FORMAT,
             DEPTH_FORMAT,
+            #[cfg(target_arch = "wasm32")]
+            depth_proxy_format,
         );
 
         let animated_model = animated_model::build(
@@ -209,6 +218,8 @@ impl Renderer {
             scene_hdr_format,
             BRIGHT_FORMAT,
             DEPTH_FORMAT,
+            #[cfg(target_arch = "wasm32")]
+            depth_proxy_format,
         );
 
         let particles = particles::build(
@@ -280,6 +291,8 @@ impl Renderer {
             BRIGHT_FORMAT,
             hdr_params,
             &self.depth_texture.view,
+            #[cfg(target_arch = "wasm32")]
+            self.hdr.depth_proxy_format,
         );
 
         self.bloom = bloom::build(

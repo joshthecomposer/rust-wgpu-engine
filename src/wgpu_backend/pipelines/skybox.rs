@@ -104,6 +104,7 @@ pub fn build(
     scene_format: wgpu::TextureFormat,
     bright_format: wgpu::TextureFormat,
     depth_format: wgpu::TextureFormat,
+    #[cfg(target_arch = "wasm32")] depth_proxy_format: wgpu::TextureFormat,
 ) -> SkyboxResources {
     let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("sky_cam_bind_group_layout"),
@@ -217,7 +218,8 @@ pub fn build(
     #[cfg(not(target_arch = "wasm32"))]
     let scene_targets = shared::scene_color_targets(scene_format, bright_format);
     #[cfg(target_arch = "wasm32")]
-    let scene_targets = shared::scene_color_targets_wasm(scene_format, bright_format);
+    let scene_targets =
+        shared::scene_color_targets_wasm(scene_format, bright_format, depth_proxy_format);
 
     let pipeline = create_render_pipeline(
         &device,

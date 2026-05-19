@@ -145,19 +145,38 @@ pub fn scene_color_targets(
 /// ( GLES `sampler2D` ) — sampling the real depth texture is not portable in
 /// WGSL→GLSL for this backend.
 #[cfg(target_arch = "wasm32")]
-pub const DEPTH_PROXY_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+const DEPTH_PROXY_FORMAT_PREFERRED: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
+#[cfg(target_arch = "wasm32")]
+const DEPTH_PROXY_FORMAT_FALLBACK: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+#[cfg(target_arch = "wasm32")]
+pub fn select_depth_proxy_format(adapter: &wgpu::Adapter) -> wgpu::TextureFormat {
+    const REQUIRED: wgpu::TextureUsages = wgpu::TextureUsages::RENDER_ATTACHMENT
+        .union(wgpu::TextureUsages::TEXTURE_BINDING);
+
+    let features = adapter.get_texture_format_features(DEPTH_PROXY_FORMAT_PREFERRED);
+    if features.allowed_usages.contains(REQUIRED) {
+        return DEPTH_PROXY_FORMAT_PREFERRED;
+    }
+
+    eprintln!(
+        "WASM fog depth proxy: R16Float not renderable; falling back to Rgba8Unorm (fog may band on weak GPUs)"
+    );
+    DEPTH_PROXY_FORMAT_FALLBACK
+}
 
 #[cfg(target_arch = "wasm32")]
 pub fn scene_color_targets_wasm(
     scene_format: wgpu::TextureFormat,
     bright_format: wgpu::TextureFormat,
+    depth_proxy_format: wgpu::TextureFormat,
 ) -> [Option<wgpu::ColorTargetState>; 3] {
     let two = scene_color_targets(scene_format, bright_format);
     [
         two[0].clone(),
         two[1].clone(),
         Some(wgpu::ColorTargetState {
-            format: DEPTH_PROXY_FORMAT,
+            format: depth_proxy_format,
             blend: Some(wgpu::BlendState::REPLACE),
             write_mask: wgpu::ColorWrites::ALL,
         }),

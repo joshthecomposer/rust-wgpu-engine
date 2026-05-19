@@ -58,7 +58,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let bloom = textureSample(bloom_tex, scene_hdr_sampler, in.uv).rgb;
     color += bloom * params.bloom_strength;
 
-    let depth = textureSample(depth_lin, scene_hdr_sampler, in.uv).r;
+    let depth = textureLoad(depth_lin, vec2<i32>(in.clip_pos.xy), 0).r;
 
     var ff = fog_factor(view_z_from_depth(depth, in.uv));
     if (depth >= 0.999999) {
