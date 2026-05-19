@@ -21,6 +21,8 @@ pub struct StaticModelResources {
 }
 
 impl StaticModelResources {
+    pub fn prepare() {}
+
     pub fn draw_all(
         &self,
         rp: &mut wgpu::RenderPass,
@@ -92,11 +94,9 @@ pub fn build(
     #[cfg(target_arch = "wasm32")] depth_proxy_format: wgpu::TextureFormat,
 ) -> StaticModelResources {
     #[cfg(not(target_arch = "wasm32"))]
-    let shader_wgsl: &str =
-        include_str!("../../../resources/shaders/model/static_model.wgsl");
+    let shader_wgsl: &str = include_str!("../../../resources/shaders/model/static_model.wgsl");
     #[cfg(target_arch = "wasm32")]
-    let shader_wgsl: &str =
-        include_str!("../../../resources/shaders/model/static_model_wasm.wgsl");
+    let shader_wgsl: &str = include_str!("../../../resources/shaders/model/static_model_wasm.wgsl");
 
     let shader = wgpu::ShaderModuleDescriptor {
         label: Some("Static Model Shader"),

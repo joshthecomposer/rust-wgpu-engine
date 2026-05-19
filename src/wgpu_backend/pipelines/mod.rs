@@ -4,6 +4,7 @@ pub mod custom_ui;
 pub mod gizmo;
 pub mod hdr;
 pub mod particles;
+pub mod shadows;
 pub mod shared;
 pub mod skybox;
 pub mod static_model;
