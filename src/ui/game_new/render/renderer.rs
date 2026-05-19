@@ -45,17 +45,17 @@ struct DrawCmd {
 
 /// Registry of per-texture bind groups, keyed by a dense `u32` id.
 ///
-/// Why it exists: widgets and RON files identify textures with a plain
-/// `u32` (originally a `glGenTextures` name). wgpu has no equivalent — every
+/// Widgets and RON files identify textures with a plain
+/// `u32` (originally an opengl `glGenTextures` name). wgpu has no equivalent. every
 /// draw needs a `BindGroup` built ahead of time from a `TextureView` +
 /// `Sampler` + the pipeline's group-1 layout. This registry owns one
 /// `BindGroup` per texture and lets the renderer translate
 /// `texture_id -> &BindGroup` at draw time.
 ///
 /// Slot conventions:
-/// - id `0` — 1x1 white pixel, so the same `solid` pipeline handles flat
+/// - id `0`: 1x1 white pixel, so the same `solid` pipeline handles flat
 ///   fills (color * white = color).
-/// - id `1` — font glyph atlas, used by the `alpha_mask` pipeline.
+/// - id `1`: font glyph atlas, used by the `alpha_mask` pipeline.
 ///   `glyph_brush`'s `TextureTooSmall` resize calls `replace(1, ...)` so
 ///   the id stays stable even when the underlying texture is recreated.
 pub struct UiTextureRegistry {
@@ -409,7 +409,8 @@ impl UiRenderer {
     ) {
         self.ensure_state(texture_id, PipelineKind::Solid);
         let color = color.unwrap_or([1.0, 1.0, 1.0, 1.0]);
-        self.batch.push_textured_rect(rect, [0.0, 0.0, 1.0, 1.0], color);
+        self.batch
+            .push_textured_rect(rect, [0.0, 0.0, 1.0, 1.0], color);
     }
 
     pub fn draw_text(
@@ -561,8 +562,12 @@ impl UiRenderer {
         // subimages into the now-current atlas.
         if let Some((w, h)) = self.pending_atlas_resize.take() {
             let (texture, view) = create_font_atlas(device, w, h);
-            self.textures
-                .replace(self.font_texture_id, device, &view, &self.font_atlas_sampler);
+            self.textures.replace(
+                self.font_texture_id,
+                device,
+                &view,
+                &self.font_atlas_sampler,
+            );
             self.font_atlas_texture = texture;
             self.font_atlas_width = w;
             self.font_atlas_height = h;
@@ -703,11 +708,7 @@ impl UiRenderer {
     /// Drain whatever is currently in `glyph_brush`, scheduling atlas
     /// uploads/resizes for `prepare()`, and append the resulting glyph quads
     /// to the batch under an optional scissor.
-    fn process_text_batch(
-        &mut self,
-        font_system: &mut FontSystem,
-        scissor: Option<[u32; 4]>,
-    ) {
+    fn process_text_batch(&mut self, font_system: &mut FontSystem, scissor: Option<[u32; 4]>) {
         if let Some(s) = scissor {
             self.scissor_stack.push(s);
         }
@@ -826,17 +827,11 @@ impl UiRenderer {
                 [0.0; 4],
                 0.0,
             ));
-            self.batch.indices.extend_from_slice(&[
-                idx,
-                idx + 1,
-                idx + 2,
-                idx,
-                idx + 2,
-                idx + 3,
-            ]);
+            self.batch
+                .indices
+                .extend_from_slice(&[idx, idx + 1, idx + 2, idx, idx + 2, idx + 3]);
         }
     }
-
 }
 
 fn intersect_rects(a: [u32; 4], b: [u32; 4]) -> [u32; 4] {
