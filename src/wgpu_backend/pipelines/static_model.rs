@@ -121,14 +121,9 @@ pub fn build(
     scene_format: wgpu::TextureFormat,
     bright_format: wgpu::TextureFormat,
     depth_format: wgpu::TextureFormat,
-    #[cfg(target_arch = "wasm32")] depth_proxy_format: wgpu::TextureFormat,
 ) -> StaticModelResources {
-    #[cfg(not(target_arch = "wasm32"))]
     let shader_wgsl: &str =
         include_str!("../../../resources/shaders/model/static_model.wgsl");
-    #[cfg(target_arch = "wasm32")]
-    let shader_wgsl: &str =
-        include_str!("../../../resources/shaders/model/static_model_wasm.wgsl");
 
     let shader = wgpu::ShaderModuleDescriptor {
         label: Some("Static Model Shader"),
@@ -145,11 +140,7 @@ pub fn build(
         immediate_size: 0,
     });
 
-    #[cfg(not(target_arch = "wasm32"))]
     let scene_targets = shared::scene_color_targets(scene_format, bright_format);
-    #[cfg(target_arch = "wasm32")]
-    let scene_targets =
-        shared::scene_color_targets_wasm(scene_format, bright_format, depth_proxy_format);
 
     let pipeline = create_render_pipeline(
         device,

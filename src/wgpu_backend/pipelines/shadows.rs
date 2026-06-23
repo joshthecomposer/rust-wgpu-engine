@@ -229,9 +229,6 @@ impl ShadowResources {
     }
 
     pub fn write_sample_uniforms(&self, queue: &wgpu::Queue, lights: &Lights) {
-        #[cfg(target_arch = "wasm32")]
-        let border_fallback = 1u32;
-        #[cfg(not(target_arch = "wasm32"))]
         let border_fallback = 0u32;
 
         queue.write_buffer(

@@ -33,7 +33,6 @@ impl SkyboxResources {
         color_view: &wgpu::TextureView,
         bright_view: &wgpu::TextureView,
         depth_view: &wgpu::TextureView,
-        wasm_depth_proxy: Option<&wgpu::TextureView>,
         camera: &Camera,
     ) {
         let sky_uniform = SkyCameraUniform::from_camera(camera);
@@ -58,19 +57,7 @@ impl SkyboxResources {
             },
         });
 
-        let mut color_attachments: Vec<Option<wgpu::RenderPassColorAttachment>> =
-            vec![hdr_att, bright_att];
-        if let Some(proxy) = wasm_depth_proxy {
-            color_attachments.push(Some(wgpu::RenderPassColorAttachment {
-                view: proxy,
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
-                    store: wgpu::StoreOp::Store,
-                },
-            }));
-        }
+        let color_attachments: [Option<wgpu::RenderPassColorAttachment>; 2] = [hdr_att, bright_att];
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("skybox pass"),
@@ -104,7 +91,6 @@ pub fn build(
     scene_format: wgpu::TextureFormat,
     bright_format: wgpu::TextureFormat,
     depth_format: wgpu::TextureFormat,
-    #[cfg(target_arch = "wasm32")] depth_proxy_format: wgpu::TextureFormat,
 ) -> SkyboxResources {
     let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("sky_cam_bind_group_layout"),
@@ -199,10 +185,7 @@ pub fn build(
         }],
     };
 
-    #[cfg(not(target_arch = "wasm32"))]
     let sky_wgsl: &str = include_str!("../../../resources/shaders/skybox.wgsl");
-    #[cfg(target_arch = "wasm32")]
-    let sky_wgsl: &str = include_str!("../../../resources/shaders/skybox_wasm.wgsl");
 
     let shader = wgpu::ShaderModuleDescriptor {
         label: Some("Skybox shader"),
@@ -215,11 +198,7 @@ pub fn build(
         immediate_size: 0,
     });
 
-    #[cfg(not(target_arch = "wasm32"))]
     let scene_targets = shared::scene_color_targets(scene_format, bright_format);
-    #[cfg(target_arch = "wasm32")]
-    let scene_targets =
-        shared::scene_color_targets_wasm(scene_format, bright_format, depth_proxy_format);
 
     let pipeline = create_render_pipeline(
         &device,

@@ -36,25 +36,12 @@ pub struct HdrResources {
     pub width: u32,
     pub height: u32,
 
-    /// WebGL2 fog: fragments write `frag_pos.z` here (binding 3 in composite WGSL).
-    #[cfg(target_arch = "wasm32")]
-    pub wasm_linear_depth: texture::Texture,
-    #[cfg(target_arch = "wasm32")]
-    pub depth_proxy_format: wgpu::TextureFormat,
-
     // fullscreen composite (tonemap, gamma, fog, etc)
     pub composite_layout: wgpu::BindGroupLayout,
     pub composite_bind_group: wgpu::BindGroup,
     pub composite_pipeline: wgpu::RenderPipeline,
 
     pub composite_uniforms: wgpu::Buffer,
-}
-
-#[cfg(target_arch = "wasm32")]
-impl HdrResources {
-    pub fn wasm_depth_proxy_view(&self) -> &wgpu::TextureView {
-        &self.wasm_linear_depth.view
-    }
 }
 
 impl HdrResources {
@@ -98,13 +85,7 @@ impl HdrResources {
         bloom_view: &wgpu::TextureView,
         depth_attachment_view: &wgpu::TextureView,
     ) {
-        #[cfg(target_arch = "wasm32")]
-        let _ = depth_attachment_view;
-
-        #[cfg(not(target_arch = "wasm32"))]
         let fog_depth_view = depth_attachment_view;
-        #[cfg(target_arch = "wasm32")]
-        let fog_depth_view = &self.wasm_linear_depth.view;
 
         self.composite_bind_group = create_composite_bind_group(
             device,
@@ -170,10 +151,7 @@ pub fn build(
     bright_format: wgpu::TextureFormat,
     initial_params: HdrCompositeParams,
     depth_view: &wgpu::TextureView,
-    #[cfg(target_arch = "wasm32")] depth_proxy_format: wgpu::TextureFormat,
 ) -> HdrResources {
-    #[cfg(target_arch = "wasm32")]
-    let _ = depth_view;
     let scene_color = create_scene_hdr_texture(
         device,
         width,
@@ -189,16 +167,6 @@ pub fn build(
         bright_format,
         Some("hdr_scene_bright"),
         wgpu::FilterMode::Linear,
-    );
-
-    #[cfg(target_arch = "wasm32")]
-    let wasm_linear_depth = create_scene_hdr_texture(
-        device,
-        width,
-        height,
-        depth_proxy_format,
-        Some("wasm_depth_proxy"),
-        wgpu::FilterMode::Nearest,
     );
 
     let ub_size = std::mem::size_of::<HdrCompositeParams>() as u64;
@@ -242,16 +210,7 @@ pub fn build(
         binding: 3,
         visibility: wgpu::ShaderStages::FRAGMENT,
         ty: wgpu::BindingType::Texture {
-            sample_type: {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    wgpu::TextureSampleType::Depth
-                }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    wgpu::TextureSampleType::Float { filterable: true }
-                }
-            },
+            sample_type: wgpu::TextureSampleType::Depth,
             view_dimension: wgpu::TextureViewDimension::D2,
             multisampled: false,
         },
@@ -274,10 +233,7 @@ pub fn build(
         entries: &layout_entries,
     });
 
-    #[cfg(not(target_arch = "wasm32"))]
     let fog_depth_for_bind = depth_view;
-    #[cfg(target_arch = "wasm32")]
-    let fog_depth_for_bind = &wasm_linear_depth.view;
 
     let composite_bind_group = create_composite_bind_group(
         device,
@@ -289,11 +245,7 @@ pub fn build(
         &scene_bright.view,
     );
 
-    #[cfg(not(target_arch = "wasm32"))]
     let shader_source: &str = include_str!("../../../resources/shaders/post/hdr_composite.wgsl");
-    #[cfg(target_arch = "wasm32")]
-    let shader_source: &str =
-        include_str!("../../../resources/shaders/post/hdr_composite_webgl.wgsl");
 
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("hdr_composite_shader"),
@@ -342,10 +294,6 @@ pub fn build(
         bright_format,
         width,
         height,
-        #[cfg(target_arch = "wasm32")]
-        wasm_linear_depth,
-        #[cfg(target_arch = "wasm32")]
-        depth_proxy_format,
         composite_layout,
         composite_bind_group,
         composite_pipeline,

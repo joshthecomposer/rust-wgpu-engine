@@ -37,23 +37,11 @@ use crate::{
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-#[cfg(not(target_arch = "wasm32"))]
 const SCENE_HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-#[cfg(target_arch = "wasm32")]
-const SCENE_HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-#[cfg(not(target_arch = "wasm32"))]
 const BRIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-#[cfg(target_arch = "wasm32")]
-const BRIGHT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
-// On wasm we render to LDR Rgba8Unorm, so the tonemap step in the composite
-// shader is bypassed; on native we keep the HDR tonemap on. Bloom stays
-// enabled in both cases.
-#[cfg(not(target_arch = "wasm32"))]
 const HDR_ENABLED: u32 = 1;
-#[cfg(target_arch = "wasm32")]
-const HDR_ENABLED: u32 = 0;
 
 pub struct Renderer {
     pub surface: wgpu::Surface<'static>,
@@ -92,7 +80,7 @@ impl Renderer {
             #[cfg(not(target_arch = "wasm32"))]
             backends: wgpu::Backends::PRIMARY,
             #[cfg(target_arch = "wasm32")]
-            backends: wgpu::Backends::GL,
+            backends: wgpu::Backends::BROWSER_WEBGPU,
             flags: Default::default(),
             memory_budget_thresholds: Default::default(),
             backend_options: Default::default(),
@@ -115,11 +103,7 @@ impl Renderer {
                 label: None,
                 required_features: wgpu::Features::empty(),
                 experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                required_limits: if cfg!(target_arch = "wasm32") {
-                    wgpu::Limits::downlevel_webgl2_defaults()
-                } else {
-                    wgpu::Limits::default()
-                },
+                required_limits: wgpu::Limits::default(),
                 memory_hints: Default::default(),
                 trace: wgpu::Trace::Off,
             })
@@ -164,9 +148,6 @@ impl Renderer {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
-        #[cfg(target_arch = "wasm32")]
-        let depth_proxy_format = shared::select_depth_proxy_format(&adapter);
-
         let mut initial_hdr_params = HdrCompositeParams::new();
         initial_hdr_params.hdr_enabled = HDR_ENABLED;
         let mut hdr = hdr::build(
@@ -179,8 +160,6 @@ impl Renderer {
             BRIGHT_FORMAT,
             initial_hdr_params,
             &depth_texture.view,
-            #[cfg(target_arch = "wasm32")]
-            depth_proxy_format,
         );
 
         let bloom = bloom::build(
@@ -204,8 +183,6 @@ impl Renderer {
             scene_hdr_format,
             BRIGHT_FORMAT,
             DEPTH_FORMAT,
-            #[cfg(target_arch = "wasm32")]
-            depth_proxy_format,
         );
         let static_model = static_model::build(
             &device,
@@ -213,8 +190,6 @@ impl Renderer {
             scene_hdr_format,
             BRIGHT_FORMAT,
             DEPTH_FORMAT,
-            #[cfg(target_arch = "wasm32")]
-            depth_proxy_format,
         );
 
         let animated_model = animated_model::build(
@@ -223,8 +198,6 @@ impl Renderer {
             scene_hdr_format,
             BRIGHT_FORMAT,
             DEPTH_FORMAT,
-            #[cfg(target_arch = "wasm32")]
-            depth_proxy_format,
         );
 
         let shadows = ShadowResources::build(
@@ -305,8 +278,6 @@ impl Renderer {
             BRIGHT_FORMAT,
             hdr_params,
             &self.depth_texture.view,
-            #[cfg(target_arch = "wasm32")]
-            self.hdr.depth_proxy_format,
         );
 
         self.bloom = bloom::build(
@@ -482,15 +453,10 @@ impl Renderer {
             hdr_view,
             bright_view,
             &self.depth_texture.view,
-            #[cfg(target_arch = "wasm32")]
-            Some(self.hdr.wasm_depth_proxy_view()),
-            #[cfg(not(target_arch = "wasm32"))]
-            None::<&wgpu::TextureView>,
             camera,
         );
 
-        // SCENE RENDER PASS — native: opaque + translucent in one 2-target pass.
-        #[cfg(not(target_arch = "wasm32"))]
+        // SCENE RENDER PASS — opaque + translucent in one 2-target pass.
         let scene_color_attachments: [Option<wgpu::RenderPassColorAttachment>; 2] = [
             Some(wgpu::RenderPassColorAttachment {
                 view: hdr_view,
@@ -512,63 +478,6 @@ impl Renderer {
             }),
         ];
 
-        // Wasm: opaque pass writes depth-proxy MRT; translucent draw uses two targets
-        // only so particle/gizmo pipelines match the pass attachment count (wgpu forbids
-        // `targets[i] == None` when attachment i exists).
-        #[cfg(target_arch = "wasm32")]
-        let wasm_opaque_attachments: [Option<wgpu::RenderPassColorAttachment>; 3] = [
-            Some(wgpu::RenderPassColorAttachment {
-                view: hdr_view,
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            }),
-            Some(wgpu::RenderPassColorAttachment {
-                view: bright_view,
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            }),
-            Some(wgpu::RenderPassColorAttachment {
-                view: self.hdr.wasm_depth_proxy_view(),
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            }),
-        ];
-
-        #[cfg(target_arch = "wasm32")]
-        let wasm_overlay_attachments: [Option<wgpu::RenderPassColorAttachment>; 2] = [
-            Some(wgpu::RenderPassColorAttachment {
-                view: hdr_view,
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            }),
-            Some(wgpu::RenderPassColorAttachment {
-                view: bright_view,
-                resolve_target: None,
-                depth_slice: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            }),
-        ];
-
-        #[cfg(not(target_arch = "wasm32"))]
         {
             let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("render pass"),
@@ -615,67 +524,6 @@ impl Renderer {
 
             // GIZMO PASS
             // LineList wireframes for colliders.
-            if self.render_gizmos {
-                self.gizmo.render(&mut rp, &self.camera.bind_group);
-            }
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("wasm scene opaque (+ depth proxy)"),
-                color_attachments: &wasm_opaque_attachments,
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-                multiview_mask: None,
-            });
-
-            rp.set_bind_group(1, &self.camera.bind_group, &[]);
-            rp.set_bind_group(2, &self.shadows.lighting_bind_group, &[]);
-            self.static_model.draw_prepared(
-                &mut rp,
-                &self.static_model.pipeline,
-                &static_batches,
-                true,
-            );
-            rp.set_bind_group(3, &self.shadows.lighting_bind_group, &[]);
-            self.animated_model.draw_prepared(
-                &mut rp,
-                &self.animated_model.pipeline,
-                &animated_batches,
-                true,
-            );
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            let mut rp = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("wasm scene particles (+ gizmo)"),
-                color_attachments: &wasm_overlay_attachments,
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                occlusion_query_set: None,
-                timestamp_writes: None,
-                multiview_mask: None,
-            });
-
-            rp.set_bind_group(1, &self.camera.bind_group, &[]);
-            self.particles
-                .draw_all(&mut rp, &self.queue, particles, camera);
             if self.render_gizmos {
                 self.gizmo.render(&mut rp, &self.camera.bind_group);
             }

@@ -33,6 +33,8 @@ mod projectile_system;
 mod status_effect_system;
 mod wgpu_backend;
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use config::{game_config::GameConfig, Config};
@@ -90,7 +92,9 @@ impl Clock {
 }
 
 struct App {
-    game: Option<Game>,
+    // Shared so the wasm async init task can store the `Game` once the WebGPU
+    // adapter/device futures resolve. Native fills it synchronously.
+    game: Rc<RefCell<Option<Game>>>,
     window: Option<Arc<Window>>,
     start: Clock,
     config: Option<GameConfig>,
@@ -99,7 +103,7 @@ struct App {
 impl App {
     fn new(config: GameConfig) -> Self {
         Self {
-            game: None,
+            game: Rc::new(RefCell::new(None)),
             window: None,
             start: Clock::new(),
             config: Some(config),
@@ -120,19 +124,19 @@ impl ApplicationHandler for App {
             }
             WindowEvent::RedrawRequested => {
                 if self.window.as_ref().is_some_and(|w| w.id() == window_id) {
-                    if let Some(game) = &mut self.game {
+                    if let Some(game) = self.game.borrow_mut().as_mut() {
                         let now = self.start.elapsed_secs();
                         game.tick(now);
                     }
                 }
             }
             WindowEvent::Resized(new_size) => {
-                if let Some(game) = &mut self.game {
+                if let Some(game) = self.game.borrow_mut().as_mut() {
                     game.resize(new_size.width, new_size.height);
                 }
             }
             _ => {
-                if let Some(game) = &mut self.game {
+                if let Some(game) = self.game.borrow_mut().as_mut() {
                     game.handle_window_event(&event);
                 }
             }
@@ -178,8 +182,29 @@ impl ApplicationHandler for App {
             fb_height: inner.height.max(1),
             window: Some(Arc::clone(&window)),
         };
-        let game = Game::new(platform, config);
-        self.game = Some(game);
+
+        let game_slot = Rc::clone(&self.game);
+
+        // On native we can block on the WebGPU/Vulkan device init. On the web the
+        // WebGPU adapter/device requests are JS Promises that only resolve once we
+        // yield back to the browser event loop, so `block_on` would deadlock the
+        // single wasm thread — drive them on the microtask queue instead.
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let game = pollster::block_on(Game::new(platform, config));
+            *game_slot.borrow_mut() = Some(game);
+            window.request_redraw();
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            let window_for_redraw = Arc::clone(&window);
+            wasm_bindgen_futures::spawn_local(async move {
+                let game = Game::new(platform, config).await;
+                *game_slot.borrow_mut() = Some(game);
+                window_for_redraw.request_redraw();
+            });
+        }
     }
 
     fn device_event(
@@ -192,7 +217,7 @@ impl ApplicationHandler for App {
             // delta: (dx, dy) in f64
             let (dx, dy) = delta;
             // only process camera input when not paused AND cursor is locked
-            if let Some(game) = &mut self.game {
+            if let Some(game) = self.game.borrow_mut().as_mut() {
                 if !game.paused {
                     game.world.camera.process_mouse_input(dx, dy);
                 }

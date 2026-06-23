@@ -294,12 +294,6 @@ pub fn build(
     //   bright = One / One                  -> additive emissive accumulation
     // Built inline (not via the shared helper) because particles need
     // depth_write_enabled=false and per-target blend states.
-    //
-    // WebGL2 doesn't support DownlevelFlags::INDEPENDENT_BLEND, so on wasm we
-    // collapse both attachments to the same alpha-blend state. Overlapping
-    // particles still emit bloom (via the bright RT) but multiple particles
-    // in the same pixel won't accumulate their bright values; the latest one
-    // wins instead of summing. Acceptable tradeoff for the web build.
     let scene_blend = wgpu::BlendState {
         color: wgpu::BlendComponent {
             src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -312,7 +306,6 @@ pub fn build(
             operation: wgpu::BlendOperation::Add,
         },
     };
-    #[cfg(not(target_arch = "wasm32"))]
     let bright_blend = wgpu::BlendState {
         color: wgpu::BlendComponent {
             src_factor: wgpu::BlendFactor::One,
@@ -321,8 +314,6 @@ pub fn build(
         },
         alpha: wgpu::BlendComponent::REPLACE,
     };
-    #[cfg(target_arch = "wasm32")]
-    let bright_blend = scene_blend;
 
     let particle_color_targets = [
         Some(wgpu::ColorTargetState {

@@ -73,10 +73,11 @@ fn fs_main(in: VertexOutput) -> FragmentOut {
 	let tex_has_alpha = (in.flags & FLAG_TEX_HAS_ALPHA) != 0u;
 	let has_bloom     = (in.flags & FLAG_HAS_BLOOM)     != 0u;
 
-	var t = vec4<f32>(1.0, 1.0, 1.0, 1.0);
-	if (has_tex) {
-		t = textureSample(t_diffuse, s_diffuse, in.uv);
-	}
+	// `textureSample` computes implicit derivatives, so it must run in uniform
+	// control flow. Sample unconditionally and fall back to white for untextured
+	// particles instead of sampling inside the `has_tex` branch.
+	let sampled = textureSample(t_diffuse, s_diffuse, in.uv);
+	let t = select(vec4<f32>(1.0, 1.0, 1.0, 1.0), sampled, has_tex);
 
 	var mask: f32;
 	if (tex_has_alpha) {

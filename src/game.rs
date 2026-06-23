@@ -66,7 +66,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(platform: Platform, config: GameConfig) -> Self {
+    pub async fn new(platform: Platform, config: GameConfig) -> Self {
         let start_seconds = 0.0;
         let time = Time::new(60.0, start_seconds);
 
@@ -79,11 +79,12 @@ impl Game {
                 .as_ref()
                 .expect("missing window in Platform"),
         );
-        let mut renderer = pollster::block_on(Renderer::new(
+        let mut renderer = Renderer::new(
             window,
             CameraUniform::new(),
             DirLightUniform::new(),
-        ));
+        )
+        .await;
         renderer.render_gizmos = config.render_gizmos;
 
         let rdr_ctx = RenderContext {
