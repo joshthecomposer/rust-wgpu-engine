@@ -49,25 +49,39 @@ fn fog_factor(dist: f32) -> f32 {
     return clamp(f, 0.0, 1.0) * FOG_STRENGTH;
 }
 
+
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     var color = textureSample(scene_hdr, scene_hdr_sampler, in.uv).rgb;
-    let bloom = textureSample(bloom_tex, scene_hdr_sampler, in.uv).rgb;
-    color += bloom * params.bloom_strength;
-
-	let depth = textureLoad(depth_tex, vec2<i32>(in.clip_pos.xy), 0);
-
-	var ff = fog_factor(view_z_from_depth(depth, in.uv));
-
-	if depth >= 0.999999 {
-		ff = 0.85;
-	}
-
-	color = mix(color, FOG_COLOR, ff);
 
     if (params.hdr_enabled != 0u) {
-        color = vec3<f32>(1.0) - exp(-color * max(params.exposure, 0.0001));
+        color = vec3<f32>(1.0) - exp(
+            -color * max(params.exposure, 0.0001)
+        );
     }
 
     return vec4<f32>(color, 1.0);
 }
+
+//@fragment
+//fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+//    var color = textureSample(scene_hdr, scene_hdr_sampler, in.uv).rgb;
+//    let bloom = textureSample(bloom_tex, scene_hdr_sampler, in.uv).rgb;
+//    color += bloom * params.bloom_strength;
+//
+//	let depth = textureLoad(depth_tex, vec2<i32>(in.clip_pos.xy), 0);
+//
+//	var ff = fog_factor(view_z_from_depth(depth, in.uv));
+//
+//	if depth >= 0.999999 {
+//		ff = 0.85;
+//	}
+//
+//	color = mix(color, FOG_COLOR, ff);
+//
+//    if (params.hdr_enabled != 0u) {
+//        color = vec3<f32>(1.0) - exp(-color * max(params.exposure, 0.0001));
+//    }
+//
+//    return vec4<f32>(color, 1.0);
+//}
