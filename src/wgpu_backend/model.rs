@@ -52,3 +52,40 @@ impl<'a, 'b> DrawModel<'b> for wgpu::RenderPass<'a> {
         self.draw_indexed(0..model.num_elements, 0, 0..1);
     }
 }
+
+/// Depth-only draws for the shadow prepass (no material texture bind group).
+pub trait DrawDepthOnly<'a> {
+    fn draw_model_depth_only(&mut self, model: &'a Model, instances: std::ops::Range<u32>);
+    fn draw_model_depth_only_animated(
+        &mut self,
+        model: &'a Model,
+        bone_bind_group: &'a wgpu::BindGroup,
+        bones_dynamic_offset: wgpu::DynamicOffset,
+        bones_bind_group_index: u32,
+    );
+}
+
+impl DrawDepthOnly<'_> for wgpu::RenderPass<'_> {
+    fn draw_model_depth_only(&mut self, model: &Model, instances: std::ops::Range<u32>) {
+        self.set_vertex_buffer(0, model.vertex_buffer.slice(..));
+        self.set_index_buffer(model.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        self.draw_indexed(0..model.num_elements, 0, instances);
+    }
+
+    fn draw_model_depth_only_animated(
+        &mut self,
+        model: &Model,
+        bone_bind_group: &wgpu::BindGroup,
+        bones_dynamic_offset: wgpu::DynamicOffset,
+        bones_bind_group_index: u32,
+    ) {
+        self.set_vertex_buffer(0, model.vertex_buffer.slice(..));
+        self.set_index_buffer(model.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        self.set_bind_group(
+            bones_bind_group_index,
+            bone_bind_group,
+            &[bones_dynamic_offset],
+        );
+        self.draw_indexed(0..model.num_elements, 0, 0..1);
+    }
+}

@@ -9,6 +9,7 @@ pub mod render_context;
 pub mod renderer;
 pub mod texture;
 pub mod vertex;
+pub mod world_draws;
 
 pub struct Layouts {
     pub texture: wgpu::BindGroupLayout,

@@ -3,10 +3,9 @@ use std::{mem::size_of, num::NonZeroU64};
 use crate::{
     entity_manager::EntityManager,
     enums_types::{InstanceUniform, Transform},
-    lights::DirLightUniform,
     wgpu_backend::{
         bone_uniforms::BoneUniforms,
-        model::DrawModel,
+        model::{DrawDepthOnly, DrawModel},
         pipelines::{
             create_render_pipeline,
             shared::{self, SharedLayouts},
@@ -17,6 +16,12 @@ use crate::{
 
 const MAX_ANIMATED_DRAWS: u64 = 256;
 
+pub struct AnimatedBatch<'a> {
+    pub model: &'a crate::wgpu_backend::model::Model,
+    pub instance_offset: wgpu::BufferAddress,
+    pub bones_offset: wgpu::BufferAddress,
+}
+
 pub struct AnimatedModelResources {
     pub pipeline: wgpu::RenderPipeline,
     pub instance_buffer: wgpu::Buffer,
@@ -26,22 +31,22 @@ pub struct AnimatedModelResources {
 }
 
 impl AnimatedModelResources {
-    pub fn draw_all(
+    pub fn prepare<'a>(
         &self,
-        rp: &mut wgpu::RenderPass,
         queue: &wgpu::Queue,
-        em: &EntityManager,
+        em: &'a EntityManager,
         alignment: usize,
         alpha: f32,
+        out: &mut Vec<AnimatedBatch<'a>>,
     ) {
-        let instance_stride = std::mem::size_of::<InstanceUniform>() as wgpu::BufferAddress;
+        out.clear();
+
+        let instance_stride = size_of::<InstanceUniform>() as wgpu::BufferAddress;
         let bone_stride = (size_of::<BoneUniforms>() as wgpu::BufferAddress)
             .next_multiple_of(alignment as wgpu::BufferAddress);
 
         let mut instance_byte_offset: wgpu::BufferAddress = 0;
         let mut bones_byte_offset: wgpu::BufferAddress = 0;
-
-        rp.set_pipeline(&self.pipeline);
 
         for ids in em.get_animated_ids_by_type().values() {
             for id in ids {
@@ -65,23 +70,58 @@ impl AnimatedModelResources {
                     bytemuck::cast_slice(&anim.current_pose),
                 );
 
-                rp.set_vertex_buffer(
-                    1,
-                    self.instance_buffer
-                        .slice(instance_byte_offset..instance_byte_offset + instance_stride),
-                );
-
-                let bones_dynamic_offset: wgpu::DynamicOffset = bones_byte_offset
-                    .try_into()
-                    .expect("bones slab offset fits u32");
-
-                rp.draw_model_animated(model, &self.bones_bind_group, bones_dynamic_offset);
+                out.push(AnimatedBatch {
+                    model,
+                    instance_offset: instance_byte_offset,
+                    bones_offset: bones_byte_offset,
+                });
 
                 instance_byte_offset += instance_stride;
                 bones_byte_offset += bone_stride;
             }
         }
     }
+
+    pub fn draw_prepared<'a>(
+        &self,
+        rp: &mut wgpu::RenderPass<'_>,
+        pipeline: &wgpu::RenderPipeline,
+        batches: &[AnimatedBatch<'a>],
+        lit_pass: bool,
+    ) {
+        let instance_stride = size_of::<InstanceUniform>() as wgpu::BufferAddress;
+        rp.set_pipeline(pipeline);
+
+        for batch in batches {
+            rp.set_vertex_buffer(
+                1,
+                self.instance_buffer.slice(
+                    batch.instance_offset..batch.instance_offset + instance_stride,
+                ),
+            );
+
+            let bones_dynamic_offset: wgpu::DynamicOffset = batch
+                .bones_offset
+                .try_into()
+                .expect("bones slab offset fits u32");
+
+            if lit_pass {
+                rp.draw_model_animated(
+                    batch.model,
+                    &self.bones_bind_group,
+                    bones_dynamic_offset,
+                );
+            } else {
+                rp.draw_model_depth_only_animated(
+                    batch.model,
+                    &self.bones_bind_group,
+                    bones_dynamic_offset,
+                    1,
+                );
+            }
+        }
+    }
+
 }
 
 pub fn build(

@@ -5,6 +5,8 @@ var s_diffuse: sampler;
 
 struct CameraUniform {
 	view_proj: mat4x4<f32>,
+	inv_proj: mat4x4<f32>,
+	light_view_proj: mat4x4<f32>,
 }
 @group(1) @binding(0)
 var<uniform> camera: CameraUniform;
@@ -16,8 +18,20 @@ struct DirLightUniform {
 	diffuse: vec4<f32>,
 	specular: vec4<f32>,
 }
+struct ShadowSampleUniform {
+	bias_scalar: f32,
+	border_fallback: u32,
+	_pad0: u32,
+	_pad1: u32,
+}
 @group(2) @binding(0)
 var<uniform> dir_light: DirLightUniform;
+@group(2) @binding(1)
+var shadow_map: texture_depth_2d;
+@group(2) @binding(2)
+var shadow_sampler: sampler;
+@group(2) @binding(3)
+var<uniform> shadow: ShadowSampleUniform;
 
 struct VertexInput {
 	@location(0) position: vec3<f32>,
@@ -32,6 +46,7 @@ struct VertexOutput {
 	@location(0) uv: vec2<f32>,
 	@location(1) normal: vec4<f32>,
 	@location(2) world_position: vec4<f32>,
+	@location(3) frag_pos_light_space: vec4<f32>,
 }
 
 struct InstanceInput {
@@ -61,6 +76,7 @@ fn vs_main(
 	out.world_position = world_pos;
 	out.normal = vec4<f32>(world_normal, 0.0);
 	out.clip_position = camera.view_proj * world_pos;
+	out.frag_pos_light_space = camera.light_view_proj * world_pos;
 	out.uv = model.uv;
 
 	return out;
@@ -72,12 +88,43 @@ struct FragmentOut {
 	@location(2) depth_proxy: vec4<f32>,
 }
 
-// Fragment stage: do not bundle @builtin(position) with another struct that
-// also carries position (WGSL validation rejects duplicate Position varyings).
 struct FragmentVaryings {
 	@location(0) uv: vec2<f32>,
 	@location(1) normal: vec4<f32>,
 	@location(2) world_position: vec4<f32>,
+	@location(3) frag_pos_light_space: vec4<f32>,
+}
+
+fn shadow_calculation(frag_pos_light_space: vec4<f32>, dot_light_normal: f32) -> f32 {
+	let w = max(frag_pos_light_space.w, 1e-6);
+	let ndc = frag_pos_light_space.xyz / w;
+	var pos = vec3<f32>(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5), ndc.z);
+	if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0 || pos.z < 0.0 || pos.z > 1.0) {
+		return 1.0;
+	}
+
+	let bias = max(shadow.bias_scalar * (1.0 - dot_light_normal), 0.0005);
+	let dims = textureDimensions(shadow_map, 0);
+	let texel = 1.0 / vec2<f32>(dims);
+	var sum = 0.0;
+
+	for (var x = -1; x <= 1; x++) {
+		for (var y = -1; y <= 1; y++) {
+			let uv = pos.xy + vec2<f32>(f32(x), f32(y)) * texel;
+			if (shadow.border_fallback != 0u
+				&& (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)) {
+				sum += 1.0;
+			} else {
+				let stored = textureLoad(
+					shadow_map,
+					vec2<i32>(clamp(uv * vec2<f32>(dims), vec2(0.0), vec2<f32>(dims) - vec2(1.0))),
+					0,
+				);
+				sum += select(1.0, 0.0, stored + bias < pos.z);
+			}
+		}
+	}
+	return sum / 9.0;
 }
 
 fn calculate_directional_light(in: FragmentVaryings) -> vec4<f32> {
@@ -93,14 +140,16 @@ fn calculate_directional_light(in: FragmentVaryings) -> vec4<f32> {
 	}
 
 	let flat_ambient = dir_light.ambient;
-	let light_dir = normalize(dir_light.direction);
-	let norm = normalize(in.normal);
+	let light_dir = normalize(dir_light.direction.xyz);
+	let norm = normalize(in.normal.xyz);
 
 	let dot_light_normal = dot(light_dir, norm);
 	let diff = max(dot_light_normal, 0.0);
 	let diffuse = diff * light_color;
 
-	return vec4<f32>((flat_ambient.rgb + diffuse.rgb) * tex_sample.rgb, tex_sample.a);
+	let s = shadow_calculation(in.frag_pos_light_space, dot_light_normal);
+
+	return vec4<f32>((flat_ambient.rgb + s * diffuse.rgb) * tex_sample.rgb, tex_sample.a);
 
 }
 

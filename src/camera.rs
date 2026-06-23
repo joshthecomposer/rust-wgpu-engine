@@ -13,6 +13,7 @@ use crate::{
 pub struct CameraUniform {
     pub view_proj: [[f32; 4]; 4],
     pub inv_proj: [[f32; 4]; 4],
+    pub light_view_proj: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
@@ -20,6 +21,7 @@ impl CameraUniform {
         Self {
             view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
             inv_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
+            light_view_proj: glam::Mat4::IDENTITY.to_cols_array_2d(),
         }
     }
 }
