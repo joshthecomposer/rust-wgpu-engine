@@ -200,7 +200,7 @@ impl Camera {
 
         self.process_key_event(dt, input);
 
-        self.projection = glam::Mat4::perspective_rh_gl(self.fovy, aspect, self.z_near, self.z_far);
+        self.projection = glam::Mat4::perspective_rh(self.fovy, aspect, self.z_near, self.z_far);
 
         match self.move_state {
             CameraState::Free | CameraState::Locked | CameraState::Gallery => {

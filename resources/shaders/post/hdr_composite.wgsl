@@ -36,10 +36,8 @@ const FOG_END:   f32 = 85.0;
 const FOG_STRENGTH: f32 = 0.95;
 
 fn view_z_from_depth(depth01: f32, uv: vec2<f32>) -> f32 {
-    // wgpu/Vulkan NDC depth is already [0..1], but our projection matrix
-    // is perspective_rh_gl which targets [-1..1] NDC, so remap back.
-    let ndc_z = depth01 * 2.0 - 1.0;
-    let ndc = vec4<f32>(uv * 2.0 - 1.0, ndc_z, 1.0);
+    // perspective_rh maps view-space z to NDC depth [0..1] (WebGPU/Vulkan convention).
+    let ndc = vec4<f32>(uv * 2.0 - 1.0, depth01, 1.0);
     let view = params.inv_proj * ndc;
     return -view.z / view.w;
 }
@@ -53,35 +51,22 @@ fn fog_factor(dist: f32) -> f32 {
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     var color = textureSample(scene_hdr, scene_hdr_sampler, in.uv).rgb;
+    let bloom = textureSample(bloom_tex, scene_hdr_sampler, in.uv).rgb;
+    color += bloom * params.bloom_strength;
+
+    let depth = textureLoad(depth_tex, vec2<i32>(in.clip_pos.xy), 0);
+
+    var ff = fog_factor(view_z_from_depth(depth, in.uv));
+
+    if (depth >= 0.999999) {
+        ff = 0.85;
+    }
+
+    color = mix(color, FOG_COLOR, ff);
 
     if (params.hdr_enabled != 0u) {
-        color = vec3<f32>(1.0) - exp(
-            -color * max(params.exposure, 0.0001)
-        );
+        color = vec3<f32>(1.0) - exp(-color * max(params.exposure, 0.0001));
     }
 
     return vec4<f32>(color, 1.0);
 }
-
-//@fragment
-//fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
-//    var color = textureSample(scene_hdr, scene_hdr_sampler, in.uv).rgb;
-//    let bloom = textureSample(bloom_tex, scene_hdr_sampler, in.uv).rgb;
-//    color += bloom * params.bloom_strength;
-//
-//	let depth = textureLoad(depth_tex, vec2<i32>(in.clip_pos.xy), 0);
-//
-//	var ff = fog_factor(view_z_from_depth(depth, in.uv));
-//
-//	if depth >= 0.999999 {
-//		ff = 0.85;
-//	}
-//
-//	color = mix(color, FOG_COLOR, ff);
-//
-//    if (params.hdr_enabled != 0u) {
-//        color = vec3<f32>(1.0) - exp(-color * max(params.exposure, 0.0001));
-//    }
-//
-//    return vec4<f32>(color, 1.0);
-//}

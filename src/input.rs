@@ -262,23 +262,20 @@ pub fn mouse_ray_from_screen(mouse_pos: Vec2, screen_size: Vec2, camera: &Camera
     let (mouse_x, mouse_y) = (mouse_pos.x, mouse_pos.y);
     let (screen_w, screen_h) = (screen_size.x, screen_size.y);
 
-    // Calculate NDC
-    // transform x to match opengl left-to-right convention
+    // NDC x/y; z spans the WebGPU/Vulkan depth range [0, 1] (perspective_rh).
     let x = (2.0 * mouse_x) / screen_w - 1.0;
-    // invert y. Screen space Y is top-down whereas opengl is bottom-up
     let y = 1.0 - (2.0 * mouse_y) / screen_h;
-    // the ray goes INTO the screen (negative z)
-    let z = -1.0;
-    let ray_ndc = vec4(x, y, z, 1.0);
 
-    // we want to reverse the transform pipeline. clip -> view -> world
     let inv_proj = camera.projection.inverse();
     let inv_view = camera.view.inverse();
 
-    let ray_eye = inv_proj * ray_ndc;
-    let ray_eye = vec4(ray_eye.x, ray_eye.y, -1.0, 0.0);
+    let clip_near = inv_proj * vec4(x, y, 0.0, 1.0);
+    let clip_far = inv_proj * vec4(x, y, 1.0, 1.0);
+    let eye_near = vec4(clip_near.x / clip_near.w, clip_near.y / clip_near.w, clip_near.z / clip_near.w, 1.0);
+    let eye_far = vec4(clip_far.x / clip_far.w, clip_far.y / clip_far.w, clip_far.z / clip_far.w, 1.0);
+    let ray_eye = eye_far - eye_near;
 
-    let ray_world = (inv_view * ray_eye).xyz().normalize();
+    let ray_world = (inv_view * vec4(ray_eye.x, ray_eye.y, ray_eye.z, 0.0)).xyz().normalize();
     let camera_pos = camera.position;
 
     (camera_pos, ray_world)

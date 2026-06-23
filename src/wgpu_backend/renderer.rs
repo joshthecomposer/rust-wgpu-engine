@@ -48,6 +48,11 @@ pub struct Renderer {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
+    /// sRGB view format the swapchain is rendered through. The surface itself is
+    /// configured with the non-sRGB base format (required for the WebGPU canvas),
+    /// but we present through an sRGB view so linear color is gamma-encoded on
+    /// write — identically on native and web.
+    pub surface_view_format: wgpu::TextureFormat,
     pub depth_texture: texture::Texture,
     pub alignment: usize,
     pub shared_layouts: SharedLayouts,
@@ -71,10 +76,13 @@ impl Renderer {
         camera_uniform: CameraUniform,
         dir_light_uniform: DirLightUniform,
     ) -> Self {
-        let inner = window.inner_size();
-
-        let width = inner.width.max(1);
-        let height = inner.height.max(1);
+        #[cfg(not(target_arch = "wasm32"))]
+        let (width, height) = {
+            let inner = window.inner_size();
+            (inner.width.max(1), inner.height.max(1))
+        };
+        #[cfg(target_arch = "wasm32")]
+        let (width, height) = crate::platform::web_canvas_physical_size(&window);
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             #[cfg(not(target_arch = "wasm32"))]
@@ -112,13 +120,20 @@ impl Renderer {
 
         let surface_caps = surface.get_capabilities(&adapter);
 
-        let surface_format = surface_caps
+        let chosen_format = surface_caps
             .formats
             .iter()
             .find(|f| f.is_srgb())
             .copied()
             .or_else(|| surface_caps.formats.first().copied())
             .unwrap_or(wgpu::TextureFormat::Rgba8UnormSrgb);
+
+        // Configure the canvas/swapchain with the non-sRGB base (WebGPU only
+        // permits non-sRGB canvas formats), but render through an sRGB view so the
+        // GPU gamma-encodes linear output. Native already did this implicitly via
+        // an sRGB surface format; doing it explicitly keeps both backends in sync.
+        let base_format = chosen_format.remove_srgb_suffix();
+        let surface_view_format = base_format.add_srgb_suffix();
 
         let present_mode = surface_caps
             .present_modes
@@ -134,12 +149,12 @@ impl Renderer {
 
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface_format,
+            format: base_format,
             width,
             height,
             present_mode,
             alpha_mode,
-            view_formats: vec![],
+            view_formats: vec![surface_view_format],
             desired_maximum_frame_latency: 2,
         };
 
@@ -155,7 +170,7 @@ impl Renderer {
             &queue,
             config.width,
             config.height,
-            config.format,
+            surface_view_format,
             SCENE_HDR_FORMAT,
             BRIGHT_FORMAT,
             initial_hdr_params,
@@ -234,6 +249,7 @@ impl Renderer {
             device,
             queue,
             config,
+            surface_view_format,
             depth_texture,
             alignment,
             shared_layouts,
@@ -273,7 +289,7 @@ impl Renderer {
             &self.queue,
             self.config.width,
             self.config.height,
-            self.config.format,
+            self.surface_view_format,
             SCENE_HDR_FORMAT,
             BRIGHT_FORMAT,
             hdr_params,
@@ -394,9 +410,10 @@ impl Renderer {
             }
         };
 
-        let surface_view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+        let surface_view = output.texture.create_view(&wgpu::TextureViewDescriptor {
+            format: Some(self.surface_view_format),
+            ..Default::default()
+        });
 
         let mut encoder = self
             .device

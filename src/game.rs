@@ -106,7 +106,7 @@ impl Game {
                 true => Some(ImguiManager::new(
                     &renderer.device,
                     &renderer.queue,
-                    renderer.config.format,
+                    renderer.surface_view_format,
                 )),
                 false => None,
             };
@@ -114,7 +114,7 @@ impl Game {
         // Custom RON UI.
         // TODO: portrait renderer aren't ported yyet
         let mut custom_ui_renderer =
-            UiRenderer::new(&renderer.device, &renderer.queue, renderer.config.format);
+            UiRenderer::new(&renderer.device, &renderer.queue, renderer.surface_view_format);
         custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
         let mut font_system = FontSystem::new();
@@ -252,6 +252,17 @@ impl Game {
 
     pub fn tick(&mut self, now_seconds: f32) {
         self.time.begin_frame(now_seconds);
+
+        // Web: winit doesn't deliver reliable `Resized` events for a CSS-sized
+        // canvas, so poll its size here and resize (surface + camera aspect + UI)
+        // when it changes.
+        #[cfg(target_arch = "wasm32")]
+        if let Some(window) = self.platform.window.clone() {
+            let (cw, ch) = crate::platform::web_canvas_physical_size(&window);
+            if cw != self.platform.fb_width || ch != self.platform.fb_height {
+                self.resize(cw, ch);
+            }
+        }
 
         // Mouse lock / cursor mode
         let hardware_mode = if self.paused || self.world.camera.move_state == CameraState::Locked {
