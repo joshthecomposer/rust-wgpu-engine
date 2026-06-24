@@ -177,10 +177,10 @@ impl Default for SpawnManager {
         Self {
             rounds: VecDeque::from([
                 RoundData {
-                    amount: 20,
+                    amount: 1,
                     spawned: false,
-                    //weapons: Some(vec!["OrcSword".to_string()]),
-                    weapons: None,
+                    weapons: Some(vec!["OrcSword".to_string()]),
+                    // weapons: None,
                 },
                 RoundData {
                     amount: 2,

@@ -95,9 +95,8 @@ impl AnimatedModelResources {
         for batch in batches {
             rp.set_vertex_buffer(
                 1,
-                self.instance_buffer.slice(
-                    batch.instance_offset..batch.instance_offset + instance_stride,
-                ),
+                self.instance_buffer
+                    .slice(batch.instance_offset..batch.instance_offset + instance_stride),
             );
 
             let bones_dynamic_offset: wgpu::DynamicOffset = batch
@@ -106,11 +105,7 @@ impl AnimatedModelResources {
                 .expect("bones slab offset fits u32");
 
             if lit_pass {
-                rp.draw_model_animated(
-                    batch.model,
-                    &self.bones_bind_group,
-                    bones_dynamic_offset,
-                );
+                rp.draw_model_animated(batch.model, &self.bones_bind_group, bones_dynamic_offset);
             } else {
                 rp.draw_model_depth_only_animated(
                     batch.model,
@@ -121,7 +116,6 @@ impl AnimatedModelResources {
             }
         }
     }
-
 }
 
 pub fn build(
@@ -169,8 +163,7 @@ pub fn build(
         }],
     });
 
-    let shader_wgsl: &str =
-        include_str!("../../../resources/shaders/model/animated_model.wgsl");
+    let shader_wgsl: &str = include_str!("../../../resources/shaders/model/animated_model.wgsl");
 
     let shader = wgpu::ShaderModuleDescriptor {
         label: Some("Animated Model Shader"),

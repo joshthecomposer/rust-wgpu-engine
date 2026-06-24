@@ -97,7 +97,8 @@ impl Transform {
     pub fn to_instance_uniform(&self) -> InstanceUniform {
         InstanceUniform {
             model: (glam::Mat4::from_translation(self.position)
-                * glam::Mat4::from_quat(self.rotation))
+                * glam::Mat4::from_quat(self.rotation)
+                * glam::Mat4::from_scale(self.scale))
             .to_cols_array_2d(),
         }
     }
