@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-const MAX_ANIMATED_DRAWS: u64 = 256;
+const MAX_ANIMATED_DRAWS: u64 = 10_000;
 
 pub struct AnimatedBatch<'a> {
     pub model: &'a crate::wgpu_backend::model::Model,

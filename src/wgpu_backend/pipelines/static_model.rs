@@ -112,7 +112,6 @@ impl StaticModelResources {
             }
         }
     }
-
 }
 
 pub fn build(
@@ -122,8 +121,7 @@ pub fn build(
     bright_format: wgpu::TextureFormat,
     depth_format: wgpu::TextureFormat,
 ) -> StaticModelResources {
-    let shader_wgsl: &str =
-        include_str!("../../../resources/shaders/model/static_model.wgsl");
+    let shader_wgsl: &str = include_str!("../../../resources/shaders/model/static_model.wgsl");
 
     let shader = wgpu::ShaderModuleDescriptor {
         label: Some("Static Model Shader"),
