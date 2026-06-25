@@ -1,0 +1,30 @@
+{
+  "next_round_ttl": 7.5,
+  "next_round_accumulator": 0.0,
+  "rounds": [
+    {
+      "amount": 1,
+      "weapons": [
+        "OrcSword"
+      ]
+    },
+    {
+
+      "amount": 2,
+      "weapons": [
+        "OrcSword", 
+        "DoubleAxe"
+      ]
+    },
+    {
+      "amount": 4,
+      "weapons": [
+        "OrcSword",
+        "OrcSword",
+        "DoubleAxe",
+        "FireStaff"
+      ]
+    }
+  ]
+}
+

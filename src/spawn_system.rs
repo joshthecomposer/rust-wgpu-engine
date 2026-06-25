@@ -5,29 +5,39 @@ use nalgebra::{point, vector};
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use rapier3d::prelude::{Group, InteractionGroups, QueryFilter, Ray};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    config::{weapon_anim_map, world_data::EntityInstance},
+    config::{weapon_anim_map, world_data::EntityInstance, Config},
     debug::gizmos::Dimension,
     entity_manager::EntityManager,
     physics::PhysicsState,
     util::constants::GROUP_TERRAIN,
 };
 
-// round data for
+#[derive(Serialize, Deserialize)]
 pub struct RoundData {
     amount: u32,
+    #[serde(default)]
     spawned: bool,
+    #[serde(default)]
     weapons: Option<Vec<String>>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct SpawnManager {
     pub rounds: VecDeque<RoundData>,
     pub next_round_ttl: f32,
     pub next_round_accumulator: f32,
 }
 
+impl Config for SpawnManager {}
+
 impl SpawnManager {
+    pub fn new(file: &str) -> Self {
+        Self::load_from_file(file)
+    }
+
     pub fn update(
         &mut self,
         em: &mut EntityManager,

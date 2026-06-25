@@ -17,7 +17,7 @@ impl World {
         let camera = Camera::new();
         let lights = Lights::new(50);
         let particles = ParticleSystem::new("config/emitter_data.json");
-        let spawn_manager = SpawnManager::default();
+        let spawn_manager = SpawnManager::new("config/round_data.json");
 
         Self {
             ecs,

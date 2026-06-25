@@ -79,12 +79,8 @@ impl Game {
                 .as_ref()
                 .expect("missing window in Platform"),
         );
-        let mut renderer = Renderer::new(
-            window,
-            CameraUniform::new(),
-            DirLightUniform::new(),
-        )
-        .await;
+        let mut renderer =
+            Renderer::new(window, CameraUniform::new(), DirLightUniform::new()).await;
         renderer.render_gizmos = config.render_gizmos;
 
         let rdr_ctx = RenderContext {
@@ -113,8 +109,11 @@ impl Game {
 
         // Custom RON UI.
         // TODO: portrait renderer aren't ported yyet
-        let mut custom_ui_renderer =
-            UiRenderer::new(&renderer.device, &renderer.queue, renderer.surface_view_format);
+        let mut custom_ui_renderer = UiRenderer::new(
+            &renderer.device,
+            &renderer.queue,
+            renderer.surface_view_format,
+        );
         custom_ui_renderer.set_screen_size(platform.fb_width as f32, platform.fb_height as f32);
 
         let mut font_system = FontSystem::new();

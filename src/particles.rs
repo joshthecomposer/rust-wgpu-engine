@@ -113,8 +113,6 @@ impl ParticleSystem {
         }
     }
 
-    /// Iterate every emitter the GPU pass should draw, including staged editor
-    /// previews when `render_staged_emitters` is enabled.
     pub fn iter_drawable(&self) -> impl Iterator<Item = &Emitter> {
         let render_staged = self.render_staged_emitters;
         let staged_iter = self
