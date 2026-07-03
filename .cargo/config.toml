@@ -2,8 +2,8 @@
 # Local dev: build dist/ (wasm + web_audio for FMOD JS bridge) and start python http.server.
 # Note: avoid aliasing `web` because it shadows the external `cargo-web` subcommand used in CI.
 web-dev = "run --bin serve-web"
-desktop = "run --bin learn-opengl-rs"
-rwd = "run --profile rwd --bin learn-opengl-rs"
+desktop = "run --bin learn-wgpu-rs"
+rwd = "run --profile rwd --bin learn-wgpu-rs"
 
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]

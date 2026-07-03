@@ -161,7 +161,7 @@ def export_mesh_with_indices(filepath, diffuse_texture_name):
                     f.write(f"{indices[i]} {indices[i+1]} {indices[i+2]} ")
 
 # the output path of the mesh data
-mesh_output = os.path.expanduser("E:/Software_Dev/rust/rust-opengl-engine/resources/models/static/desert_mountains/mountain_999.txt")
+mesh_output = os.path.expanduser("E:/Software_Dev/rust/rust-wgpu-engine/resources/models/static/desert_mountains/mountain_999.txt")
 # the diffuse texture name."
 diff = "some_texture.png"
 

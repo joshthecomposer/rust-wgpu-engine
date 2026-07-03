@@ -102,7 +102,7 @@ fn preloaded_browser_asset(path: &str) -> Option<Vec<u8>> {
     let window = web_sys::window()?;
     let asset_map = js_sys::Reflect::get(
         window.as_ref(),
-        &JsValue::from_str("__learn_opengl_rs_assets"),
+        &JsValue::from_str("__learn_wgpu_rs_assets"),
     )
     .ok()?;
     let bytes = js_sys::Reflect::get(&asset_map, &JsValue::from_str(path)).ok()?;

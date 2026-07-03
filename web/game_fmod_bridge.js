@@ -1,8 +1,3 @@
-/**
- * Minimal FMOD Studio HTML5 bridge for learn-opengl-rs.
- * Expects global FMODModule from Firelight's fmodstudio.js (not shipped in this repo).
- * Exposes global LearnOpenglFmod for wasm (see docs/fmod_web_setup.md).
- */
 (function () {
   const STUDIO_INIT_NORMAL = 0;
   const FMOD_INIT_NORMAL = 0;
@@ -327,7 +322,7 @@
     /**
      * Spawn a continuous 3D event tied to an entity. The instance is kept alive in
      * `active3dByEntity` so subsequent `update3dContinuous` calls can mutate its 3D attributes.
-     * Position and velocity are already in FMOD (right-handed) space.
+     * Position and velocity are already in FMOD space.
      * @param {string} soundKey
      * @param {number} entityId
      * @param {number} x

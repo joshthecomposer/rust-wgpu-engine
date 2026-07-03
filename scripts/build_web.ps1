@@ -27,7 +27,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $targetDir = Join-Path $metadata.target_directory "wasm32-unknown-unknown\$Profile"
-$wasmInput = Join-Path $targetDir "learn-opengl-rs.wasm"
+$wasmInput = Join-Path $targetDir "learn-wgpu-rs.wasm"
 if (-not (Test-Path $wasmInput)) {
     $wasmInput = Get-ChildItem -Path $targetDir -Filter "*.wasm" -File |
         Select-Object -First 1 -ExpandProperty FullName
@@ -42,7 +42,7 @@ New-Item -ItemType Directory -Force $distDir | Out-Null
 wasm-bindgen `
     --target web `
     --out-dir $distDir `
-    --out-name learn_opengl_rs `
+    --out-name learn_wgpu_rs `
     $wasmInput
 if ($LASTEXITCODE -ne 0) {
     throw "wasm-bindgen failed"

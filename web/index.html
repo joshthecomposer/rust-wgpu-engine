@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>learn-opengl-rs</title>
+  <title>learn-wgpu-rs</title>
   <style>
     html,
     body {
@@ -51,7 +51,7 @@
        Includes config/*.json (e.g. emitter_data.json), resources/shaders/** (e.g. particles_es300.glsl), resources/textures/**. -->
 
   <script type="module">
-    import init from "./learn_opengl_rs.js";
+    import init from "./learn_wgpu_rs.js";
 
     const status = document.getElementById("status");
 
@@ -66,13 +66,12 @@
       });
     }
 
-    /** Optional FMOD HTML5 SDK, then the learn-opengl-rs bridge (always). */
     async function loadFmodBridgeScripts() {
       try {
         await loadScript("third_party/fmod/fmodstudio.js");
       } catch {
         console.info(
-          "[learn-opengl-rs] third_party/fmod/fmodstudio.js missing — web FMOD disabled (see docs/fmod_web_setup.md)"
+          "[learn-wgpu-rs] third_party/fmod/fmodstudio.js missing — web FMOD disabled (see docs/fmod_web_setup.md)"
         );
       }
       await loadScript("game_fmod_bridge.js");
@@ -103,7 +102,7 @@
       }
       await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
-      window.__learn_opengl_rs_assets = assets;
+      window.__learn_wgpu_rs_assets = assets;
     }
 
     try {
