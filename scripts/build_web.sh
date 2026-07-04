@@ -14,7 +14,7 @@ fi
 rm -rf dist
 mkdir -p dist
 wasm-bindgen --target web --out-dir dist --out-name learn_opengl_rs \
-  "target/wasm32-unknown-unknown/${WASM_DIR}/learn-opengl-rs.wasm"
+  "target/wasm32-unknown-unknown/${WASM_DIR}/learn-wgpu-rs.wasm"
 
 cp web/index.html dist/
 cp web/game_fmod_bridge.js dist/
@@ -60,8 +60,8 @@ import os, json
 d = "dist"
 skip_names = {
     "index.html",
-    "learn_opengl_rs.js",
-    "learn_opengl_rs_bg.wasm",
+    "learn_wgpu_rs.js",
+    "learn_wgpu_rs_bg.wasm",
     "asset-manifest.json",
     "game_fmod_bridge.js",
 }
