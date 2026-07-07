@@ -51,8 +51,7 @@ pub fn build_layouts(device: &wgpu::Device) -> SharedLayouts {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: false,
                 min_binding_size: Some(
-                    std::num::NonZeroU64::new(std::mem::size_of::<CameraUniform>() as u64)
-                        .unwrap(),
+                    std::num::NonZeroU64::new(std::mem::size_of::<CameraUniform>() as u64).unwrap(),
                 ),
             },
             count: None,

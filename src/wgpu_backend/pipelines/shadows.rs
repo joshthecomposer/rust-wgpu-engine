@@ -144,7 +144,8 @@ impl ShadowResources {
             wgpu::ShaderModuleDescriptor {
                 label: Some("static_shadow_depth"),
                 source: wgpu::ShaderSource::Wgsl(
-                    include_str!("../../../resources/shaders/shadow/static_shadow_depth.wgsl").into(),
+                    include_str!("../../../resources/shaders/shadow/static_shadow_depth.wgsl")
+                        .into(),
                 ),
             },
             Some("static_shadow_pipeline"),

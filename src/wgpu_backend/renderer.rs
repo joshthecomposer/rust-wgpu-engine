@@ -357,6 +357,7 @@ impl Renderer {
 
         let mut static_batches: Vec<StaticBatch<'_>> = Vec::new();
         let mut animated_batches: Vec<AnimatedBatch<'_>> = Vec::new();
+
         self.static_model.prepare(
             &self.queue,
             em,
@@ -446,6 +447,7 @@ impl Renderer {
                 1.0,
             );
             shadow_pass.set_bind_group(0, &self.shadows.light_bind_group, &[]);
+
             self.static_model.draw_prepared(
                 &mut shadow_pass,
                 &self.shadows.static_pipeline,

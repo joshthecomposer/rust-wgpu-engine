@@ -19,6 +19,7 @@ fn create_render_pipeline(
     label: Option<&str>,
     depth_compare: Option<wgpu::CompareFunction>,
     cull_mode: Option<wgpu::Face>,
+    depth_write_enabled: Option<bool>,
 ) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(shader);
 
@@ -51,7 +52,7 @@ fn create_render_pipeline(
         },
         depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
             format,
-            depth_write_enabled: Some(true),
+            depth_write_enabled,
             depth_compare,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),

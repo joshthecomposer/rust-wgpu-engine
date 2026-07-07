@@ -210,6 +210,7 @@ pub fn build(
         Some("Skybox Pipeline"),
         Some(wgpu::CompareFunction::LessEqual),
         None,
+        Some(true),
     );
 
     SkyboxResources {

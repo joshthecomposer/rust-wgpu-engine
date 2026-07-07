@@ -307,12 +307,17 @@ impl Game {
             if !self.paused {
                 physics::grounding_solver(&mut self.world.ecs, &self.physics);
 
-                state_machine_system::update(
-                    &mut self.world.ecs,
-                    &mut self.input,
-                    &mut self.command_buffer,
-                    self.time.fixed_dt,
-                );
+                match self.world.camera.move_state {
+                    CameraState::Third | CameraState::Locked => {
+                        state_machine_system::update(
+                            &mut self.world.ecs,
+                            &mut self.input,
+                            &mut self.command_buffer,
+                            self.time.fixed_dt,
+                        );
+                    }
+                    _ => (),
+                }
 
                 self.world.spawn_manager.update(
                     &mut self.world.ecs,

@@ -193,6 +193,7 @@ pub fn build(
         Some("Animated Model Pipeline"),
         Some(wgpu::CompareFunction::Less),
         Some(wgpu::Face::Back),
+        Some(true),
     );
 
     let instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
