@@ -48,10 +48,6 @@ pub struct Renderer {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
-    /// sRGB view format the swapchain is rendered through. The surface itself is
-    /// configured with the non-sRGB base format (required for the WebGPU canvas),
-    /// but we present through an sRGB view so linear color is gamma-encoded on
-    /// write — identically on native and web.
     pub surface_view_format: wgpu::TextureFormat,
     pub depth_texture: texture::Texture,
     pub alignment: usize,
