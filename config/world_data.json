@@ -469,58 +469,6 @@
       "pickup_range": null
     },
     {
-      "entity_type": "FireStaff",
-      "faction": "Item",
-      "position": [
-        -5.9686,
-        -0.027827006,
-        -3.0828454
-      ],
-      "rotation": [
-        0.5611208,
-        -0.49641794,
-        0.24418218,
-        0.61570096
-      ],
-      "weapons": null,
-      "base_speed": null,
-      "health": null,
-      "max_health": null,
-      "mana": null,
-      "max_mana": null,
-      "level": null,
-      "name": null,
-      "jump_height": null,
-      "cleanup_timer": null,
-      "pickup_range": null
-    },
-    {
-      "entity_type": "OrcSword",
-      "faction": "Item",
-      "position": [
-        -7.2435975,
-        -0.61717093,
-        -2.385604
-      ],
-      "rotation": [
-        0.06829931,
-        0.017455056,
-        -0.16209549,
-        0.98425376
-      ],
-      "weapons": null,
-      "base_speed": null,
-      "health": null,
-      "max_health": null,
-      "mana": null,
-      "max_mana": null,
-      "level": null,
-      "name": null,
-      "jump_height": null,
-      "cleanup_timer": null,
-      "pickup_range": null
-    },
-    {
       "entity_type": "Peasant1",
       "faction": "Player",
       "position": [
